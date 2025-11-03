@@ -1,0 +1,27 @@
+{
+  "name": "@gifterra/indexer-minimal",
+  "version": "1.0.0",
+  "description": "Minimal event indexer for Gifterra contracts",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js",
+    "indexer:dev": "node index.js",
+    "indexer:once": "node index.js --once"
+  },
+  "keywords": [
+    "indexer",
+    "ethereum",
+    "events",
+    "viem"
+  ],
+  "author": "Gifterra Team",
+  "license": "MIT",
+  "dependencies": {
+    "dotenv": "^16.3.1",
+    "viem": "^2.7.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

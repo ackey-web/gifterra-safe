@@ -1,0 +1,354 @@
+// components/PatentSafeNFTWidget.tsx
+import React, { useState } from "react";
+import { useGifterraSystem } from "../hooks/useGifterraSystem";
+
+/**
+ * @title PatentSafeNFTWidget  
+ * @notice 既存Reward UIに統合する特許回避NFTウィジェット
+ * 
+ * 【統合設計】
+ * - 既存のDaily Reward UIを妨げない
+ * - 特許対象機能と明確に分離表示
+ * - ユーザーに安全性を明示
+ */
+
+interface PatentSafeNFTWidgetProps {
+  systemId?: number;
+  className?: string;
+}
+
+export const PatentSafeNFTWidget: React.FC<PatentSafeNFTWidgetProps> = ({
+  systemId = 1,
+  className = ""
+}) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [mintAddress, setMintAddress] = useState("");
+  const [mintPrice] = useState("0.01");
+
+  const {
+    systemInfo,
+    stats,
+    publicMintStandardNFT,
+    isLoading,
+    error,
+    isSystemReady
+  } = useGifterraSystem(systemId);
+
+  const handlePublicMint = async () => {
+    if (!mintAddress) {
+      alert("ミント先アドレスを入力してください");
+      return;
+    }
+
+    try {
+      await publicMintStandardNFT("", mintPrice);
+      alert("✅ 通常NFTのミントが完了しました！");
+      setMintAddress("");
+    } catch (error: any) {
+      alert(`❌ ミントに失敗しました: ${error.message}`);
+    }
+  };
+
+  if (!isSystemReady) {
+    return (
+      <div className={`patent-safe-widget loading ${className}`}>
+        <div className="widget-header">
+          <span>🛡️ 特許回避NFT</span>
+          <small>読み込み中...</small>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className={`patent-safe-widget ${className}`}>
+      {/* ヘッダー */}
+      <div 
+        className="widget-header"
+        onClick={() => setIsExpanded(!isExpanded)}
+      >
+        <div className="header-content">
+          <span className="title">🛡️ 特許回避NFT</span>
+          <div className="subtitle">
+            <small>通常NFT（譲渡可能）</small>
+            <span className="expand-icon">{isExpanded ? "▼" : "▶"}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* 展開コンテンツ */}
+      {isExpanded && (
+        <div className="widget-content">
+          {/* 安全性表示 */}
+          <div className="safety-notice">
+            <div className="safe-badge">✅ 特許対象外</div>
+            <p>このNFTは特許回避設計により安全です</p>
+          </div>
+
+          {/* 統計情報 */}
+          {stats?.nft && (
+            <div className="nft-stats">
+              <div className="stat-item">
+                <span>発行済み:</span>
+                <span>{stats.nft.totalSupply}</span>
+              </div>
+              <div className="stat-item">
+                <span>ミント価格:</span>
+                <span>{stats.nft.currentMintPrice} MATIC</span>
+              </div>
+              <div className="stat-item">
+                <span>状態:</span>
+                <span className={stats.nft.isPublicMintEnabled ? "enabled" : "disabled"}>
+                  {stats.nft.isPublicMintEnabled ? "🟢 利用可能" : "🔴 停止中"}
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* ミント機能 */}
+          {stats?.nft.isPublicMintEnabled && (
+            <div className="mint-section">
+              <h4>🎯 パブリックミント</h4>
+              <div className="mint-form">
+                <input
+                  type="text"
+                  placeholder="ミント先アドレス"
+                  value={mintAddress}
+                  onChange={(e) => setMintAddress(e.target.value)}
+                />
+                <button
+                  onClick={handlePublicMint}
+                  disabled={isLoading || !mintAddress}
+                  className="mint-button"
+                >
+                  {isLoading ? "処理中..." : `${stats.nft.currentMintPrice} MATIC でミント`}
+                </button>
+              </div>
+              <p className="mint-note">
+                📝 手動操作による安全なミント（自動処理なし）
+              </p>
+            </div>
+          )}
+
+          {/* エラー表示 */}
+          {error && (
+            <div className="error-message">
+              ⚠️ {error}
+            </div>
+          )}
+
+          {/* コントラクト情報 */}
+          <div className="contract-info">
+            <small>
+              <strong>Contract:</strong> {systemInfo?.standardNFT.slice(0, 10)}...
+            </small>
+          </div>
+        </div>
+      )}
+
+      {/* スタイル */}
+      <style>{`
+        .patent-safe-widget {
+          background: rgba(255, 255, 255, 0.08);
+          border: 1px solid rgba(76, 175, 80, 0.3);
+          border-radius: 12px;
+          margin: 16px 0;
+          overflow: hidden;
+          transition: all 0.3s ease;
+        }
+
+        .patent-safe-widget.loading {
+          opacity: 0.6;
+        }
+
+        .widget-header {
+          padding: 12px 16px;
+          cursor: pointer;
+          background: linear-gradient(135deg, rgba(76, 175, 80, 0.1) 0%, rgba(129, 199, 132, 0.1) 100%);
+          transition: background 0.3s ease;
+        }
+
+        .widget-header:hover {
+          background: linear-gradient(135deg, rgba(76, 175, 80, 0.15) 0%, rgba(129, 199, 132, 0.15) 100%);
+        }
+
+        .header-content {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        }
+
+        .title {
+          font-size: 14px;
+          font-weight: 600;
+          color: #4caf50;
+        }
+
+        .subtitle {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          font-size: 11px;
+          opacity: 0.8;
+        }
+
+        .expand-icon {
+          transition: transform 0.3s ease;
+        }
+
+        .widget-content {
+          padding: 16px;
+        }
+
+        .safety-notice {
+          background: linear-gradient(135deg, #c8e6c9 0%, #e8f5e8 100%);
+          border: 1px solid #4caf50;
+          border-radius: 8px;
+          padding: 12px;
+          margin-bottom: 16px;
+          color: #2e7d32;
+        }
+
+        .safe-badge {
+          display: inline-block;
+          background: #4caf50;
+          color: white;
+          padding: 2px 8px;
+          border-radius: 12px;
+          font-size: 10px;
+          font-weight: 600;
+          margin-bottom: 4px;
+        }
+
+        .safety-notice p {
+          margin: 0;
+          font-size: 12px;
+        }
+
+        .nft-stats {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 8px;
+          margin-bottom: 16px;
+        }
+
+        .stat-item {
+          display: flex;
+          justify-content: space-between;
+          font-size: 12px;
+          padding: 4px 0;
+        }
+
+        .stat-item span:first-child {
+          opacity: 0.8;
+        }
+
+        .stat-item span:last-child {
+          font-weight: 600;
+        }
+
+        .enabled {
+          color: #4caf50;
+        }
+
+        .disabled {
+          color: #f44336;
+        }
+
+        .mint-section {
+          border-top: 1px solid rgba(255, 255, 255, 0.1);
+          padding-top: 16px;
+        }
+
+        .mint-section h4 {
+          margin: 0 0 12px 0;
+          font-size: 13px;
+          color: #4caf50;
+        }
+
+        .mint-form {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+        }
+
+        .mint-form input {
+          padding: 8px 12px;
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          border-radius: 6px;
+          background: rgba(255, 255, 255, 0.05);
+          color: white;
+          font-size: 12px;
+        }
+
+        .mint-form input::placeholder {
+          color: rgba(255, 255, 255, 0.5);
+        }
+
+        .mint-button {
+          padding: 10px 16px;
+          background: #4caf50;
+          color: white;
+          border: none;
+          border-radius: 6px;
+          font-size: 12px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: background 0.3s ease;
+        }
+
+        .mint-button:hover:not(:disabled) {
+          background: #45a049;
+        }
+
+        .mint-button:disabled {
+          background: #666;
+          cursor: not-allowed;
+        }
+
+        .mint-note {
+          margin: 8px 0 0 0;
+          font-size: 10px;
+          opacity: 0.7;
+          font-style: italic;
+        }
+
+        .error-message {
+          background: rgba(244, 67, 54, 0.1);
+          border: 1px solid rgba(244, 67, 54, 0.3);
+          color: #f44336;
+          padding: 8px 12px;
+          border-radius: 6px;
+          font-size: 12px;
+          margin: 12px 0;
+        }
+
+        .contract-info {
+          margin-top: 12px;
+          padding-top: 8px;
+          border-top: 1px solid rgba(255, 255, 255, 0.05);
+          opacity: 0.6;
+        }
+
+        .contract-info small {
+          font-family: 'Monaco', monospace;
+          font-size: 10px;
+        }
+
+        @media (max-width: 480px) {
+          .nft-stats {
+            grid-template-columns: 1fr;
+          }
+          
+          .widget-header {
+            padding: 10px 12px;
+          }
+          
+          .widget-content {
+            padding: 12px;
+          }
+        }
+      `}</style>
+    </div>
+  );
+};

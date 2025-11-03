@@ -1,0 +1,118 @@
+
+> vite-react-typescript-starter@0.0.0 build /Users/masakiakita/Desktop/メタトロン関係/ギフテラ/gifterra-test-stable/gifterra-test-stable-4
+> tsc --noEmit && vite build
+
+vite v7.1.9 building for production...
+transforming...
+[plugin vite:resolve] Module "stream" has been externalized for browser compatibility, imported by "/Users/masakiakita/Desktop/メタトロン関係/ギフテラ/gifterra-test-stable/gifterra-test-stable-4/node_modules/.pnpm/cipher-base@1.0.7/node_modules/cipher-base/index.js". See https://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibility for more details.
+node_modules/.pnpm/ox@0.9.3_typescript@5.9.3_zod@3.25.76/node_modules/ox/_esm/core/Base64.js (6:27): A comment
+
+"/*#__PURE__*/"
+
+in "node_modules/.pnpm/ox@0.9.3_typescript@5.9.3_zod@3.25.76/node_modules/ox/_esm/core/Base64.js" contains an annotation that Rollup cannot interpret due to the position of the comment. The comment will be removed to avoid issues.
+[plugin vite:resolve] Module "http" has been externalized for browser compatibility, imported by "/Users/masakiakita/Desktop/メタトロン関係/ギフテラ/gifterra-test-stable/gifterra-test-stable-4/node_modules/.pnpm/micro-ftch@0.3.1/node_modules/micro-ftch/index.js". See https://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibility for more details.
+[plugin vite:resolve] Module "https" has been externalized for browser compatibility, imported by "/Users/masakiakita/Desktop/メタトロン関係/ギフテラ/gifterra-test-stable/gifterra-test-stable-4/node_modules/.pnpm/micro-ftch@0.3.1/node_modules/micro-ftch/index.js". See https://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibility for more details.
+[plugin vite:resolve] Module "zlib" has been externalized for browser compatibility, imported by "/Users/masakiakita/Desktop/メタトロン関係/ギフテラ/gifterra-test-stable/gifterra-test-stable-4/node_modules/.pnpm/micro-ftch@0.3.1/node_modules/micro-ftch/index.js". See https://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibility for more details.
+✓ 5435 modules transformed.
+rendering chunks...
+[plugin vite:reporter] 
+(!) /Users/masakiakita/Desktop/メタトロン関係/ギフテラ/gifterra-test-stable/gifterra-test-stable-4/src/lib/supabase.ts is dynamically imported by /Users/masakiakita/Desktop/メタトロン関係/ギフテラ/gifterra-test-stable/gifterra-test-stable-4/src/admin/vending/VendingDashboardNew.tsx, /Users/masakiakita/Desktop/メタトロン関係/ギフテラ/gifterra-test-stable/gifterra-test-stable-4/src/admin/vending/VendingDashboardNew.tsx, /Users/masakiakita/Desktop/メタトロン関係/ギフテラ/gifterra-test-stable/gifterra-test-stable-4/src/admin/vending/VendingDashboardNew.tsx but also statically imported by /Users/masakiakita/Desktop/メタトロン関係/ギフテラ/gifterra-test-stable/gifterra-test-stable-4/src/admin/Dashboard.tsx, /Users/masakiakita/Desktop/メタトロン関係/ギフテラ/gifterra-test-stable/gifterra-test-stable-4/src/admin/DiagnosticsPage.tsx, /Users/masakiakita/Desktop/メタトロン関係/ギフテラ/gifterra-test-stable/gifterra-test-stable-4/src/admin/products/ProductForm.tsx, /Users/masakiakita/Desktop/メタトロン関係/ギフテラ/gifterra-test-stable/gifterra-test-stable-4/src/admin/reward/RewardUIManagementPage.tsx, /Users/masakiakita/Desktop/メタトロン関係/ギフテラ/gifterra-test-stable/gifterra-test-stable-4/src/admin/vending/components/CommonCatalogManager.tsx, /Users/masakiakita/Desktop/メタトロン関係/ギフテラ/gifterra-test-stable/gifterra-test-stable-4/src/admin/vending/components/HubDetailPanelNew.tsx, /Users/masakiakita/Desktop/メタトロン関係/ギフテラ/gifterra-test-stable/gifterra-test-stable-4/src/admin/vending/components/HubListNew.tsx, /Users/masakiakita/Desktop/メタトロン関係/ギフテラ/gifterra-test-stable/gifterra-test-stable-4/src/hooks/useCommonCatalogProducts.ts, /Users/masakiakita/Desktop/メタトロン関係/ギフテラ/gifterra-test-stable/gifterra-test-stable-4/src/hooks/useSupabaseProducts.ts, /Users/masakiakita/Desktop/メタトロン関係/ギフテラ/gifterra-test-stable/gifterra-test-stable-4/src/pages/MyPurchasesPage.tsx, /Users/masakiakita/Desktop/メタトロン関係/ギフテラ/gifterra-test-stable/gifterra-test-stable-4/src/vending-ui/App.tsx, dynamic import will not move module into another chunk.
+
+[plugin vite:reporter] 
+(!) /Users/masakiakita/Desktop/メタトロン関係/ギフテラ/gifterra-test-stable/gifterra-test-stable-4/src/lib/ai_analysis.ts is dynamically imported by /Users/masakiakita/Desktop/メタトロン関係/ギフテラ/gifterra-test-stable/gifterra-test-stable-4/src/tip-ui/App.tsx but also statically imported by /Users/masakiakita/Desktop/メタトロン関係/ギフテラ/gifterra-test-stable/gifterra-test-stable-4/src/admin/Dashboard.tsx, dynamic import will not move module into another chunk.
+
+computing gzip size...
+dist/index.html                                                                                       0.62 kB │ gzip:   0.35 kB
+dist/assets/index-BhsPFkUS.css                                                                       24.73 kB │ gzip:   5.19 kB
+dist/assets/IERC165-ODxXmlQV.js                                                                       0.22 kB │ gzip:   0.16 kB
+dist/assets/decimals-C7OIBLC8.js                                                                      0.37 kB │ gzip:   0.28 kB
+dist/assets/thirdweb-dev-wallets-evm-connectors-trust.browser.esm-DljW4xoX.js                         0.55 kB │ gzip:   0.33 kB
+dist/assets/IThirdwebContract-D7esr-g0.js                                                             0.55 kB │ gzip:   0.22 kB
+dist/assets/thirdweb-dev-wallets-evm-connectors-zerion.browser.esm-DX9xg1Ui.js                        0.55 kB │ gzip:   0.33 kB
+dist/assets/thirdweb-dev-wallets-evm-connectors-imtoken.browser.esm-gikdekd0.js                       0.56 kB │ gzip:   0.33 kB
+dist/assets/thirdweb-dev-wallets-evm-connectors-token-bound-smart-wallet.browser.esm-COcBHZRQ.js      0.78 kB │ gzip:   0.39 kB
+dist/assets/IDelayedRevealDeprecated-JM0269jw.js                                                      0.88 kB │ gzip:   0.29 kB
+dist/assets/erc-20-standard-1e9d9631.browser.esm-B0bm7y-p.js                                          0.92 kB │ gzip:   0.37 kB
+dist/assets/erc-721-standard-4c4125d2.browser.esm-piOBjXzj.js                                         1.14 kB │ gzip:   0.46 kB
+dist/assets/erc-1155-standard-a5888d37.browser.esm-BvRNleLq.js                                        1.22 kB │ gzip:   0.47 kB
+dist/assets/thirdweb-checkout-f6974aaf.browser.esm-BSUlGyTQ.js                                        1.25 kB │ gzip:   0.70 kB
+dist/assets/thirdweb-dev-wallets-evm-connectors-signer.browser.esm-DmMzpIbe.js                        1.42 kB │ gzip:   0.62 kB
+dist/assets/thirdweb-dev-wallets-evm-connectors-xdefi.browser.esm-lz03u726.js                         1.57 kB │ gzip:   0.78 kB
+dist/assets/thirdweb-dev-wallets-evm-connectors-rabby.browser.esm-D754OJOF.js                         1.57 kB │ gzip:   0.79 kB
+dist/assets/thirdweb-dev-wallets-evm-connectors-onekey.browser.esm-DrrpflPr.js                        1.58 kB │ gzip:   0.78 kB
+dist/assets/thirdweb-dev-wallets-evm-connectors-coin98.browser.esm-BE8tbChc.js                        1.58 kB │ gzip:   0.79 kB
+dist/assets/thirdweb-dev-wallets-evm-connectors-magic-eden.browser.esm-Br5Qc0kY.js                    1.58 kB │ gzip:   0.79 kB
+dist/assets/thirdweb-dev-wallets-evm-connectors-crypto-defi-wallet.browser.esm-DKzRJ23o.js            1.60 kB │ gzip:   0.80 kB
+dist/assets/thirdweb-dev-wallets-evm-connectors-okx.browser.esm-CNcsjtGf.js                           1.69 kB │ gzip:   0.80 kB
+dist/assets/thirdweb-dev-wallets-evm-connectors-rainbow.browser.esm-Dn1AG90Q.js                       1.70 kB │ gzip:   0.82 kB
+dist/assets/thirdweb-dev-wallets-evm-connectors-core-wallet.browser.esm-3EDyY2-w.js                   1.71 kB │ gzip:   0.81 kB
+dist/assets/thirdweb-dev-wallets-evm-connectors-phantom.browser.esm-Cyx2DDNk.js                       1.82 kB │ gzip:   0.84 kB
+dist/assets/thirdweb-dev-wallets-evm-connectors-metamask.browser.esm-BZYcRt7-.js                      1.82 kB │ gzip:   0.84 kB
+dist/assets/marketplacev3-ef469d89.browser.esm-CpP021kb.js                                            1.83 kB │ gzip:   0.69 kB
+dist/assets/nft-collection-5b9d9850.browser.esm-BIfD9ch7.js                                           1.94 kB │ gzip:   0.79 kB
+dist/assets/Forwarder-B_i7Dzv1.js                                                                     2.12 kB │ gzip:   0.47 kB
+dist/assets/thirdweb-dev-wallets-evm-connectors-local-wallet.browser.esm-Ol6M0deb.js                  2.16 kB │ gzip:   0.83 kB
+dist/assets/edition-1ccecf2c.browser.esm-B89KWzZn.js                                                  2.30 kB │ gzip:   0.84 kB
+dist/assets/token-drop-889631f7.browser.esm-BeTDfeO6.js                                               2.43 kB │ gzip:   0.88 kB
+dist/assets/ccip-ClRCtW0E.js                                                                          2.67 kB │ gzip:   1.27 kB
+dist/assets/token-1e82c71a.browser.esm-Ds4Xd8w9.js                                                    2.82 kB │ gzip:   1.07 kB
+dist/assets/edition-drop-294e1578.browser.esm-Dg5TMaTt.js                                             2.92 kB │ gzip:   1.10 kB
+dist/assets/thirdweb-dev-contracts-js-factories-TWProxy__factory.esm-3DvzBSIX.js                      3.16 kB │ gzip:   1.38 kB
+dist/assets/signature-drop-266c8004.browser.esm-F12zYCcI.js                                           3.19 kB │ gzip:   1.13 kB
+dist/assets/split-eb66a32f.browser.esm-BflRtc6c.js                                                    3.78 kB │ gzip:   1.26 kB
+dist/assets/nft-drop-ee9ded99.browser.esm-Dug5tlgx.js                                                 3.97 kB │ gzip:   1.32 kB
+dist/assets/thirdweb-dev-wallets-evm-connectors-coinbase-wallet.browser.esm-DeWd4IY0.js               4.04 kB │ gzip:   1.59 kB
+dist/assets/http-rpc-client-0a079e80.browser.esm-Pp5rPsb8.js                                          4.08 kB │ gzip:   1.40 kB
+dist/assets/multiwrap-2e713f6c.browser.esm-gqrm9p97.js                                                4.18 kB │ gzip:   1.37 kB
+dist/assets/thirdweb-dev-wallets-evm-connectors-embedded-wallet.browser.esm-BZc7SnJo.js               4.23 kB │ gzip:   1.51 kB
+dist/assets/TWRegistry-Dve92h61.js                                                                    4.28 kB │ gzip:   0.57 kB
+dist/assets/smart-contract-ac432d60.browser.esm-CnGK9Z0Z.js                                           4.32 kB │ gzip:   1.18 kB
+dist/assets/thirdweb-dev-wallets-evm-connectors-frame.browser.esm-CD1jwmvy.js                         4.49 kB │ gzip:   1.61 kB
+dist/assets/vote-e5646e80.browser.esm-xZ-hCVTj.js                                                     4.74 kB │ gzip:   1.65 kB
+dist/assets/thirdweb-dev-wallets-evm-connectors-injected.browser.esm-0TSF5FtN.js                      5.01 kB │ gzip:   1.77 kB
+dist/assets/zk-connector-fada2157.browser.esm-Bgvx0nlx.js                                             5.44 kB │ gzip:   1.87 kB
+dist/assets/thirdweb-dev-wallets-evm-connectors-wallet-connect.browser.esm-CflTKoIr.js                6.87 kB │ gzip:   2.33 kB
+dist/assets/Split-Durcbafi.js                                                                         8.21 kB │ gzip:   0.85 kB
+dist/assets/index-BqKB9C9b.js                                                                         8.71 kB │ gzip:   3.41 kB
+dist/assets/pack-02f90278.browser.esm-Mqo3pa_y.js                                                    10.51 kB │ gzip:   2.90 kB
+dist/assets/confetti.module-DE9NzQ6R.js                                                              10.70 kB │ gzip:   4.29 kB
+dist/assets/index-BFbEDDYI.js                                                                        13.15 kB │ gzip:   4.88 kB
+dist/assets/Marketplace-DyYCuDrE.js                                                                  16.55 kB │ gzip:   1.61 kB
+dist/assets/VoteERC20-F3p6rvlt.js                                                                    17.18 kB │ gzip:   1.56 kB
+dist/assets/TokenERC20-CQyPRoq4.js                                                                   17.25 kB │ gzip:   1.68 kB
+dist/assets/Multiwrap-DWGbZgcD.js                                                                    17.86 kB │ gzip:   1.68 kB
+dist/assets/index-DOyM6FKy.js                                                                        17.99 kB │ gzip:   6.90 kB
+dist/assets/marketplace-2e2adc0e.browser.esm-Dggx9BbV.js                                             18.35 kB │ gzip:   4.23 kB
+dist/assets/TokenERC721-YFBrZF0K.js                                                                  18.99 kB │ gzip:   1.75 kB
+dist/assets/MarketplaceV3-BvrAnEN1.js                                                                19.21 kB │ gzip:   1.54 kB
+dist/assets/Pack-DUPCQ3Wy.js                                                                         19.56 kB │ gzip:   1.85 kB
+dist/assets/thirdweb-dev-wallets-evm-connectors-paper.browser.esm-sX-BUknO.js                        20.58 kB │ gzip:   5.58 kB
+dist/assets/TokenERC1155-Jsy_PeGz.js                                                                 20.62 kB │ gzip:   1.85 kB
+dist/assets/DropERC20_V2-C37YBUsi.js                                                                 21.33 kB │ gzip:   2.03 kB
+dist/assets/DropERC721_V3-B1In08ef.js                                                                22.49 kB │ gzip:   2.04 kB
+dist/assets/DropERC1155_V2-KuQR8D5B.js                                                               22.85 kB │ gzip:   1.99 kB
+dist/assets/DropERC20-DyS6y0V_.js                                                                    23.38 kB │ gzip:   2.20 kB
+dist/assets/thirdweb-dev-wallets-evm-connectors-smart-wallet.browser.esm-DmUCxkC4.js                 24.70 kB │ gzip:   6.67 kB
+dist/assets/DropERC1155-DIN7mr1U.js                                                                  26.88 kB │ gzip:   2.36 kB
+dist/assets/DropERC721-Dnbiw0gI.js                                                                   27.99 kB │ gzip:   2.58 kB
+dist/assets/SignatureDrop_V4-t6pInmua.js                                                             28.76 kB │ gzip:   2.66 kB
+dist/assets/browser-DP1lRuGW.js                                                                      29.19 kB │ gzip:   9.78 kB
+dist/assets/SignatureDrop-9VgJGmy_.js                                                                29.27 kB │ gzip:   2.67 kB
+dist/assets/satisfies-4ayZ7N9G.js                                                                    30.96 kB │ gzip:  10.10 kB
+dist/assets/index-C6WY5hW7.js                                                                        67.06 kB │ gzip:  22.62 kB
+dist/assets/thirdweb-dev-wallets-evm-connectors-blocto.browser.esm-BfnVZqb6.js                       69.86 kB │ gzip:  20.28 kB
+dist/assets/thirdweb-dev-wallets-evm-connectors-magic.browser.esm-Cp7fUmSn.js                        92.35 kB │ gzip:  30.29 kB
+dist/assets/index-CGbgditk.js                                                                       137.91 kB │ gzip:  43.91 kB
+dist/assets/vendor-Ckhrjn13.js                                                                      142.38 kB │ gzip:  45.67 kB
+dist/assets/index-BV7bFVMl.js                                                                       246.91 kB │ gzip:  73.25 kB
+dist/assets/index.es-CLR-Jlij.js                                                                    407.12 kB │ gzip: 128.96 kB
+dist/assets/index-DCZFdE5K.js                                                                     1,139.61 kB │ gzip: 325.39 kB
+dist/assets/thirdweb-dev-wallets-evm-connectors-safe.browser.esm-CFjP56bR.js                      1,168.42 kB │ gzip: 272.67 kB
+dist/assets/thirdweb-CSyj0vs3.js                                                                  2,860.47 kB │ gzip: 820.48 kB
+dist/assets/index-DVzasar_.js                                                                     4,503.19 kB │ gzip: 695.40 kB
+
+(!) Some chunks are larger than 2000 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 13.47s

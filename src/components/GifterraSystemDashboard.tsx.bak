@@ -1,0 +1,719 @@
+// components/GifterraSystemDashboard.tsx
+import React, { useState } from "react";
+import { useGifterraSystem } from "../hooks/useGifterraSystem";
+
+/**
+ * @title GifterraSystemDashboard
+ * @notice ギフテラシステム管理ダッシュボード
+ * 
+ * 【特許回避UI設計】
+ * ==================
+ * このコンポーネントは特許対象機能と非対象機能を明確に分離表示します：
+ * 
+ * 🔴 特許対象機能（GifterraCore）:
+ * - SBTミント
+ * - 報酬配布システム
+ * - ランダム抽選
+ * - 状態フラグ管理
+ * 
+ * ✅ 特許回避機能（StandardNFT）:
+ * - 通常NFT手動ミント
+ * - メタデータ管理
+ * - マーケット連携
+ * - ロイヤリティ設定
+ */
+
+interface GifterraSystemDashboardProps {
+  systemId: number;
+}
+
+export const GifterraSystemDashboard: React.FC<GifterraSystemDashboardProps> = ({
+  systemId
+}) => {
+  const {
+    systemInfo,
+    stats,
+    mintSBT,
+    distributeReward,
+    mintStandardNFT,
+    publicMintStandardNFT,
+    getTokenInfo,
+    isLoading,
+    error,
+    isSystemReady,
+    isUserOwner
+  } = useGifterraSystem(systemId);
+
+  const [activeTab, setActiveTab] = useState<"overview" | "sbt" | "standard">("overview");
+  const [mintAddress, setMintAddress] = useState("");
+  const [tokenURI, setTokenURI] = useState("");
+  const [rank, setRank] = useState(1);
+  const [rewardTokenId, setRewardTokenId] = useState("");
+  const [tokenInfoId, setTokenInfoId] = useState("");
+  const [tokenInfo, setTokenInfo] = useState<any>(null);
+
+  // SBTミント処理
+  const handleMintSBT = async () => {
+    if (!mintAddress || rank < 1 || rank > 10) {
+      alert("有効なアドレスとランク（1-10）を入力してください");
+      return;
+    }
+
+    try {
+      await mintSBT(mintAddress, rank);
+      alert("✅ SBTミントが完了しました！");
+      setMintAddress("");
+      setRank(1);
+    } catch (error: any) {
+      alert(`❌ SBTミントに失敗しました: ${error.message}`);
+    }
+  };
+
+  // 報酬配布処理
+  const handleDistributeReward = async () => {
+    if (!mintAddress || !rewardTokenId) {
+      alert("アドレスとトークンIDを入力してください");
+      return;
+    }
+
+    try {
+      await distributeReward(mintAddress, parseInt(rewardTokenId));
+      alert("✅ 報酬配布が完了しました！");
+      setRewardTokenId("");
+    } catch (error: any) {
+      alert(`❌ 報酬配布に失敗しました: ${error.message}`);
+    }
+  };
+
+  // 通常NFTミント処理
+  const handleMintStandardNFT = async () => {
+    if (!mintAddress || !tokenURI) {
+      alert("アドレスとトークンURIを入力してください");
+      return;
+    }
+
+    try {
+      await mintStandardNFT(mintAddress, tokenURI);
+      alert("✅ 通常NFTミントが完了しました！");
+      setTokenURI("");
+    } catch (error: any) {
+      alert(`❌ 通常NFTミントに失敗しました: ${error.message}`);
+    }
+  };
+
+  // トークン情報取得
+  const handleGetTokenInfo = async () => {
+    if (!tokenInfoId) {
+      alert("トークンIDを入力してください");
+      return;
+    }
+
+    try {
+      const info = await getTokenInfo(parseInt(tokenInfoId));
+      setTokenInfo(info);
+    } catch (error: any) {
+      alert(`❌ トークン情報取得に失敗しました: ${error.message}`);
+    }
+  };
+
+  if (!isSystemReady) {
+    return (
+      <div className="loading-container">
+        <h3>システム読み込み中...</h3>
+        <p>システムID: {systemId}</p>
+        {error && <p className="error">エラー: {error}</p>}
+      </div>
+    );
+  }
+
+  return (
+    <div className="gifterra-dashboard">
+      {/* ヘッダー */}
+      <div className="dashboard-header">
+        <h2>🎁 {systemInfo?.systemName} ダッシュボード</h2>
+        <div className="system-info">
+          <p><strong>システムID:</strong> {systemId}</p>
+          <p><strong>オーナー:</strong> {isUserOwner ? "あなた" : systemInfo?.owner}</p>
+          <p><strong>ステータス:</strong> {systemInfo?.isActive ? "🟢 アクティブ" : "🔴 非アクティブ"}</p>
+        </div>
+      </div>
+
+      {/* タブナビゲーション */}
+      <div className="tab-navigation">
+        <button 
+          className={activeTab === "overview" ? "active" : ""}
+          onClick={() => setActiveTab("overview")}
+        >
+          📊 概要
+        </button>
+        <button 
+          className={activeTab === "sbt" ? "active" : ""}
+          onClick={() => setActiveTab("sbt")}
+        >
+          🔴 SBT管理（特許対象）
+        </button>
+        <button 
+          className={activeTab === "standard" ? "active" : ""}
+          onClick={() => setActiveTab("standard")}
+        >
+          ✅ 通常NFT（特許回避）
+        </button>
+      </div>
+
+      {/* エラー表示 */}
+      {error && (
+        <div className="error-message">
+          ❌ エラー: {error}
+        </div>
+      )}
+
+      {/* ローディング表示 */}
+      {isLoading && (
+        <div className="loading-overlay">
+          処理中...
+        </div>
+      )}
+
+      {/* コンテンツエリア */}
+      <div className="dashboard-content">
+        {activeTab === "overview" && (
+          <div className="overview-tab">
+            <h3>📊 システム統計</h3>
+            {stats ? (
+              <div className="stats-grid">
+                <div className="stat-card sbt-stats">
+                  <h4>🔴 SBTシステム（特許対象）</h4>
+                  <p><strong>総SBT発行数:</strong> {stats.core.totalMinted}</p>
+                  <p><strong>総報酬配布数:</strong> {stats.core.totalRewards}</p>
+                  <p><strong>報酬トークン:</strong> {stats.core.currentRewardToken || "未設定"}</p>
+                  <p><strong>基本報酬量:</strong> {stats.core.currentBaseReward} ETH</p>
+                </div>
+                
+                <div className="stat-card nft-stats">
+                  <h4>✅ 通常NFT（特許回避）</h4>
+                  <p><strong>総発行数:</strong> {stats.nft.totalSupply}</p>
+                  <p><strong>最大供給量:</strong> {stats.nft.currentMaxSupply || "無制限"}</p>
+                  <p><strong>ミント価格:</strong> {stats.nft.currentMintPrice} ETH</p>
+                  <p><strong>総売上:</strong> {stats.nft.revenue} ETH</p>
+                  <p><strong>パブリックミント:</strong> {stats.nft.isPublicMintEnabled ? "有効" : "無効"}</p>
+                  <p><strong>ステータス:</strong> {stats.nft.isPaused ? "一時停止" : "稼働中"}</p>
+                </div>
+              </div>
+            ) : (
+              <p>統計情報を読み込み中...</p>
+            )}
+
+            <div className="contract-addresses">
+              <h4>📋 コントラクトアドレス</h4>
+              <p><strong>GifterraCore:</strong> <code>{systemInfo?.gifterraCore}</code></p>
+              <p><strong>StandardNFT:</strong> <code>{systemInfo?.standardNFT}</code></p>
+            </div>
+          </div>
+        )}
+
+        {activeTab === "sbt" && (
+          <div className="sbt-tab">
+            <div className="patent-warning">
+              <h3>🔴 特許対象機能 - SBT管理</h3>
+              <div className="warning-box">
+                <p>⚠️ <strong>特許対象機能です</strong></p>
+                <p>以下の機能は特許請求項1〜3に該当します：</p>
+                <ul>
+                  <li>NFT属性に基づく報酬の自動配布（請求項1）</li>
+                  <li>状態フラグの付与・変更（請求項1）</li>
+                  <li>ランダム抽選による報酬選定（請求項2）</li>
+                  <li>NFT/GLB/トークンの自動配布（請求項3）</li>
+                </ul>
+              </div>
+            </div>
+
+            {isUserOwner ? (
+              <div className="admin-functions">
+                {/* SBTミント */}
+                <div className="function-group">
+                  <h4>🎯 SBTミント</h4>
+                  <div className="form-group">
+                    <input
+                      type="text"
+                      placeholder="ミント先アドレス"
+                      value={mintAddress}
+                      onChange={(e) => setMintAddress(e.target.value)}
+                    />
+                    <select 
+                      value={rank} 
+                      onChange={(e) => setRank(parseInt(e.target.value))}
+                    >
+                      {[...Array(10)].map((_, i) => (
+                        <option key={i + 1} value={i + 1}>ランク {i + 1}</option>
+                      ))}
+                    </select>
+                    <button onClick={handleMintSBT} disabled={isLoading}>
+                      SBTをミント
+                    </button>
+                  </div>
+                </div>
+
+                {/* 報酬配布 */}
+                <div className="function-group">
+                  <h4>🎁 報酬配布（自動抽選）</h4>
+                  <div className="form-group">
+                    <input
+                      type="text"
+                      placeholder="ユーザーアドレス"
+                      value={mintAddress}
+                      onChange={(e) => setMintAddress(e.target.value)}
+                    />
+                    <input
+                      type="text"
+                      placeholder="対象トークンID"
+                      value={rewardTokenId}
+                      onChange={(e) => setRewardTokenId(e.target.value)}
+                    />
+                    <button onClick={handleDistributeReward} disabled={isLoading}>
+                      報酬を配布
+                    </button>
+                  </div>
+                  <p className="note">
+                    📝 ランダム抽選により NFT/GLB/トークン のいずれかが自動配布されます
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="non-owner-message">
+                <p>⚠️ システムオーナーのみSBT機能を管理できます</p>
+              </div>
+            )}
+
+            {/* トークン情報確認 */}
+            <div className="function-group">
+              <h4>🔍 SBT情報確認</h4>
+              <div className="form-group">
+                <input
+                  type="text"
+                  placeholder="トークンID"
+                  value={tokenInfoId}
+                  onChange={(e) => setTokenInfoId(e.target.value)}
+                />
+                <button onClick={handleGetTokenInfo}>
+                  情報を取得
+                </button>
+              </div>
+              
+              {tokenInfo && (
+                <div className="token-info">
+                  <h5>トークン #{tokenInfoId} 情報</h5>
+                  <p><strong>オーナー:</strong> {tokenInfo.owner}</p>
+                  <p><strong>ランク:</strong> {tokenInfo.rank}</p>
+                  <p><strong>SBT:</strong> {tokenInfo.isSoulbound ? "はい" : "いいえ"}</p>
+                  <p><strong>状態フラグ:</strong> {tokenInfo.status ? "アクティブ" : "非アクティブ"}</p>
+                  <p><strong>報酬受取済み:</strong> {tokenInfo.hasReward ? "はい" : "いいえ"}</p>
+                  {tokenInfo.glbURI && (
+                    <p><strong>GLB報酬:</strong> <a href={tokenInfo.glbURI} target="_blank" rel="noopener noreferrer">ダウンロード</a></p>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {activeTab === "standard" && (
+          <div className="standard-tab">
+            <div className="patent-safe-info">
+              <h3>✅ 特許回避機能 - 通常NFT</h3>
+              <div className="safe-box">
+                <p>✅ <strong>特許対象外機能です</strong></p>
+                <p>以下の原則により特許を回避しています：</p>
+                <ul>
+                  <li>手動操作のみ（自動配布なし）</li>
+                  <li>状態フラグ制御なし</li>
+                  <li>ランダム抽選なし</li>
+                  <li>GifterraCoreとの処理連携なし</li>
+                </ul>
+              </div>
+            </div>
+
+            {isUserOwner ? (
+              <div className="admin-functions">
+                {/* 管理者ミント */}
+                <div className="function-group">
+                  <h4>👑 管理者ミント</h4>
+                  <div className="form-group">
+                    <input
+                      type="text"
+                      placeholder="ミント先アドレス"
+                      value={mintAddress}
+                      onChange={(e) => setMintAddress(e.target.value)}
+                    />
+                    <input
+                      type="text"
+                      placeholder="トークンURI"
+                      value={tokenURI}
+                      onChange={(e) => setTokenURI(e.target.value)}
+                    />
+                    <button onClick={handleMintStandardNFT} disabled={isLoading}>
+                      通常NFTをミント
+                    </button>
+                  </div>
+                  <p className="note">
+                    📝 管理者による手動ミント（自動処理なし）
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="non-owner-message">
+                <p>⚠️ システムオーナーのみ管理者ミント機能を使用できます</p>
+              </div>
+            )}
+
+            {/* パブリックミント */}
+            <div className="function-group">
+              <h4>💰 パブリックミント</h4>
+              {stats?.nft.isPublicMintEnabled ? (
+                <div className="form-group">
+                  <input
+                    type="text"
+                    placeholder="トークンURI（オプション）"
+                    value={tokenURI}
+                    onChange={(e) => setTokenURI(e.target.value)}
+                  />
+                  <button 
+                    onClick={() => publicMintStandardNFT(tokenURI, stats.nft.currentMintPrice)}
+                    disabled={isLoading}
+                  >
+                    {stats.nft.currentMintPrice} ETH でミント
+                  </button>
+                </div>
+              ) : (
+                <p>現在パブリックミントは無効です</p>
+              )}
+              <p className="note">
+                📝 ユーザーによる明示的操作（手動ミント）
+              </p>
+            </div>
+
+            {/* NFT統計 */}
+            <div className="function-group">
+              <h4>📈 統計情報</h4>
+              {stats && (
+                <div className="nft-stats-detailed">
+                  <p><strong>現在の発行数:</strong> {stats.nft.totalSupply}</p>
+                  <p><strong>最大供給量:</strong> {stats.nft.currentMaxSupply || "無制限"}</p>
+                  <p><strong>ミント価格:</strong> {stats.nft.currentMintPrice} ETH</p>
+                  <p><strong>総売上:</strong> {stats.nft.revenue} ETH</p>
+                  <p><strong>パブリックミント:</strong> 
+                    <span className={stats.nft.isPublicMintEnabled ? "enabled" : "disabled"}>
+                      {stats.nft.isPublicMintEnabled ? " 有効" : " 無効"}
+                    </span>
+                  </p>
+                  <p><strong>コントラクト状態:</strong> 
+                    <span className={stats.nft.isPaused ? "paused" : "active"}>
+                      {stats.nft.isPaused ? " 一時停止" : " 稼働中"}
+                    </span>
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* スタイル */}
+      <style>{`
+        .gifterra-dashboard {
+          max-width: 1200px;
+          margin: 0 auto;
+          padding: 20px;
+          font-family: 'Inter', sans-serif;
+        }
+
+        .dashboard-header {
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          color: white;
+          padding: 30px;
+          border-radius: 12px;
+          margin-bottom: 30px;
+        }
+
+        .dashboard-header h2 {
+          margin: 0 0 20px 0;
+          font-size: 2rem;
+        }
+
+        .system-info p {
+          margin: 5px 0;
+          opacity: 0.9;
+        }
+
+        .tab-navigation {
+          display: flex;
+          gap: 10px;
+          margin-bottom: 30px;
+          border-bottom: 1px solid #e0e0e0;
+        }
+
+        .tab-navigation button {
+          padding: 12px 24px;
+          border: none;
+          background: none;
+          cursor: pointer;
+          font-size: 16px;
+          border-bottom: 3px solid transparent;
+          transition: all 0.3s ease;
+        }
+
+        .tab-navigation button.active {
+          border-bottom-color: #667eea;
+          background: rgba(102, 126, 234, 0.1);
+        }
+
+        .tab-navigation button:hover {
+          background: rgba(102, 126, 234, 0.05);
+        }
+
+        .error-message {
+          background: #ffebee;
+          color: #c62828;
+          padding: 15px;
+          border-radius: 8px;
+          margin-bottom: 20px;
+          border-left: 4px solid #c62828;
+        }
+
+        .loading-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0, 0, 0, 0.5);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: white;
+          font-size: 18px;
+          z-index: 1000;
+        }
+
+        .stats-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 20px;
+          margin-bottom: 30px;
+        }
+
+        .stat-card {
+          padding: 20px;
+          border-radius: 8px;
+          border: 1px solid #e0e0e0;
+        }
+
+        .stat-card.sbt-stats {
+          background: linear-gradient(135deg, #ffcdd2 0%, #ffebee 100%);
+          border-color: #f44336;
+        }
+
+        .stat-card.nft-stats {
+          background: linear-gradient(135deg, #c8e6c9 0%, #e8f5e8 100%);
+          border-color: #4caf50;
+        }
+
+        .stat-card h4 {
+          margin: 0 0 15px 0;
+          font-size: 1.2rem;
+        }
+
+        .stat-card p {
+          margin: 8px 0;
+        }
+
+        .contract-addresses {
+          background: #f5f5f5;
+          padding: 20px;
+          border-radius: 8px;
+        }
+
+        .contract-addresses code {
+          background: #333;
+          color: #fff;
+          padding: 4px 8px;
+          border-radius: 4px;
+          font-family: 'Monaco', monospace;
+          font-size: 12px;
+        }
+
+        .patent-warning, .patent-safe-info {
+          margin-bottom: 30px;
+        }
+
+        .warning-box {
+          background: linear-gradient(135deg, #ffcdd2 0%, #ffebee 100%);
+          border: 2px solid #f44336;
+          padding: 20px;
+          border-radius: 8px;
+          margin-top: 15px;
+        }
+
+        .safe-box {
+          background: linear-gradient(135deg, #c8e6c9 0%, #e8f5e8 100%);
+          border: 2px solid #4caf50;
+          padding: 20px;
+          border-radius: 8px;
+          margin-top: 15px;
+        }
+
+        .warning-box ul, .safe-box ul {
+          margin: 10px 0;
+          padding-left: 20px;
+        }
+
+        .function-group {
+          background: white;
+          border: 1px solid #e0e0e0;
+          border-radius: 8px;
+          padding: 20px;
+          margin-bottom: 20px;
+        }
+
+        .function-group h4 {
+          margin: 0 0 15px 0;
+          color: #333;
+        }
+
+        .form-group {
+          display: flex;
+          gap: 10px;
+          align-items: center;
+          flex-wrap: wrap;
+        }
+
+        .form-group input, .form-group select {
+          padding: 10px;
+          border: 1px solid #ddd;
+          border-radius: 4px;
+          font-size: 14px;
+          min-width: 200px;
+        }
+
+        .form-group button {
+          padding: 10px 20px;
+          background: #667eea;
+          color: white;
+          border: none;
+          border-radius: 4px;
+          cursor: pointer;
+          font-size: 14px;
+          transition: background 0.3s ease;
+        }
+
+        .form-group button:hover:not(:disabled) {
+          background: #5a67d8;
+        }
+
+        .form-group button:disabled {
+          background: #ccc;
+          cursor: not-allowed;
+        }
+
+        .note {
+          font-size: 12px;
+          color: #666;
+          margin-top: 10px;
+          font-style: italic;
+        }
+
+        .non-owner-message {
+          background: #fff3cd;
+          border: 1px solid #ffeaa7;
+          padding: 15px;
+          border-radius: 8px;
+          color: #856404;
+          text-align: center;
+        }
+
+        .token-info {
+          background: #f8f9fa;
+          border: 1px solid #dee2e6;
+          padding: 15px;
+          border-radius: 8px;
+          margin-top: 15px;
+        }
+
+        .token-info h5 {
+          margin: 0 0 10px 0;
+          color: #495057;
+        }
+
+        .token-info p {
+          margin: 5px 0;
+          font-size: 14px;
+        }
+
+        .token-info a {
+          color: #667eea;
+          text-decoration: none;
+        }
+
+        .token-info a:hover {
+          text-decoration: underline;
+        }
+
+        .nft-stats-detailed p {
+          margin: 8px 0;
+          font-size: 14px;
+        }
+
+        .enabled {
+          color: #4caf50;
+          font-weight: bold;
+        }
+
+        .disabled {
+          color: #f44336;
+          font-weight: bold;
+        }
+
+        .active {
+          color: #4caf50;
+          font-weight: bold;
+        }
+
+        .paused {
+          color: #ff9800;
+          font-weight: bold;
+        }
+
+        .loading-container {
+          text-align: center;
+          padding: 50px;
+        }
+
+        .loading-container h3 {
+          color: #667eea;
+        }
+
+        .error {
+          color: #f44336;
+          font-size: 14px;
+        }
+
+        @media (max-width: 768px) {
+          .stats-grid {
+            grid-template-columns: 1fr;
+          }
+          
+          .form-group {
+            flex-direction: column;
+            align-items: stretch;
+          }
+          
+          .form-group input,
+          .form-group select,
+          .form-group button {
+            min-width: auto;
+            width: 100%;
+          }
+        }
+      `}</style>
+    </div>
+  );
+};

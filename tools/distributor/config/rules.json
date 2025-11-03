@@ -1,0 +1,71 @@
+[
+  {
+    "description": "寄付金額1,000 tNHTで自動配布 (SKU: DONATION_BRONZE)",
+    "trigger": "DonationReceived",
+    "match": {
+      "minAmount": "1000000000000000000000"
+    },
+    "action": {
+      "type": "reward_mint",
+      "sku": "0x444f4e4154494f4e5f42524f4e5a45000000000000000000000000000000000"
+    }
+  },
+  {
+    "description": "寄付金額10,000 tNHTで自動配布 (SKU: DONATION_SILVER)",
+    "trigger": "DonationReceived",
+    "match": {
+      "minAmount": "10000000000000000000000"
+    },
+    "action": {
+      "type": "reward_mint",
+      "sku": "0x444f4e4154494f4e5f53494c564552000000000000000000000000000000000"
+    }
+  },
+  {
+    "description": "寄付金額100,000 tNHTで自動配布 (SKU: DONATION_GOLD)",
+    "trigger": "DonationReceived",
+    "match": {
+      "minAmount": "100000000000000000000000"
+    },
+    "action": {
+      "type": "reward_mint",
+      "sku": "0x444f4e4154494f4e5f474f4c44000000000000000000000000000000000000"
+    }
+  },
+  {
+    "description": "特定SKUの寄付に対して異なるSKUのNFTを配布",
+    "trigger": "DonationReceived",
+    "match": {
+      "sku": "0x5350454349414c5f50524f4455435400000000000000000000000000000000",
+      "minAmount": "100000000000000000"
+    },
+    "action": {
+      "type": "reward_mint",
+      "sku": "0x5350454349414c5f524557415244000000000000000000000000000000000000"
+    }
+  },
+  {
+    "description": "JourneyPass フラグ0が立ったら自動配布 (初回訪問記念)",
+    "trigger": "FlagUpdated",
+    "match": {
+      "bit": 0,
+      "value": true
+    },
+    "action": {
+      "type": "reward_mint",
+      "sku": "0x4a4f55524e45595f464952535400000000000000000000000000000000000000"
+    }
+  },
+  {
+    "description": "JourneyPass フラグ7が立ったら自動配布 (コンプリート記念)",
+    "trigger": "FlagUpdated",
+    "match": {
+      "bit": 7,
+      "value": true
+    },
+    "action": {
+      "type": "reward_mint",
+      "sku": "0x4a4f55524e45595f434f4d504c455445000000000000000000000000000000"
+    }
+  }
+]

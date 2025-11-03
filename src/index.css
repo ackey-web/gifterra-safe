@@ -1,0 +1,126 @@
+/* src/index.css */
+/* Tailwind 本体（config なしで最短起動） */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ====== Base ====== */
+:root { color-scheme: dark; }
+html, body, #root { height: 100%; }
+body {
+  margin: 0;
+  background: #0b1620;        /* 全体の背景 */
+  color: #fff;                /* 全体の文字色を白に */
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial,
+               "Noto Sans JP", "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
+}
+
+/* ====== 便利コンポーネント（Tailwindの上に薄く） ====== */
+@layer components {
+  /* ガラス風の面（自販機のパネルなどに使える） */
+  .glass {
+    background: linear-gradient(135deg, rgba(30,41,59,.65), rgba(2,6,23,.65));
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255,255,255,.08);
+    box-shadow: 0 10px 30px rgba(0,0,0,.35);
+    border-radius: 1.25rem;
+  }
+  /* うっすら光る縁取り */
+  .neon-border {
+    position: relative;
+    border: 2px solid rgba(139,92,246,.25);
+    border-radius: 1.25rem;
+  }
+  .neon-border::before {
+    content: "";
+    position: absolute;
+    inset: -2px;
+    border-radius: inherit;
+    filter: blur(18px);
+    background: radial-gradient(600px circle at 50% 50%, rgba(139,92,246,.25), transparent 60%);
+    pointer-events: none;
+  }
+}
+
+/* ====== モバイル最適化 ====== */
+@media (max-width: 600px) {
+  body {
+    padding: 10px;
+    box-sizing: border-box;
+  }
+  /* タップ反応を改善 */
+  button, input, select {
+    -webkit-tap-highlight-color: rgba(0,0,0,0.1);
+    touch-action: manipulation;
+  }
+  /* iOS Safari の 100vh 問題対策 */
+  #root {
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+  }
+}
+
+/* ====== Glow アニメーション（筐体の外周グロー用） ====== */
+/* Tailwind の任意値クラス `animate-[glowPulse_7s_ease-in-out_infinite]`
+   などで呼び出します。translate を含めているのでセンタリングは保持されます。 */
+@keyframes glowPulse {
+  0%, 100% {
+    transform: translate(-50%, -50%) scale(0.96);
+    filter: blur(120px);
+    opacity: .55;
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.06);
+    filter: blur(180px);
+    opacity: .9;
+  }
+}
+
+/* 2層目の補助オーラ用（X方向だけセンタリングしてスケール） */
+@keyframes glowPulse2 {
+  0%, 100% {
+    transform: translateX(-50%) scale(0.94);
+    filter: blur(110px);
+    opacity: .45;
+  }
+  50% {
+    transform: translateX(-50%) scale(1.05);
+    filter: blur(160px);
+    opacity: .7;
+  }
+}
+
+/* ヘッダーテキストスクロールアニメーション（右から左へ無限ループ） */
+@keyframes scrollText {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+/* 筐体外周のフラッシュアニメーション（自販機風） */
+@keyframes neonFlash {
+  0%, 100% {
+    opacity: 0.7;
+    filter: saturate(1.2) brightness(1);
+  }
+  5% {
+    opacity: 1;
+    filter: saturate(1.5) brightness(1.3);
+  }
+  10% {
+    opacity: 0.7;
+    filter: saturate(1.2) brightness(1);
+  }
+  15% {
+    opacity: 1;
+    filter: saturate(1.5) brightness(1.3);
+  }
+  20%, 95% {
+    opacity: 0.7;
+    filter: saturate(1.2) brightness(1);
+  }
+}

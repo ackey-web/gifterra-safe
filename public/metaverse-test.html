@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🏪 ギフテラ メタバースEC テスト</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        h1 { text-align: center; margin-bottom: 30px; }
+        .space-section {
+            margin: 30px 0;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .machine-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        .machine-card {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            text-decoration: none;
+            color: white;
+            transition: all 0.3s ease;
+        }
+        .machine-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            background: rgba(255, 255, 255, 0.15);
+        }
+        .machine-name {
+            font-weight: bold;
+            font-size: 1.1em;
+            margin-bottom: 5px;
+        }
+        .machine-content {
+            font-size: 0.9em;
+            opacity: 0.8;
+        }
+        .space-title {
+            font-size: 1.3em;
+            font-weight: bold;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .existing-links {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .existing-links a {
+            display: inline-block;
+            margin: 5px 10px;
+            padding: 8px 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            text-decoration: none;
+            color: white;
+            font-size: 0.9em;
+            transition: background 0.3s ease;
+        }
+        .existing-links a:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏪 ギフテラ メタバースEC テストページ</h1>
+        <p style="text-align: center; opacity: 0.8; margin-bottom: 40px;">
+            各メタバース空間の自販機をクリックして、デジタルコンテンツ配布UIをテストできます
+        </p>
+
+        <!-- メインワールド -->
+        <div class="space-section">
+            <div class="space-title">
+                🏰 メインワールド
+            </div>
+            <p style="opacity: 0.7; margin-bottom: 15px;">ギフテラの中心となるメタバース空間</p>
+            <div class="machine-grid">
+                <a href="/content?space=world-1&machine=entrance-01" class="machine-card">
+                    <div class="machine-name">🚪 エントランス自販機</div>
+                    <div class="machine-content">スターターパック配布<br>25-100 TIPS</div>
+                </a>
+                <a href="/content?space=world-1&machine=vip-lounge" class="machine-card">
+                    <div class="machine-name">👑 VIPラウンジ</div>
+                    <div class="machine-content">プレミアムコレクション<br>200-500 TIPS</div>
+                </a>
+            </div>
+        </div>
+
+        <!-- アートギャラリー -->
+        <div class="space-section">
+            <div class="space-title">
+                🎨 アートギャラリー
+            </div>
+            <p style="opacity: 0.7; margin-bottom: 15px;">クリエイター作品を展示するアート空間</p>
+            <div class="machine-grid">
+                <a href="/content?space=gallery-a&machine=gallery-01" class="machine-card">
+                    <div class="machine-name">🖼️ ギャラリー自販機</div>
+                    <div class="machine-content">アートコレクション<br>100-250 TIPS</div>
+                </a>
+                <a href="/content?space=gallery-a&machine=creator-corner" class="machine-card">
+                    <div class="machine-name">✨ クリエーターコーナー</div>
+                    <div class="machine-content">クリエーターパック<br>150-350 TIPS</div>
+                </a>
+            </div>
+        </div>
+
+        <!-- デフォルト空間 -->
+        <div class="space-section">
+            <div class="space-title">
+                🌐 デフォルト空間
+            </div>
+            <p style="opacity: 0.7; margin-bottom: 15px;">標準的なコンテンツ配布空間</p>
+            <div class="machine-grid">
+                <a href="/content?space=default&machine=main" class="machine-card">
+                    <div class="machine-name">🏪 メイン自販機</div>
+                    <div class="machine-content">スターターパック配布<br>25-100 TIPS</div>
+                </a>
+            </div>
+        </div>
+
+        <!-- 既存リンク -->
+        <div class="existing-links">
+            <h3>既存のUI（動作確認済み）</h3>
+            <a href="/">🎁 Reward UI</a>
+            <a href="/tip">💝 Tip UI</a>
+            <a href="/admin">⚙️ Admin Dashboard</a>
+            <a href="/admin-mobile">📱 Admin Mobile</a>
+        </div>
+
+        <div style="text-align: center; margin-top: 30px; opacity: 0.6; font-size: 0.9em;">
+            <p>💡 メタバース自販機UIをテストするには、まずウォレットに十分なチップが必要です</p>
+            <p>🔗 URL形式: <code>/content?space={spaceId}&machine={machineId}</code></p>
+        </div>
+    </div>
+</body>
+</html>

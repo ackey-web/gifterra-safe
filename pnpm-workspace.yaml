@@ -1,0 +1,8 @@
+onlyBuiltDependencies:
+  - bufferutil
+  - es5-ext
+  - esbuild
+  - keccak
+  - protobufjs
+  - secp256k1
+  - utf-8-validate
