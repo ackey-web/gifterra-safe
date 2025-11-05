@@ -149,15 +149,16 @@ export function TenantProvider({ children }: { children: ReactNode }) {
   const { contract: paymentSplitterContract } = useContract(tenant.contracts.paymentSplitter);
 
   /* ================= 開発環境スーパーアドミンチェック ================ */
-  // デフォルトの開発アドレス + ローカルストレージから取得した管理者アドレス
-  const allAdminAddresses = React.useMemo(() => {
-    return [...DEV_SUPER_ADMIN_ADDRESSES, ...getConfiguredAdminAddresses()];
-  }, [address]); // addressが変わったときに再計算（設定が更新された可能性）
-
+  // スーパーアドミン（運営）の判定のみ - テナント管理者は含まない
   const isDevSuperAdmin = ADMIN_WHITELIST_ENABLED && address ?
-    allAdminAddresses.some(
+    DEV_SUPER_ADMIN_ADDRESSES.some(
       adminAddr => adminAddr.toLowerCase() === address.toLowerCase()
     ) : false;
+
+  // テナント管理者アドレスを取得（設定から）
+  const configuredTenantAdmins = React.useMemo(() => {
+    return getConfiguredAdminAddresses();
+  }, [address]); // addressが変わったときに再計算（設定が更新された可能性）
 
   // デバッグログ - アドレス変更を詳細に追跡
   useEffect(() => {
@@ -170,7 +171,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
       ADMIN_WHITELIST_ENABLED,
       DEV_MODE,
       isDevSuperAdmin,
-      allAdminAddresses,
+      configuredTenantAdmins,
       addressLower: address?.toLowerCase(),
     });
 
@@ -213,7 +214,26 @@ export function TenantProvider({ children }: { children: ReactNode }) {
       setIsCheckingOwner(false);
       return;
     }
-    console.log('⚠️ Not a super admin - checking contract ownership...');
+
+    // 設定されたテナント管理者も全権限を持つ
+    const isTenantAdmin = configuredTenantAdmins.some(
+      adminAddr => adminAddr.toLowerCase() === address.toLowerCase()
+    );
+    if (isTenantAdmin) {
+      console.log('✅ Configured Tenant Admin detected - granting all permissions');
+      setOwnerStatus({
+        gifterra: true,
+        rewardEngine: true,
+        flagNFT: true,
+        rewardToken: true,
+        tipManager: true,
+        paymentSplitter: true,
+      });
+      setIsCheckingOwner(false);
+      return;
+    }
+
+    console.log('⚠️ Not a super admin or configured tenant admin - checking contract ownership...');
 
     const newOwnerStatus = {
       gifterra: false,
