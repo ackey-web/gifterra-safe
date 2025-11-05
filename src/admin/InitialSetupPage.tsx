@@ -5,6 +5,7 @@ interface TenantConfig {
   paymentSplitterAddress: string;
   tenantName: string;
   tenantDescription: string;
+  adminAddresses: string[]; // テナント管理者のウォレットアドレス一覧
 }
 
 export default function InitialSetupPage() {
@@ -12,8 +13,10 @@ export default function InitialSetupPage() {
     paymentSplitterAddress: '',
     tenantName: '',
     tenantDescription: '',
+    adminAddresses: [],
   });
 
+  const [newAdminAddress, setNewAdminAddress] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
@@ -66,6 +69,48 @@ export default function InitialSetupPage() {
     }
   };
 
+  // 管理者アドレスを追加
+  const handleAddAdmin = () => {
+    const trimmedAddress = newAdminAddress.trim().toLowerCase();
+
+    // バリデーション
+    if (!trimmedAddress) {
+      setSaveMessage({ type: 'error', text: 'アドレスを入力してください' });
+      return;
+    }
+
+    if (!/^0x[a-fA-F0-9]{40}$/.test(trimmedAddress)) {
+      setSaveMessage({ type: 'error', text: '有効なウォレットアドレスを入力してください (0x... 形式)' });
+      return;
+    }
+
+    if (config.adminAddresses.includes(trimmedAddress)) {
+      setSaveMessage({ type: 'error', text: 'このアドレスは既に登録されています' });
+      return;
+    }
+
+    // アドレスを追加
+    setConfig({
+      ...config,
+      adminAddresses: [...config.adminAddresses, trimmedAddress]
+    });
+    setNewAdminAddress('');
+    setSaveMessage({ type: 'success', text: '管理者アドレスを追加しました' });
+    setTimeout(() => setSaveMessage(null), 3000);
+  };
+
+  // 管理者アドレスを削除
+  const handleRemoveAdmin = (addressToRemove: string) => {
+    if (confirm(`管理者アドレス ${addressToRemove} を削除してもよろしいですか？`)) {
+      setConfig({
+        ...config,
+        adminAddresses: config.adminAddresses.filter(addr => addr !== addressToRemove)
+      });
+      setSaveMessage({ type: 'success', text: '管理者アドレスを削除しました' });
+      setTimeout(() => setSaveMessage(null), 3000);
+    }
+  };
+
   // 設定をリセット
   const handleReset = () => {
     if (confirm('設定をリセットしてもよろしいですか？')) {
@@ -73,6 +118,7 @@ export default function InitialSetupPage() {
         paymentSplitterAddress: '',
         tenantName: '',
         tenantDescription: '',
+        adminAddresses: [],
       };
       setConfig(defaultConfig);
       localStorage.removeItem('gifterra_tenant_config');
@@ -267,6 +313,186 @@ export default function InitialSetupPage() {
                 GIFT HUB購入時の収益分配を管理するスマートコントラクトのアドレスです。
               </p>
             </div>
+          </div>
+        </section>
+
+        {/* 管理者アクセス権限設定 */}
+        <section style={{ marginBottom: 32 }}>
+          <h2 style={{
+            fontSize: 18,
+            fontWeight: 700,
+            marginBottom: 16,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8
+          }}>
+            <span>👥</span>
+            <span>管理者アクセス権限</span>
+          </h2>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {/* 説明 */}
+            <p style={{
+              fontSize: 13,
+              color: 'rgba(255,255,255,0.7)',
+              lineHeight: 1.6,
+              margin: 0
+            }}>
+              テナント管理者としてアクセス権限を付与するウォレットアドレスを登録します。
+              登録されたアドレスは管理画面にアクセスできるようになります。
+            </p>
+
+            {/* アドレス追加フォーム */}
+            <div style={{
+              display: 'flex',
+              gap: 8,
+              alignItems: 'flex-end'
+            }}>
+              <div style={{ flex: 1 }}>
+                <label style={{
+                  display: 'block',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  marginBottom: 8,
+                  color: 'rgba(255,255,255,0.9)'
+                }}>
+                  管理者ウォレットアドレス
+                </label>
+                <input
+                  type="text"
+                  value={newAdminAddress}
+                  onChange={(e) => setNewAdminAddress(e.target.value)}
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleAddAdmin();
+                    }
+                  }}
+                  placeholder="0x..."
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    background: 'rgba(0,0,0,0.3)',
+                    border: '1px solid rgba(255,255,255,0.2)',
+                    borderRadius: 6,
+                    color: '#fff',
+                    fontSize: 14,
+                    fontFamily: 'monospace',
+                    outline: 'none'
+                  }}
+                />
+              </div>
+              <button
+                onClick={handleAddAdmin}
+                style={{
+                  padding: '10px 20px',
+                  background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                  border: 'none',
+                  borderRadius: 6,
+                  color: '#fff',
+                  fontSize: 14,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  whiteSpace: 'nowrap',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                <span>➕</span>
+                <span>追加</span>
+              </button>
+            </div>
+
+            {/* 登録済み管理者リスト */}
+            {config.adminAddresses.length > 0 && (
+              <div>
+                <label style={{
+                  display: 'block',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  marginBottom: 12,
+                  color: 'rgba(255,255,255,0.9)'
+                }}>
+                  登録済み管理者 ({config.adminAddresses.length}件)
+                </label>
+                <div style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 8
+                }}>
+                  {config.adminAddresses.map((address, index) => (
+                    <div
+                      key={index}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '12px 16px',
+                        background: 'rgba(16, 185, 129, 0.1)',
+                        border: '1px solid rgba(16, 185, 129, 0.3)',
+                        borderRadius: 6,
+                        gap: 12
+                      }}
+                    >
+                      <div style={{
+                        flex: 1,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8
+                      }}>
+                        <span style={{ fontSize: 16 }}>✅</span>
+                        <code style={{
+                          fontSize: 13,
+                          color: '#86efac',
+                          fontFamily: 'monospace',
+                          wordBreak: 'break-all'
+                        }}>
+                          {address}
+                        </code>
+                      </div>
+                      <button
+                        onClick={() => handleRemoveAdmin(address)}
+                        style={{
+                          padding: '6px 12px',
+                          background: 'rgba(239, 68, 68, 0.2)',
+                          border: '1px solid #ef4444',
+                          borderRadius: 4,
+                          color: '#fca5a5',
+                          fontSize: 12,
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 4,
+                          whiteSpace: 'nowrap',
+                          transition: 'all 0.2s ease'
+                        }}
+                      >
+                        <span>❌</span>
+                        <span>削除</span>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* 登録がない場合の表示 */}
+            {config.adminAddresses.length === 0 && (
+              <div style={{
+                padding: 16,
+                background: 'rgba(245, 158, 11, 0.1)',
+                border: '1px solid rgba(245, 158, 11, 0.3)',
+                borderRadius: 6,
+                fontSize: 13,
+                color: 'rgba(255,255,255,0.7)',
+                textAlign: 'center'
+              }}>
+                まだ管理者が登録されていません。上記フォームからウォレットアドレスを追加してください。
+              </div>
+            )}
           </div>
         </section>
 

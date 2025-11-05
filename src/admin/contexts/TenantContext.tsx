@@ -21,6 +21,20 @@ const DEV_SUPER_ADMIN_ADDRESSES = [
   // 開発チームのアドレスを追加可能
 ];
 
+// ローカルストレージから保存された管理者アドレスを取得
+function getConfiguredAdminAddresses(): string[] {
+  try {
+    const savedConfig = localStorage.getItem('gifterra_tenant_config');
+    if (savedConfig) {
+      const config = JSON.parse(savedConfig);
+      return (config.adminAddresses || []).map((addr: string) => addr.toLowerCase());
+    }
+  } catch (error) {
+    console.error('Failed to load admin addresses from config:', error);
+  }
+  return [];
+}
+
 /* =========================================
    テナントコントラクト設定
 
@@ -135,8 +149,13 @@ export function TenantProvider({ children }: { children: ReactNode }) {
   const { contract: paymentSplitterContract } = useContract(tenant.contracts.paymentSplitter);
 
   /* ================= 開発環境スーパーアドミンチェック ================ */
+  // デフォルトの開発アドレス + ローカルストレージから取得した管理者アドレス
+  const allAdminAddresses = React.useMemo(() => {
+    return [...DEV_SUPER_ADMIN_ADDRESSES, ...getConfiguredAdminAddresses()];
+  }, [address]); // addressが変わったときに再計算（設定が更新された可能性）
+
   const isDevSuperAdmin = ADMIN_WHITELIST_ENABLED && address ?
-    DEV_SUPER_ADMIN_ADDRESSES.some(
+    allAdminAddresses.some(
       adminAddr => adminAddr.toLowerCase() === address.toLowerCase()
     ) : false;
 
@@ -151,7 +170,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
       ADMIN_WHITELIST_ENABLED,
       DEV_MODE,
       isDevSuperAdmin,
-      DEV_SUPER_ADMIN_ADDRESSES,
+      allAdminAddresses,
       addressLower: address?.toLowerCase(),
     });
 
