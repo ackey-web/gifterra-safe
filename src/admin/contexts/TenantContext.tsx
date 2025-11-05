@@ -536,9 +536,39 @@ export function RequireOwner({ children, contractType, fallback }: RequireOwnerP
           <p style={{ fontSize: 14, opacity: 0.8, marginBottom: 16 }}>
             接続しているウォレット ({address?.slice(0, 6)}...{address?.slice(-4)}) には管理者権限がありません
           </p>
-          <p style={{ fontSize: 13, opacity: 0.6 }}>
+          <p style={{ fontSize: 13, opacity: 0.6, marginBottom: 24 }}>
             管理者権限を持つウォレットに切り替えてください
           </p>
+
+          {/* ウォレット切り替えボタン */}
+          <div style={{
+            display: 'flex',
+            justifyContent: 'center',
+            marginBottom: 16
+          }}>
+            <ConnectWallet
+              theme="dark"
+              btnTitle="ウォレットを切り替え"
+              modalTitle="管理者ダッシュボード接続"
+              modalTitleIconUrl=""
+              style={{
+                fontSize: 15,
+                padding: "12px 24px",
+                borderRadius: 8,
+                fontWeight: 600,
+              }}
+            />
+          </div>
+
+          <div style={{
+            padding: 16,
+            background: 'rgba(255,255,255,0.05)',
+            borderRadius: 8,
+          }}>
+            <p style={{ fontSize: 12, opacity: 0.7, margin: 0 }}>
+              管理者権限を持つウォレットで接続し直してください
+            </p>
+          </div>
         </div>
       </div>
     );
