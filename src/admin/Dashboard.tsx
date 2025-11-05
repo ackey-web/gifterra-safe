@@ -2349,12 +2349,11 @@ export default function AdminDashboard() {
           gap: 12,
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, justifyContent: "center" }}>
-            <ConnectWallet 
-              theme="dark" 
+            <ConnectWallet
+              theme="dark"
               modalTitle="管理者ダッシュボード接続"
               modalTitleIconUrl=""
             />
-
           </div>
         </div>
       </div>
@@ -2389,19 +2388,18 @@ export default function AdminDashboard() {
           {/* 期間タブ（⚡ パフォーマンス情報付き） */}
           <header style={{ textAlign: "center", position: "relative" }}>
         <div style={{ marginTop: 6, display: "inline-flex", gap: 8 }}>
-          {(["all", "day", "week", "month"] as Period[]).map((p) => {
+          {(["day", "week", "month"] as Period[]).map((p) => {
             const active = p === period;
             const getPerformanceIndicator = () => {
               switch (p) {
                 case "day": return { time: "~2s", color: "#10b981" };
                 case "week": return { time: "~5s", color: "#f59e0b" };
                 case "month": return { time: "~10s", color: "#f97316" };
-                case "all": return { time: "~15s", color: "#ef4444" };
                 default: return { time: "", color: "#6366f1" };
               }
             };
             const perf = getPerformanceIndicator();
-            
+
             return (
               <button
                 key={p}
@@ -2421,12 +2419,12 @@ export default function AdminDashboard() {
                 }}
                 title={`読み込み時間: ${perf.time}`}
               >
-                <div>{p === "all" ? "All" : p}</div>
-                <div style={{ 
-                  fontSize: 10, 
-                  opacity: 0.7, 
+                <div>{p}</div>
+                <div style={{
+                  fontSize: 10,
+                  opacity: 0.7,
                   color: perf.color,
-                  fontWeight: 500 
+                  fontWeight: 500
                 }}>
                   ⚡{perf.time}
                 </div>

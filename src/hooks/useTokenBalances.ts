@@ -27,6 +27,7 @@ export function useTokenBalances(address: string | undefined, signer: ethers.Sig
 
   useEffect(() => {
     if (!address || !signer) {
+      console.log('⚠️ useTokenBalances: No address or signer', { address, signer: !!signer });
       setBalances({
         matic: { symbol: 'MATIC', balance: '0', formatted: '0.00', loading: false },
         jpyc: { symbol: 'JPYC', balance: '0', formatted: '0.00', loading: false },
@@ -37,12 +38,20 @@ export function useTokenBalances(address: string | undefined, signer: ethers.Sig
 
     const fetchBalances = async () => {
       try {
+        console.log('💰 useTokenBalances: Fetching balances for address:', address);
+
         // 公開RPCプロバイダーを使用（ネットワーク互換性を確保）
         const publicProvider = new ethers.providers.JsonRpcProvider(POLYGON_MAINNET_RPC);
 
         // MATIC残高
         const maticBalance = await publicProvider.getBalance(address);
         const maticFormatted = parseFloat(ethers.utils.formatEther(maticBalance)).toFixed(4);
+
+        console.log('💰 MATIC Balance:', {
+          address,
+          balance: maticBalance.toString(),
+          formatted: maticFormatted,
+        });
 
         // JPYC残高（メインネット対応）
         let jpycBalance = ethers.BigNumber.from(0);

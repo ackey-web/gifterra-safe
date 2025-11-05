@@ -36,7 +36,7 @@ export const LoginPage: React.FC = () => {
       }));
 
       // マイページにリダイレクト
-      window.location.href = "/mypage";
+      window.location.href = "/";
     }
   }, [authenticated, user]);
 
@@ -51,7 +51,7 @@ export const LoginPage: React.FC = () => {
       }));
 
       // マイページにリダイレクト
-      window.location.href = "/mypage";
+      window.location.href = "/";
     }
   }, [address, connectionStatus, wallet]);
 

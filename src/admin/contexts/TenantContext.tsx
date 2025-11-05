@@ -3,8 +3,8 @@
 
 import { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
-import { useAddress, useContract } from '@thirdweb-dev/react';
-import { CONTRACT_ADDRESS, TOKEN } from '../../contract';
+import { useAddress, useContract, ConnectWallet } from '@thirdweb-dev/react';
+import { CONTRACT_ADDRESS, TOKEN, CONTRACT_ABI, ERC20_MIN_ABI } from '../../contract';
 
 /* =========================================
    開発環境用デバッグスーパーアドミン設定
@@ -127,10 +127,10 @@ export function TenantProvider({ children }: { children: ReactNode }) {
   });
 
   // コントラクトインスタンス
-  const { contract: gifterraContract } = useContract(tenant.contracts.gifterra);
+  const { contract: gifterraContract } = useContract(tenant.contracts.gifterra, CONTRACT_ABI);
   const { contract: rewardEngineContract } = useContract(tenant.contracts.rewardEngine);
   const { contract: flagNFTContract } = useContract(tenant.contracts.flagNFT);
-  const { contract: rewardTokenContract } = useContract(tenant.contracts.rewardToken);
+  const { contract: rewardTokenContract } = useContract(tenant.contracts.rewardToken, ERC20_MIN_ABI);
   const { contract: tipManagerContract } = useContract(tenant.contracts.tipManager);
   const { contract: paymentSplitterContract } = useContract(tenant.contracts.paymentSplitter);
 
@@ -140,8 +140,31 @@ export function TenantProvider({ children }: { children: ReactNode }) {
       adminAddr => adminAddr.toLowerCase() === address.toLowerCase()
     ) : false;
 
+  // デバッグログ - アドレス変更を詳細に追跡
+  useEffect(() => {
+    const timestamp = new Date().toISOString();
+    console.log(`🔐 [${timestamp}] Admin Auth Debug:`, {
+      address,
+      addressType: typeof address,
+      addressDefined: address !== undefined,
+      addressNull: address === null,
+      ADMIN_WHITELIST_ENABLED,
+      DEV_MODE,
+      isDevSuperAdmin,
+      DEV_SUPER_ADMIN_ADDRESSES,
+      addressLower: address?.toLowerCase(),
+    });
+
+    // アドレスがundefinedになった場合は警告
+    if (address === undefined) {
+      console.warn('⚠️ Wallet address became UNDEFINED!');
+    }
+  }, [address, isDevSuperAdmin]);
+
   /* ================= オーナー権限チェック ================ */
   const checkOwnership = async () => {
+    setIsCheckingOwner(true);
+
     if (!address) {
       setOwnerStatus({
         gifterra: false,
@@ -155,11 +178,11 @@ export function TenantProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    setIsCheckingOwner(true);
     setOwnerError(null);
 
     // スーパーアドミンは全権限を持つ
     if (isDevSuperAdmin) {
+      console.log('✅ Super Admin detected - granting all permissions');
       setOwnerStatus({
         gifterra: true,
         rewardEngine: true,
@@ -171,6 +194,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
       setIsCheckingOwner(false);
       return;
     }
+    console.log('⚠️ Not a super admin - checking contract ownership...');
 
     const newOwnerStatus = {
       gifterra: false,
@@ -186,10 +210,18 @@ export function TenantProvider({ children }: { children: ReactNode }) {
       if (gifterraContract) {
         try {
           const owner = await gifterraContract.call("owner");
-          newOwnerStatus.gifterra = owner.toLowerCase() === address.toLowerCase();
+          const isOwner = owner.toLowerCase() === address.toLowerCase();
+          newOwnerStatus.gifterra = isOwner;
+          console.log('🔍 Gifterra Owner Check:', {
+            contractOwner: owner,
+            currentAddress: address,
+            isOwner,
+          });
         } catch (error) {
           console.warn("Gifterra owner check failed:", error);
         }
+      } else {
+        console.log('⚠️ Gifterra contract not loaded');
       }
 
       // RewardEngine のオーナー確認
@@ -256,8 +288,24 @@ export function TenantProvider({ children }: { children: ReactNode }) {
     checkOwnership();
   }, [address, gifterraContract, rewardEngineContract, flagNFTContract, rewardTokenContract, tipManagerContract, paymentSplitterContract]);
 
-  // 全体のオーナー権限（いずれか1つでもオーナーならtrue）
-  const isOwner = Object.values(ownerStatus).some(status => status);
+  // 全体のオーナー権限（いずれか1つでもオーナーならtrue、またはスーパーアドミンならtrue）
+  const isOwner = isDevSuperAdmin || Object.values(ownerStatus).some(status => status);
+
+  // デバッグ: オーナー状態をログ出力（タイムスタンプ付き）
+  useEffect(() => {
+    const timestamp = new Date().toISOString();
+    console.log(`👤 [${timestamp}] Owner Status:`, {
+      isOwner,
+      isCheckingOwner,
+      isDevSuperAdmin,
+      ownerStatus,
+    });
+
+    // isOwnerがfalseになった場合は警告
+    if (!isOwner && !isCheckingOwner) {
+      console.warn('⚠️ isOwner is FALSE and not checking!');
+    }
+  }, [isOwner, isCheckingOwner, isDevSuperAdmin, ownerStatus]);
 
   // 特定コントラクトへのアクセス権があるか
   const hasContractAccess = (contractType: keyof TenantContracts): boolean => {
@@ -328,9 +376,89 @@ interface RequireOwnerProps {
 }
 
 export function RequireOwner({ children, contractType, fallback }: RequireOwnerProps) {
-  const { isOwner, isCheckingOwner, ownerError, hasContractAccess } = useTenant();
+  const { isOwner, isCheckingOwner, ownerError, hasContractAccess, isDevSuperAdmin } = useTenant();
+  const address = useAddress();
+
+  // デバッグ：RequireOwnerの状態をログ出力
+  console.log('🔒 RequireOwner rendering:', {
+    address,
+    addressUndefined: address === undefined,
+    addressNull: address === null,
+    isOwner,
+    isCheckingOwner,
+    isDevSuperAdmin,
+    contractType,
+    willRenderChildren: !address,
+  });
+
+  // ウォレット未接続の場合は、接続を促す専用画面を表示
+  if (!address) {
+    console.log('🔌 RequireOwner: Wallet not connected - showing connection screen');
+    return (
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: '100vh',
+        padding: 40,
+        textAlign: 'center',
+        background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)',
+      }}>
+        <div style={{
+          maxWidth: 500,
+          padding: 40,
+          background: 'rgba(59, 130, 246, 0.1)',
+          border: '1px solid rgba(59, 130, 246, 0.3)',
+          borderRadius: 12,
+          color: '#fff'
+        }}>
+          <div style={{ fontSize: 48, marginBottom: 16 }}>🔐</div>
+          <p style={{ fontSize: 24, marginBottom: 16, fontWeight: 700 }}>管理者ダッシュボード</p>
+          <p style={{ fontSize: 14, opacity: 0.8, marginBottom: 24, lineHeight: 1.6 }}>
+            管理機能にアクセスするには、管理者権限を持つウォレットを接続してください
+          </p>
+
+          {/* ウォレット接続ボタン */}
+          <div style={{
+            display: 'flex',
+            justifyContent: 'center',
+            marginBottom: 24
+          }}>
+            <ConnectWallet
+              theme="dark"
+              btnTitle="ウォレットを接続"
+              modalTitle="管理者ダッシュボード接続"
+              modalTitleIconUrl=""
+              style={{
+                fontSize: 15,
+                padding: "12px 24px",
+                borderRadius: 8,
+                fontWeight: 600,
+              }}
+            />
+          </div>
+
+          <div style={{
+            padding: 16,
+            background: 'rgba(255,255,255,0.05)',
+            borderRadius: 8,
+            marginBottom: 24
+          }}>
+            <p style={{ fontSize: 12, opacity: 0.7, margin: 0 }}>
+              MetaMaskなどのウォレットで接続してください
+            </p>
+          </div>
+          <p style={{ fontSize: 11, opacity: 0.5 }}>
+            接続後、自動的にオーナー権限を確認します
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   if (isCheckingOwner) {
+    console.log('⏳ RequireOwner: Showing checking owner screen');
     return (
       <div style={{
         padding: 40,
@@ -344,6 +472,7 @@ export function RequireOwner({ children, contractType, fallback }: RequireOwnerP
   }
 
   if (ownerError) {
+    console.log('❌ RequireOwner: Showing error screen:', ownerError);
     return (
       <div style={{
         padding: 40,
@@ -383,25 +512,38 @@ export function RequireOwner({ children, contractType, fallback }: RequireOwnerP
 
   // 全体のオーナー権限チェック
   if (!isOwner) {
+    console.log('🚫 RequireOwner: User is not owner - showing permission error');
     return fallback || (
       <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: '100vh',
         padding: 40,
         textAlign: 'center',
-        background: 'rgba(239, 68, 68, 0.1)',
-        border: '1px solid rgba(239, 68, 68, 0.3)',
-        borderRadius: 12,
-        color: '#fff'
+        background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)',
       }}>
-        <p style={{ fontSize: 18, marginBottom: 12, fontWeight: 700 }}>🔒 管理者権限が必要です</p>
-        <p style={{ fontSize: 14, opacity: 0.8, marginBottom: 8 }}>
-          この管理画面はコントラクトオーナーのみがアクセスできます
-        </p>
-        <p style={{ fontSize: 13, opacity: 0.6 }}>
-          テナントオーナーのウォレットで接続してください
-        </p>
+        <div style={{
+          maxWidth: 500,
+          padding: 40,
+          background: 'rgba(239, 68, 68, 0.1)',
+          border: '1px solid rgba(239, 68, 68, 0.3)',
+          borderRadius: 12,
+          color: '#fff'
+        }}>
+          <p style={{ fontSize: 18, marginBottom: 12, fontWeight: 700 }}>🔒 管理者権限がありません</p>
+          <p style={{ fontSize: 14, opacity: 0.8, marginBottom: 16 }}>
+            接続しているウォレット ({address?.slice(0, 6)}...{address?.slice(-4)}) には管理者権限がありません
+          </p>
+          <p style={{ fontSize: 13, opacity: 0.6 }}>
+            管理者権限を持つウォレットに切り替えてください
+          </p>
+        </div>
       </div>
     );
   }
 
+  console.log('✅ RequireOwner: User is owner - rendering children');
   return <>{children}</>;
 }
