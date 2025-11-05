@@ -15,8 +15,8 @@
       "source": "/(.*)",
       "headers": [
         {
-          "key": "Content-Security-Policy",
-          "value": "frame-ancestors 'self' https://*.privy.io https://auth.privy.io"
+          "key": "Cross-Origin-Opener-Policy",
+          "value": "same-origin-allow-popups"
         }
       ]
     }
