@@ -12,16 +12,6 @@ export default defineConfig({
   },
   define: {
     global: 'globalThis',
-    'process.env': {},
-    'process.version': JSON.stringify('v16.0.0'),
-    'process.versions': JSON.stringify({}),
-    'process.browser': JSON.stringify(true),
-    'process': JSON.stringify({
-      env: {},
-      version: 'v16.0.0',
-      versions: {},
-      browser: true
-    }),
   },
   optimizeDeps: {
     include: ['@privy-io/react-auth'],
