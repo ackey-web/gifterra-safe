@@ -21,6 +21,9 @@ export default defineConfig({
     }
   },
   server: {
+    watch: {
+      ignored: ['**/*.log', '**/build-output.log'],
+    },
     headers: {
       // Thirdweb embeddedWallet (Google OAuth) に必要な COOP 設定
       'Cross-Origin-Opener-Policy': 'unsafe-none',
