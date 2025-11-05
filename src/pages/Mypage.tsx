@@ -1113,13 +1113,27 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
             background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
             borderRadius: 8,
             color: '#ffffff',
+            position: 'relative',
           }}>
-            <div style={{ fontSize: 10, opacity: 0.85, marginBottom: 2 }}>💴 JPYC</div>
+            <div style={{ fontSize: 10, opacity: 0.85, marginBottom: 2 }}>JPYC</div>
             <div style={{ fontSize: isMobile ? 14 : 16, fontWeight: 700 }}>
               {balanceVisible
                 ? (balances.jpyc.loading ? '...' : balances.jpyc.formatted)
                 : '****'}
             </div>
+            <img
+              src="/JPYC-logo.png"
+              alt="JPYC"
+              style={{
+                position: 'absolute',
+                right: 10,
+                bottom: 10,
+                width: 24,
+                height: 24,
+                objectFit: 'contain',
+                opacity: 0.9,
+              }}
+            />
           </div>
 
           {/* MATIC */}
@@ -1128,6 +1142,7 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
             background: 'linear-gradient(135deg, #8247e5 0%, #6d28d9 100%)',
             borderRadius: 8,
             color: '#ffffff',
+            position: 'relative',
           }}>
             <div style={{ fontSize: 10, opacity: 0.85, marginBottom: 2 }}>MATIC</div>
             <div style={{ fontSize: isMobile ? 14 : 16, fontWeight: 700 }}>
@@ -1135,6 +1150,19 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
                 ? (balances.matic.loading ? '...' : balances.matic.formatted)
                 : '****'}
             </div>
+            <img
+              src="/polygon-logo.png"
+              alt="Polygon"
+              style={{
+                position: 'absolute',
+                right: 10,
+                bottom: 10,
+                width: 24,
+                height: 24,
+                objectFit: 'contain',
+                opacity: 0.9,
+              }}
+            />
           </div>
         </div>
       </div>
@@ -1620,7 +1648,10 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
                   target="_blank"
                   rel="noopener noreferrer"
                   style={{
-                    display: 'block',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 8,
                     padding: 10,
                     background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
                     color: 'white',
@@ -1631,7 +1662,16 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
                     fontSize: 13,
                   }}
                 >
-                  🌐 JPYC公式サイトへ
+                  <img
+                    src="/JPYC-logo.png"
+                    alt="JPYC"
+                    style={{
+                      width: 20,
+                      height: 20,
+                      objectFit: 'contain'
+                    }}
+                  />
+                  JPYC公式サイトへ
                 </a>
                 <button
                   onClick={() => {
@@ -1721,12 +1761,7 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
               color: '#64748b',
               lineHeight: 1.4,
             }}>
-              ※ ガス代サポートはPolygon Mainnetのみ対応しています。
-              <br />
-              ※ 送金には少額のガス代（約0.01〜0.05円/回）が必要です。
-              <br />
-              <br />
-              ※ 本ページはJPYC公式サイトおよびJPYCユーザーのガス代支援による外部サービスへの案内です。
+              ※ JPYC公式サイトおよびJPYCユーザーのガス代支援による外部サービスへの案内です。
               <br />
               ※ GIFTERRAはJPYCの販売・送金代行・ガス支援を行っておりません。
               <br />
@@ -1734,7 +1769,11 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
               <br />
               ※ 各サービスの利用・トークンの送受信は自己責任で行ってください。
               <br />
-              ※ JPYCは電子決済手段であり、暗号資産ではありません。
+              ※ 本サービス（コンテンツ・作品等）はJPYC株式会社による公式コンテンツではありません。
+              <br />
+              ※ 「JPYC」はJPYC株式会社の提供するステーブルコインです。
+              <br />
+              ※ JPYC及びJPYCロゴは、JPYC株式会社の登録商標です。
             </div>
           </div>
         </div>,
@@ -1756,7 +1795,7 @@ function SendModeModal({ isMobile, onClose, onSelectMode }: {
       icon: '💸',
       title: 'シンプル送金',
       description: '個人アドレスへ自由に送金',
-      features: ['自由なアドレス入力', 'kodomi記録なし', 'メッセージ任意'],
+      features: ['自由なアドレス入力', 'kodomi記録なし'],
     },
     {
       id: 'bulk' as SendMode,
@@ -1792,48 +1831,64 @@ function SendModeModal({ isMobile, onClose, onSelectMode }: {
         style={{
           background: '#1a1a24',
           borderRadius: isMobile ? 16 : 24,
-          padding: isMobile ? 20 : 32,
           maxWidth: isMobile ? '100%' : 600,
           width: '100%',
           maxHeight: '80vh',
-          overflow: 'auto',
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
         }}
         onClick={(e) => e.stopPropagation()}
       >
+        {/* 固定ヘッダー */}
         <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          marginBottom: isMobile ? 20 : 24,
+          padding: isMobile ? 20 : 32,
+          paddingBottom: isMobile ? 16 : 24,
+          borderBottom: '1px solid rgba(255,255,255,0.1)',
         }}>
-          <h3 style={{
-            margin: 0,
-            fontSize: isMobile ? 18 : 22,
-            fontWeight: 700,
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
           }}>
-            送金タイプを選択
-          </h3>
-          <button
-            onClick={onClose}
-            style={{
-              background: 'rgba(255,255,255,0.1)',
-              border: 'none',
-              borderRadius: 8,
-              color: '#EAF2FF',
-              fontSize: 20,
-              width: 32,
-              height: 32,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            ×
-          </button>
+            <h3 style={{
+              margin: 0,
+              fontSize: isMobile ? 18 : 22,
+              fontWeight: 700,
+            }}>
+              送金タイプを選択
+            </h3>
+            <button
+              onClick={onClose}
+              style={{
+                background: 'rgba(255,255,255,0.1)',
+                border: 'none',
+                borderRadius: 8,
+                color: '#EAF2FF',
+                fontSize: 20,
+                width: 32,
+                height: 32,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              ×
+            </button>
+          </div>
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? 12 : 16 }}>
+        {/* スクロール可能なコンテンツ */}
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: isMobile ? 12 : 16,
+          padding: isMobile ? 20 : 32,
+          paddingTop: isMobile ? 16 : 24,
+          overflow: 'auto',
+          flex: 1,
+        }}>
           {modes.map((mode) => (
             <button
               key={mode.id}
@@ -4860,8 +4915,18 @@ function Footer({ isMobile }: { isMobile: boolean }) {
         fontSize: isMobile ? 11 : 12,
         opacity: 0.5,
         marginBottom: 12,
+        lineHeight: 1.6,
+        textAlign: 'left',
       }}>
         GIFTERRAは資産の保管・両替・投資の勧誘を行いません。
+        <br />
+        ※ 各サービスの利用・トークンの送受信は自己責任で行ってください。
+        <br />
+        ※ 本サービス（コンテンツ・作品等）はJPYC株式会社による公式コンテンツではありません。
+        <br />
+        ※ 「JPYC」はJPYC株式会社の提供するステーブルコインです。
+        <br />
+        ※ JPYC及びJPYCロゴは、JPYC株式会社の登録商標です。
       </div>
       <div style={{
         fontSize: isMobile ? 10 : 11,

@@ -240,39 +240,6 @@ export const LoginPage: React.FC = () => {
           }} />
         </div>
 
-        {/* 手数料の説明 */}
-        <div style={{
-          marginBottom: 20,
-        }}>
-          {/* ウォレット接続の注意事項 */}
-          <div style={{
-            padding: isMobile ? "14px" : "16px",
-            background: "linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)",
-            border: "2px solid #f59e0b",
-            borderRadius: 12,
-          }}>
-            <div style={{
-              fontSize: isMobile ? 12 : 13,
-              fontWeight: 700,
-              color: "#92400e",
-              marginBottom: 8,
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-            }}>
-              <span style={{ fontSize: 16 }}>⚠️</span>
-              ブロックチェーン手数料について
-            </div>
-            <div style={{ fontSize: isMobile ? 11 : 12, color: "#b45309", lineHeight: 1.6 }}>
-              トランザクション（送金・受取など）には少額のガス代が必要です。
-              <br />
-              <span style={{ fontSize: 10, color: "#78350f" }}>
-                （Polygon Amoyテストネット: 約0.01〜0.05円/回）
-              </span>
-            </div>
-          </div>
-        </div>
-
         {/* 接続ボタン */}
         <div style={{ marginBottom: 16 }}>
           <ConnectWallet
@@ -305,6 +272,41 @@ export const LoginPage: React.FC = () => {
           />
         </div>
 
+        {/* 手数料の説明 */}
+        <div style={{
+          marginBottom: 20,
+        }}>
+          {/* ウォレット接続の注意事項 */}
+          <div style={{
+            padding: isMobile ? "14px" : "16px",
+            background: "linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)",
+            border: "2px solid #f59e0b",
+            borderRadius: 12,
+          }}>
+            <div style={{
+              fontSize: isMobile ? 12 : 13,
+              fontWeight: 700,
+              color: "#92400e",
+              marginBottom: 8,
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+            }}>
+              <span style={{ fontSize: 16 }}>⚠️</span>
+              ブロックチェーン手数料について
+            </div>
+            <div style={{ fontSize: isMobile ? 11 : 12, color: "#b45309", lineHeight: 1.6 }}>
+              トランザクション（送金・受取など）には少額のガス代が必要です。
+              <br />
+              <span style={{ fontSize: 10, color: "#78350f" }}>
+                （Polygon Mainnet: 約0.01〜0.05円/回）
+              </span>
+              <br />
+              外部サイト:JPYCユーザーガス代支援をご利用いただけます。
+            </div>
+          </div>
+        </div>
+
         {/* 特徴セクション */}
         <div
           style={{
@@ -314,19 +316,6 @@ export const LoginPage: React.FC = () => {
             marginTop: 0,
           }}
         >
-          <div
-            style={{
-              padding: 12,
-              background: "#f0f4ff",
-              borderRadius: 10,
-              textAlign: "center",
-            }}
-          >
-            <div style={{ fontSize: 20, marginBottom: 6 }}>⚡️</div>
-            <div style={{ fontSize: 12, fontWeight: 600, color: "#4a5568" }}>
-              ガスレス送金
-            </div>
-          </div>
           <div
             style={{
               padding: 12,

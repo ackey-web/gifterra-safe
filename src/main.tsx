@@ -105,7 +105,7 @@ if (wantsAdmin) {
           <PrivyProvider
             appId={import.meta.env.VITE_PRIVY_APP_ID || ""}
             config={{
-              loginMethods: ["email", "google", "wallet"],
+              loginMethods: ["email", "google", "twitter", "discord", "wallet"],
               appearance: {
                 theme: "dark",
                 accentColor: "#02bbd1",
