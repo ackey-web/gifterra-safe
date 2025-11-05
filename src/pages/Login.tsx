@@ -164,19 +164,38 @@ export const LoginPage: React.FC = () => {
           >
             ログイン方法を選択
           </h3>
-          <p
-            style={{
-              margin: 0,
-              color: "#4a5568",
-              fontSize: 14,
-              lineHeight: 1.8,
-            }}
-          >
-            <strong>おすすめ:</strong> GoogleアカウントまたはEmailで簡単ログイン
-            <br />
-            <br />
-            <strong>上級者向け:</strong> MetaMaskやCoinbase Walletで接続
-          </p>
+          <div>
+            <p
+              style={{
+                margin: "0 0 4px 0",
+                color: "#4a5568",
+                fontSize: 14,
+                lineHeight: 1.8,
+              }}
+            >
+              <strong>おすすめ:</strong> Google / SNS またはEmailで簡単ログイン
+            </p>
+            <p
+              style={{
+                margin: "0 0 16px 0",
+                color: "#718096",
+                fontSize: 12,
+                lineHeight: 1.5,
+              }}
+            >
+              アカウント認証でウォレットが自動生成されます。
+            </p>
+            <p
+              style={{
+                margin: 0,
+                color: "#4a5568",
+                fontSize: 14,
+                lineHeight: 1.8,
+              }}
+            >
+              <strong>上級者向け:</strong> MetaMaskやCoinbase Walletで接続
+            </p>
+          </div>
         </div>
 
         {/* Privyログインボタン（Google/Email） */}
@@ -210,7 +229,7 @@ export const LoginPage: React.FC = () => {
             }}
           >
             <span style={{ fontSize: 20 }}>🔐</span>
-            Google / Email でログイン（推奨）
+            Google / SNS でログイン（推奨）
           </button>
         </div>
 

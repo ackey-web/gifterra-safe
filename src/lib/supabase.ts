@@ -1,15 +1,25 @@
 // src/lib/supabase.ts
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { bucket, type BucketKey, type UploadKind, bucketNameForKind } from './storageBuckets';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn('⚠️ Supabase環境変数が設定されていません。.envファイルを確認してください。');
+const isSupabaseConfigured = !!(supabaseUrl && supabaseAnonKey &&
+  supabaseUrl !== 'https://your-project.supabase.co' &&
+  supabaseAnonKey !== 'your-supabase-anon-key-here');
+
+if (!isSupabaseConfigured) {
+  console.warn('⚠️ Supabase環境変数が設定されていません。管理機能を使用する場合は.envファイルを確認してください。');
 }
 
-export const supabase = createClient(supabaseUrl || '', supabaseAnonKey || '');
+// Supabase設定状態をエクスポート
+export { isSupabaseConfigured };
+
+// Supabaseクライアントを条件付きで作成（設定されている場合のみ）
+export const supabase: SupabaseClient = isSupabaseConfigured
+  ? createClient(supabaseUrl!, supabaseAnonKey!)
+  : createClient('https://placeholder.supabase.co', 'placeholder-key');
 
 /**
  * URLからファイルパスを抽出
@@ -94,7 +104,7 @@ export async function uploadFile(file: File, kind: UploadKind): Promise<string> 
     const bucketName = bucketNameForKind(kind);
 
     // Supabase クライアントの設定確認
-    if (!supabaseUrl || !supabaseAnonKey) {
+    if (!isSupabaseConfigured) {
       throw new Error('Supabase環境変数が設定されていません。VITE_SUPABASE_URL と VITE_SUPABASE_ANON_KEY を確認してください。');
     }
 
@@ -142,7 +152,7 @@ export async function uploadImage(file: File, bucketName: string | BucketKey = '
       : bucketName;
 
     // Supabase クライアントの設定確認
-    if (!supabaseUrl || !supabaseAnonKey) {
+    if (!isSupabaseConfigured) {
       throw new Error('Supabase環境変数が設定されていません。VITE_SUPABASE_URL と VITE_SUPABASE_ANON_KEY を確認してください。');
     }
 
