@@ -190,7 +190,7 @@ if (wantsAdmin) {
             </div>
           </div>
         ) : (
-          <MypagePage />
+          <LoginPage />
         )}
           </PrivyProvider>
         </ThirdwebProvider>
