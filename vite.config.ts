@@ -40,6 +40,8 @@ export default defineConfig({
     target: 'es2020',
     // チャンクサイズ制限を2MBに緩和（Web3ライブラリが大きいため）
     chunkSizeWarningLimit: 2000,
+    // モジュールプリロードを無効化（循環依存の初期化エラーを防ぐ）
+    modulePreload: false,
     commonjsOptions: {
       transformMixedEsModules: true
     },
@@ -54,7 +56,8 @@ export default defineConfig({
       },
       output: {
         // 大きなライブラリを別チャンクに分割
-
+        // inlineDynamicImports を使用して循環依存を回避
+        inlineDynamicImports: false,
         manualChunks: (id) => {
           if (id.includes('node_modules')) {
             if (id.includes('react') || id.includes('react-dom')) {
