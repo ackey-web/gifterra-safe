@@ -65,6 +65,7 @@ const wantsVending = path.includes("/vending") || path.includes("/content") || u
 const wantsAdmin = path.includes("/admin") || uiParam === "admin";
 const wantsLegacy = path.includes("/legacy");
 const wantsLogin = path.includes("/login") || uiParam === "login";
+const wantsMypage = path.includes("/mypage") || uiParam === "mypage";
 
 // =============================
 // ReactDOM ルート作成
@@ -144,6 +145,8 @@ if (wantsAdmin) {
           >
         {wantsLogin ? (
           <LoginPage />
+        ) : wantsMypage ? (
+          <MypagePage />
         ) : wantsReceive ? (
           <ReceivePage />
         ) : wantsReward ? (
