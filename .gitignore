@@ -8,6 +8,7 @@ android
 .env
 .env.*
 supabase/.temp
+*.log
 
 .git.broken-backup/
 .git.broken-backup
@@ -21,3 +22,4 @@ android
 .env
 .env.*
 supabase/.temp
+*.log
