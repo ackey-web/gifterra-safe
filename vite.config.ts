@@ -38,8 +38,8 @@ export default defineConfig({
   },
   build: {
     target: 'es2020',
-    // チャンクサイズ制限を2MBに緩和（Web3ライブラリが大きいため）
-    chunkSizeWarningLimit: 2000,
+    // チャンクサイズ制限を10MBに緩和（Web3ライブラリが大きく、分割すると循環依存エラーが発生するため）
+    chunkSizeWarningLimit: 10000,
     // モジュールプリロードを無効化（循環依存の初期化エラーを防ぐ）
     modulePreload: false,
     commonjsOptions: {
@@ -55,22 +55,8 @@ export default defineConfig({
         warn(warning);
       },
       output: {
-        // 大きなライブラリを別チャンクに分割
-        // inlineDynamicImports を使用して循環依存を回避
-        inlineDynamicImports: false,
-        manualChunks: (id) => {
-          if (id.includes('node_modules')) {
-            if (id.includes('react') || id.includes('react-dom')) {
-              return 'vendor';
-            }
-            if (id.includes('@thirdweb-dev')) {
-              return 'thirdweb';
-            }
-            if (id.includes('@privy-io/react-auth')) {
-              return 'privy';
-            }
-          }
-        }
+        // チャンク分割を最小限にして循環依存エラーを回避
+        manualChunks: undefined
       }
     }
   }
