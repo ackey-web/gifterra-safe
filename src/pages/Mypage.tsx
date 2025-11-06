@@ -13,6 +13,8 @@ import { useUserNFTs } from '../hooks/useUserNFTs';
 import { useTransactionHistory, type Transaction } from '../hooks/useTransactionHistory';
 import { useMyTenantApplication, useSubmitTenantApplication } from '../hooks/useTenantApplications';
 import { useRankPlanPricing, getPlanPrice } from '../hooks/useRankPlanPricing';
+import { useTenantRankPlan } from '../hooks/useTenantRankPlan';
+import { TenantPlanCard } from '../components/TenantPlanCard';
 
 // window.ethereum型定義（MetaMaskなど）
 declare global {
@@ -705,8 +707,16 @@ function FlowModeContent({
   tenantRank: TenantRank;
   address: string | undefined;
 }) {
-  // R3（承認済みテナント）の場合はLock Cardを非表示
-  const showLockCard = tenantRank !== 'R3';
+  // 承認済みテナントの申請情報を取得
+  const { application } = useMyTenantApplication();
+
+  // 承認済みテナントの場合、テナントIDでランクプランを取得
+  const tenantId = application?.status === 'approved' ? application.tenant_id : null;
+  const { plan: tenantRankPlan } = useTenantRankPlan(tenantId);
+
+  // R3（承認済みテナント）の場合はテナントプランカードを表示、それ以外はLockカード
+  const isApprovedTenant = tenantRank === 'R3' && application?.status === 'approved' && tenantId;
+  const showLockCard = !isApprovedTenant;
 
   return (
     <>
@@ -736,8 +746,16 @@ function FlowModeContent({
       {/* 4. 履歴 */}
       <HistorySection isMobile={isMobile} address={address} />
 
-      {/* 5. ロックカード（R0/R1/R2のみ表示） */}
-      {showLockCard && <LockCard isMobile={isMobile} />}
+      {/* 5. プランカード / ロックカード */}
+      {isApprovedTenant && tenantId ? (
+        <TenantPlanCard
+          isMobile={isMobile}
+          currentPlan={tenantRankPlan}
+          tenantId={tenantId}
+        />
+      ) : showLockCard && (
+        <LockCard isMobile={isMobile} />
+      )}
     </>
   );
 }
