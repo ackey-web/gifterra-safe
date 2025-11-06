@@ -30,6 +30,8 @@ import AdminLayout from "./components/AdminLayout";
 import type { PageType } from "./components/AdminSidebar";
 import FlagNFTManagementPage from "./components/FlagNFTManagementPage";
 import TenantProfilePage from "./TenantProfilePage";
+import { useTenantRankPlan } from "../hooks/useTenantRankPlan";
+import { canUseSbtRank, canUseAdvancedAnalytics, getTenantPlanDetails, getUpgradeRecommendation } from "../utils/tenantLimits";
 
 /* ---------- Types & Helpers ---------- */
 type Period = "day" | "week" | "month" | "all";
@@ -348,6 +350,9 @@ function LoadingOverlay({ period, progress }: { period?: Period; progress?: numb
 export default function AdminDashboard() {
   // テナントコンテキスト（オーナー権限確認）
   const { tenant, isOwner, ownerStatus, isDevSuperAdmin, devMode } = useTenant();
+
+  // テナントランクプラン取得（機能制限チェック用）
+  const { plan: tenantRankPlan } = useTenantRankPlan(tenant?.id);
 
   const address = useAddress();
   const { contract } = useContract(CONTRACT_ADDRESS, CONTRACT_ABI);
@@ -1664,12 +1669,32 @@ export default function AdminDashboard() {
     // ランク数変更
     const handleSetMaxRankLevel = async () => {
       if (!contract) return;
-      const newLevel = prompt("新しいランク数を入力してください（1-20）:", maxRankLevel.toString());
+
+      // プラン情報を取得
+      const planDetails = getTenantPlanDetails(tenantRankPlan);
+
+      const newLevel = prompt(
+        `新しいランク数を入力してください（1-${planDetails.sbtRanks}）:\n\n現在のプラン: ${planDetails.name}\n利用可能なランク数: 最大${planDetails.sbtRanks}段階`,
+        maxRankLevel.toString()
+      );
       if (!newLevel) return;
 
       const level = parseInt(newLevel);
-      if (isNaN(level) || level < 1 || level > 20) {
-        alert("❌ 1〜20の範囲で入力してください");
+
+      // 入力値の基本検証
+      if (isNaN(level) || level < 1) {
+        alert("❌ 1以上の数値を入力してください");
+        return;
+      }
+
+      // プランベースの制限チェック
+      const limitCheck = canUseSbtRank(level, tenantRankPlan);
+      if (!limitCheck.allowed) {
+        const upgradeMsg = getUpgradeRecommendation(
+          tenantRankPlan?.rank_plan || null,
+          `${level}段階のSBTランク`
+        );
+        alert(`❌ ${limitCheck.reason}\n\n${upgradeMsg}`);
         return;
       }
 
@@ -3205,6 +3230,207 @@ export default function AdminDashboard() {
             </>
           )}
         </div>
+      </section>
+
+      {/* 高度な分析セクション（STUDIO PRO以上限定） */}
+      <section
+        style={{
+          marginTop: '48px',
+          padding: '32px',
+          background: 'linear-gradient(135deg, #667eea20 0%, #764ba220 100%)',
+          borderRadius: '16px',
+          border: '1px solid #667eea40',
+        }}
+      >
+        <div
+          style={{
+            fontSize: '1.5rem',
+            fontWeight: 'bold',
+            marginBottom: '24px',
+            color: '#fff',
+          }}
+        >
+          🔬 高度な分析
+        </div>
+
+        {(() => {
+          const advancedCheck = canUseAdvancedAnalytics(tenantRankPlan);
+          const planDetails = getTenantPlanDetails(tenantRankPlan);
+
+          if (!advancedCheck.allowed) {
+            // STUDIO PRO未満: アップグレード誘導
+            const upgrade = getUpgradeRecommendation(tenantRankPlan);
+            return (
+              <div
+                style={{
+                  padding: '32px',
+                  background: 'rgba(0,0,0,0.3)',
+                  borderRadius: '12px',
+                  border: '2px dashed #667eea80',
+                  textAlign: 'center',
+                }}
+              >
+                <div style={{ fontSize: '3rem', marginBottom: '16px' }}>🔒</div>
+                <div
+                  style={{
+                    fontSize: '1.2rem',
+                    fontWeight: 'bold',
+                    marginBottom: '12px',
+                    color: '#fff',
+                  }}
+                >
+                  高度な分析機能
+                </div>
+                <div
+                  style={{
+                    color: '#fbbf24',
+                    marginBottom: '20px',
+                    lineHeight: '1.6',
+                  }}
+                >
+                  {advancedCheck.reason}
+                </div>
+
+                <div
+                  style={{
+                    marginTop: '24px',
+                    padding: '20px',
+                    background: 'rgba(102, 126, 234, 0.1)',
+                    borderRadius: '8px',
+                    textAlign: 'left',
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: '1rem',
+                      fontWeight: 'bold',
+                      marginBottom: '12px',
+                      color: '#fff',
+                    }}
+                  >
+                    📊 高度な分析で利用可能な機能
+                  </div>
+                  <ul
+                    style={{
+                      color: '#d1d5db',
+                      lineHeight: '1.8',
+                      paddingLeft: '20px',
+                    }}
+                  >
+                    <li>リテンション分析 (ユーザー定着率)</li>
+                    <li>コホート分析 (時系列グループ分析)</li>
+                    <li>セグメント別分析 (属性別比較)</li>
+                    <li>ヒートマップ分析 (行動可視化)</li>
+                  </ul>
+                </div>
+
+                {upgrade && (
+                  <div
+                    style={{
+                      marginTop: '24px',
+                      padding: '16px',
+                      background: 'rgba(251, 191, 36, 0.15)',
+                      borderRadius: '8px',
+                      border: '1px solid #fbbf2460',
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontSize: '0.9rem',
+                        color: '#fbbf24',
+                        fontWeight: 'bold',
+                        marginBottom: '8px',
+                      }}
+                    >
+                      💡 推奨プラン
+                    </div>
+                    <div style={{ color: '#fff', fontSize: '0.9rem' }}>
+                      {upgrade.recommendedPlan} にアップグレードすると利用できます
+                    </div>
+                    <div
+                      style={{
+                        color: '#d1d5db',
+                        fontSize: '0.85rem',
+                        marginTop: '8px',
+                      }}
+                    >
+                      {upgrade.reason}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          }
+
+          // STUDIO PRO以上: Coming Soon
+          return (
+            <div
+              style={{
+                padding: '32px',
+                background: 'rgba(0,0,0,0.3)',
+                borderRadius: '12px',
+                border: '1px solid #667eea60',
+                textAlign: 'center',
+              }}
+            >
+              <div style={{ fontSize: '3rem', marginBottom: '16px' }}>🚀</div>
+              <div
+                style={{
+                  fontSize: '1.2rem',
+                  fontWeight: 'bold',
+                  marginBottom: '12px',
+                  color: '#fff',
+                }}
+              >
+                高度な分析機能 - Coming Soon
+              </div>
+              <div
+                style={{
+                  color: '#d1d5db',
+                  marginBottom: '20px',
+                  lineHeight: '1.6',
+                }}
+              >
+                {planDetails.planName} プランで利用可能な高度な分析機能を準備中です。
+                <br />
+                近日中にリリース予定です。
+              </div>
+
+              <div
+                style={{
+                  marginTop: '24px',
+                  padding: '20px',
+                  background: 'rgba(102, 126, 234, 0.1)',
+                  borderRadius: '8px',
+                  textAlign: 'left',
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: '1rem',
+                    fontWeight: 'bold',
+                    marginBottom: '12px',
+                    color: '#fff',
+                  }}
+                >
+                  📊 リリース予定の機能
+                </div>
+                <ul
+                  style={{
+                    color: '#d1d5db',
+                    lineHeight: '1.8',
+                    paddingLeft: '20px',
+                  }}
+                >
+                  <li>リテンション分析 - ユーザーの定着率を期間別に可視化</li>
+                  <li>コホート分析 - 登録時期別のユーザー行動を追跡</li>
+                  <li>セグメント別分析 - ランク別・属性別の詳細比較</li>
+                  <li>ヒートマップ分析 - ユーザー行動の時間帯別可視化</li>
+                </ul>
+              </div>
+            </div>
+          );
+        })()}
       </section>
 
 

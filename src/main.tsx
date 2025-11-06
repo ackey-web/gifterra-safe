@@ -11,6 +11,7 @@ import RewardApp from "./reward-ui/App";
 import TipApp from "./tip-ui/App";
 import VendingApp from "./vending-ui/App";
 import AdminDashboard from "./admin/Dashboard";
+import { SuperAdminPage } from "./pages/SuperAdmin";
 import { TenantProvider } from "./admin/contexts/TenantContext";
 import { ThirdwebProvider } from "@thirdweb-dev/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -54,15 +55,36 @@ const queryClient = new QueryClient({
   },
 });
 
+// デバッグログ
+console.log('🚀 main.tsx loading...', {
+  pathname: location.pathname,
+  search: location.search,
+});
+
 // URL判定
 const path = location.pathname;
 const uiParam = new URLSearchParams(location.search).get("ui");
+
+console.log('🔍 Route detection:', {
+  path,
+  uiParam,
+  wantsReceive: path.includes("/receive"),
+  wantsReward: path.includes("/reward") || uiParam === "reward",
+  wantsTip: path.includes("/tip") || uiParam === "tip",
+  wantsVending: path.includes("/vending") || path.includes("/content") || uiParam === "vending" || uiParam === "content",
+  wantsAdmin: path.includes("/admin") || uiParam === "admin",
+  wantsSuperAdmin: path.includes("/super-admin") || uiParam === "super-admin",
+  wantsLegacy: path.includes("/legacy"),
+  wantsLogin: path.includes("/login") || uiParam === "login",
+  wantsMypage: path.includes("/mypage") || uiParam === "mypage",
+});
 
 const wantsReceive = path.includes("/receive");
 const wantsReward = path.includes("/reward") || uiParam === "reward";
 const wantsTip = path.includes("/tip") || uiParam === "tip";
 const wantsVending = path.includes("/vending") || path.includes("/content") || uiParam === "vending" || uiParam === "content";
 const wantsAdmin = path.includes("/admin") || uiParam === "admin";
+const wantsSuperAdmin = path.includes("/super-admin") || uiParam === "super-admin";
 const wantsLegacy = path.includes("/legacy");
 const wantsLogin = path.includes("/login") || uiParam === "login";
 const wantsMypage = path.includes("/mypage") || uiParam === "mypage";
@@ -78,8 +100,22 @@ const root = ReactDOM.createRoot(
 // 最小限のアプリ出力（MVP Phase 1）
 // =============================
 
-// Admin用の独立したレンダリング（Thirdwebのみ使用）
-if (wantsAdmin) {
+// Super Admin用の独立したレンダリング（Thirdwebのみ使用）
+if (wantsSuperAdmin) {
+  root.render(
+    <React.StrictMode>
+      <QueryClientProvider client={queryClient}>
+        <ThirdwebProvider
+          activeChain={polygonChain}
+          clientId={import.meta.env.VITE_THIRDWEB_CLIENT_ID}
+        >
+          <SuperAdminPage />
+        </ThirdwebProvider>
+      </QueryClientProvider>
+    </React.StrictMode>
+  );
+} else if (wantsAdmin) {
+  // Admin用の独立したレンダリング（Thirdwebのみ使用）
   root.render(
     <React.StrictMode>
       <QueryClientProvider client={queryClient}>

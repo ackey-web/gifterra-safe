@@ -1,8 +1,39 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import fs from 'fs'
+import path from 'path'
+
+// 環境変数を直接読み込む関数
+function loadEnvDirect() {
+  const envFiles = ['.env.local', '.env']
+  const env: Record<string, string> = {}
+
+  for (const file of envFiles) {
+    const filePath = path.resolve(process.cwd(), file)
+    if (fs.existsSync(filePath)) {
+      const content = fs.readFileSync(filePath, 'utf-8')
+      content.split('\n').forEach(line => {
+        const match = line.match(/^([^#=]+)=(.*)$/)
+        if (match) {
+          const key = match[1].trim()
+          const value = match[2].trim().replace(/^["']|["']$/g, '')
+          if (key.startsWith('VITE_') && !env[key]) {
+            env[key] = value
+          }
+        }
+      })
+    }
+  }
+
+  return env
+}
 
 // https://vite.dev/config/
-export default defineConfig({
+export default defineConfig(({ mode }) => {
+  // 環境変数を直接ファイルから読み込む
+  const env = loadEnvDirect()
+
+  return {
   plugins: [react()],
   resolve: {
     alias: {
@@ -12,6 +43,9 @@ export default defineConfig({
   },
   define: {
     global: 'globalThis',
+    // 環境変数を明示的に定義（ビルド時に値が埋め込まれる）
+    'import.meta.env.VITE_SUPABASE_URL': JSON.stringify(env.VITE_SUPABASE_URL),
+    'import.meta.env.VITE_SUPABASE_ANON_KEY': JSON.stringify(env.VITE_SUPABASE_ANON_KEY),
   },
   optimizeDeps: {
     include: ['@privy-io/react-auth'],
@@ -59,5 +93,7 @@ export default defineConfig({
         manualChunks: undefined
       }
     }
-  }
+  },
+  envPrefix: 'VITE_',
+}
 })

@@ -1,7 +1,7 @@
 // src/admin/contexts/TenantContext.tsx
 // テナントオーナー認証とコントラクトアクセス管理
 
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import type { ReactNode } from 'react';
 import { useAddress, useContract, ConnectWallet } from '@thirdweb-dev/react';
 import { CONTRACT_ADDRESS, TOKEN, CONTRACT_ABI, ERC20_MIN_ABI } from '../../contract';
@@ -156,7 +156,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
     ) : false;
 
   // テナント管理者アドレスを取得（設定から）
-  const configuredTenantAdmins = React.useMemo(() => {
+  const configuredTenantAdmins = useMemo(() => {
     return getConfiguredAdminAddresses();
   }, [address]); // addressが変わったときに再計算（設定が更新された可能性）
 

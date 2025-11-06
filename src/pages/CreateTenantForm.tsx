@@ -1,7 +1,7 @@
 // src/pages/CreateTenantForm.tsx
 import { useState, useEffect } from 'react';
 import { useContract } from '@thirdweb-dev/react';
-import { GIFTERRA_FACTORY_ABI, TNHT_TOKEN } from '../contract';
+import { TNHT_TOKEN, GIFTERRA_FACTORY_ABI } from '../contract';
 import { ethers } from 'ethers';
 
 interface CreateTenantFormProps {

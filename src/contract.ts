@@ -522,3 +522,124 @@ export const PAYMENT_SPLITTER_ABI = [
 
 // Alias for V2 (same as V1 for now)
 export const PAYMENT_SPLITTER_V2_ABI = PAYMENT_SPLITTER_ABI;
+
+/* =========================================
+   ✅ GifterraFactory ABI
+   📝 マルチテナント対応ファクトリーコントラクト
+   🎯 テナント作成・管理・統計閲覧
+========================================= */
+export const GIFTERRA_FACTORY_ABI = [
+  // createTenant - 新規テナント作成
+  {
+    inputs: [
+      { internalType: "string", name: "tenantName", type: "string" },
+      { internalType: "address", name: "admin", type: "address" },
+      { internalType: "address", name: "rewardTokenAddress", type: "address" },
+      { internalType: "address", name: "tipWalletAddress", type: "address" },
+      { internalType: "uint8", name: "rankPlan", type: "uint8" },
+    ],
+    name: "createTenant",
+    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
+    stateMutability: "payable",
+    type: "function",
+  },
+  // getTenantInfo - テナント情報取得
+  {
+    inputs: [{ internalType: "uint256", name: "tenantId", type: "uint256" }],
+    name: "getTenantInfo",
+    outputs: [
+      {
+        components: [
+          { internalType: "uint256", name: "tenantId", type: "uint256" },
+          { internalType: "address", name: "admin", type: "address" },
+          { internalType: "string", name: "tenantName", type: "string" },
+          {
+            components: [
+              { internalType: "address", name: "gifterra", type: "address" },
+              { internalType: "address", name: "rewardNFT", type: "address" },
+              { internalType: "address", name: "payLitter", type: "address" },
+              { internalType: "address", name: "journeyPass", type: "address" },
+              { internalType: "address", name: "randomRewardEngine", type: "address" },
+            ],
+            internalType: "struct GifterraFactory.TenantContracts",
+            name: "contracts",
+            type: "tuple",
+          },
+          { internalType: "uint256", name: "createdAt", type: "uint256" },
+          { internalType: "uint256", name: "lastActivityAt", type: "uint256" },
+          { internalType: "bool", name: "isActive", type: "bool" },
+          { internalType: "bool", name: "isPaused", type: "bool" },
+        ],
+        internalType: "struct GifterraFactory.TenantInfo",
+        name: "",
+        type: "tuple",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  // getTenantIdByAdmin - 管理者からテナントID取得
+  {
+    inputs: [{ internalType: "address", name: "admin", type: "address" }],
+    name: "getTenantIdByAdmin",
+    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  // deploymentFee - デプロイ手数料
+  {
+    inputs: [],
+    name: "deploymentFee",
+    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  // nextTenantId - 次のテナントID
+  {
+    inputs: [],
+    name: "nextTenantId",
+    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  // totalTenants - 総テナント数
+  {
+    inputs: [],
+    name: "totalTenants",
+    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  // activeTenants - アクティブテナント数
+  {
+    inputs: [],
+    name: "activeTenants",
+    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  // TenantCreated イベント
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "uint256", name: "tenantId", type: "uint256" },
+      { indexed: true, internalType: "address", name: "admin", type: "address" },
+      { indexed: false, internalType: "string", name: "tenantName", type: "string" },
+      { indexed: false, internalType: "address", name: "gifterra", type: "address" },
+      { indexed: false, internalType: "address", name: "rewardNFT", type: "address" },
+      { indexed: false, internalType: "address", name: "payLitter", type: "address" },
+      { indexed: false, internalType: "address", name: "journeyPass", type: "address" },
+      { indexed: false, internalType: "address", name: "randomRewardEngine", type: "address" },
+    ],
+    name: "TenantCreated",
+    type: "event",
+  },
+] as const;
+
+/* =========================================
+   ✅ GifterraFactory コントラクトアドレス
+   📝 マルチテナント管理用ファクトリー
+========================================= */
+// TODO: 実際のファクトリーアドレスに置き換える
+// 現在は未デプロイのため、ゼロアドレスを使用（機能は無効）
+export const GIFTERRA_FACTORY_ADDRESS = getAddress("0x0000000000000000000000000000000000000000");

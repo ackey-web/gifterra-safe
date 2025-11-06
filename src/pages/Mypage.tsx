@@ -11,6 +11,8 @@ import { JPYC_TOKEN, TNHT_TOKEN, NHT_TOKEN, SBT_CONTRACT, CONTRACT_ABI, ERC20_MI
 import { useTokenBalances } from '../hooks/useTokenBalances';
 import { useUserNFTs } from '../hooks/useUserNFTs';
 import { useTransactionHistory, type Transaction } from '../hooks/useTransactionHistory';
+import { useMyTenantApplication, useSubmitTenantApplication } from '../hooks/useTenantApplications';
+import { useRankPlanPricing, getPlanPrice } from '../hooks/useRankPlanPricing';
 
 // window.ethereum型定義（MetaMaskなど）
 declare global {
@@ -4464,6 +4466,95 @@ function TransactionItem({ tx, isMobile }: { tx: Transaction; isMobile: boolean 
 // [C] 共通コンポーネント
 // ========================================
 function LockCard({ isMobile }: { isMobile: boolean }) {
+  const [showForm, setShowForm] = useState(false);
+  const [formData, setFormData] = useState({
+    tenant_name: '',
+    description: '',
+    rank_plan: 'STUDIO' as import('../types/tenantApplication').RankPlan,
+    has_custom_token: false,
+    custom_token_address: '',
+    custom_token_reason: '',
+  });
+
+  const { application, loading: checkingApplication } = useMyTenantApplication();
+  const { submit, submitting, error } = useSubmitTenantApplication();
+  const { pricing, loading: pricingLoading } = useRankPlanPricing();
+
+  const handleSubmit = async () => {
+    if (!formData.tenant_name.trim() || formData.tenant_name.length < 3) {
+      alert('テナント名は3文字以上で入力してください');
+      return;
+    }
+
+    const success = await submit(formData);
+    if (success) {
+      alert('テナント申請を送信しました。承認をお待ちください。');
+      setShowForm(false);
+      setFormData({
+        tenant_name: '',
+        description: '',
+        rank_plan: 'STUDIO',
+        has_custom_token: false,
+        custom_token_address: '',
+        custom_token_reason: '',
+      });
+    } else if (error) {
+      alert(`申請に失敗しました: ${error}`);
+    }
+  };
+
+  // 既に申請中の場合は申請状況を表示
+  if (application) {
+    return (
+      <div style={{
+        background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.1) 100%)',
+        border: '1px solid rgba(16, 185, 129, 0.3)',
+        borderRadius: isMobile ? 16 : 24,
+        padding: isMobile ? 24 : 32,
+      }}>
+        <div style={{ fontSize: isMobile ? 36 : 48, marginBottom: 16, textAlign: 'center' }}>⏳</div>
+        <h3 style={{
+          margin: '0 0 16px 0',
+          fontSize: isMobile ? 18 : 22,
+          fontWeight: 700,
+          textAlign: 'center',
+          color: '#10b981',
+        }}>
+          申請受付中
+        </h3>
+        <div style={{
+          background: 'rgba(255,255,255,0.05)',
+          borderRadius: 12,
+          padding: isMobile ? 16 : 20,
+          marginBottom: 16,
+        }}>
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ fontSize: 12, opacity: 0.6, marginBottom: 4 }}>テナント名</div>
+            <div style={{ fontSize: 16, fontWeight: 600 }}>{application.tenant_name}</div>
+          </div>
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ fontSize: 12, opacity: 0.6, marginBottom: 4 }}>プラン</div>
+            <div style={{ fontSize: 16, fontWeight: 600 }}>{application.rank_plan}</div>
+          </div>
+          {application.description && (
+            <div>
+              <div style={{ fontSize: 12, opacity: 0.6, marginBottom: 4 }}>説明</div>
+              <div style={{ fontSize: 14 }}>{application.description}</div>
+            </div>
+          )}
+        </div>
+        <p style={{
+          fontSize: isMobile ? 13 : 14,
+          opacity: 0.8,
+          textAlign: 'center',
+          margin: 0,
+        }}>
+          SuperAdminによる承認をお待ちください
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div style={{
       background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%)',
@@ -4471,99 +4562,342 @@ function LockCard({ isMobile }: { isMobile: boolean }) {
       borderRadius: isMobile ? 16 : 24,
       padding: isMobile ? 24 : 32,
     }}>
-      <div style={{ fontSize: isMobile ? 36 : 48, marginBottom: 16, textAlign: 'center' }}>✨</div>
-      <h3 style={{
-        margin: '0 0 16px 0',
-        fontSize: isMobile ? 18 : 22,
-        fontWeight: 700,
-        textAlign: 'center',
-      }}>
-        もっと活用しませんか？
-      </h3>
-      <p style={{
-        fontSize: isMobile ? 13 : 14,
-        opacity: 0.8,
-        margin: '0 0 20px 0',
-        textAlign: 'center',
-      }}>
-        テナント申請で解放される機能
-      </p>
-      <div style={{
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 12,
-        marginBottom: 24,
-      }}>
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 12,
-          padding: isMobile ? '10px 12px' : '12px 16px',
-          background: 'rgba(255,255,255,0.05)',
-          borderRadius: 8,
-        }}>
-          <div style={{ fontSize: 20 }}>🎁</div>
-          <div>
-            <div style={{ fontSize: isMobile ? 13 : 14, fontWeight: 600 }}>自動配布</div>
-            <div style={{ fontSize: isMobile ? 11 : 12, opacity: 0.6 }}>送金時に特典を自動付与</div>
+      {!showForm ? (
+        <>
+          <div style={{ fontSize: isMobile ? 36 : 48, marginBottom: 16, textAlign: 'center' }}>✨</div>
+          <h3 style={{
+            margin: '0 0 16px 0',
+            fontSize: isMobile ? 18 : 22,
+            fontWeight: 700,
+            textAlign: 'center',
+          }}>
+            もっと活用しませんか？
+          </h3>
+          <p style={{
+            fontSize: isMobile ? 13 : 14,
+            opacity: 0.8,
+            margin: '0 0 20px 0',
+            textAlign: 'center',
+          }}>
+            テナント申請で解放される機能
+          </p>
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 12,
+            marginBottom: 24,
+          }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+              padding: isMobile ? '10px 12px' : '12px 16px',
+              background: 'rgba(255,255,255,0.05)',
+              borderRadius: 8,
+            }}>
+              <div style={{ fontSize: 20 }}>🎁</div>
+              <div>
+                <div style={{ fontSize: isMobile ? 13 : 14, fontWeight: 600 }}>自動配布</div>
+                <div style={{ fontSize: isMobile ? 11 : 12, opacity: 0.6 }}>送金時に特典を自動付与</div>
+              </div>
+            </div>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+              padding: isMobile ? '10px 12px' : '12px 16px',
+              background: 'rgba(255,255,255,0.05)',
+              borderRadius: 8,
+            }}>
+              <div style={{ fontSize: 20 }}>🏪</div>
+              <div>
+                <div style={{ fontSize: isMobile ? 13 : 14, fontWeight: 600 }}>GIFT HUB</div>
+                <div style={{ fontSize: isMobile ? 11 : 12, opacity: 0.6 }}>特典管理システム</div>
+              </div>
+            </div>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+              padding: isMobile ? '10px 12px' : '12px 16px',
+              background: 'rgba(255,255,255,0.05)',
+              borderRadius: 8,
+            }}>
+              <div style={{ fontSize: 20 }}>🚩</div>
+              <div>
+                <div style={{ fontSize: isMobile ? 13 : 14, fontWeight: 600 }}>フラグNFT</div>
+                <div style={{ fontSize: isMobile ? 11 : 12, opacity: 0.6 }}>到達証明の発行</div>
+              </div>
+            </div>
           </div>
-        </div>
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 12,
-          padding: isMobile ? '10px 12px' : '12px 16px',
-          background: 'rgba(255,255,255,0.05)',
-          borderRadius: 8,
-        }}>
-          <div style={{ fontSize: 20 }}>🏪</div>
-          <div>
-            <div style={{ fontSize: isMobile ? 13 : 14, fontWeight: 600 }}>GIFT HUB</div>
-            <div style={{ fontSize: isMobile ? 11 : 12, opacity: 0.6 }}>特典管理システム</div>
+          <button
+            onClick={() => setShowForm(true)}
+            disabled={checkingApplication}
+            style={{
+              width: '100%',
+              padding: isMobile ? '14px' : '16px',
+              background: checkingApplication ? 'rgba(102, 126, 234, 0.5)' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              border: 'none',
+              borderRadius: 12,
+              color: '#fff',
+              fontSize: isMobile ? 15 : 16,
+              fontWeight: 700,
+              cursor: checkingApplication ? 'not-allowed' : 'pointer',
+              transition: 'all 0.2s',
+            }}
+            onMouseOver={(e) => {
+              if (!checkingApplication) {
+                e.currentTarget.style.transform = 'scale(1.02)';
+                e.currentTarget.style.boxShadow = '0 8px 24px rgba(102, 126, 234, 0.3)';
+              }
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.transform = 'scale(1)';
+              e.currentTarget.style.boxShadow = 'none';
+            }}
+          >
+            {checkingApplication ? '確認中...' : 'テナント申請する'}
+          </button>
+        </>
+      ) : (
+        <>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
+            <h3 style={{
+              margin: 0,
+              fontSize: isMobile ? 18 : 20,
+              fontWeight: 700,
+            }}>
+              テナント申請フォーム
+            </h3>
+            <button
+              onClick={() => setShowForm(false)}
+              style={{
+                background: 'rgba(255,255,255,0.1)',
+                border: 'none',
+                borderRadius: 8,
+                padding: '6px 12px',
+                color: '#fff',
+                fontSize: 14,
+                cursor: 'pointer',
+              }}
+            >
+              閉じる
+            </button>
           </div>
-        </div>
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 12,
-          padding: isMobile ? '10px 12px' : '12px 16px',
-          background: 'rgba(255,255,255,0.05)',
-          borderRadius: 8,
-        }}>
-          <div style={{ fontSize: 20 }}>🚩</div>
-          <div>
-            <div style={{ fontSize: isMobile ? 13 : 14, fontWeight: 600 }}>フラグNFT</div>
-            <div style={{ fontSize: isMobile ? 11 : 12, opacity: 0.6 }}>到達証明の発行</div>
+
+          {/* テナント名 */}
+          <div style={{ marginBottom: 20 }}>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 8 }}>
+              テナント名 <span style={{ color: '#ef4444' }}>*</span>
+            </label>
+            <input
+              type="text"
+              value={formData.tenant_name}
+              onChange={(e) => setFormData({ ...formData, tenant_name: e.target.value })}
+              placeholder="3〜50文字"
+              maxLength={50}
+              style={{
+                width: '100%',
+                padding: isMobile ? '10px 12px' : '12px 14px',
+                background: 'rgba(255,255,255,0.05)',
+                border: '1px solid rgba(255,255,255,0.1)',
+                borderRadius: 8,
+                color: '#fff',
+                fontSize: 14,
+              }}
+            />
+            <div style={{ fontSize: 11, opacity: 0.6, marginTop: 4 }}>
+              {formData.tenant_name.length}/50文字
+            </div>
           </div>
-        </div>
-      </div>
-      <button
-        onClick={() => {
-          window.location.href = '/tenant/apply';
-        }}
-        style={{
-          width: '100%',
-          padding: isMobile ? '14px' : '16px',
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-          border: 'none',
-          borderRadius: 12,
-          color: '#fff',
-          fontSize: isMobile ? 15 : 16,
-          fontWeight: 700,
-          cursor: 'pointer',
-          transition: 'all 0.2s',
-        }}
-        onMouseOver={(e) => {
-          e.currentTarget.style.transform = 'scale(1.02)';
-          e.currentTarget.style.boxShadow = '0 8px 24px rgba(102, 126, 234, 0.3)';
-        }}
-        onMouseOut={(e) => {
-          e.currentTarget.style.transform = 'scale(1)';
-          e.currentTarget.style.boxShadow = 'none';
-        }}
-      >
-        テナント申請する
-      </button>
+
+          {/* 説明 */}
+          <div style={{ marginBottom: 20 }}>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 8 }}>
+              説明（任意）
+            </label>
+            <textarea
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              placeholder="テナントの説明を入力してください"
+              maxLength={500}
+              rows={3}
+              style={{
+                width: '100%',
+                padding: isMobile ? '10px 12px' : '12px 14px',
+                background: 'rgba(255,255,255,0.05)',
+                border: '1px solid rgba(255,255,255,0.1)',
+                borderRadius: 8,
+                color: '#fff',
+                fontSize: 14,
+                resize: 'vertical',
+              }}
+            />
+            <div style={{ fontSize: 11, opacity: 0.6, marginTop: 4 }}>
+              {formData.description.length}/500文字
+            </div>
+          </div>
+
+          {/* ランクプラン */}
+          <div style={{ marginBottom: 20 }}>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 12 }}>
+              ランクプラン <span style={{ color: '#ef4444' }}>*</span>
+            </label>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {(['STUDIO', 'STUDIO_PRO', 'STUDIO_PRO_MAX'] as const).map((plan) => {
+                const details = {
+                  STUDIO: { maxHubs: 1, sbtRanks: 3 },
+                  STUDIO_PRO: { maxHubs: 3, sbtRanks: 5 },
+                  STUDIO_PRO_MAX: { maxHubs: 10, sbtRanks: 10 },
+                }[plan];
+                const monthlyFee = getPlanPrice(pricing, plan);
+                return (
+                  <label
+                    key={plan}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      padding: isMobile ? '12px' : '14px 16px',
+                      background: formData.rank_plan === plan ? 'rgba(102, 126, 234, 0.2)' : 'rgba(255,255,255,0.05)',
+                      border: `1px solid ${formData.rank_plan === plan ? 'rgba(102, 126, 234, 0.5)' : 'rgba(255,255,255,0.1)'}`,
+                      borderRadius: 8,
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                    }}
+                  >
+                    <input
+                      type="radio"
+                      name="rank_plan"
+                      value={plan}
+                      checked={formData.rank_plan === plan}
+                      onChange={(e) => setFormData({ ...formData, rank_plan: e.target.value as any })}
+                      style={{ marginRight: 12 }}
+                    />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>{plan.replace('_', ' ')}</div>
+                      <div style={{ fontSize: 12, opacity: 0.7 }}>
+                        {details.maxHubs}個のGIFT HUB / {details.sbtRanks}段階SBT / ¥{monthlyFee.toLocaleString()}/月
+                      </div>
+                    </div>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* カスタムトークン */}
+          <div style={{ marginBottom: 24 }}>
+            <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', marginBottom: 12 }}>
+              <input
+                type="checkbox"
+                checked={formData.has_custom_token}
+                onChange={(e) => setFormData({ ...formData, has_custom_token: e.target.checked })}
+                style={{ marginRight: 8 }}
+              />
+              <span style={{ fontSize: 13, fontWeight: 600 }}>カスタムユーティリティトークンを使用する（審査必要）</span>
+            </label>
+            {formData.has_custom_token && (
+              <div style={{
+                padding: isMobile ? 12 : 16,
+                background: 'rgba(245, 158, 11, 0.1)',
+                border: '1px solid rgba(245, 158, 11, 0.3)',
+                borderRadius: 8,
+                marginBottom: 12,
+              }}>
+                <div style={{ fontSize: 12, opacity: 0.8, marginBottom: 12 }}>
+                  カスタムトークンは資産価値のない完全ユーティリティトークンのみ使用可能です
+                </div>
+                <input
+                  type="text"
+                  value={formData.custom_token_address}
+                  onChange={(e) => setFormData({ ...formData, custom_token_address: e.target.value })}
+                  placeholder="トークンアドレス (0x...)"
+                  style={{
+                    width: '100%',
+                    padding: isMobile ? '8px 10px' : '10px 12px',
+                    background: 'rgba(255,255,255,0.05)',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    borderRadius: 6,
+                    color: '#fff',
+                    fontSize: 13,
+                    marginBottom: 8,
+                  }}
+                />
+                <textarea
+                  value={formData.custom_token_reason}
+                  onChange={(e) => setFormData({ ...formData, custom_token_reason: e.target.value })}
+                  placeholder="利用理由（審査用）"
+                  rows={2}
+                  style={{
+                    width: '100%',
+                    padding: isMobile ? '8px 10px' : '10px 12px',
+                    background: 'rgba(255,255,255,0.05)',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    borderRadius: 6,
+                    color: '#fff',
+                    fontSize: 13,
+                    resize: 'vertical',
+                  }}
+                />
+              </div>
+            )}
+          </div>
+
+          {/* 送信ボタン */}
+          <div style={{ display: 'flex', gap: 12 }}>
+            <button
+              onClick={() => setShowForm(false)}
+              disabled={submitting}
+              style={{
+                flex: 1,
+                padding: isMobile ? '12px' : '14px',
+                background: 'rgba(255,255,255,0.1)',
+                border: '1px solid rgba(255,255,255,0.2)',
+                borderRadius: 10,
+                color: '#fff',
+                fontSize: 14,
+                fontWeight: 600,
+                cursor: submitting ? 'not-allowed' : 'pointer',
+              }}
+            >
+              キャンセル
+            </button>
+            <button
+              onClick={handleSubmit}
+              disabled={submitting || !formData.tenant_name.trim()}
+              style={{
+                flex: 2,
+                padding: isMobile ? '12px' : '14px',
+                background: submitting || !formData.tenant_name.trim()
+                  ? 'rgba(102, 126, 234, 0.3)'
+                  : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                border: 'none',
+                borderRadius: 10,
+                color: '#fff',
+                fontSize: 14,
+                fontWeight: 700,
+                cursor: submitting || !formData.tenant_name.trim() ? 'not-allowed' : 'pointer',
+              }}
+            >
+              {submitting ? '送信中...' : '申請する'}
+            </button>
+          </div>
+
+          {error && (
+            <div style={{
+              marginTop: 12,
+              padding: 12,
+              background: 'rgba(239, 68, 68, 0.1)',
+              border: '1px solid rgba(239, 68, 68, 0.3)',
+              borderRadius: 8,
+              color: '#fca5a5',
+              fontSize: 13,
+            }}>
+              {error}
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 }

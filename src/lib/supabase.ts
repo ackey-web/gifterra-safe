@@ -5,6 +5,14 @@ import { bucket, type BucketKey, type UploadKind, bucketNameForKind } from './st
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
+// デバッグ用ログ
+console.log('🔍 Supabase環境変数チェック:', {
+  url: supabaseUrl,
+  keyLength: supabaseAnonKey?.length || 0,
+  urlIsPlaceholder: supabaseUrl === 'https://your-project.supabase.co',
+  keyIsPlaceholder: supabaseAnonKey === 'your-supabase-anon-key-here',
+});
+
 const isSupabaseConfigured = !!(supabaseUrl && supabaseAnonKey &&
   supabaseUrl !== 'https://your-project.supabase.co' &&
   supabaseAnonKey !== 'your-supabase-anon-key-here');

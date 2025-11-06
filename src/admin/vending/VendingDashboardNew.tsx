@@ -6,12 +6,21 @@ import { generateSlug } from '../../utils/slugGenerator';
 import { HubListNew } from './components/HubListNew';
 import { HubDetailPanelNew } from './components/HubDetailPanelNew';
 import CommonCatalogManager from './components/CommonCatalogManager';
+import { useTenantRankPlan } from '../../hooks/useTenantRankPlan';
+import { canCreateHub } from '../../utils/tenantLimits';
 
 const STORAGE_KEY = 'vending_machines_data';
 
 type ViewMode = 'hub' | 'catalog';
 
 const VendingDashboardNew: React.FC = () => {
+  // TODO: マルチテナント対応完了後、実際のテナントIDに置き換える
+  // 現在はデモ用に固定のテナントID=1を使用
+  const DEMO_TENANT_ID = 1;
+
+  // ランクプラン取得（デモ用）
+  const { plan, loading: planLoading } = useTenantRankPlan(DEMO_TENANT_ID);
+
   // 表示モード切替
   const [viewMode, setViewMode] = useState<ViewMode>('hub');
 
@@ -54,6 +63,15 @@ const VendingDashboardNew: React.FC = () => {
 
   // 新規GIFT HUB追加
   const handleAddMachine = () => {
+    // ランクプランによる制限チェック
+    const currentCount = machines.length;
+    const limitCheck = canCreateHub(currentCount, plan);
+
+    if (!limitCheck.allowed) {
+      alert(`❌ ${limitCheck.reason}\n\n現在: ${limitCheck.currentCount}/${limitCheck.maxAllowed}個`);
+      return;
+    }
+
     const machineName = '新しいGIFT HUB';
     const newMachine: VendingMachine = {
       id: `machine-${Date.now()}`,
