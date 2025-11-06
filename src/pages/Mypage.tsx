@@ -4471,9 +4471,6 @@ function LockCard({ isMobile }: { isMobile: boolean }) {
     tenant_name: '',
     description: '',
     rank_plan: 'STUDIO' as import('../types/tenantApplication').RankPlan,
-    has_custom_token: false,
-    custom_token_address: '',
-    custom_token_reason: '',
   });
 
   const { application, loading: checkingApplication } = useMyTenantApplication();
@@ -4494,9 +4491,6 @@ function LockCard({ isMobile }: { isMobile: boolean }) {
         tenant_name: '',
         description: '',
         rank_plan: 'STUDIO',
-        has_custom_token: false,
-        custom_token_address: '',
-        custom_token_reason: '',
       });
     } else if (error) {
       alert(`申請に失敗しました: ${error}`);
@@ -4783,64 +4777,6 @@ function LockCard({ isMobile }: { isMobile: boolean }) {
                 );
               })}
             </div>
-          </div>
-
-          {/* カスタムトークン */}
-          <div style={{ marginBottom: 24 }}>
-            <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', marginBottom: 12 }}>
-              <input
-                type="checkbox"
-                checked={formData.has_custom_token}
-                onChange={(e) => setFormData({ ...formData, has_custom_token: e.target.checked })}
-                style={{ marginRight: 8 }}
-              />
-              <span style={{ fontSize: 13, fontWeight: 600 }}>カスタムユーティリティトークンを使用する（審査必要）</span>
-            </label>
-            {formData.has_custom_token && (
-              <div style={{
-                padding: isMobile ? 12 : 16,
-                background: 'rgba(245, 158, 11, 0.1)',
-                border: '1px solid rgba(245, 158, 11, 0.3)',
-                borderRadius: 8,
-                marginBottom: 12,
-              }}>
-                <div style={{ fontSize: 12, opacity: 0.8, marginBottom: 12 }}>
-                  カスタムトークンは資産価値のない完全ユーティリティトークンのみ使用可能です
-                </div>
-                <input
-                  type="text"
-                  value={formData.custom_token_address}
-                  onChange={(e) => setFormData({ ...formData, custom_token_address: e.target.value })}
-                  placeholder="トークンアドレス (0x...)"
-                  style={{
-                    width: '100%',
-                    padding: isMobile ? '8px 10px' : '10px 12px',
-                    background: 'rgba(255,255,255,0.05)',
-                    border: '1px solid rgba(255,255,255,0.1)',
-                    borderRadius: 6,
-                    color: '#fff',
-                    fontSize: 13,
-                    marginBottom: 8,
-                  }}
-                />
-                <textarea
-                  value={formData.custom_token_reason}
-                  onChange={(e) => setFormData({ ...formData, custom_token_reason: e.target.value })}
-                  placeholder="利用理由（審査用）"
-                  rows={2}
-                  style={{
-                    width: '100%',
-                    padding: isMobile ? '8px 10px' : '10px 12px',
-                    background: 'rgba(255,255,255,0.05)',
-                    border: '1px solid rgba(255,255,255,0.1)',
-                    borderRadius: 6,
-                    color: '#fff',
-                    fontSize: 13,
-                    resize: 'vertical',
-                  }}
-                />
-              </div>
-            )}
           </div>
 
           {/* 送信ボタン */}
