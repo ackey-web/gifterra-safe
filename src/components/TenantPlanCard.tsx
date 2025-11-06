@@ -70,18 +70,18 @@ const getPlanIcon = (plan: RankPlan): string => {
 
 /**
  * プラン別ヘッダー画像パス
- * 画像は /public/images/plan-headers/ に配置してください
+ * 画像は /public/ に配置してください
  */
 const getPlanHeaderImage = (plan: RankPlan): string => {
   switch (plan) {
     case 'STUDIO':
-      return '/images/plan-headers/studio.png';
+      return '/studio.png';
     case 'STUDIO_PRO':
-      return '/images/plan-headers/studio-pro.png';
+      return '/studio-pro.png';
     case 'STUDIO_PRO_MAX':
-      return '/images/plan-headers/studio-pro-max.png';
+      return '/studio-pro-max.png';
     default:
-      return '/images/plan-headers/default.png';
+      return '/flow.png';
   }
 };
 
