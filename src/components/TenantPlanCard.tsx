@@ -69,6 +69,23 @@ const getPlanIcon = (plan: RankPlan): string => {
 };
 
 /**
+ * プラン別ヘッダー画像パス
+ * 画像は /public/images/plan-headers/ に配置してください
+ */
+const getPlanHeaderImage = (plan: RankPlan): string => {
+  switch (plan) {
+    case 'STUDIO':
+      return '/images/plan-headers/studio.png';
+    case 'STUDIO_PRO':
+      return '/images/plan-headers/studio-pro.png';
+    case 'STUDIO_PRO_MAX':
+      return '/images/plan-headers/studio-pro-max.png';
+    default:
+      return '/images/plan-headers/default.png';
+  }
+};
+
+/**
  * 次のプランを取得
  */
 const getNextPlan = (currentPlan: RankPlan): RankPlan | null => {
@@ -96,11 +113,39 @@ export function TenantPlanCard({ isMobile, currentPlan, tenantId }: TenantPlanCa
       border: getPlanBorder(plan),
       borderRadius: isMobile ? 16 : 24,
       padding: isMobile ? 24 : 32,
+      overflow: 'hidden',
     }}>
       {/* 現在のプランヘッダー */}
       <div style={{ textAlign: 'center', marginBottom: 24 }}>
-        <div style={{ fontSize: isMobile ? 48 : 64, marginBottom: 12 }}>
-          {getPlanIcon(plan)}
+        {/* プラン別ヘッダー画像 */}
+        <div style={{
+          width: '100%',
+          height: isMobile ? 120 : 160,
+          marginBottom: 16,
+          borderRadius: 12,
+          overflow: 'hidden',
+          background: 'rgba(255,255,255,0.03)',
+        }}>
+          <img
+            src={getPlanHeaderImage(plan)}
+            alt={`${planDetails.name} header`}
+            style={{
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+            }}
+            onError={(e) => {
+              // 画像読み込み失敗時はアイコンで代替
+              e.currentTarget.style.display = 'none';
+              const parent = e.currentTarget.parentElement;
+              if (parent) {
+                parent.style.display = 'flex';
+                parent.style.alignItems = 'center';
+                parent.style.justifyContent = 'center';
+                parent.innerHTML = `<div style="font-size: ${isMobile ? 48 : 64}px">${getPlanIcon(plan)}</div>`;
+              }
+            }}
+          />
         </div>
         <div style={{ fontSize: isMobile ? 16 : 18, opacity: 0.7, marginBottom: 4 }}>
           現在のプラン
