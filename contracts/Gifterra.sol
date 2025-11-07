@@ -37,6 +37,7 @@ contract Gifterra is ERC721Enumerable, Ownable {
     mapping(address => uint256) public userTokenId;
     mapping(uint256 => string) public rankNFTUris;
     mapping(uint256 => uint256) public rankThresholds;
+    mapping(uint256 => string) public rankNames; // レベル → ランク名（テナントオーナーがカスタマイズ可能）
 
     uint256 public nextTokenId = 1;
 
@@ -51,6 +52,7 @@ contract Gifterra is ERC721Enumerable, Ownable {
     event MaxRankLevelUpdated(uint256 oldLevel, uint256 newLevel);
     event RankThresholdUpdated(uint256 indexed level, uint256 amount);
     event TipWalletUpdated(address indexed oldWallet, address indexed newWallet);
+    event RankNameUpdated(uint256 indexed level, string name);
 
     // ========================================
     // コンストラクタ
@@ -124,6 +126,19 @@ contract Gifterra is ERC721Enumerable, Ownable {
     }
 
     /**
+     * @notice ランク名の設定
+     * @dev テナントオーナーが自由にランク名をカスタマイズ可能
+     * @param level ランクレベル
+     * @param name ランク名（例: "ブロンズ", "シルバー", "Gold Member"など）
+     */
+    function setRankName(uint256 level, string calldata name) external onlyOwner {
+        require(level > 0 && level <= maxRankLevel, "Invalid level");
+        require(bytes(name).length > 0, "Empty name");
+        rankNames[level] = name;
+        emit RankNameUpdated(level, name);
+    }
+
+    /**
      * @notice ランクプランで初期化
      * @dev GifterraFactoryから呼び出される、固定プラン制に対応
      * @param rankPlanRegistry RankPlanRegistryコントラクトアドレス
@@ -139,11 +154,12 @@ contract Gifterra is ERC721Enumerable, Ownable {
         // 段階数を設定
         maxRankLevel = plan.stages;
 
-        // 各レベルの閾値とURIを設定
+        // 各レベルの閾値、URI、ランク名を設定
         for (uint256 i = 0; i < plan.stages; i++) {
             uint256 level = i + 1; // レベルは1始まり
             rankThresholds[level] = plan.thresholds[i];
             rankNFTUris[level] = plan.uriTemplates[i];
+            rankNames[level] = plan.rankNames[i]; // デフォルトランク名も保存
         }
 
         emit MaxRankLevelUpdated(0, plan.stages);
@@ -251,6 +267,28 @@ contract Gifterra is ERC721Enumerable, Ownable {
     function tokenLevel(uint256 tokenId) public view returns (uint256) {
         address owner = ownerOf(tokenId);
         return userNFTLevel[owner];
+    }
+
+    /**
+     * @notice ランク名取得
+     * @param level ランクレベル
+     * @return ランク名（テナントオーナーがカスタマイズした名前）
+     */
+    function getRankName(uint256 level) public view returns (string memory) {
+        require(level > 0 && level <= maxRankLevel, "Invalid level");
+        return rankNames[level];
+    }
+
+    /**
+     * @notice 全ランク名を取得
+     * @return 全レベルのランク名配列
+     */
+    function getAllRankNames() public view returns (string[] memory) {
+        string[] memory names = new string[](maxRankLevel);
+        for (uint256 i = 0; i < maxRankLevel; i++) {
+            names[i] = rankNames[i + 1]; // レベルは1始まり
+        }
+        return names;
     }
 
     // ========================================

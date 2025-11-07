@@ -76,7 +76,6 @@ export function useThirdwebWalletAdapter(): WalletAdapter {
     connect: async () => {
       // ThirdWebは自動接続（autoConnect=true）
       // 手動接続は不要
-      console.log('[ThirdWeb] Auto-connect enabled');
     },
 
     disconnect: async () => {

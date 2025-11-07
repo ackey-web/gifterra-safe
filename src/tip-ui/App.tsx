@@ -738,7 +738,6 @@ export default function TipApp() {
             setSentimentState("idle");
           }
 
-          console.log("✅ Message and sentiment saved to Supabase");
         } catch (error) {
           console.error("Failed to save message/sentiment:", error);
           setSentimentState("idle");
@@ -746,7 +745,6 @@ export default function TipApp() {
           // フォールバック：外部Workers APIに保存
           try {
             await saveTxMessage(address, txHash, msg);
-            console.log("✅ Message saved to fallback storage");
           } catch (e) {
             console.warn("Fallback saveTxMessage also failed", e);
           }

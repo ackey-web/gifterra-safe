@@ -329,8 +329,13 @@ function Header({ viewMode, setViewMode, isMobile, tenantRank }: {
 
   // プランに応じたロゴ画像を取得
   const getHeaderLogo = () => {
-    // 承認済みテナントでプランが有効な場合
-    if (application?.status === 'approved' && tenantId && tenantRankPlan?.is_active) {
+    // 承認済みテナントでプランが有効な場合のみ
+    if (
+      application?.status === 'approved' &&
+      tenantId &&
+      tenantRankPlan &&
+      tenantRankPlan.is_active
+    ) {
       const plan = tenantRankPlan.rank_plan;
       switch (plan) {
         case 'STUDIO':
@@ -343,7 +348,7 @@ function Header({ viewMode, setViewMode, isMobile, tenantRank }: {
           return '/flow.png';
       }
     }
-    // デフォルト（無料ユーザー）
+    // デフォルト（テナント申請していない、または承認されていないユーザー）
     return '/flow.png';
   };
 

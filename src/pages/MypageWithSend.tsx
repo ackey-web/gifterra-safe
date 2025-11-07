@@ -204,21 +204,16 @@ export function MypageWithSend() {
 
       // 送金トランザクション
       const tx = await jpycContract.transfer(sendTo, amountWei);
-      console.log('Transaction sent:', tx.hash);
 
       // トランザクション完了を待つ
       await tx.wait();
-      console.log('Transaction confirmed');
 
       // kodomi記録（メッセージがある場合のみ）
       let kodomiRecorded = false;
       if (sendMessage && sendMessage.trim()) {
         try {
-          console.log('Recording kodomi message...');
-
           // AI感情分析
           const sentiment = await analyzeSentiment(sendMessage);
-          console.log('Sentiment analysis:', sentiment);
 
           // Supabaseにメッセージとsentimentを保存
           await saveTipMessageToSupabase(
@@ -228,7 +223,6 @@ export function MypageWithSend() {
             sentiment
           );
 
-          console.log('Kodomi message recorded successfully');
           kodomiRecorded = true;
         } catch (error) {
           console.error('Failed to record kodomi message:', error);
@@ -358,7 +352,6 @@ export function MypageWithSend() {
 
         const receipt = await tx.wait();
         txHashes.push(receipt.transactionHash);
-        console.log(`Sent to ${normalizedAddress}:`, receipt.transactionHash);
       }
 
       // 送金回数をインクリメント
