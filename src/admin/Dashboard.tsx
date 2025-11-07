@@ -22,7 +22,6 @@ import { fetchTxMessages } from "../lib/annotations_tx";
 import { setEmergencyFlag, readEmergencyFlag } from "../lib/emergency";
 import { analyzeContributionHeat, isOpenAIConfigured, type ContributionHeat } from "../lib/ai_analysis.ts";
 import VendingDashboardNew from "./vending/VendingDashboardNew";
-import InitialSetupPage from "./InitialSetupPage";
 import { uploadImage, deleteFileFromUrl } from "../lib/supabase";
 import { RewardUIManagementPage, type AdData } from "./reward/RewardUIManagementPage";
 import { useTenant } from "./contexts/TenantContext";
@@ -2404,8 +2403,6 @@ export default function AdminDashboard() {
         <VendingDashboardNew />
       ) : currentPage === "flag-nft-management" ? (
         <FlagNFTManagementPage />
-      ) : currentPage === "initial-setup" ? (
-        <InitialSetupPage />
       ) : currentPage === "tenant-management" ? (
         <TenantProfilePage />
       ) : (

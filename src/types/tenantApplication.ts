@@ -46,7 +46,7 @@ export interface TenantApplication {
   updated_at: string;
   approved_by: string | null;
   approved_at: string | null;
-  tenant_id: number | null;
+  tenant_id: string | null;  // UUID型に変更
   rejection_reason: string | null;
 }
 

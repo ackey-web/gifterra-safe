@@ -75,11 +75,11 @@ export function useMyTenantApplication() {
         .from('tenant_applications')
         .select('*')
         .eq('applicant_address', address.toLowerCase())
-        .eq('status', 'pending')
-        .maybeSingle();
+        .order('created_at', { ascending: false })
+        .limit(1);
 
       if (error) throw error;
-      setApplication(data);
+      setApplication(data && data.length > 0 ? data[0] : null);
     } catch (err) {
       console.error('❌ 自分の申請の取得に失敗:', err);
       setError(err instanceof Error ? err.message : 'Unknown error');

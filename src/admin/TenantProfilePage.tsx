@@ -7,6 +7,8 @@ interface TenantProfile {
   tenantName: string;
   description: string;
   thumbnail: string; // Supabase URL
+  paymentSplitterAddress: string; // PaymentSplitter contract address
+  adminAddresses: string[]; // テナント管理者のウォレットアドレス一覧
 }
 
 export default function TenantProfilePage() {
@@ -15,12 +17,15 @@ export default function TenantProfilePage() {
     tenantName: '',
     description: '',
     thumbnail: '',
+    paymentSplitterAddress: '',
+    adminAddresses: [],
   });
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [imagePreview, setImagePreview] = useState<string>('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [newAdminAddress, setNewAdminAddress] = useState('');
 
   // ローカルストレージから読み込み
   useEffect(() => {
@@ -75,6 +80,11 @@ export default function TenantProfilePage() {
 
     if (profile.description.length > 500) {
       setMessage({ type: 'error', text: '説明は500文字以内にしてください' });
+      return;
+    }
+
+    if (profile.paymentSplitterAddress && !/^0x[a-fA-F0-9]{40}$/.test(profile.paymentSplitterAddress)) {
+      setMessage({ type: 'error', text: '有効なPaymentSplitterアドレスを入力してください (0x... 形式)' });
       return;
     }
 
@@ -137,6 +147,48 @@ export default function TenantProfilePage() {
     navigator.clipboard.writeText(profile.tenantId);
     setMessage({ type: 'success', text: 'テナントIDをコピーしました' });
     setTimeout(() => setMessage(null), 2000);
+  };
+
+  // 管理者アドレスを追加
+  const handleAddAdmin = () => {
+    const trimmedAddress = newAdminAddress.trim().toLowerCase();
+
+    // バリデーション
+    if (!trimmedAddress) {
+      setMessage({ type: 'error', text: 'アドレスを入力してください' });
+      return;
+    }
+
+    if (!/^0x[a-fA-F0-9]{40}$/.test(trimmedAddress)) {
+      setMessage({ type: 'error', text: '有効なウォレットアドレスを入力してください (0x... 形式)' });
+      return;
+    }
+
+    if (profile.adminAddresses.includes(trimmedAddress)) {
+      setMessage({ type: 'error', text: 'このアドレスは既に登録されています' });
+      return;
+    }
+
+    // アドレスを追加
+    setProfile({
+      ...profile,
+      adminAddresses: [...profile.adminAddresses, trimmedAddress]
+    });
+    setNewAdminAddress('');
+    setMessage({ type: 'success', text: '管理者アドレスを追加しました' });
+    setTimeout(() => setMessage(null), 3000);
+  };
+
+  // 管理者アドレスを削除
+  const handleRemoveAdmin = (addressToRemove: string) => {
+    if (confirm(`管理者アドレス ${addressToRemove} を削除してもよろしいですか？`)) {
+      setProfile({
+        ...profile,
+        adminAddresses: profile.adminAddresses.filter(addr => addr !== addressToRemove)
+      });
+      setMessage({ type: 'success', text: '管理者アドレスを削除しました' });
+      setTimeout(() => setMessage(null), 3000);
+    }
   };
 
   return (
@@ -338,6 +390,174 @@ export default function TenantProfilePage() {
               </span>
             )}
           </p>
+        </div>
+
+        {/* PaymentSplitter アドレス */}
+        <div style={{ marginBottom: 24 }}>
+          <label style={{
+            display: 'block',
+            fontSize: 14,
+            fontWeight: 700,
+            color: '#374151',
+            marginBottom: 8,
+          }}>
+            PaymentSplitter コントラクトアドレス
+          </label>
+          <input
+            type="text"
+            value={profile.paymentSplitterAddress}
+            onChange={(e) => setProfile({ ...profile, paymentSplitterAddress: e.target.value })}
+            placeholder="0x..."
+            style={{
+              width: '100%',
+              padding: '10px 12px',
+              background: '#ffffff',
+              border: '2px solid #d1d5db',
+              borderRadius: 6,
+              fontSize: 14,
+              color: '#1a1a1a',
+              fontFamily: 'monospace',
+            }}
+          />
+          <p style={{ margin: '8px 0 0 0', fontSize: 12, color: '#9ca3af' }}>
+            GIFT HUB購入時の収益分配を管理するスマートコントラクトのアドレスです
+          </p>
+        </div>
+
+        {/* テナント管理者権限 */}
+        <div style={{ marginBottom: 32 }}>
+          <label style={{
+            display: 'block',
+            fontSize: 14,
+            fontWeight: 700,
+            color: '#374151',
+            marginBottom: 8,
+          }}>
+            テナント管理者権限
+          </label>
+          <p style={{
+            fontSize: 13,
+            color: '#6b7280',
+            lineHeight: 1.6,
+            margin: '0 0 16px 0',
+          }}>
+            テナントオーナーと同等の管理権限を付与するウォレットアドレスを登録します。
+          </p>
+
+          {/* アドレス追加フォーム */}
+          <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+            <input
+              type="text"
+              value={newAdminAddress}
+              onChange={(e) => setNewAdminAddress(e.target.value)}
+              onKeyPress={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleAddAdmin();
+                }
+              }}
+              placeholder="0x..."
+              style={{
+                flex: 1,
+                padding: '10px 12px',
+                background: '#ffffff',
+                border: '2px solid #d1d5db',
+                borderRadius: 6,
+                fontSize: 14,
+                color: '#1a1a1a',
+                fontFamily: 'monospace',
+              }}
+            />
+            <button
+              onClick={handleAddAdmin}
+              style={{
+                padding: '10px 16px',
+                background: '#667eea',
+                border: 'none',
+                borderRadius: 6,
+                color: '#ffffff',
+                fontSize: 14,
+                fontWeight: 600,
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              ➕ 追加
+            </button>
+          </div>
+
+          {/* 登録済み管理者リスト */}
+          {profile.adminAddresses.length > 0 && (
+            <div>
+              <label style={{
+                display: 'block',
+                fontSize: 13,
+                fontWeight: 600,
+                marginBottom: 12,
+                color: '#6b7280',
+              }}>
+                登録済みテナント管理者 ({profile.adminAddresses.length}件)
+              </label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {profile.adminAddresses.map((address, index) => (
+                  <div
+                    key={index}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '12px 16px',
+                      background: '#d1fae5',
+                      border: '1px solid #10b981',
+                      borderRadius: 6,
+                      gap: 12,
+                    }}
+                  >
+                    <code style={{
+                      flex: 1,
+                      fontSize: 13,
+                      color: '#065f46',
+                      fontFamily: 'monospace',
+                      wordBreak: 'break-all',
+                    }}>
+                      {address}
+                    </code>
+                    <button
+                      onClick={() => handleRemoveAdmin(address)}
+                      style={{
+                        padding: '6px 12px',
+                        background: '#fee2e2',
+                        border: '1px solid #ef4444',
+                        borderRadius: 4,
+                        color: '#991b1b',
+                        fontSize: 12,
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      ❌ 削除
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* 登録がない場合の表示 */}
+          {profile.adminAddresses.length === 0 && (
+            <div style={{
+              padding: 16,
+              background: '#fef3c7',
+              border: '1px solid #f59e0b',
+              borderRadius: 6,
+              fontSize: 13,
+              color: '#92400e',
+              textAlign: 'center',
+            }}>
+              まだテナント管理者が登録されていません
+            </div>
+          )}
         </div>
 
         {/* 保存ボタン */}

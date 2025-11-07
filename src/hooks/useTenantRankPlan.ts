@@ -73,7 +73,7 @@ export function useAllTenantRankPlans() {
 /**
  * 特定テナントのランクプラン取得Hook
  */
-export function useTenantRankPlan(tenantId: number | null | undefined) {
+export function useTenantRankPlan(tenantId: string | null | undefined) {
   const [plan, setPlan] = useState<TenantRankPlanData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

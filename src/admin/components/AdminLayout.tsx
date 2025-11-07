@@ -2,7 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import AdminSidebar, { type PageType } from './AdminSidebar';
 import AdminHeader from './AdminHeader';
-import { RequireOwner } from '../contexts/TenantContext';
+import { RequireOwner, useTenant } from '../contexts/TenantContext';
+import { useTenantRankPlan } from '../../hooks/useTenantRankPlan';
 
 interface AdminLayoutProps {
   children: React.ReactNode;
@@ -21,6 +22,16 @@ export default function AdminLayout({
 }: AdminLayoutProps) {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const { tenant } = useTenant();
+
+  // デフォルトテナント（'default'）の場合は、ランクプランをSTUDIOに固定
+  // 将来的には実際のUUIDベースのテナントIDを使用
+  const isDefaultTenant = tenant.id === 'default';
+  const tenantUuid = isDefaultTenant ? undefined : tenant.id;
+  const { data: rankPlan } = useTenantRankPlan(tenantUuid);
+
+  // デフォルトテナントの場合はSTUDIOプランを使用
+  const effectiveRankPlan = isDefaultTenant ? 'STUDIO' as const : rankPlan?.rank_plan;
 
   // レスポンシブ対応：画面幅を監視
   useEffect(() => {
@@ -63,6 +74,7 @@ export default function AdminLayout({
             onPageChange={onPageChange}
             isCollapsed={isSidebarCollapsed}
             onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+            rankPlan={effectiveRankPlan}
           />
 
           {/* メインコンテンツエリア */}

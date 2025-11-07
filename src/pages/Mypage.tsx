@@ -320,6 +320,32 @@ function Header({ viewMode, setViewMode, isMobile, tenantRank }: {
 }) {
   const disconnect = useDisconnect();
   const { logout: privyLogout, authenticated } = usePrivy();
+  const address = useAddress();
+
+  // テナント申請情報取得
+  const { application } = useMyTenantApplication();
+  const tenantId = application?.status === 'approved' ? application.tenant_id : null;
+  const { plan: tenantRankPlan } = useTenantRankPlan(tenantId);
+
+  // プランに応じたロゴ画像を取得
+  const getHeaderLogo = () => {
+    // 承認済みテナントでプランが有効な場合
+    if (application?.status === 'approved' && tenantId && tenantRankPlan?.is_active) {
+      const plan = tenantRankPlan.rank_plan;
+      switch (plan) {
+        case 'STUDIO':
+          return '/studio.png';
+        case 'STUDIO_PRO':
+          return '/studio-pro.png';
+        case 'STUDIO_PRO_MAX':
+          return '/studio-pro-max.png';
+        default:
+          return '/flow.png';
+      }
+    }
+    // デフォルト（無料ユーザー）
+    return '/flow.png';
+  };
 
   // R3（承認済みテナント）のみトグル表示
   const showToggle = tenantRank === 'R3';
@@ -351,13 +377,14 @@ function Header({ viewMode, setViewMode, isMobile, tenantRank }: {
       alignItems: 'center',
       justifyContent: 'space-between',
     }}>
-      {/* 左：ロゴ画像 */}
+      {/* 左：ロゴ画像（プラン別） */}
       <img
-        src="/FLOW.png"
-        alt="FLOW"
+        src={getHeaderLogo()}
+        alt="Logo"
         style={{
-          height: isMobile ? 60 : 100,
+          height: isMobile ? 40 : 60,
           width: 'auto',
+          maxWidth: isMobile ? '200px' : '300px',
           objectFit: 'contain',
           opacity: 1,
         }}
@@ -707,6 +734,11 @@ function FlowModeContent({
   tenantRank: TenantRank;
   address: string | undefined;
 }) {
+  // useAddress()を呼び出して実際の接続アドレスを取得
+  const thirdwebAddress = useAddress();
+  // propsのaddressまたはthirdwebAddressを使用（優先順位: props > thirdweb）
+  const connectedAddress = address || thirdwebAddress;
+
   // 承認済みテナントの申請情報を取得
   const { application } = useMyTenantApplication();
 
@@ -714,9 +746,23 @@ function FlowModeContent({
   const tenantId = application?.status === 'approved' ? application.tenant_id : null;
   const { plan: tenantRankPlan } = useTenantRankPlan(tenantId);
 
-  // R3（承認済みテナント）の場合はテナントプランカードを表示、それ以外はLockカード
-  const isApprovedTenant = tenantRank === 'R3' && application?.status === 'approved' && tenantId;
+  // 承認済み申請とアクティブなランクプランがある場合はテナントプランカードを表示
+  // 注: tenantRank は 'R3' でなくても、DBに承認済み申請があれば表示する（テスト用に緩和）
+  const isApprovedTenant = application?.status === 'approved' && tenantId && tenantRankPlan?.is_active;
   const showLockCard = !isApprovedTenant;
+
+  // 🔍 デバッグ: TenantPlanCard表示条件をログ出力
+  console.log('🔍 TenantPlanCard表示条件チェック:', {
+    connectedAddress,
+    displayAddress: address,
+    tenantRank,
+    application,
+    applicationStatus: application?.status,
+    tenantId,
+    isApprovedTenant,
+    willRenderTenantPlanCard: isApprovedTenant && tenantId,
+    tenantRankPlan
+  });
 
   return (
     <>
@@ -747,15 +793,37 @@ function FlowModeContent({
       <HistorySection isMobile={isMobile} address={address} />
 
       {/* 5. プランカード / ロックカード */}
-      {isApprovedTenant && tenantId ? (
-        <TenantPlanCard
-          isMobile={isMobile}
-          currentPlan={tenantRankPlan}
-          tenantId={tenantId}
-        />
-      ) : showLockCard && (
-        <LockCard isMobile={isMobile} />
-      )}
+      {(() => {
+        console.log('🔍 Rendering decision point:', {
+          isApprovedTenant,
+          tenantId,
+          bothConditions: isApprovedTenant && tenantId,
+          willRenderTenantPlanCard: (isApprovedTenant && tenantId) ? 'YES' : 'NO',
+          showLockCard,
+          tenantRankPlan,
+        });
+
+        if (isApprovedTenant && tenantId) {
+          console.log('✅ About to render TenantPlanCard with:', {
+            isMobile,
+            currentPlan: tenantRankPlan,
+            tenantId,
+          });
+          return (
+            <TenantPlanCard
+              isMobile={isMobile}
+              currentPlan={tenantRankPlan}
+              tenantId={tenantId}
+            />
+          );
+        } else if (showLockCard) {
+          console.log('⚠️ Rendering LockCard instead');
+          return <LockCard isMobile={isMobile} />;
+        } else {
+          console.log('❌ Rendering nothing (no conditions met)');
+          return null;
+        }
+      })()}
     </>
   );
 }
@@ -3106,7 +3174,7 @@ function WalletInfo({ isMobile }: { isMobile: boolean }) {
   );
 }
 
-// 3. 全体kodomiタンク
+// 3. 全体kodomiタンク（近日公開）
 function OverallKodomiTank({ isMobile }: { isMobile: boolean }) {
   const color = '#667eea';
   const percentage = 65; // TODO: 実データから算出
@@ -3133,6 +3201,8 @@ function OverallKodomiTank({ isMobile }: { isMobile: boolean }) {
           borderRadius: '50% 50% 40% 40% / 10% 10% 40% 40%',
           overflow: 'hidden',
           boxShadow: 'inset 0 0 60px rgba(0,0,0,0.4), 0 10px 40px rgba(0,0,0,0.5)',
+          filter: 'opacity(0.3) blur(1px)',
+          pointerEvents: 'none',
         }}>
           {/* 液体 */}
           <div style={{
@@ -3367,6 +3437,8 @@ function ContributionTenants({ isMobile }: { isMobile: boolean }) {
         padding: isMobile ? 20 : 28,
         boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
         marginBottom: isMobile ? 40 : 60,
+        filter: 'opacity(0.3) blur(1px)',
+        pointerEvents: 'none',
       }}>
         <div style={{
           display: 'flex',
@@ -4523,6 +4595,8 @@ function LockCard({ isMobile }: { isMobile: boolean }) {
         border: '1px solid rgba(16, 185, 129, 0.3)',
         borderRadius: isMobile ? 16 : 24,
         padding: isMobile ? 24 : 32,
+        filter: 'opacity(0.3) blur(1px)',
+        pointerEvents: 'none',
       }}>
         <div style={{ fontSize: isMobile ? 36 : 48, marginBottom: 16, textAlign: 'center' }}>⏳</div>
         <h3 style={{
@@ -4573,6 +4647,8 @@ function LockCard({ isMobile }: { isMobile: boolean }) {
       border: '1px solid rgba(102, 126, 234, 0.2)',
       borderRadius: isMobile ? 16 : 24,
       padding: isMobile ? 24 : 32,
+      filter: 'opacity(0.3) blur(1px)',
+      pointerEvents: 'none',
     }}>
       {!showForm ? (
         <>
@@ -4624,7 +4700,7 @@ function LockCard({ isMobile }: { isMobile: boolean }) {
               <div style={{ fontSize: 20 }}>🏪</div>
               <div>
                 <div style={{ fontSize: isMobile ? 13 : 14, fontWeight: 600 }}>GIFT HUB</div>
-                <div style={{ fontSize: isMobile ? 11 : 12, opacity: 0.6 }}>特典管理システム</div>
+                <div style={{ fontSize: isMobile ? 11 : 12, opacity: 0.6 }}>デジタル特典自動配布システム（1基につき3種類のデジタル特典）</div>
               </div>
             </div>
             <div style={{
@@ -4639,6 +4715,20 @@ function LockCard({ isMobile }: { isMobile: boolean }) {
               <div>
                 <div style={{ fontSize: isMobile ? 13 : 14, fontWeight: 600 }}>フラグNFT</div>
                 <div style={{ fontSize: isMobile ? 11 : 12, opacity: 0.6 }}>到達証明の発行</div>
+              </div>
+            </div>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+              padding: isMobile ? '10px 12px' : '12px 16px',
+              background: 'rgba(255,255,255,0.05)',
+              borderRadius: 8,
+            }}>
+              <div style={{ fontSize: 20 }}>🏅</div>
+              <div>
+                <div style={{ fontSize: isMobile ? 13 : 14, fontWeight: 600 }}>SBTランク</div>
+                <div style={{ fontSize: isMobile ? 11 : 12, opacity: 0.6 }}>累積チップ数に応じたMINT&BURN式ランクアップSBT付与</div>
               </div>
             </div>
           </div>
@@ -4788,7 +4878,7 @@ function LockCard({ isMobile }: { isMobile: boolean }) {
                     <div style={{ flex: 1 }}>
                       <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>{plan.replace('_', ' ')}</div>
                       <div style={{ fontSize: 12, opacity: 0.7 }}>
-                        {details.maxHubs}個のGIFT HUB / {details.sbtRanks}段階SBT / ¥{monthlyFee.toLocaleString()}/月
+                        {details.maxHubs}基のGIFT HUB / {details.sbtRanks}段階ランクアップSBT(ミント&バーン) / ¥{monthlyFee.toLocaleString()}/月
                       </div>
                     </div>
                   </label>

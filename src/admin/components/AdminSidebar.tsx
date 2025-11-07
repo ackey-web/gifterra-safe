@@ -1,5 +1,6 @@
 // src/admin/components/AdminSidebar.tsx
 import React from 'react';
+import type { RankPlan } from '../../types/tenantApplication';
 
 export type PageType =
   | "dashboard"
@@ -7,7 +8,6 @@ export type PageType =
   | "reward-ui-management"
   | "vending-management"
   | "flag-nft-management"
-  | "initial-setup"
   | "tenant-management";
 
 interface MenuItem {
@@ -28,7 +28,27 @@ interface AdminSidebarProps {
   onPageChange: (page: PageType) => void;
   isCollapsed: boolean;
   onToggle: () => void;
+  rankPlan?: RankPlan | null; // ランクプラン情報（オプショナル）
 }
+
+/**
+ * プラン別ヘッダー画像パス
+ * TenantPlanCard.tsx と同じロジック
+ */
+const getPlanHeaderImage = (plan: RankPlan | null | undefined): string => {
+  if (!plan) return '/flow.png'; // デフォルト
+
+  switch (plan) {
+    case 'STUDIO':
+      return '/studio.png';
+    case 'STUDIO_PRO':
+      return '/studio-pro.png';
+    case 'STUDIO_PRO_MAX':
+      return '/studio-pro-max.png';
+    default:
+      return '/flow.png';
+  }
+};
 
 const MENU_GROUPS: MenuGroup[] = [
   {
@@ -52,7 +72,6 @@ const MENU_GROUPS: MenuGroup[] = [
     title: "システム",
     icon: "⚙️",
     items: [
-      { id: "initial-setup", label: "初期設定", icon: "⚙️", color: "#6b7280" },
       { id: "tenant-management", label: "テナント管理", icon: "🏢", color: "#7c2d12" },
     ]
   }
@@ -62,8 +81,11 @@ export default function AdminSidebar({
   currentPage,
   onPageChange,
   isCollapsed,
-  onToggle
+  onToggle,
+  rankPlan
 }: AdminSidebarProps) {
+  const planImage = getPlanHeaderImage(rankPlan);
+
   return (
     <aside
       style={{
@@ -78,7 +100,7 @@ export default function AdminSidebar({
         overflowX: "hidden",
       }}
     >
-      {/* ロゴ＆トグルボタン */}
+      {/* ランクプラン画像＆トグルボタン */}
       <div
         style={{
           padding: "16px 12px",
@@ -90,11 +112,20 @@ export default function AdminSidebar({
         }}
       >
         {!isCollapsed && (
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <img src="/gifterra-logo.png" alt="GIFTERRA" style={{ height: 24 }} />
-            <span style={{ fontSize: 14, fontWeight: 800, color: "#fff" }}>
-              Admin
-            </span>
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            flex: 1,
+          }}>
+            <img
+              src={planImage}
+              alt="Rank Plan"
+              style={{
+                height: 40,
+                objectFit: "contain",
+              }}
+            />
           </div>
         )}
         <button

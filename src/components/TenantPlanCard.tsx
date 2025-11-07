@@ -1,7 +1,7 @@
 // src/components/TenantPlanCard.tsx
 // 承認済みテナント向けプラン表示・アップグレードカード
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { RankPlan } from '../types/tenantApplication';
 import { RANK_PLANS } from '../types/tenantApplication';
 import type { TenantRankPlanData } from '../hooks/useTenantRankPlan';
@@ -10,7 +10,7 @@ import { getPlanPrice } from '../hooks/useRankPlanPricing';
 interface TenantPlanCardProps {
   isMobile: boolean;
   currentPlan: TenantRankPlanData | null;
-  tenantId: number;
+  tenantId: string;  // UUID型に変更
 }
 
 /**
@@ -97,8 +97,19 @@ const getNextPlan = (currentPlan: RankPlan): RankPlan | null => {
 export function TenantPlanCard({ isMobile, currentPlan, tenantId }: TenantPlanCardProps) {
   const [showUpgradeForm, setShowUpgradeForm] = useState(false);
 
+  console.log('🎯 TenantPlanCard レンダリング開始:', { currentPlan, tenantId, isMobile });
+
+  // マウント/アンマウント追跡
+  useEffect(() => {
+    console.log('✅ TenantPlanCard MOUNTED');
+    return () => {
+      console.log('❌ TenantPlanCard UNMOUNTED');
+    };
+  }, []);
+
   if (!currentPlan || !currentPlan.is_active) {
     // プランが存在しないか非アクティブの場合は何も表示しない
+    console.log('❌ TenantPlanCard: プランが存在しないか非アクティブ:', currentPlan);
     return null;
   }
 
@@ -117,36 +128,6 @@ export function TenantPlanCard({ isMobile, currentPlan, tenantId }: TenantPlanCa
     }}>
       {/* 現在のプランヘッダー */}
       <div style={{ textAlign: 'center', marginBottom: 24 }}>
-        {/* プラン別ヘッダー画像 */}
-        <div style={{
-          width: '100%',
-          height: isMobile ? 120 : 160,
-          marginBottom: 16,
-          borderRadius: 12,
-          overflow: 'hidden',
-          background: 'rgba(255,255,255,0.03)',
-        }}>
-          <img
-            src={getPlanHeaderImage(plan)}
-            alt={`${planDetails.name} header`}
-            style={{
-              width: '100%',
-              height: '100%',
-              objectFit: 'cover',
-            }}
-            onError={(e) => {
-              // 画像読み込み失敗時はアイコンで代替
-              e.currentTarget.style.display = 'none';
-              const parent = e.currentTarget.parentElement;
-              if (parent) {
-                parent.style.display = 'flex';
-                parent.style.alignItems = 'center';
-                parent.style.justifyContent = 'center';
-                parent.innerHTML = `<div style="font-size: ${isMobile ? 48 : 64}px">${getPlanIcon(plan)}</div>`;
-              }
-            }}
-          />
-        </div>
         <div style={{ fontSize: isMobile ? 16 : 18, opacity: 0.7, marginBottom: 4 }}>
           現在のプラン
         </div>
@@ -180,11 +161,11 @@ export function TenantPlanCard({ isMobile, currentPlan, tenantId }: TenantPlanCa
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: isMobile ? 13 : 14 }}>
             <span style={{ opacity: 0.7 }}>• GIFT HUB:</span>
-            <span style={{ fontWeight: 600 }}>{planDetails.maxHubs}個</span>
+            <span style={{ fontWeight: 600 }}>{planDetails.maxHubs}基（各3種類のデジタル特典）</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: isMobile ? 13 : 14 }}>
             <span style={{ opacity: 0.7 }}>• SBTランク:</span>
-            <span style={{ fontWeight: 600 }}>{planDetails.sbtRanks}段階</span>
+            <span style={{ fontWeight: 600 }}>{planDetails.sbtRanks}段階（累積チップ数に応じたMINT&BURN式）</span>
           </div>
           {planDetails.hasAdvancedAnalytics && (
             <div style={{ fontSize: isMobile ? 13 : 14, opacity: 0.9 }}>
@@ -256,7 +237,7 @@ export function TenantPlanCard({ isMobile, currentPlan, tenantId }: TenantPlanCa
               }}>
                 {nextPlanDetails.maxHubs > planDetails.maxHubs && (
                   <div style={{ marginBottom: 6 }}>
-                    + GIFT HUB {nextPlanDetails.maxHubs - planDetails.maxHubs}個追加
+                    + GIFT HUB {nextPlanDetails.maxHubs - planDetails.maxHubs}基追加
                   </div>
                 )}
                 {nextPlanDetails.sbtRanks > planDetails.sbtRanks && (
