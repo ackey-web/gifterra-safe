@@ -2,7 +2,7 @@
 // テナント申請関連の型定義
 
 /**
- * ランクプラン
+ * ランクプラン（Smart ContractとSupabaseで統一）
  * - STUDIO: 1 GIFT HUB, 3段階SBT, 1,500円/月
  * - STUDIO_PRO: 3 GIFT HUB, 5段階SBT, 3,800円/月
  * - STUDIO_PRO_MAX: 10 GIFT HUB, 10段階SBT, 9,800円/月
@@ -48,6 +48,12 @@ export interface TenantApplication {
   approved_at: string | null;
   tenant_id: string | null;  // UUID型に変更
   rejection_reason: string | null;
+  // GifterraFactory.createTenant()でデプロイされるコントラクトアドレス
+  gifterra_address: string | null;
+  reward_nft_address: string | null;
+  pay_splitter_address: string | null;
+  flag_nft_address: string | null;
+  random_reward_engine_address: string | null;
 }
 
 /**
@@ -70,7 +76,7 @@ export const RANK_PLANS: Record<RankPlan, RankPlanDetails> = {
     id: 'STUDIO',
     name: 'STUDIO',
     maxHubs: 1,
-    sbtRanks: 3,
+    sbtRanks: 3, // 3段階: Beginner → Supporter → Champion
     monthlyFee: 1500,
     description: 'スタートアップに最適なベーシックプラン',
     hasCustomToken: false,
@@ -82,7 +88,7 @@ export const RANK_PLANS: Record<RankPlan, RankPlanDetails> = {
     id: 'STUDIO_PRO',
     name: 'STUDIO PRO',
     maxHubs: 3,
-    sbtRanks: 5,
+    sbtRanks: 5, // 5段階: Beginner → Bronze → Silver → Gold → Platinum
     monthlyFee: 3800,
     description: '成長企業向けプロフェッショナルプラン',
     hasCustomToken: false,
@@ -94,7 +100,7 @@ export const RANK_PLANS: Record<RankPlan, RankPlanDetails> = {
     id: 'STUDIO_PRO_MAX',
     name: 'STUDIO PRO MAX',
     maxHubs: 10,
-    sbtRanks: 10,
+    sbtRanks: 10, // 10段階: Beginner → Bronze → Silver → Gold → Platinum → Diamond → Ruby → Sapphire → Emerald → Legend
     monthlyFee: 9800,
     description: 'エンタープライズ向けプレミアムプラン',
     hasCustomToken: true,
@@ -105,7 +111,13 @@ export const RANK_PLANS: Record<RankPlan, RankPlanDetails> = {
 };
 
 /**
- * ランクプランをコントラクトのuint8に変換
+ * ランクプランをコントラクトのenum値に変換（GifterraFactory.createTenant用）
+ *
+ * コントラクト側のenum PlanType:
+ * - STUDIO = 0
+ * - STUDIO_PRO = 1
+ * - STUDIO_PRO_MAX = 2
+ * - CUSTOM = 3
  */
 export function rankPlanToContractValue(plan: RankPlan): number {
   const mapping: Record<RankPlan, number> = {
@@ -117,7 +129,7 @@ export function rankPlanToContractValue(plan: RankPlan): number {
 }
 
 /**
- * コントラクトのuint8をランクプランに変換
+ * コントラクトのenum値をランクプランに変換
  */
 export function contractValueToRankPlan(value: number): RankPlan {
   const mapping: Record<number, RankPlan> = {

@@ -202,11 +202,28 @@ export function useApproveTenantApplication() {
 
       console.log('✅ テナント作成トランザクション成功:', tx);
 
-      // トランザクションからテナントIDを取得
+      // トランザクションからテナントIDとコントラクトアドレスを取得
       const receipt = tx.receipt;
-      const tenantId = receipt.events?.find((e: any) => e.event === 'TenantCreated')?.args?.tenantId;
+      const event = receipt.events?.find((e: any) => e.event === 'TenantCreated');
 
-      // DB更新: 承認済みに変更
+      // TenantCreated イベントの全パラメータを抽出
+      const tenantId = event?.args?.tenantId;
+      const gifterraAddress = event?.args?.gifterra;
+      const rewardNFTAddress = event?.args?.rewardNFT;
+      const paySplitterAddress = event?.args?.payLitter; // Note: イベントでは "payLitter" という名前
+      const flagNFTAddress = event?.args?.flagNFT;
+      const randomRewardEngineAddress = event?.args?.randomRewardEngine;
+
+      console.log('📋 デプロイされたコントラクトアドレス:', {
+        tenantId: tenantId ? Number(tenantId) : null,
+        gifterra: gifterraAddress,
+        rewardNFT: rewardNFTAddress,
+        paySplitter: paySplitterAddress,
+        flagNFT: flagNFTAddress,
+        randomRewardEngine: randomRewardEngineAddress,
+      });
+
+      // DB更新: 承認済みに変更 + コントラクトアドレスを保存
       const { error: updateError } = await supabase
         .from('tenant_applications')
         .update({
@@ -214,6 +231,11 @@ export function useApproveTenantApplication() {
           approved_by: adminAddress.toLowerCase(),
           approved_at: new Date().toISOString(),
           tenant_id: tenantId ? Number(tenantId) : null,
+          gifterra_address: gifterraAddress || null,
+          reward_nft_address: rewardNFTAddress || null,
+          pay_splitter_address: paySplitterAddress || null,
+          flag_nft_address: flagNFTAddress || null,
+          random_reward_engine_address: randomRewardEngineAddress || null,
         })
         .eq('id', application.id);
 

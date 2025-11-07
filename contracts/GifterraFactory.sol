@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/security/Pausable.sol";
 import "./Gifterra.sol";
 import "./RewardNFT_v2.sol";
 import "./GifterraPaySplitter.sol";
-import "./JourneyPass.sol";
+import "./FlagNFT.sol";
 import "./RandomRewardEngine.sol";
 import "./RankPlanRegistry.sol";
 
@@ -24,7 +24,7 @@ import "./RankPlanRegistry.sol";
  * 1. Gifterra (SBT) - TIP＋ランク管理
  * 2. RewardNFT_v2 - 報酬NFT配布
  * 3. GifterraPaySplitter - 支払い受付
- * 4. JourneyPass - スタンプラリー
+ * 4. FlagNFT - カテゴリ付きフラグNFT（スタンプラリー＋特典）
  * 5. RandomRewardEngine - ランダム報酬配布
  *
  * 【特許対応】
@@ -54,7 +54,7 @@ contract GifterraFactory is AccessControl, ReentrancyGuard, Pausable {
         address gifterra;           // Gifterra (SBT)
         address rewardNFT;          // RewardNFT_v2
         address payLitter;          // GifterraPaySplitter
-        address journeyPass;        // JourneyPass
+        address flagNFT;            // FlagNFT
         address randomRewardEngine; // RandomRewardEngine
     }
 
@@ -104,7 +104,7 @@ contract GifterraFactory is AccessControl, ReentrancyGuard, Pausable {
         address gifterra,
         address rewardNFT,
         address payLitter,
-        address journeyPass,
+        address flagNFT,
         address randomRewardEngine
     );
 
@@ -207,11 +207,11 @@ contract GifterraFactory is AccessControl, ReentrancyGuard, Pausable {
         shares[0] = 100;
         GifterraPaySplitter payLitter = new GifterraPaySplitter(payees, shares);
 
-        // 4. JourneyPass デプロイ
-        JourneyPass journeyPass = new JourneyPass(
-            string(abi.encodePacked(tenantName, " Journey Pass")),
-            "JPASS",
-            "https://api.gifterra.com/journey/",
+        // 4. FlagNFT デプロイ
+        FlagNFT flagNFT = new FlagNFT(
+            string(abi.encodePacked(tenantName, " Flag NFT")),
+            "FNFT",
+            "https://api.gifterra.com/flagnft/",
             admin
         );
 
@@ -236,7 +236,7 @@ contract GifterraFactory is AccessControl, ReentrancyGuard, Pausable {
                 gifterra: address(gifterra),
                 rewardNFT: address(rewardNFT),
                 payLitter: address(payLitter),
-                journeyPass: address(journeyPass),
+                flagNFT: address(flagNFT),
                 randomRewardEngine: address(randomEngine)
             }),
             createdAt: block.timestamp,
@@ -253,7 +253,7 @@ contract GifterraFactory is AccessControl, ReentrancyGuard, Pausable {
         isTenantContract[address(gifterra)] = true;
         isTenantContract[address(rewardNFT)] = true;
         isTenantContract[address(payLitter)] = true;
-        isTenantContract[address(journeyPass)] = true;
+        isTenantContract[address(flagNFT)] = true;
         isTenantContract[address(randomEngine)] = true;
 
         // 手数料徴収
@@ -266,7 +266,7 @@ contract GifterraFactory is AccessControl, ReentrancyGuard, Pausable {
             address(gifterra),
             address(rewardNFT),
             address(payLitter),
-            address(journeyPass),
+            address(flagNFT),
             address(randomEngine)
         );
 

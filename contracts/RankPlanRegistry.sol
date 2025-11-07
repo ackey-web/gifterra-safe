@@ -37,10 +37,10 @@ contract RankPlanRegistry is AccessControl {
      * @notice プランタイプ列挙型
      */
     enum PlanType {
-        LITE,       // 3段階: Beginner → Supporter → Champion
-        STANDARD,   // 5段階: Beginner → Bronze → Silver → Gold → Platinum
-        PRO,        // 7段階: Beginner → Bronze → Silver → Gold → Platinum → Diamond → Legend
-        CUSTOM      // カスタム: 運営デフォルトテナント・フルカスタムオーダー向け（手動設定）
+        STUDIO,         // 3段階: Beginner → Supporter → Champion
+        STUDIO_PRO,     // 5段階: Beginner → Bronze → Silver → Gold → Platinum
+        STUDIO_PRO_MAX, // 10段階: Beginner → Bronze → Silver → Gold → Platinum → Diamond → Ruby → Sapphire → Emerald → Legend
+        CUSTOM          // カスタム: 運営デフォルトテナント・フルカスタムオーダー向け（手動設定）
     }
 
     /**
@@ -97,7 +97,7 @@ contract RankPlanRegistry is AccessControl {
      * @dev コンストラクタから呼び出される
      */
     function _initializeDefaultPlans() internal {
-        // LITE Plan (3段階)
+        // STUDIO Plan (3段階)
         {
             uint256[] memory thresholds = new uint256[](3);
             thresholds[0] = 0;              // Beginner: 0 JPYC
@@ -110,12 +110,12 @@ contract RankPlanRegistry is AccessControl {
             rankNames[2] = "Champion";
 
             string[] memory uriTemplates = new string[](3);
-            uriTemplates[0] = "https://api.gifterra.com/rank/lite/beginner.json";
-            uriTemplates[1] = "https://api.gifterra.com/rank/lite/supporter.json";
-            uriTemplates[2] = "https://api.gifterra.com/rank/lite/champion.json";
+            uriTemplates[0] = "https://api.gifterra.com/rank/studio/beginner.json";
+            uriTemplates[1] = "https://api.gifterra.com/rank/studio/supporter.json";
+            uriTemplates[2] = "https://api.gifterra.com/rank/studio/champion.json";
 
-            plans[PlanType.LITE] = RankPlan({
-                name: "LITE Plan",
+            plans[PlanType.STUDIO] = RankPlan({
+                name: "STUDIO Plan",
                 description: unicode"シンプルな3段階ランクシステム。小規模テナント向け。",
                 stages: 3,
                 thresholds: thresholds,
@@ -124,10 +124,10 @@ contract RankPlanRegistry is AccessControl {
                 isActive: true
             });
 
-            emit PlanCreated(PlanType.LITE, "LITE Plan", 3);
+            emit PlanCreated(PlanType.STUDIO, "STUDIO Plan", 3);
         }
 
-        // STANDARD Plan (5段階)
+        // STUDIO PRO Plan (5段階)
         {
             uint256[] memory thresholds = new uint256[](5);
             thresholds[0] = 0;              // Beginner: 0 JPYC
@@ -144,14 +144,14 @@ contract RankPlanRegistry is AccessControl {
             rankNames[4] = "Platinum";
 
             string[] memory uriTemplates = new string[](5);
-            uriTemplates[0] = "https://api.gifterra.com/rank/standard/beginner.json";
-            uriTemplates[1] = "https://api.gifterra.com/rank/standard/bronze.json";
-            uriTemplates[2] = "https://api.gifterra.com/rank/standard/silver.json";
-            uriTemplates[3] = "https://api.gifterra.com/rank/standard/gold.json";
-            uriTemplates[4] = "https://api.gifterra.com/rank/standard/platinum.json";
+            uriTemplates[0] = "https://api.gifterra.com/rank/studio-pro/beginner.json";
+            uriTemplates[1] = "https://api.gifterra.com/rank/studio-pro/bronze.json";
+            uriTemplates[2] = "https://api.gifterra.com/rank/studio-pro/silver.json";
+            uriTemplates[3] = "https://api.gifterra.com/rank/studio-pro/gold.json";
+            uriTemplates[4] = "https://api.gifterra.com/rank/studio-pro/platinum.json";
 
-            plans[PlanType.STANDARD] = RankPlan({
-                name: "STANDARD Plan",
+            plans[PlanType.STUDIO_PRO] = RankPlan({
+                name: "STUDIO PRO Plan",
                 description: unicode"標準的な5段階ランクシステム。中規模テナント向け。",
                 stages: 5,
                 thresholds: thresholds,
@@ -160,49 +160,58 @@ contract RankPlanRegistry is AccessControl {
                 isActive: true
             });
 
-            emit PlanCreated(PlanType.STANDARD, "STANDARD Plan", 5);
+            emit PlanCreated(PlanType.STUDIO_PRO, "STUDIO PRO Plan", 5);
         }
 
-        // PRO Plan (7段階)
+        // STUDIO PRO MAX Plan (10段階)
         {
-            uint256[] memory thresholds = new uint256[](7);
-            thresholds[0] = 0;               // Beginner: 0 JPYC
-            thresholds[1] = 3000 * 1e18;     // Bronze: 3,000 JPYC
-            thresholds[2] = 10000 * 1e18;    // Silver: 10,000 JPYC
-            thresholds[3] = 30000 * 1e18;    // Gold: 30,000 JPYC
-            thresholds[4] = 100000 * 1e18;   // Platinum: 100,000 JPYC
-            thresholds[5] = 300000 * 1e18;   // Diamond: 300,000 JPYC
-            thresholds[6] = 1000000 * 1e18;  // Legend: 1,000,000 JPYC
+            uint256[] memory thresholds = new uint256[](10);
+            thresholds[0] = 0;                // Beginner: 0 JPYC
+            thresholds[1] = 3000 * 1e18;      // Bronze: 3,000 JPYC
+            thresholds[2] = 10000 * 1e18;     // Silver: 10,000 JPYC
+            thresholds[3] = 30000 * 1e18;     // Gold: 30,000 JPYC
+            thresholds[4] = 100000 * 1e18;    // Platinum: 100,000 JPYC
+            thresholds[5] = 300000 * 1e18;    // Diamond: 300,000 JPYC
+            thresholds[6] = 600000 * 1e18;    // Ruby: 600,000 JPYC
+            thresholds[7] = 1000000 * 1e18;   // Sapphire: 1,000,000 JPYC
+            thresholds[8] = 2000000 * 1e18;   // Emerald: 2,000,000 JPYC
+            thresholds[9] = 5000000 * 1e18;   // Legend: 5,000,000 JPYC
 
-            string[] memory rankNames = new string[](7);
+            string[] memory rankNames = new string[](10);
             rankNames[0] = "Beginner";
             rankNames[1] = "Bronze";
             rankNames[2] = "Silver";
             rankNames[3] = "Gold";
             rankNames[4] = "Platinum";
             rankNames[5] = "Diamond";
-            rankNames[6] = "Legend";
+            rankNames[6] = "Ruby";
+            rankNames[7] = "Sapphire";
+            rankNames[8] = "Emerald";
+            rankNames[9] = "Legend";
 
-            string[] memory uriTemplates = new string[](7);
-            uriTemplates[0] = "https://api.gifterra.com/rank/pro/beginner.json";
-            uriTemplates[1] = "https://api.gifterra.com/rank/pro/bronze.json";
-            uriTemplates[2] = "https://api.gifterra.com/rank/pro/silver.json";
-            uriTemplates[3] = "https://api.gifterra.com/rank/pro/gold.json";
-            uriTemplates[4] = "https://api.gifterra.com/rank/pro/platinum.json";
-            uriTemplates[5] = "https://api.gifterra.com/rank/pro/diamond.json";
-            uriTemplates[6] = "https://api.gifterra.com/rank/pro/legend.json";
+            string[] memory uriTemplates = new string[](10);
+            uriTemplates[0] = "https://api.gifterra.com/rank/studio-pro-max/beginner.json";
+            uriTemplates[1] = "https://api.gifterra.com/rank/studio-pro-max/bronze.json";
+            uriTemplates[2] = "https://api.gifterra.com/rank/studio-pro-max/silver.json";
+            uriTemplates[3] = "https://api.gifterra.com/rank/studio-pro-max/gold.json";
+            uriTemplates[4] = "https://api.gifterra.com/rank/studio-pro-max/platinum.json";
+            uriTemplates[5] = "https://api.gifterra.com/rank/studio-pro-max/diamond.json";
+            uriTemplates[6] = "https://api.gifterra.com/rank/studio-pro-max/ruby.json";
+            uriTemplates[7] = "https://api.gifterra.com/rank/studio-pro-max/sapphire.json";
+            uriTemplates[8] = "https://api.gifterra.com/rank/studio-pro-max/emerald.json";
+            uriTemplates[9] = "https://api.gifterra.com/rank/studio-pro-max/legend.json";
 
-            plans[PlanType.PRO] = RankPlan({
-                name: "PRO Plan",
-                description: unicode"詳細な7段階ランクシステム。大規模テナント・長期運用向け。",
-                stages: 7,
+            plans[PlanType.STUDIO_PRO_MAX] = RankPlan({
+                name: "STUDIO PRO MAX Plan",
+                description: unicode"最高峰の10段階ランクシステム。大規模テナント・長期運用向け。",
+                stages: 10,
                 thresholds: thresholds,
                 rankNames: rankNames,
                 uriTemplates: uriTemplates,
                 isActive: true
             });
 
-            emit PlanCreated(PlanType.PRO, "PRO Plan", 7);
+            emit PlanCreated(PlanType.STUDIO_PRO_MAX, "STUDIO PRO MAX Plan", 10);
         }
     }
 
@@ -316,13 +325,13 @@ contract RankPlanRegistry is AccessControl {
 
     /**
      * @notice 全プラン使用統計を取得
-     * @return LITE使用回数, STANDARD使用回数, PRO使用回数
+     * @return STUDIO使用回数, STUDIO_PRO使用回数, STUDIO_PRO_MAX使用回数
      */
     function getPlanUsageStats() external view returns (uint256, uint256, uint256) {
         return (
-            planUsageCount[PlanType.LITE],
-            planUsageCount[PlanType.STANDARD],
-            planUsageCount[PlanType.PRO]
+            planUsageCount[PlanType.STUDIO],
+            planUsageCount[PlanType.STUDIO_PRO],
+            planUsageCount[PlanType.STUDIO_PRO_MAX]
         );
     }
 }

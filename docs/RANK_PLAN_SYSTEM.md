@@ -4,15 +4,34 @@
 
 Gifterraのランクシステムは**固定プラン制**を採用し、プラットフォーム全体での一貫したユーザー体験を提供します。
 
+## プラン名称について
+
+**重要**: Smart ContractとSupabaseで統一された命名を使用します。
+
+| プラン名 | 段階数 | enum値 |
+|---------|-------|-------|
+| **STUDIO** | 3段階 | 0 |
+| **STUDIO_PRO** | 5段階 | 1 |
+| **STUDIO_PRO_MAX** | 10段階 | 2 |
+| **CUSTOM** | 可変 | 3 |
+
+変換関数は [src/types/tenantApplication.ts](../src/types/tenantApplication.ts) で提供されています:
+```typescript
+import { rankPlanToContractValue } from '@/types/tenantApplication';
+
+// STUDIO → 0 (enum値)
+const enumValue = rankPlanToContractValue('STUDIO'); // 0
+```
+
 ## プラン種類
 
 ### 📦 標準プラン（一般テナント向け）
 
 | プラン | 段階数 | 対象 | 閾値（JPYC） |
 |--------|--------|------|--------------|
-| **LITE** | 3段階 | 小規模テナント | 0 / 10,000 / 50,000 |
-| **STANDARD** | 5段階 | 中規模テナント | 0 / 5,000 / 20,000 / 50,000 / 100,000 |
-| **PRO** | 7段階 | 大規模・長期運用 | 0 / 3,000 / 10,000 / 30,000 / 100,000 / 300,000 / 1,000,000 |
+| **STUDIO** | 3段階 | 小規模テナント | 0 / 10,000 / 50,000 |
+| **STUDIO_PRO** | 5段階 | 中規模テナント | 0 / 5,000 / 20,000 / 50,000 / 100,000 |
+| **STUDIO_PRO_MAX** | 10段階 | 大規模・長期運用 | 0 / 3,000 / 10,000 / 30,000 / 100,000 / 300,000 / 600,000 / 1,000,000 / 2,000,000 / 5,000,000 |
 
 ### 🔧 CUSTOM プラン（特別用途）
 
@@ -48,7 +67,7 @@ factory.createTenant(
     adminAddress,
     jpycAddress,
     tipWallet,
-    RankPlanRegistry.PlanType.STANDARD  // 5段階プラン
+    RankPlanRegistry.PlanType.STUDIO_PRO  // 5段階プラン
 );
 
 // CUSTOMプランの場合
@@ -106,7 +125,7 @@ gifterra.setNFTRankUri(2, "https://api.example.com/rank/2.json");
 ### ⚠️ 制約
 
 **一般テナント**:
-- 固定プラン（LITE/STANDARD/PRO）から選択のみ
+- 固定プラン（STUDIO/STUDIO_PRO/STUDIO_PRO_MAX）から選択のみ
 - 独自の段階数・閾値は設定不可
 
 **理由**: プラットフォーム全体の品質と一貫性を担保するため
@@ -120,8 +139,8 @@ gifterra.setNFTRankUri(2, "https://api.example.com/rank/2.json");
 
 // プラン更新
 registry.updatePlan(
-    RankPlanRegistry.PlanType.STANDARD,
-    "STANDARD Plan v2",
+    RankPlanRegistry.PlanType.STUDIO_PRO,
+    "STUDIO PRO Plan v2",
     "Updated description",
     newThresholds,
     newRankNames,
@@ -129,15 +148,15 @@ registry.updatePlan(
 );
 
 // プラン有効化/無効化
-registry.activatePlan(RankPlanRegistry.PlanType.PRO);
-registry.deactivatePlan(RankPlanRegistry.PlanType.LITE);
+registry.activatePlan(RankPlanRegistry.PlanType.STUDIO_PRO_MAX);
+registry.deactivatePlan(RankPlanRegistry.PlanType.STUDIO);
 ```
 
 ### 使用統計
 
 ```solidity
 // プラン使用統計を取得
-(uint256 liteCount, uint256 standardCount, uint256 proCount) =
+(uint256 studioCount, uint256 studioProCount, uint256 studioProMaxCount) =
     registry.getPlanUsageStats();
 ```
 
@@ -159,7 +178,7 @@ factory.setRankPlanRegistry(registryAddress);
 ### 3. テナント作成時にプラン選択
 
 ```solidity
-factory.createTenant(..., RankPlanRegistry.PlanType.STANDARD);
+factory.createTenant(..., RankPlanRegistry.PlanType.STUDIO_PRO);
 ```
 
 ## トラブルシューティング
@@ -180,7 +199,7 @@ A: スーパーアドミンが`updatePlan()`で変更可能ですが、全テナ
 
 | 項目 | 標準プラン | CUSTOMプラン |
 |------|-----------|-------------|
-| **選択可能な段階数** | 固定（3/5/7） | 自由 |
+| **選択可能な段階数** | 固定（3/5/10） | 自由 |
 | **閾値** | 固定 | 自由 |
 | **対象** | 一般テナント | 運営・特別オーダー |
 | **設定方法** | 自動 | 手動 |
