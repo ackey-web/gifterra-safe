@@ -28,7 +28,7 @@ export default function AdminLayout({
   // 将来的には実際のUUIDベースのテナントIDを使用
   const isDefaultTenant = tenant.id === 'default';
   const tenantUuid = isDefaultTenant ? undefined : tenant.id;
-  const { data: rankPlan } = useTenantRankPlan(tenantUuid);
+  const { plan: rankPlan } = useTenantRankPlan(tenantUuid);
 
   // デフォルトテナントの場合はSTUDIOプランを使用
   const effectiveRankPlan = isDefaultTenant ? 'STUDIO' as const : rankPlan?.rank_plan;
