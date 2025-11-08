@@ -15,6 +15,7 @@ import { useMyTenantApplication, useSubmitTenantApplication } from '../hooks/use
 import { useRankPlanPricing, getPlanPrice } from '../hooks/useRankPlanPricing';
 import { useTenantRankPlan } from '../hooks/useTenantRankPlan';
 import { TenantPlanCard } from '../components/TenantPlanCard';
+import { SettingsModal } from '../components/SettingsModal';
 
 // window.ethereum型定義（MetaMaskなど）
 declare global {
@@ -118,6 +119,7 @@ export function MypagePage() {
   const [viewMode, setViewMode] = useState<ViewMode>('flow');
   const [tenantRank, setTenantRank] = useState<TenantRank>('R0'); // TODO: 実データから取得
   const [showWalletSetupModal, setShowWalletSetupModal] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
   const { user, authenticated } = usePrivy();
   const thirdwebAddress = useAddress(); // Thirdwebウォレット
 
@@ -275,6 +277,8 @@ export function MypagePage() {
           setViewMode={setViewMode}
           isMobile={isMobile}
           tenantRank={tenantRank}
+          showSettingsModal={showSettingsModal}
+          setShowSettingsModal={setShowSettingsModal}
         />
       </div>
 
@@ -312,11 +316,13 @@ export function MypagePage() {
 // ========================================
 // [A] ヘッダー
 // ========================================
-function Header({ viewMode, setViewMode, isMobile, tenantRank }: {
+function Header({ viewMode, setViewMode, isMobile, tenantRank, showSettingsModal, setShowSettingsModal }: {
   viewMode: ViewMode;
   setViewMode: (mode: ViewMode) => void;
   isMobile: boolean;
   tenantRank: TenantRank;
+  showSettingsModal: boolean;
+  setShowSettingsModal: (show: boolean) => void;
 }) {
   const disconnect = useDisconnect();
   const { logout: privyLogout, authenticated } = usePrivy();
@@ -439,7 +445,7 @@ function Header({ viewMode, setViewMode, isMobile, tenantRank }: {
         </div>
       )}
 
-      {/* 右：設定・シェア・Admin・ログアウト */}
+      {/* 右：プロフィール・設定・シェア・Admin・ログアウト */}
       <div style={{ display: 'flex', gap: isMobile ? 8 : 12, alignItems: 'center' }}>
         {viewMode === 'tenant' && (
           <button style={{
@@ -455,19 +461,47 @@ function Header({ viewMode, setViewMode, isMobile, tenantRank }: {
             Adminで開く
           </button>
         )}
-        <button style={{
-          width: isMobile ? 32 : 36,
-          height: isMobile ? 32 : 36,
-          background: 'rgba(255,255,255,0.05)',
-          border: '1px solid rgba(255,255,255,0.1)',
-          borderRadius: 8,
-          color: '#EAF2FF',
-          fontSize: isMobile ? 16 : 18,
-          cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}>
+        <button
+          onClick={() => window.location.href = '/profile'}
+          style={{
+            width: isMobile ? 32 : 36,
+            height: isMobile ? 32 : 36,
+            background: 'rgba(255,255,255,0.05)',
+            border: '1px solid rgba(255,255,255,0.1)',
+            borderRadius: 8,
+            color: '#EAF2FF',
+            fontSize: isMobile ? 16 : 18,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            transition: 'all 0.2s',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+          }}
+        >
+          👤
+        </button>
+        <button
+          onClick={() => setShowSettingsModal(true)}
+          style={{
+            width: isMobile ? 32 : 36,
+            height: isMobile ? 32 : 36,
+            background: 'rgba(255,255,255,0.05)',
+            border: '1px solid rgba(255,255,255,0.1)',
+            borderRadius: 8,
+            color: '#EAF2FF',
+            fontSize: isMobile ? 16 : 18,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
           ⚙️
         </button>
         <button
@@ -493,6 +527,14 @@ function Header({ viewMode, setViewMode, isMobile, tenantRank }: {
           ログアウト
         </button>
       </div>
+
+      {/* 設定モーダル */}
+      {showSettingsModal && (
+        <SettingsModal
+          onClose={() => setShowSettingsModal(false)}
+          isMobile={isMobile}
+        />
+      )}
     </div>
   );
 }
@@ -1586,7 +1628,7 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
             opacity: isSending || !address || !amount ? 0.6 : 1,
           }}
         >
-          {isSending ? '送金中...' : '送金する（ガスレス）'}
+          {isSending ? '送金中...' : '送金する'}
         </button>
       )}
 
@@ -1897,13 +1939,14 @@ function SendModeModal({ isMobile, onClose, onSelectMode }: {
       description: '複数人へ同時に送金',
       features: ['複数アドレス対応', 'シンプルな操作', '効率的な送金'],
     },
-    {
-      id: 'tenant' as SendMode,
-      icon: '🎁',
-      title: 'テナントへチップ',
-      description: 'テナントを選んで応援',
-      features: ['テナント一覧から選択', 'kodomi（貢献熱量ポイント）が記録される', '各テナントごとの特典配布が受けられる', 'メッセージ推奨'],
-    },
+    // STUDIOプラン完全実装まで一時的に無効化
+    // {
+    //   id: 'tenant' as SendMode,
+    //   icon: '🎁',
+    //   title: 'テナントへチップ',
+    //   description: 'テナントを選んで応援',
+    //   features: ['テナント一覧から選択', 'kodomi（貢献熱量ポイント）が記録される', '各テナントごとの特典配布が受けられる', 'メッセージ推奨'],
+    // },
   ];
 
   return (
@@ -5316,7 +5359,14 @@ function Footer({ isMobile }: { isMobile: boolean }) {
         opacity: 0.3,
         marginBottom: 8,
       }}>
-        Patent pending / 特許出願中
+        特許出願中
+      </div>
+      <div style={{
+        fontSize: isMobile ? 10 : 11,
+        opacity: 0.4,
+        marginBottom: 4,
+      }}>
+        Powerd by GIFTERRA
       </div>
       <div style={{
         fontSize: isMobile ? 10 : 11,

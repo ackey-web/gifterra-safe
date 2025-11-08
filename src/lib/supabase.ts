@@ -233,3 +233,181 @@ export async function deleteFile(url: string, bucketName: string | BucketKey = '
 export async function deleteImage(url: string, bucketName: string | BucketKey = 'PUBLIC'): Promise<boolean> {
   return deleteFile(url, bucketName);
 }
+
+/**
+ * 画像をリサイズしてFileオブジェクトを返す
+ *
+ * @param file - 元の画像ファイル
+ * @param maxWidth - 最大幅（デフォルト: 512）
+ * @param maxHeight - 最大高さ（デフォルト: 512）
+ * @param quality - JPEG品質（0-1、デフォルト: 0.8）
+ * @returns リサイズされたFileオブジェクト
+ */
+export async function resizeImage(
+  file: File,
+  maxWidth: number = 512,
+  maxHeight: number = 512,
+  quality: number = 0.8
+): Promise<File> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+
+    reader.onload = (e) => {
+      const img = new Image();
+      img.src = e.target?.result as string;
+
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+
+        // アスペクト比を保持しながらリサイズ
+        if (width > height) {
+          if (width > maxWidth) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+          }
+        } else {
+          if (height > maxHeight) {
+            width = Math.round((width * maxHeight) / height);
+            height = maxHeight;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          reject(new Error('Canvas context not available'));
+          return;
+        }
+
+        ctx.drawImage(img, 0, 0, width, height);
+
+        canvas.toBlob(
+          (blob) => {
+            if (!blob) {
+              reject(new Error('Failed to create blob'));
+              return;
+            }
+
+            const resizedFile = new File([blob], file.name, {
+              type: 'image/jpeg',
+              lastModified: Date.now(),
+            });
+
+            resolve(resizedFile);
+          },
+          'image/jpeg',
+          quality
+        );
+      };
+
+      img.onerror = () => {
+        reject(new Error('Failed to load image'));
+      };
+    };
+
+    reader.onerror = () => {
+      reject(new Error('Failed to read file'));
+    };
+  });
+}
+
+/**
+ * プロフィール画像をアップロード（リサイズ付き）
+ *
+ * @param file - アップロードする画像ファイル
+ * @param walletAddress - ユーザーのウォレットアドレス
+ * @returns アップロードされた画像の公開URL
+ */
+export async function uploadAvatarImage(file: File, walletAddress: string): Promise<string> {
+  try {
+    // 画像サイズチェック（5MB以下）
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    if (file.size > maxSize) {
+      throw new Error('画像サイズは5MB以下にしてください');
+    }
+
+    // MIME typeチェック
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+    if (!validTypes.includes(file.type)) {
+      throw new Error('JPG、PNG、GIF、WebP形式の画像のみアップロード可能です');
+    }
+
+    // 画像をリサイズ（512x512以内）
+    const resizedFile = await resizeImage(file, 512, 512, 0.8);
+
+    // ファイル名を生成（ウォレットアドレスベース）
+    const fileExt = 'jpg'; // リサイズ後は常にJPEG
+    const fileName = `${walletAddress.toLowerCase()}/avatar.${fileExt}`;
+
+    // 既存のアバターがあれば削除
+    const { data: existingFiles } = await supabase.storage
+      .from('avatars')
+      .list(walletAddress.toLowerCase());
+
+    if (existingFiles && existingFiles.length > 0) {
+      const filesToDelete = existingFiles.map(f => `${walletAddress.toLowerCase()}/${f.name}`);
+      await supabase.storage.from('avatars').remove(filesToDelete);
+    }
+
+    // 新しいアバターをアップロード
+    const { error } = await supabase.storage
+      .from('avatars')
+      .upload(fileName, resizedFile, {
+        cacheControl: '3600',
+        upsert: true
+      });
+
+    if (error) {
+      console.error('❌ アバターアップロード エラー:', error);
+      throw new Error(`アップロードに失敗しました: ${error.message}`);
+    }
+
+    // 公開URLを取得
+    const { data: publicData } = supabase.storage
+      .from('avatars')
+      .getPublicUrl(fileName);
+
+    return publicData.publicUrl;
+  } catch (error) {
+    console.error('❌ uploadAvatarImage エラー:', error);
+    throw error;
+  }
+}
+
+/**
+ * プロフィール画像を削除
+ *
+ * @param walletAddress - ユーザーのウォレットアドレス
+ * @returns 削除成功時 true
+ */
+export async function deleteAvatarImage(walletAddress: string): Promise<boolean> {
+  try {
+    const { data: existingFiles } = await supabase.storage
+      .from('avatars')
+      .list(walletAddress.toLowerCase());
+
+    if (!existingFiles || existingFiles.length === 0) {
+      return true; // 削除するファイルがない場合も成功とする
+    }
+
+    const filesToDelete = existingFiles.map(f => `${walletAddress.toLowerCase()}/${f.name}`);
+    const { error } = await supabase.storage
+      .from('avatars')
+      .remove(filesToDelete);
+
+    if (error) {
+      console.error('❌ アバター削除エラー:', error);
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.error('❌ deleteAvatarImage エラー:', error);
+    return false;
+  }
+}

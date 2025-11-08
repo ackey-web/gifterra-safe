@@ -22,7 +22,7 @@ import { fetchTxMessages } from "../lib/annotations_tx";
 import { setEmergencyFlag, readEmergencyFlag } from "../lib/emergency";
 import { analyzeContributionHeat, isOpenAIConfigured, type ContributionHeat } from "../lib/ai_analysis.ts";
 import VendingDashboardNew from "./vending/VendingDashboardNew";
-import { uploadImage, deleteFileFromUrl } from "../lib/supabase";
+import { uploadImage, deleteFileFromUrl, supabase } from "../lib/supabase";
 import { RewardUIManagementPage, type AdData } from "./reward/RewardUIManagementPage";
 import { useTenant } from "./contexts/TenantContext";
 import AdminLayout from "./components/AdminLayout";
@@ -392,6 +392,9 @@ export default function AdminDashboard() {
   const [isInitialLoad, setIsInitialLoad] = useState(true); // 初回ロードフラグ
   const [loadingProgress, setLoadingProgress] = useState(0); // ロード進捗（0-100%）
 
+  // プロフィールデータ（ウォレットアドレス => bio のマップ）
+  const [userProfilesMap, setUserProfilesMap] = useState<Map<string, string>>(new Map());
+
   const [emergencyStop, setEmergencyStop] = useState(false);
   useEffect(() => {
     setEmergencyStop(readEmergencyFlag());
@@ -757,6 +760,40 @@ export default function AdminDashboard() {
       .sort((a, b) => (b.amount > a.amount ? 1 : -1))
       .slice(0, 10);
   }, [filtered]);
+
+  // ランキングユーザーのプロフィールを取得
+  useEffect(() => {
+    const fetchProfiles = async () => {
+      if (ranking.length === 0) return;
+
+      const addresses = ranking.map(r => r.addr.toLowerCase());
+
+      try {
+        const { data, error } = await supabase
+          .from('user_profiles')
+          .select('wallet_address, bio')
+          .in('wallet_address', addresses);
+
+        if (error) {
+          console.error('プロフィール取得エラー:', error);
+          return;
+        }
+
+        const newMap = new Map<string, string>();
+        (data || []).forEach(profile => {
+          if (profile.bio) {
+            newMap.set(profile.wallet_address.toLowerCase(), profile.bio);
+          }
+        });
+
+        setUserProfilesMap(newMap);
+      } catch (err) {
+        console.error('プロフィール取得エラー:', err);
+      }
+    };
+
+    fetchProfiles();
+  }, [ranking]);
 
   const [recentPage, setRecentPage] = useState(0);
   const [analysisPage, setAnalysisPage] = useState(0);
@@ -2718,7 +2755,9 @@ export default function AdminDashboard() {
                 {ranking.map((r, i) => {
                   const a = annMap.get(r.addr.toLowerCase()) ?? null;
                   const name = nameFor(r.addr);
-                  const msg = pickMessage(a);
+                  // プロフィールのbioを優先、なければpickMessage(a)にフォールバック
+                  const profileBio = userProfilesMap.get(r.addr.toLowerCase());
+                  const msg = profileBio || pickMessage(a);
                   return (
                     <tr key={r.addr}>
                       <td style={td}>{i + 1}</td>

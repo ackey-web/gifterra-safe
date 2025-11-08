@@ -15,6 +15,10 @@ import { SuperAdminPage } from "./pages/SuperAdmin";
 import { TenantProvider } from "./admin/contexts/TenantContext";
 import { ThirdwebProvider } from "@thirdweb-dev/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { AppWrapper } from "./components/AppWrapper";
+import { TermsOfServicePage } from "./pages/TermsOfService";
+import { PrivacyPolicyPage } from "./pages/PrivacyPolicy";
+import { ProfilePage } from "./pages/ProfilePage";
 
 // Polyfill Buffer for browser environment (required for Web3 libraries)
 window.Buffer = window.Buffer || Buffer;
@@ -88,6 +92,9 @@ const wantsSuperAdmin = path.includes("/super-admin") || uiParam === "super-admi
 const wantsLegacy = path.includes("/legacy");
 const wantsLogin = path.includes("/login") || uiParam === "login";
 const wantsMypage = path.includes("/mypage") || uiParam === "mypage";
+const wantsTerms = path.includes("/terms");
+const wantsPrivacy = path.includes("/privacy");
+const wantsProfile = path.includes("/profile") || uiParam === "profile";
 
 // =============================
 // ReactDOM ルート作成
@@ -100,8 +107,22 @@ const root = ReactDOM.createRoot(
 // 最小限のアプリ出力（MVP Phase 1）
 // =============================
 
+// 利用規約ページ（認証不要）
+if (wantsTerms) {
+  root.render(
+    <React.StrictMode>
+      <TermsOfServicePage />
+    </React.StrictMode>
+  );
+} else if (wantsPrivacy) {
+  // プライバシーポリシーページ（認証不要）
+  root.render(
+    <React.StrictMode>
+      <PrivacyPolicyPage />
+    </React.StrictMode>
+  );
+} else if (wantsSuperAdmin) {
 // Super Admin用の独立したレンダリング（Thirdwebのみ使用）
-if (wantsSuperAdmin) {
   root.render(
     <React.StrictMode>
       <QueryClientProvider client={queryClient}>
@@ -179,19 +200,22 @@ if (wantsSuperAdmin) {
               },
             }}
           >
-        {wantsLogin ? (
-          <LoginPage />
-        ) : wantsMypage ? (
-          <MypagePage />
-        ) : wantsReceive ? (
-          <ReceivePage />
-        ) : wantsReward ? (
-          <RewardApp />
-        ) : wantsTip ? (
-          <TipApp />
-        ) : wantsVending ? (
-          <VendingApp />
-        ) : wantsLegacy && ENABLE_LEGACY_UI ? (
+            <AppWrapper>
+              {wantsLogin ? (
+                <LoginPage />
+              ) : wantsMypage ? (
+                <MypagePage />
+              ) : wantsProfile ? (
+                <ProfilePage />
+              ) : wantsReceive ? (
+                <ReceivePage />
+              ) : wantsReward ? (
+                <RewardApp />
+              ) : wantsTip ? (
+                <TipApp />
+              ) : wantsVending ? (
+                <VendingApp />
+              ) : wantsLegacy && ENABLE_LEGACY_UI ? (
           <div style={{
             display: 'flex',
             alignItems: 'center',
@@ -228,9 +252,10 @@ if (wantsSuperAdmin) {
               </div>
             </div>
           </div>
-        ) : (
-          <LoginPage />
-        )}
+              ) : (
+                <LoginPage />
+              )}
+            </AppWrapper>
           </PrivyProvider>
         </ThirdwebProvider>
       </QueryClientProvider>
