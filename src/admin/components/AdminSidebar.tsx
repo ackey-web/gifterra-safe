@@ -1,6 +1,10 @@
 // src/admin/components/AdminSidebar.tsx
 import React from 'react';
 import type { RankPlan } from '../../types/tenantApplication';
+import flowImage from '../../assets/flow.png';
+import studioImage from '../../assets/studio.png';
+import studioProImage from '../../assets/studio-pro.png';
+import studioProMaxImage from '../../assets/studio-pro-max.png';
 
 export type PageType =
   | "dashboard"
@@ -36,17 +40,17 @@ interface AdminSidebarProps {
  * TenantPlanCard.tsx と同じロジック
  */
 const getPlanHeaderImage = (plan: RankPlan | null | undefined): string => {
-  if (!plan) return '/flow.png'; // デフォルト
+  if (!plan) return flowImage; // デフォルト
 
   switch (plan) {
     case 'STUDIO':
-      return '/studio.png';
+      return studioImage;
     case 'STUDIO_PRO':
-      return '/studio-pro.png';
+      return studioProImage;
     case 'STUDIO_PRO_MAX':
-      return '/studio-pro-max.png';
+      return studioProMaxImage;
     default:
-      return '/flow.png';
+      return flowImage;
   }
 };
 

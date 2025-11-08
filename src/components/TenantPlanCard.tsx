@@ -6,6 +6,10 @@ import type { RankPlan } from '../types/tenantApplication';
 import { RANK_PLANS } from '../types/tenantApplication';
 import type { TenantRankPlanData } from '../hooks/useTenantRankPlan';
 import { getPlanPrice } from '../hooks/useRankPlanPricing';
+import flowImage from '../assets/flow.png';
+import studioImage from '../assets/studio.png';
+import studioProImage from '../assets/studio-pro.png';
+import studioProMaxImage from '../assets/studio-pro-max.png';
 
 interface TenantPlanCardProps {
   isMobile: boolean;
@@ -70,18 +74,18 @@ const getPlanIcon = (plan: RankPlan): string => {
 
 /**
  * プラン別ヘッダー画像パス
- * 画像は /public/ に配置してください
+ * 画像は src/assets/ からインポート
  */
 const getPlanHeaderImage = (plan: RankPlan): string => {
   switch (plan) {
     case 'STUDIO':
-      return '/studio.png';
+      return studioImage;
     case 'STUDIO_PRO':
-      return '/studio-pro.png';
+      return studioProImage;
     case 'STUDIO_PRO_MAX':
-      return '/studio-pro-max.png';
+      return studioProMaxImage;
     default:
-      return '/flow.png';
+      return flowImage;
   }
 };
 
