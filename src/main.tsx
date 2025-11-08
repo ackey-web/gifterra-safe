@@ -121,6 +121,13 @@ if (wantsTerms) {
       <PrivacyPolicyPage />
     </React.StrictMode>
   );
+} else if (wantsReceive) {
+  // 受け取りページ（認証不要）
+  root.render(
+    <React.StrictMode>
+      <ReceivePage />
+    </React.StrictMode>
+  );
 } else if (wantsSuperAdmin) {
 // Super Admin用の独立したレンダリング（Thirdwebのみ使用）
   root.render(
@@ -207,8 +214,6 @@ if (wantsTerms) {
                 <MypagePage />
               ) : wantsProfile ? (
                 <ProfilePage />
-              ) : wantsReceive ? (
-                <ReceivePage />
               ) : wantsReward ? (
                 <RewardApp />
               ) : wantsTip ? (

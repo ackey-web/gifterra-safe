@@ -1,41 +1,21 @@
 // src/pages/ReceivePage.tsx
 import { useEffect, useState } from 'react';
-import { usePrivy, useWallets } from '@privy-io/react-auth';
-import { ethers } from 'ethers';
 import { QRCodeSVG } from 'qrcode.react';
 
 export function ReceivePage() {
-  const { ready, authenticated, login } = usePrivy();
-  const { wallets } = useWallets();
   const [address, setAddress] = useState<string>('');
   const [copySuccess, setCopySuccess] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
-  // Privyウォレットからアドレスを取得
+  // URLパラメータからアドレスを取得（ログイン不要）
   useEffect(() => {
-    async function getAddress() {
-      if (!wallets || wallets.length === 0) {
-        setAddress('');
-        return;
-      }
+    const urlParams = new URLSearchParams(window.location.search);
+    const addressParam = urlParams.get('address');
 
-      try {
-        const wallet = wallets[0];
-        const provider = await wallet.getEthereumProvider();
-        const ethersProvider = new ethers.providers.Web3Provider(provider, 'any');
-        const signer = ethersProvider.getSigner();
-        const addr = await signer.getAddress();
-        setAddress(addr);
-      } catch (error) {
-        console.error('Failed to get address:', error);
-        setAddress('');
-      }
+    if (addressParam) {
+      setAddress(addressParam);
     }
-
-    if (authenticated) {
-      getAddress();
-    }
-  }, [authenticated, wallets]);
+  }, []);
 
   useEffect(() => {
     // モバイル判定
@@ -54,54 +34,7 @@ export function ReceivePage() {
     }
   };
 
-  // 未認証の場合
-  if (!ready || !authenticated) {
-    return (
-      <div style={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-        padding: '20px',
-      }}>
-        <div style={{
-          background: '#ffffff',
-          borderRadius: '24px',
-          padding: '48px 40px',
-          maxWidth: '500px',
-          width: '100%',
-          boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
-          textAlign: 'center',
-        }}>
-          <h1 style={{ fontSize: 32, fontWeight: 700, color: '#1a1a1a', marginBottom: 16 }}>
-            🎁 GIFTERRA 受取ページ
-          </h1>
-          <p style={{ fontSize: 16, color: '#4a5568', marginBottom: 32 }}>
-            受取ページを表示するにはログインが必要です
-          </p>
-          <button
-            onClick={login}
-            style={{
-              width: '100%',
-              padding: '16px',
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-              border: 'none',
-              borderRadius: '12px',
-              color: '#ffffff',
-              fontSize: 18,
-              fontWeight: 700,
-              cursor: 'pointer',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-            }}
-          >
-            ログイン
-          </button>
-        </div>
-      </div>
-    );
-  }
-
+  // アドレスが指定されていない場合
   if (!address) {
     return (
       <div style={{
@@ -122,10 +55,13 @@ export function ReceivePage() {
           textAlign: 'center',
         }}>
           <h1 style={{ color: '#1a1a1a', marginBottom: '16px', fontSize: 24 }}>
-            ⏳ 読込中...
+            ❌ アドレスが指定されていません
           </h1>
           <p style={{ color: '#4a5568', fontSize: 16 }}>
-            ウォレットアドレスを取得しています
+            URLパラメータにアドレスを指定してください
+          </p>
+          <p style={{ color: '#718096', fontSize: 12, marginTop: '16px', fontFamily: 'monospace' }}>
+            例: /receive?address=0x123...
           </p>
         </div>
       </div>
