@@ -16,6 +16,10 @@ import { useRankPlanPricing, getPlanPrice } from '../hooks/useRankPlanPricing';
 import { useTenantRankPlan } from '../hooks/useTenantRankPlan';
 import { TenantPlanCard } from '../components/TenantPlanCard';
 import { SettingsModal } from '../components/SettingsModal';
+import flowImage from '../assets/flow.png';
+import studioImage from '../assets/studio.png';
+import studioProImage from '../assets/studio-pro.png';
+import studioProMaxImage from '../assets/studio-pro-max.png';
 
 // window.ethereum型定義（MetaMaskなど）
 declare global {
@@ -345,17 +349,17 @@ function Header({ viewMode, setViewMode, isMobile, tenantRank, showSettingsModal
       const plan = tenantRankPlan.rank_plan;
       switch (plan) {
         case 'STUDIO':
-          return '/studio.png';
+          return studioImage;
         case 'STUDIO_PRO':
-          return '/studio-pro.png';
+          return studioProImage;
         case 'STUDIO_PRO_MAX':
-          return '/studio-pro-max.png';
+          return studioProMaxImage;
         default:
-          return '/flow.png';
+          return flowImage;
       }
     }
     // デフォルト（テナント申請していない、または承認されていないユーザー）
-    return '/flow.png';
+    return flowImage;
   };
 
   // R3（承認済みテナント）のみトグル表示
