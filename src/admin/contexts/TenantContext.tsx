@@ -4,6 +4,8 @@
 import { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import type { ReactNode } from 'react';
 import { useAddress, useContract, ConnectWallet } from '@thirdweb-dev/react';
+import { usePrivy, useWallets } from '@privy-io/react-auth';
+import { ethers } from 'ethers';
 import { CONTRACT_ADDRESS, TOKEN, CONTRACT_ABI, ERC20_MIN_ABI } from '../../contract';
 
 /* =========================================
@@ -83,6 +85,9 @@ export interface TenantContextType {
   tenant: TenantConfig;
   setTenant: (tenant: TenantConfig) => void;
 
+  // 認証アドレス
+  finalAddress: string;  // Thirdweb または Privy の統合アドレス
+
   // オーナー権限
   isOwner: boolean;
   isCheckingOwner: boolean;
@@ -123,7 +128,37 @@ const TenantContext = createContext<TenantContextType | undefined>(undefined);
    TenantProvider: 管理画面全体を包む
 ========================================= */
 export function TenantProvider({ children }: { children: ReactNode }) {
-  const address = useAddress();
+  const address = useAddress(); // Thirdweb wallet address
+  const { authenticated: privyAuthenticated } = usePrivy();
+  const { wallets } = useWallets();
+
+  // Privy wallet address state
+  const [privyAddress, setPrivyAddress] = useState<string>('');
+
+  // Get address from Privy wallet
+  useEffect(() => {
+    async function getPrivyAddress() {
+      if (!privyAuthenticated || !wallets || wallets.length === 0) {
+        setPrivyAddress('');
+        return;
+      }
+      try {
+        const wallet = wallets[0];
+        const provider = await wallet.getEthereumProvider();
+        const ethersProvider = new ethers.providers.Web3Provider(provider, 'any');
+        const signer = ethersProvider.getSigner();
+        const addr = await signer.getAddress();
+        setPrivyAddress(addr);
+      } catch (error) {
+        console.error('Failed to get Privy address:', error);
+        setPrivyAddress('');
+      }
+    }
+    getPrivyAddress();
+  }, [privyAuthenticated, wallets]);
+
+  // Combined address: prefer Thirdweb, fallback to Privy
+  const finalAddress = address || privyAddress;
 
   // テナント設定（将来的にはlocalStorageやAPIから取得）
   const [tenant, setTenant] = useState<TenantConfig>(DEFAULT_TENANT);
@@ -150,42 +185,44 @@ export function TenantProvider({ children }: { children: ReactNode }) {
 
   /* ================= 開発環境スーパーアドミンチェック ================ */
   // スーパーアドミン（運営）の判定のみ - テナント管理者は含まない
-  const isDevSuperAdmin = ADMIN_WHITELIST_ENABLED && address ?
+  const isDevSuperAdmin = ADMIN_WHITELIST_ENABLED && finalAddress ?
     DEV_SUPER_ADMIN_ADDRESSES.some(
-      adminAddr => adminAddr.toLowerCase() === address.toLowerCase()
+      adminAddr => adminAddr.toLowerCase() === finalAddress.toLowerCase()
     ) : false;
 
   // テナント管理者アドレスを取得（設定から）
   const configuredTenantAdmins = useMemo(() => {
     return getConfiguredAdminAddresses();
-  }, [address]); // addressが変わったときに再計算（設定が更新された可能性）
+  }, [finalAddress]); // finalAddressが変わったときに再計算（設定が更新された可能性）
 
   // デバッグログ - アドレス変更を詳細に追跡
   useEffect(() => {
     const timestamp = new Date().toISOString();
     console.log(`🔐 [${timestamp}] Admin Auth Debug:`, {
-      address,
-      addressType: typeof address,
-      addressDefined: address !== undefined,
-      addressNull: address === null,
+      thirdwebAddress: address,
+      privyAddress,
+      finalAddress,
+      addressType: typeof finalAddress,
+      addressDefined: finalAddress !== undefined,
+      addressNull: finalAddress === null,
       ADMIN_WHITELIST_ENABLED,
       DEV_MODE,
       isDevSuperAdmin,
       configuredTenantAdmins,
-      addressLower: address?.toLowerCase(),
+      addressLower: finalAddress?.toLowerCase(),
     });
 
     // アドレスがundefinedになった場合は警告
-    if (address === undefined) {
+    if (finalAddress === undefined) {
       console.warn('⚠️ Wallet address became UNDEFINED!');
     }
-  }, [address, isDevSuperAdmin]);
+  }, [address, privyAddress, finalAddress, isDevSuperAdmin]);
 
   /* ================= オーナー権限チェック ================ */
   const checkOwnership = async () => {
     setIsCheckingOwner(true);
 
-    if (!address) {
+    if (!finalAddress) {
       setOwnerStatus({
         gifterra: false,
         rewardEngine: false,
@@ -217,7 +254,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
 
     // 設定されたテナント管理者も全権限を持つ
     const isTenantAdmin = configuredTenantAdmins.some(
-      adminAddr => adminAddr.toLowerCase() === address.toLowerCase()
+      adminAddr => adminAddr.toLowerCase() === finalAddress.toLowerCase()
     );
     if (isTenantAdmin) {
       console.log('✅ Configured Tenant Admin detected - granting all permissions');
@@ -249,11 +286,11 @@ export function TenantProvider({ children }: { children: ReactNode }) {
       if (gifterraContract) {
         try {
           const owner = await gifterraContract.call("owner");
-          const isOwner = owner.toLowerCase() === address.toLowerCase();
+          const isOwner = owner.toLowerCase() === finalAddress.toLowerCase();
           newOwnerStatus.gifterra = isOwner;
           console.log('🔍 Gifterra Owner Check:', {
             contractOwner: owner,
-            currentAddress: address,
+            currentAddress: finalAddress,
             isOwner,
           });
         } catch (error) {
@@ -267,7 +304,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
       if (rewardEngineContract) {
         try {
           const owner = await rewardEngineContract.call("owner");
-          newOwnerStatus.rewardEngine = owner.toLowerCase() === address.toLowerCase();
+          newOwnerStatus.rewardEngine = owner.toLowerCase() === finalAddress.toLowerCase();
         } catch (error) {
           console.warn("RewardEngine owner check failed:", error);
         }
@@ -277,7 +314,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
       if (flagNFTContract) {
         try {
           const owner = await flagNFTContract.call("owner");
-          newOwnerStatus.flagNFT = owner.toLowerCase() === address.toLowerCase();
+          newOwnerStatus.flagNFT = owner.toLowerCase() === finalAddress.toLowerCase();
         } catch (error) {
           console.warn("FlagNFT owner check failed:", error);
         }
@@ -287,7 +324,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
       if (rewardTokenContract) {
         try {
           const owner = await rewardTokenContract.call("owner");
-          newOwnerStatus.rewardToken = owner.toLowerCase() === address.toLowerCase();
+          newOwnerStatus.rewardToken = owner.toLowerCase() === finalAddress.toLowerCase();
         } catch (error) {
           console.warn("RewardToken owner check failed:", error);
         }
@@ -297,7 +334,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
       if (tipManagerContract) {
         try {
           const owner = await tipManagerContract.call("owner");
-          newOwnerStatus.tipManager = owner.toLowerCase() === address.toLowerCase();
+          newOwnerStatus.tipManager = owner.toLowerCase() === finalAddress.toLowerCase();
         } catch (error) {
           console.warn("TipManager owner check failed:", error);
         }
@@ -307,7 +344,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
       if (paymentSplitterContract) {
         try {
           const owner = await paymentSplitterContract.call("owner");
-          newOwnerStatus.paymentSplitter = owner.toLowerCase() === address.toLowerCase();
+          newOwnerStatus.paymentSplitter = owner.toLowerCase() === finalAddress.toLowerCase();
         } catch (error) {
           console.warn("PaymentSplitter owner check failed:", error);
         }
@@ -325,7 +362,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
   // アドレスまたはコントラクトが変更されたら権限チェック
   useEffect(() => {
     checkOwnership();
-  }, [address, gifterraContract, rewardEngineContract, flagNFTContract, rewardTokenContract, tipManagerContract, paymentSplitterContract]);
+  }, [finalAddress, gifterraContract, rewardEngineContract, flagNFTContract, rewardTokenContract, tipManagerContract, paymentSplitterContract]);
 
   // 全体のオーナー権限（いずれか1つでもオーナーならtrue、またはスーパーアドミンならtrue）
   const isOwner = isDevSuperAdmin || Object.values(ownerStatus).some(status => status);
@@ -369,6 +406,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
   const value: TenantContextType = {
     tenant,
     setTenant,
+    finalAddress,
     isOwner,
     isCheckingOwner,
     ownerError,
@@ -415,23 +453,26 @@ interface RequireOwnerProps {
 }
 
 export function RequireOwner({ children, contractType, fallback }: RequireOwnerProps) {
-  const { isOwner, isCheckingOwner, ownerError, hasContractAccess, isDevSuperAdmin } = useTenant();
-  const address = useAddress();
+  const { isOwner, isCheckingOwner, ownerError, hasContractAccess, isDevSuperAdmin, finalAddress } = useTenant();
+  const { login: privyLogin, authenticated: privyAuthenticated } = usePrivy();
+  const address = useAddress(); // Thirdweb address
 
   // デバッグ：RequireOwnerの状態をログ出力
   console.log('🔒 RequireOwner rendering:', {
-    address,
-    addressUndefined: address === undefined,
-    addressNull: address === null,
+    thirdwebAddress: address,
+    privyAuthenticated,
+    finalAddress,
+    addressUndefined: finalAddress === undefined,
+    addressNull: finalAddress === null,
     isOwner,
     isCheckingOwner,
     isDevSuperAdmin,
     contractType,
-    willRenderChildren: !address,
+    willRenderChildren: !finalAddress,
   });
 
   // ウォレット未接続の場合は、接続を促す専用画面を表示
-  if (!address) {
+  if (!finalAddress) {
     console.log('🔌 RequireOwner: Wallet not connected - showing connection screen');
     return (
       <div style={{
@@ -461,12 +502,13 @@ export function RequireOwner({ children, contractType, fallback }: RequireOwnerP
           {/* ウォレット接続ボタン */}
           <div style={{
             display: 'flex',
-            justifyContent: 'center',
+            flexDirection: 'column',
+            gap: 12,
             marginBottom: 24
           }}>
             <ConnectWallet
               theme="dark"
-              btnTitle="ウォレットを接続"
+              btnTitle="ウォレットを接続 (MetaMask等)"
               modalTitle="管理者ダッシュボード接続"
               modalTitleIconUrl=""
               style={{
@@ -474,8 +516,42 @@ export function RequireOwner({ children, contractType, fallback }: RequireOwnerP
                 padding: "12px 24px",
                 borderRadius: 8,
                 fontWeight: 600,
+                width: '100%',
               }}
             />
+
+            <div style={{
+              textAlign: 'center',
+              fontSize: 12,
+              opacity: 0.5,
+              padding: '8px 0',
+            }}>
+              または
+            </div>
+
+            <button
+              onClick={() => privyLogin()}
+              style={{
+                fontSize: 15,
+                padding: "12px 24px",
+                borderRadius: 8,
+                fontWeight: 600,
+                width: '100%',
+                background: '#667eea',
+                color: '#fff',
+                border: 'none',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = '#5568d3';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = '#667eea';
+              }}
+            >
+              メール/SNSでログイン
+            </button>
           </div>
 
           <div style={{
@@ -485,7 +561,7 @@ export function RequireOwner({ children, contractType, fallback }: RequireOwnerP
             marginBottom: 24
           }}>
             <p style={{ fontSize: 12, opacity: 0.7, margin: 0 }}>
-              MetaMaskなどのウォレットで接続してください
+              MetaMaskなどの外部ウォレット、またはメール/SNSでログインできます
             </p>
           </div>
           <p style={{ fontSize: 11, opacity: 0.5 }}>
@@ -573,7 +649,7 @@ export function RequireOwner({ children, contractType, fallback }: RequireOwnerP
         }}>
           <p style={{ fontSize: 18, marginBottom: 12, fontWeight: 700 }}>🔒 管理者権限がありません</p>
           <p style={{ fontSize: 14, opacity: 0.8, marginBottom: 16 }}>
-            接続しているウォレット ({address?.slice(0, 6)}...{address?.slice(-4)}) には管理者権限がありません
+            接続しているウォレット ({finalAddress?.slice(0, 6)}...{finalAddress?.slice(-4)}) には管理者権限がありません
           </p>
           <p style={{ fontSize: 13, opacity: 0.6, marginBottom: 24 }}>
             管理者権限を持つウォレットに切り替えてください

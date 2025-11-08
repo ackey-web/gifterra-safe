@@ -143,7 +143,7 @@ if (wantsTerms) {
     </React.StrictMode>
   );
 } else if (wantsAdmin) {
-  // Admin用の独立したレンダリング（Thirdwebのみ使用）
+  // Admin用の独立したレンダリング（Privy + Thirdweb）
   root.render(
     <React.StrictMode>
       <QueryClientProvider client={queryClient}>
@@ -151,9 +151,50 @@ if (wantsTerms) {
           activeChain={polygonChain}
           clientId={import.meta.env.VITE_THIRDWEB_CLIENT_ID}
         >
-          <TenantProvider>
-            <AdminDashboard />
-          </TenantProvider>
+          <PrivyProvider
+            appId={import.meta.env.VITE_PRIVY_APP_ID || ""}
+            config={{
+              loginMethods: ["email", "google", "twitter", "discord", "wallet"],
+              appearance: {
+                theme: "dark",
+                accentColor: "#02bbd1",
+                logo: "/gifterra-logo.png",
+              },
+              embeddedWallets: {
+                createOnLogin: 'all-users',
+                noPromptOnSignature: false,
+              },
+              defaultChain: {
+                id: 137,
+                name: "Polygon Mainnet",
+                network: "polygon",
+                nativeCurrency: {
+                  name: "MATIC",
+                  symbol: "MATIC",
+                  decimals: 18,
+                },
+                rpcUrls: {
+                  default: {
+                    http: ["https://polygon-rpc.com"],
+                  },
+                  public: {
+                    http: ["https://polygon-rpc.com"],
+                  },
+                },
+                blockExplorers: {
+                  default: {
+                    name: "PolygonScan",
+                    url: "https://polygonscan.com",
+                  },
+                },
+                testnet: false,
+              },
+            }}
+          >
+            <TenantProvider>
+              <AdminDashboard />
+            </TenantProvider>
+          </PrivyProvider>
         </ThirdwebProvider>
       </QueryClientProvider>
     </React.StrictMode>
