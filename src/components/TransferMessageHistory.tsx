@@ -161,7 +161,7 @@ export function TransferMessageHistory({
           display: 'flex',
           flexDirection: 'column',
           gap: isMobile ? 6 : 8,
-          maxHeight: isMobile ? '300px' : '400px',
+          height: isMobile ? '168px' : '204px', // 3件分の固定高さ (モバイル: 50*3 + 6*2 = 168px, PC: 60*3 + 8*2 = 204px)
           overflowY: 'auto',
           paddingRight: 4,
         }}
