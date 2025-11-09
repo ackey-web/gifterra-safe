@@ -6,12 +6,6 @@ const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 // デバッグ用ログ
-console.log('🔍 Supabase環境変数チェック:', {
-  url: supabaseUrl,
-  keyLength: supabaseAnonKey?.length || 0,
-  urlIsPlaceholder: supabaseUrl === 'https://your-project.supabase.co',
-  keyIsPlaceholder: supabaseAnonKey === 'your-supabase-anon-key-here',
-});
 
 const isSupabaseConfigured = !!(supabaseUrl && supabaseAnonKey &&
   supabaseUrl !== 'https://your-project.supabase.co' &&
@@ -130,8 +124,6 @@ export async function uploadFile(file: File, kind: UploadKind): Promise<string> 
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
     const functionUrl = `${supabaseUrl}/functions/v1/upload-file`;
 
-    console.log(`📤 Uploading file via Edge Function: ${filePath} to ${bucketName}`);
-
     const response = await fetch(functionUrl, {
       method: 'POST',
       headers: {
@@ -170,7 +162,6 @@ export async function uploadFile(file: File, kind: UploadKind): Promise<string> 
       });
       throw new Error('サーバーからのレスポンスが不正です');
     }
-    console.log('✅ File uploaded successfully:', data);
 
     return data.url;
   } catch (error) {
@@ -384,26 +375,12 @@ export async function uploadAvatarImage(file: File, walletAddress: string): Prom
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
     const functionUrl = `${supabaseUrl}/functions/v1/upload-avatar`;
 
-    console.log('📤 Uploading avatar via Edge Function:', {
-      url: functionUrl,
-      supabaseUrl,
-      hasAnonKey: !!import.meta.env.VITE_SUPABASE_ANON_KEY,
-      fileSize: resizedFile.size,
-      walletAddress
-    });
-
     const response = await fetch(functionUrl, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
       },
       body: formData,
-    });
-
-    console.log('📥 Edge Function response:', {
-      status: response.status,
-      statusText: response.statusText,
-      headers: Object.fromEntries(response.headers.entries())
     });
 
     // レスポンスを一度だけテキストとして読み取る
@@ -436,7 +413,6 @@ export async function uploadAvatarImage(file: File, walletAddress: string): Prom
       });
       throw new Error('サーバーからのレスポンスが不正です');
     }
-    console.log('✅ Avatar uploaded successfully:', data);
 
     return data.url;
   } catch (error) {

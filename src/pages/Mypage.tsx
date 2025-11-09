@@ -98,7 +98,6 @@ function incrementBulkSendCount(): void {
 // ========================================
 async function getPrivyEthersSigner(privyWallet: any): Promise<ethers.Signer | null> {
   try {
-    console.log('🔍 getPrivyEthersSigner:', {
       hasWallet: !!privyWallet,
       walletAddress: privyWallet?.address,
       walletType: privyWallet?.walletClientType,
@@ -112,7 +111,6 @@ async function getPrivyEthersSigner(privyWallet: any): Promise<ethers.Signer | n
 
     // Safeラッパーを経由せず、直接EOAプロバイダーを取得
     const provider = await privyWallet.getEthereumProvider();
-    console.log('✅ Provider取得成功');
 
     // 重要: リクエスト時にSafeを無効化するオプションを指定
     const ethersProvider = new ethers.providers.Web3Provider(provider, 'any');
@@ -120,7 +118,6 @@ async function getPrivyEthersSigner(privyWallet: any): Promise<ethers.Signer | n
 
     // デバッグ: アドレスがEOAかSafeかを確認
     const signerAddress = await signer.getAddress();
-    console.log('✅ Signer address:', signerAddress);
 
     // アドレスが一致しない場合は警告
     if (signerAddress.toLowerCase() !== privyWallet.address.toLowerCase()) {
@@ -150,7 +147,6 @@ export function MypagePage() {
   // useWallets() は外部ウォレット（MetaMask）を優先してしまうため、直接 user.wallet を使う
   const privyEmbeddedWalletAddress = user?.wallet?.address;
 
-  console.log('🔍 利用可能なウォレット:', {
     walletsReady,
     walletsCount: wallets.length,
     allWallets: wallets.map(w => ({ type: w.walletClientType, address: w.address })),
@@ -162,7 +158,6 @@ export function MypagePage() {
   // 表示するアドレス（Privy埋め込みウォレット優先、なければThirdweb）
   const displayAddress = privyEmbeddedWalletAddress || thirdwebAddress;
 
-  console.log('🔍 DisplayAddress:', {
     displayAddress,
     privyEmbeddedWalletAddress,
     thirdwebAddress,
@@ -841,7 +836,6 @@ function FlowModeContent({
   const showLockCard = !isApprovedTenant;
 
   // 🔍 デバッグ: TenantPlanCard表示条件をログ出力
-  console.log('🔍 TenantPlanCard表示条件チェック:', {
     connectedAddress,
     displayAddress: address,
     tenantRank,
@@ -887,7 +881,6 @@ function FlowModeContent({
 
       {/* 5. プランカード / ロックカード */}
       {(() => {
-        console.log('🔍 Rendering decision point:', {
           isApprovedTenant,
           tenantId,
           bothConditions: isApprovedTenant && tenantId,
@@ -897,7 +890,6 @@ function FlowModeContent({
         });
 
         if (isApprovedTenant && tenantId) {
-          console.log('✅ About to render TenantPlanCard with:', {
             isMobile,
             currentPlan: tenantRankPlan,
             tenantId,
@@ -910,10 +902,8 @@ function FlowModeContent({
             />
           );
         } else if (showLockCard) {
-          console.log('⚠️ Rendering LockCard instead');
           return <LockCard isMobile={isMobile} />;
         } else {
-          console.log('❌ Rendering nothing (no conditions met)');
           return null;
         }
       })()}
@@ -964,7 +954,6 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
   // Signerを取得し、実際のアドレスを取得
   useEffect(() => {
     const getSigner = async () => {
-      console.log('🔍 getSigner開始:', {
         hasUserWallet: !!user?.wallet,
         userWalletAddress: user?.wallet?.address,
         walletsCount: wallets.length,
@@ -974,7 +963,6 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
 
       // walletsReadyがfalseの場合は待機
       if (!walletsReady) {
-        console.log('⏳ Waiting for wallets to be ready...');
         return;
       }
 
@@ -987,16 +975,13 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
             w => w.address.toLowerCase() === user.wallet.address.toLowerCase()
           );
 
-          console.log('🔍 Embedded wallet found:', !!embeddedWallet);
 
           if (embeddedWallet) {
             const privySigner = await getPrivyEthersSigner(embeddedWallet);
-            console.log('✅ Privy embedded wallet signer取得成功:', !!privySigner);
             setSigner(privySigner);
             if (privySigner) {
               const addr = await privySigner.getAddress();
               setActualAddress(addr);
-              console.log('✅ Signer address:', addr);
             }
             return;
           } else {
@@ -1021,7 +1006,6 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
         const addr = await thirdwebSigner.getAddress();
         setActualAddress(addr);
       } else {
-        console.log('⚠️ No signer available');
         setSigner(null);
         setActualAddress('');
       }
@@ -1034,7 +1018,6 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
 
   // デバッグログ: どのウォレットの残高を表示しているか確認
   useEffect(() => {
-    console.log('🔍 SendForm walletAddress詳細:', {
       walletAddress,
       privyEmbeddedAddress,
       actualAddress,
@@ -1085,7 +1068,6 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
   // ガスレス送金処理
   const handleSend = async () => {
     // デバッグ: ウォレット接続状態を確認
-    console.log('🔍 ウォレット状態確認:', {
       privyWallet: privyWallet ? `存在 (${privyWallet.address})` : 'なし',
       thirdwebSigner: thirdwebSigner ? '存在' : 'なし',
       thirdwebAddress,
@@ -1099,7 +1081,6 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
 
     // Privyの埋め込みウォレットを最優先
     if (user?.wallet?.address) {
-      console.log('✅ Privy埋め込みウォレットを使用します:', user.wallet.address);
       try {
         // wallets配列から同じアドレスのウォレットを探す
         const embeddedWallet = wallets.find(
@@ -1112,7 +1093,6 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
 
           if (signer) {
             const signerAddress = await signer.getAddress();
-            console.log('✅ Signer取得成功:', signerAddress);
           }
         } else {
           console.warn('⚠️ Embedded wallet not found in wallets array (handleSend)');
@@ -1128,7 +1108,6 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
         userAddress = null;
       }
     } else if (privyWallet) {
-      console.log('✅ Privyウォレットを使用します:', privyWallet.address);
       try {
         signer = await getPrivyEthersSigner(privyWallet);
         userAddress = privyWallet.address || null;
@@ -1160,7 +1139,6 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
       }
     } else if (thirdwebSigner) {
       // Thirdwebウォレット
-      console.log('⚠️ Thirdwebウォレットを使用します（Privyウォレットが見つからなかったため）:', thirdwebAddress);
       signer = thirdwebSigner;
       userAddress = thirdwebAddress || null;
     } else {
@@ -1191,7 +1169,6 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
     try {
       setIsSending(true);
 
-      console.log('🚀 送金処理開始:', {
         sendMode,
         selectedToken,
         amount,
@@ -1203,11 +1180,9 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
 
       // トークンアドレスを取得（メインネット用）
       const tokenAddress = selectedToken === 'JPYC' ? JPYC_TOKEN.ADDRESS : NHT_TOKEN.ADDRESS;
-      console.log('🔍 トークンアドレス:', tokenAddress);
 
       // 数量をwei単位に変換
       const amountWei = ethers.utils.parseUnits(amount, 18);
-      console.log('🔍 送金額 (wei):', amountWei.toString());
 
       // テナントチップモードの場合は従来のコントラクトを使用
       if (sendMode === 'tenant') {
@@ -1252,7 +1227,6 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
 
         // アドレスを正規化（チェックサム形式に変換）
         const normalizedAddress = ethers.utils.getAddress(trimmedAddress);
-        console.log('🔍 正規化されたアドレス:', normalizedAddress);
 
         // ERC20 Interface を使用して transfer データを手動エンコード
         const erc20Interface = new ethers.utils.Interface(ERC20_MIN_ABI);
@@ -1260,15 +1234,11 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
           normalizedAddress,
           amountWei
         ]);
-        console.log('🔍 エンコードされたトランザクションデータ:', transferData);
 
         // MATICバランスチェック
         const maticBalance = await signer.getBalance();
-        console.log('🔍 MATICバランス (wei):', maticBalance.toString());
-        console.log('🔍 MATICバランス (MATIC):', ethers.utils.formatEther(maticBalance));
 
         // トランザクションを直接送信
-        console.log('🚀 トランザクション送信開始...', {
           to: tokenAddress,
           gasLimit: 65000,
         });
@@ -1277,16 +1247,13 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
           data: transferData,
           gasLimit: 65000, // ERC20 transferの標準的なガスリミット
         });
-        console.log('✅ トランザクション送信完了:', {
           hash: tx.hash,
           from: tx.from,
           to: tx.to,
           nonce: tx.nonce,
         });
 
-        console.log('⏳ トランザクション確認待機中...');
         const receipt = await tx.wait();
-        console.log('✅ トランザクション確認完了:', {
           transactionHash: receipt.transactionHash,
           blockNumber: receipt.blockNumber,
           gasUsed: receipt.gasUsed.toString(),
@@ -1306,7 +1273,6 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
             message: message || undefined,
             txHash: receipt.transactionHash,
           });
-          console.log('✅ 送金メッセージを保存しました');
         } catch (saveError) {
           console.error('❌ 送金メッセージの保存に失敗:', saveError);
           // 保存失敗してもトランザクション自体は成功しているので処理を継続
@@ -3304,7 +3270,6 @@ function WalletInfo({ isMobile }: { isMobile: boolean }) {
 
   // デバッグログ: どのウォレットの残高を表示しているか確認
   useEffect(() => {
-    console.log('🔍 NHT/NFT Section address詳細:', {
       address,
       privyEmbeddedAddress,
       actualAddress,
@@ -4652,7 +4617,6 @@ function HistorySection({
   const { transactions, loading } = useTransactionHistory(address);
   const { messages, isLoading: messagesLoading } = useReceivedTransferMessages(tenantId, address);
 
-  console.log('📋 HistorySection:', {
     address,
     tenantId,
     transactionsCount: transactions.length,
@@ -4758,11 +4722,6 @@ function HistorySection({
       ) : (
         // 受信メッセージタブ
         <>
-          {console.log('🔍 TransferMessageHistory props:', {
-            tenantId,
-            address,
-            hasAddress: !!address,
-          })}
           <TransferMessageHistory
             tenantId={tenantId}
             walletAddress={address}

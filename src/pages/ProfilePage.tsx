@@ -26,12 +26,6 @@ export function ProfilePage() {
   // ウォレットアドレスを取得（Privy埋め込みウォレットまたは外部ウォレット）
   const walletAddress = user?.wallet?.address || wallets[0]?.address || '';
 
-  console.log('👤 ProfilePage - Wallet info:', {
-    privyEmbeddedWallet: user?.wallet?.address,
-    externalWallet: wallets[0]?.address,
-    finalWalletAddress: walletAddress,
-  });
-
   useEffect(() => {
     const handleResize = () => {
       setIsMobile(window.innerWidth < 768);
@@ -43,14 +37,11 @@ export function ProfilePage() {
   // プロフィールデータ取得
   const fetchProfile = async () => {
     if (!walletAddress) {
-      console.log('⚠️ ProfilePage - No wallet address');
       return;
     }
 
     setIsLoading(true);
     try {
-      console.log('📡 ProfilePage - Fetching profile for:', walletAddress.toLowerCase());
-
       const { data, error } = await supabase
         .from('user_profiles')
         .select('*')
@@ -62,7 +53,6 @@ export function ProfilePage() {
         console.error('❌ ProfilePage - Profile fetch error:', error);
         setProfile(null);
       } else {
-        console.log('✅ ProfilePage - Profile fetched:', data);
         setProfile(data || null);
       }
     } catch (err) {

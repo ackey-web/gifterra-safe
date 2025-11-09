@@ -31,12 +31,6 @@ export default defineConfig(({ mode }) => {
     }
   }
 
-  console.log('🔧 Vite Config - Environment variables loaded:', {
-    VITE_SUPABASE_URL: env.VITE_SUPABASE_URL ? env.VITE_SUPABASE_URL.substring(0, 30) + '...' : 'NOT SET',
-    VITE_SUPABASE_ANON_KEY: env.VITE_SUPABASE_ANON_KEY ? 'SET (length: ' + env.VITE_SUPABASE_ANON_KEY.length + ')' : 'NOT SET',
-    VITE_POLYGONSCAN_API_KEY: env.VITE_POLYGONSCAN_API_KEY ? 'SET' : 'NOT SET',
-  })
-
   return {
   plugins: [react()],
   resolve: {
