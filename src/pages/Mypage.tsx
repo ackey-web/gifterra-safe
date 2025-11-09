@@ -98,12 +98,6 @@ function incrementBulkSendCount(): void {
 // ========================================
 async function getPrivyEthersSigner(privyWallet: any): Promise<ethers.Signer | null> {
   try {
-      hasWallet: !!privyWallet,
-      walletAddress: privyWallet?.address,
-      walletType: privyWallet?.walletClientType,
-      hasGetEthereumProvider: typeof privyWallet?.getEthereumProvider === 'function',
-    });
-
     if (!privyWallet || typeof privyWallet.getEthereumProvider !== 'function') {
       console.error('❌ Invalid wallet object or missing getEthereumProvider');
       return null;
