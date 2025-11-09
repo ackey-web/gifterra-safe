@@ -94,6 +94,7 @@ export async function deleteFileFromUrl(url: string): Promise<boolean> {
 
 /**
  * ファイルをSupabase Storageにアップロード（用途ベース）
+ * Edge Function経由でCORS対応
  *
  * @param file - アップロードするファイル
  * @param kind - アップロード用途（'preview' | 'product' | 'logo' | 'avatar' | 'temp'）
@@ -120,24 +121,35 @@ export async function uploadFile(file: File, kind: UploadKind): Promise<string> 
     const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
     const filePath = `${fileName}`;
 
-    const { error } = await supabase.storage
-      .from(bucketName)
-      .upload(filePath, file, {
-        cacheControl: '3600',
-        upsert: false
-      });
+    // Edge Function経由でアップロード（CORS対応）
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('bucketName', bucketName);
+    formData.append('filePath', filePath);
 
-    if (error) {
-      console.error('❌ Supabase Storage エラー:', error);
-      throw new Error(`Supabase Storage エラー: ${error.message} (bucket: ${bucketName}, kind: ${kind})`);
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const functionUrl = `${supabaseUrl}/functions/v1/upload-file`;
+
+    console.log(`📤 Uploading file via Edge Function: ${filePath} to ${bucketName}`);
+
+    const response = await fetch(functionUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error('❌ Edge Function upload error:', errorData);
+      throw new Error(errorData.error || `Supabase Storage エラー (bucket: ${bucketName}, kind: ${kind})`);
     }
 
-    // 公開URLを取得
-    const { data: publicData } = supabase.storage
-      .from(bucketName)
-      .getPublicUrl(filePath);
+    const data = await response.json();
+    console.log('✅ File uploaded successfully:', data);
 
-    return publicData.publicUrl;
+    return data.url;
   } catch (error) {
     console.error('❌ uploadFile エラー:', error);
     throw error;
@@ -318,6 +330,7 @@ export async function resizeImage(
 
 /**
  * プロフィール画像をアップロード（リサイズ付き）
+ * Edge Function経由でCORS対応
  *
  * @param file - アップロードする画像ファイル
  * @param walletAddress - ユーザーのウォレットアドレス
@@ -340,39 +353,34 @@ export async function uploadAvatarImage(file: File, walletAddress: string): Prom
     // 画像をリサイズ（512x512以内）
     const resizedFile = await resizeImage(file, 512, 512, 0.8);
 
-    // ファイル名を生成（ウォレットアドレスベース）
-    const fileExt = 'jpg'; // リサイズ後は常にJPEG
-    const fileName = `${walletAddress.toLowerCase()}/avatar.${fileExt}`;
+    // Edge Function経由でアップロード（CORS対応）
+    const formData = new FormData();
+    formData.append('file', resizedFile);
+    formData.append('walletAddress', walletAddress);
 
-    // 既存のアバターがあれば削除
-    const { data: existingFiles } = await supabase.storage
-      .from('gh-avatars')
-      .list(walletAddress.toLowerCase());
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const functionUrl = `${supabaseUrl}/functions/v1/upload-avatar`;
 
-    if (existingFiles && existingFiles.length > 0) {
-      const filesToDelete = existingFiles.map(f => `${walletAddress.toLowerCase()}/${f.name}`);
-      await supabase.storage.from('gh-avatars').remove(filesToDelete);
+    console.log('📤 Uploading avatar via Edge Function:', functionUrl);
+
+    const response = await fetch(functionUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error('❌ Edge Function upload error:', errorData);
+      throw new Error(errorData.error || 'アップロードに失敗しました');
     }
 
-    // 新しいアバターをアップロード
-    const { error } = await supabase.storage
-      .from('gh-avatars')
-      .upload(fileName, resizedFile, {
-        cacheControl: '3600',
-        upsert: true
-      });
+    const data = await response.json();
+    console.log('✅ Avatar uploaded successfully:', data);
 
-    if (error) {
-      console.error('❌ アバターアップロード エラー:', error);
-      throw new Error(`アップロードに失敗しました: ${error.message}`);
-    }
-
-    // 公開URLを取得
-    const { data: publicData } = supabase.storage
-      .from('gh-avatars')
-      .getPublicUrl(fileName);
-
-    return publicData.publicUrl;
+    return data.url;
   } catch (error) {
     console.error('❌ uploadAvatarImage エラー:', error);
     throw error;
