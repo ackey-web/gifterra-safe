@@ -3181,15 +3181,9 @@ function WalletInfo({ isMobile }: { isMobile: boolean }) {
   // 使用するアドレス（Privyの埋め込みウォレットを最優先）
   const address = privyEmbeddedAddress || actualAddress || privyWallet?.address || thirdwebAddress;
 
-  // デバッグログ: どのウォレットの残高を表示しているか確認
+  // ウォレットアドレス変更時の処理
   useEffect(() => {
-      address,
-      privyEmbeddedAddress,
-      actualAddress,
-      privyWalletAddress: privyWallet?.address,
-      thirdwebAddress,
-      signer: !!signer,
-    });
+    // アドレス変更時の処理（必要に応じて追加）
   }, [address, privyEmbeddedAddress, actualAddress, privyWallet, thirdwebAddress, signer]);
 
   // トークン残高を取得
