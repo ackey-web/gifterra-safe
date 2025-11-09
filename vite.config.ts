@@ -46,6 +46,7 @@ export default defineConfig(({ mode }) => {
     // 環境変数を明示的に定義（ビルド時に値が埋め込まれる）
     'import.meta.env.VITE_SUPABASE_URL': JSON.stringify(env.VITE_SUPABASE_URL),
     'import.meta.env.VITE_SUPABASE_ANON_KEY': JSON.stringify(env.VITE_SUPABASE_ANON_KEY),
+    'import.meta.env.VITE_POLYGONSCAN_API_KEY': JSON.stringify(env.VITE_POLYGONSCAN_API_KEY),
   },
   optimizeDeps: {
     include: ['@privy-io/react-auth'],
