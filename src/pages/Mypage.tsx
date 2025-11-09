@@ -968,14 +968,7 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
 
   // デバッグログ: どのウォレットの残高を表示しているか確認
   useEffect(() => {
-      walletAddress,
-      privyEmbeddedAddress,
-      actualAddress,
-      privyWalletAddress: privyWallet?.address,
-      thirdwebAddress,
-      signer: !!signer,
-      signerAddress: signer ? '取得中...' : 'なし',
-    });
+    // ウォレットアドレス変更時の処理（必要に応じて追加）
   }, [walletAddress, privyEmbeddedAddress, actualAddress, privyWallet, thirdwebAddress, signer]);
 
   // トークン残高を取得
@@ -1017,14 +1010,6 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
 
   // ガスレス送金処理
   const handleSend = async () => {
-    // デバッグ: ウォレット接続状態を確認
-      privyWallet: privyWallet ? `存在 (${privyWallet.address})` : 'なし',
-      thirdwebSigner: thirdwebSigner ? '存在' : 'なし',
-      thirdwebAddress,
-      authenticated,
-      walletsReady,
-    });
-
     // Signerとアドレスの取得（PrivyまたはThirdweb）
     let signer: ethers.Signer | null = null;
     let userAddress: string | null = null;
@@ -1118,15 +1103,6 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
 
     try {
       setIsSending(true);
-
-        sendMode,
-        selectedToken,
-        amount,
-        address: trimmedAddress,
-        message: message || '(メッセージなし)',
-        userAddress,
-        selectedTenant: selectedTenant?.name || '(なし)',
-      });
 
       // トークンアドレスを取得（メインネット用）
       const tokenAddress = selectedToken === 'JPYC' ? JPYC_TOKEN.ADDRESS : NHT_TOKEN.ADDRESS;
