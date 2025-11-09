@@ -30,6 +30,7 @@ export function useTransactionHistory(address: string | undefined) {
 
   useEffect(() => {
     if (!address) {
+      console.log('⚠️ useTransactionHistory: No address provided');
       setTransactions([]);
       setLoading(false);
       return;
@@ -39,6 +40,7 @@ export function useTransactionHistory(address: string | undefined) {
       try {
         setLoading(true);
         const normalizedAddress = address.toLowerCase();
+        console.log('📡 useTransactionHistory: Fetching transactions for address:', normalizedAddress);
 
         // SUPPORTED_TOKENS に登録されている全トークンのトランザクションを取得
         const txPromises = SUPPORTED_TOKENS.map(token =>
@@ -46,17 +48,26 @@ export function useTransactionHistory(address: string | undefined) {
         );
 
         const allTokenTxs = await Promise.all(txPromises);
+        console.log('📊 useTransactionHistory: Fetched token transactions:', {
+          totalTokens: SUPPORTED_TOKENS.length,
+          results: allTokenTxs.map((txs, i) => ({
+            token: SUPPORTED_TOKENS[i].SYMBOL,
+            count: txs.length
+          }))
+        });
 
         // 全トランザクションをマージして時刻順にソート
         const allTxs = allTokenTxs
           .flat()
           .sort((a, b) => b.timestamp - a.timestamp);
 
+        console.log('✅ useTransactionHistory: Total transactions:', allTxs.length);
+
         // 最新20件のみ表示
         setTransactions(allTxs.slice(0, 20));
         setLoading(false);
       } catch (error) {
-        console.error('Failed to fetch transaction history:', error);
+        console.error('❌ useTransactionHistory: Failed to fetch transaction history:', error);
         setTransactions([]);
         setLoading(false);
       }
@@ -81,18 +92,40 @@ async function fetchTokenTransactions(
   tokenSymbol: string
 ): Promise<Transaction[]> {
   try {
-    // PolygonScan API (無料、APIキー不要)
-    const apiUrl = `https://api.polygonscan.com/api?module=account&action=tokentx&contractaddress=${tokenAddress}&address=${address}&page=1&offset=20&sort=desc`;
+    // PolygonScan API キー（必須: V2 APIはAPIキーが必要）
+    const apiKey = import.meta.env.VITE_POLYGONSCAN_API_KEY || '';
 
+    if (!apiKey) {
+      console.warn(`⚠️ ${tokenSymbol}: PolygonScan API key is required for V2 API. Please set VITE_POLYGONSCAN_API_KEY in .env file.`);
+      return [];
+    }
+
+    // PolygonScan API エンドポイント（正しいPolygon Mainnet用）
+    const apiUrl = `https://api.polygonscan.com/api?module=account&action=tokentx&contractaddress=${tokenAddress}&address=${address}&page=1&offset=20&sort=desc&apikey=${apiKey}`;
+
+    console.log(`🔍 Fetching ${tokenSymbol} transactions from PolygonScan V2 API...`);
     const response = await fetch(apiUrl);
     const data = await response.json();
 
-    if (data.status !== '1' || !data.result) {
+    console.log(`📦 ${tokenSymbol} API response:`, {
+      status: data.status,
+      message: data.message,
+      result: data.result,
+      resultCount: Array.isArray(data.result) ? data.result.length : 0
+    });
+
+    if (data.status !== '1') {
+      console.warn(`⚠️ ${tokenSymbol}: PolygonScan API error - ${data.message}. Result:`, data.result);
+      return [];
+    }
+
+    if (!data.result || !Array.isArray(data.result) || data.result.length === 0) {
+      console.log(`ℹ️ ${tokenSymbol}: No transactions found for this token`);
       return [];
     }
 
     // トランザクションを変換
-    return data.result.map((tx: any) => {
+    const transactions = data.result.map((tx: any) => {
       const isSend = tx.from.toLowerCase() === address.toLowerCase();
 
       return {
@@ -105,8 +138,11 @@ async function fetchTokenTransactions(
         type: isSend ? 'send' : 'receive',
       } as Transaction;
     });
+
+    console.log(`✅ ${tokenSymbol}: Processed ${transactions.length} transactions`);
+    return transactions;
   } catch (error) {
-    console.error(`Failed to fetch ${tokenSymbol} (${tokenAddress}) transactions:`, error);
+    console.error(`❌ Failed to fetch ${tokenSymbol} (${tokenAddress}) transactions:`, error);
     return [];
   }
 }

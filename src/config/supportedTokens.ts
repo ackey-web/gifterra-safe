@@ -1,7 +1,7 @@
 // src/config/supportedTokens.ts
 // GIFTERRA で履歴表示対象となるトークン一覧
 
-import { JPYC_TOKEN, NHT_TOKEN } from '../contract';
+import { JPYC_TOKEN } from '../contract';
 
 /**
  * トークン情報の型定義
@@ -30,12 +30,7 @@ export const SUPPORTED_TOKENS: SupportedToken[] = [
     DECIMALS: JPYC_TOKEN.DECIMALS,
     NAME: JPYC_TOKEN.NAME,
   },
-  {
-    ADDRESS: NHT_TOKEN.ADDRESS,
-    SYMBOL: NHT_TOKEN.SYMBOL,
-    DECIMALS: NHT_TOKEN.DECIMALS,
-    NAME: NHT_TOKEN.NAME,
-  },
+  // NHTは送金セクションで使用しないため履歴から除外
   // 【将来的な独自トークン追加例】
   // {
   //   ADDRESS: '0x...',
