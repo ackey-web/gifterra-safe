@@ -3314,8 +3314,6 @@ function OverallKodomiTank({ isMobile }: { isMobile: boolean }) {
           borderRadius: '50% 50% 40% 40% / 10% 10% 40% 40%',
           overflow: 'hidden',
           boxShadow: 'inset 0 0 60px rgba(0,0,0,0.4), 0 10px 40px rgba(0,0,0,0.5)',
-          filter: 'opacity(0.3) blur(1px)',
-          pointerEvents: 'none',
         }}>
           {/* 液体 */}
           <div style={{
@@ -3484,6 +3482,40 @@ function OverallKodomiTank({ isMobile }: { isMobile: boolean }) {
             </div>
           </div>
         </div>
+
+        {/* オーバーレイ */}
+        <div style={{
+          position: 'absolute',
+          inset: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: 'rgba(0, 0, 0, 0.75)',
+          backdropFilter: 'blur(4px)',
+          borderRadius: '50% 50% 40% 40% / 10% 10% 40% 40%',
+          textAlign: 'center',
+          padding: isMobile ? 20 : 30,
+        }}>
+          <div style={{
+            fontSize: isMobile ? 18 : 24,
+            fontWeight: 800,
+            color: '#ffffff',
+            marginBottom: isMobile ? 8 : 12,
+            textShadow: '0 2px 8px rgba(0,0,0,0.5)',
+            lineHeight: 1.4,
+          }}>
+            GIFTERRA STUDIOで全機能解放🔥
+          </div>
+          <div style={{
+            fontSize: isMobile ? 16 : 20,
+            fontWeight: 700,
+            color: '#fbbf24',
+            textShadow: '0 2px 8px rgba(0,0,0,0.5)',
+          }}>
+            近日公開！
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -3544,15 +3576,16 @@ function ContributionTenants({ isMobile }: { isMobile: boolean }) {
   return (
     <>
       <div style={{
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-        border: '2px solid rgba(255, 255, 255, 0.3)',
-        borderRadius: isMobile ? 16 : 24,
-        padding: isMobile ? 20 : 28,
-        boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
+        position: 'relative',
         marginBottom: isMobile ? 40 : 60,
-        filter: 'opacity(0.3) blur(1px)',
-        pointerEvents: 'none',
       }}>
+        <div style={{
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          border: '2px solid rgba(255, 255, 255, 0.3)',
+          borderRadius: isMobile ? 16 : 24,
+          padding: isMobile ? 20 : 28,
+          boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
+        }}>
         <div style={{
           display: 'flex',
           alignItems: 'center',
@@ -3785,6 +3818,41 @@ function ContributionTenants({ isMobile }: { isMobile: boolean }) {
               </button>
             </div>
           ))}
+        </div>
+        </div>
+
+        {/* オーバーレイ */}
+        <div style={{
+          position: 'absolute',
+          inset: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: 'rgba(0, 0, 0, 0.75)',
+          backdropFilter: 'blur(4px)',
+          borderRadius: isMobile ? 16 : 24,
+          textAlign: 'center',
+          padding: isMobile ? 20 : 30,
+        }}>
+          <div style={{
+            fontSize: isMobile ? 18 : 24,
+            fontWeight: 800,
+            color: '#ffffff',
+            marginBottom: isMobile ? 8 : 12,
+            textShadow: '0 2px 8px rgba(0,0,0,0.5)',
+            lineHeight: 1.4,
+          }}>
+            GIFTERRA STUDIOで全機能解放🔥
+          </div>
+          <div style={{
+            fontSize: isMobile ? 16 : 20,
+            fontWeight: 700,
+            color: '#fbbf24',
+            textShadow: '0 2px 8px rgba(0,0,0,0.5)',
+          }}>
+            近日公開！
+          </div>
         </div>
       </div>
 
@@ -4585,7 +4653,6 @@ function LockCard({ isMobile }: { isMobile: boolean }) {
         border: '1px solid rgba(16, 185, 129, 0.3)',
         borderRadius: isMobile ? 16 : 24,
         padding: isMobile ? 24 : 32,
-        filter: 'opacity(0.3) blur(1px)',
         pointerEvents: 'none',
       }}>
         <div style={{ fontSize: isMobile ? 36 : 48, marginBottom: 16, textAlign: 'center' }}>⏳</div>
@@ -4637,7 +4704,6 @@ function LockCard({ isMobile }: { isMobile: boolean }) {
       border: '1px solid rgba(102, 126, 234, 0.2)',
       borderRadius: isMobile ? 16 : 24,
       padding: isMobile ? 24 : 32,
-      filter: 'opacity(0.3) blur(1px)',
       pointerEvents: 'none',
     }}>
       {!showForm ? (
