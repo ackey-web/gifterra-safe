@@ -1528,7 +1528,7 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             min="0"
-            step="1"
+            step="0.01"
             style={{
               width: '100%',
               padding: isMobile ? '10px 12px' : '12px 14px',
@@ -2628,6 +2628,8 @@ function BulkSendForm({ isMobile, onChangeMode }: {
                 placeholder="数量"
                 value={recipient.amount}
                 onChange={(e) => updateRecipient(recipient.id, 'amount', e.target.value)}
+                min="0"
+                step="0.01"
                 style={{
                   width: '100%',
                   padding: isMobile ? '8px 10px' : '10px 12px',
