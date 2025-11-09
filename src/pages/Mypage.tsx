@@ -18,6 +18,7 @@ import { saveTransferMessage, useReceivedTransferMessages } from '../hooks/useTr
 import { TenantPlanCard } from '../components/TenantPlanCard';
 import { SettingsModal } from '../components/SettingsModal';
 import { TransferMessageHistory } from '../components/TransferMessageHistory';
+import { NotificationBell } from '../components/NotificationBell';
 import flowImage from '../assets/flow.png';
 import studioImage from '../assets/studio.png';
 import studioProImage from '../assets/studio-pro.png';
@@ -463,8 +464,11 @@ function Header({ viewMode, setViewMode, isMobile, tenantRank, showSettingsModal
         </div>
       )}
 
-      {/* 右：プロフィール・設定・シェア・Admin・ログアウト */}
+      {/* 右：通知・プロフィール・設定・シェア・Admin・ログアウト */}
       <div style={{ display: 'flex', gap: isMobile ? 8 : 12, alignItems: 'center' }}>
+        {/* 通知ベル */}
+        <NotificationBell userAddress={address} isMobile={isMobile} />
+
         {viewMode === 'tenant' && (
           <button style={{
             padding: isMobile ? '6px 12px' : '8px 16px',
