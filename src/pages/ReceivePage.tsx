@@ -179,9 +179,9 @@ export function ReceivePage() {
           </div>
         </button>
 
-        {/* MetaMaskアプリを開くボタン */}
+        {/* GIFTERRAを使って送るボタン */}
         <a
-          href={`https://metamask.app.link/send/${address}@137`}
+          href="/login"
           style={{
             display: 'block',
             width: '100%',
@@ -199,7 +199,7 @@ export function ReceivePage() {
             marginBottom: isMobile ? '10px' : '16px',
           }}
         >
-          🦊 MetaMaskアプリを開く
+          💴 GIFTERRAを使って送る
         </a>
 
         {/* 注意事項 */}
