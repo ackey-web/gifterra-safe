@@ -4816,7 +4816,7 @@ function LockCard({ isMobile }: { isMobile: boolean }) {
               e.currentTarget.style.boxShadow = 'none';
             }}
           >
-            {checkingApplication ? '確認中...' : 'テナント申請する'}
+            {checkingApplication ? '確認中...' : 'テナントを申請する（GIFTERRA STUDIO公開後に申請可能となります）'}
           </button>
         </>
       ) : (
