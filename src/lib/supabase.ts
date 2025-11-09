@@ -140,18 +140,20 @@ export async function uploadFile(file: File, kind: UploadKind): Promise<string> 
       body: formData,
     });
 
+    // レスポンスを一度だけテキストとして読み取る
+    const responseText = await response.text();
+
     if (!response.ok) {
       let errorData;
       try {
-        errorData = await response.json();
+        errorData = JSON.parse(responseText);
       } catch (e) {
-        const errorText = await response.text();
         console.error('❌ Edge Function error (non-JSON):', {
           status: response.status,
           statusText: response.statusText,
-          body: errorText
+          body: responseText
         });
-        throw new Error(`アップロードに失敗しました (Status: ${response.status}): ${errorText}`);
+        throw new Error(`アップロードに失敗しました (Status: ${response.status}): ${responseText}`);
       }
       console.error('❌ Edge Function upload error:', errorData);
       throw new Error(errorData.error || `Supabase Storage エラー (bucket: ${bucketName}, kind: ${kind})`);
@@ -159,9 +161,8 @@ export async function uploadFile(file: File, kind: UploadKind): Promise<string> 
 
     let data;
     try {
-      data = await response.json();
+      data = JSON.parse(responseText);
     } catch (e) {
-      const responseText = await response.text();
       console.error('❌ レスポンスのJSONパースに失敗:', {
         status: response.status,
         body: responseText,
@@ -393,19 +394,20 @@ export async function uploadAvatarImage(file: File, walletAddress: string): Prom
       body: formData,
     });
 
+    // レスポンスを一度だけテキストとして読み取る
+    const responseText = await response.text();
+
     if (!response.ok) {
       let errorData;
       try {
-        errorData = await response.json();
+        errorData = JSON.parse(responseText);
       } catch (e) {
-        // JSONパースに失敗した場合はテキストを取得
-        const errorText = await response.text();
         console.error('❌ Edge Function error (non-JSON):', {
           status: response.status,
           statusText: response.statusText,
-          body: errorText
+          body: responseText
         });
-        throw new Error(`アップロードに失敗しました (Status: ${response.status}): ${errorText}`);
+        throw new Error(`アップロードに失敗しました (Status: ${response.status}): ${responseText}`);
       }
       console.error('❌ Edge Function upload error:', errorData);
       throw new Error(errorData.error || 'アップロードに失敗しました');
@@ -413,9 +415,8 @@ export async function uploadAvatarImage(file: File, walletAddress: string): Prom
 
     let data;
     try {
-      data = await response.json();
+      data = JSON.parse(responseText);
     } catch (e) {
-      const responseText = await response.text();
       console.error('❌ レスポンスのJSONパースに失敗:', {
         status: response.status,
         body: responseText,
