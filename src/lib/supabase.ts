@@ -384,7 +384,13 @@ export async function uploadAvatarImage(file: File, walletAddress: string): Prom
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
     const functionUrl = `${supabaseUrl}/functions/v1/upload-avatar`;
 
-    console.log('📤 Uploading avatar via Edge Function:', functionUrl);
+    console.log('📤 Uploading avatar via Edge Function:', {
+      url: functionUrl,
+      supabaseUrl,
+      hasAnonKey: !!import.meta.env.VITE_SUPABASE_ANON_KEY,
+      fileSize: resizedFile.size,
+      walletAddress
+    });
 
     const response = await fetch(functionUrl, {
       method: 'POST',
@@ -392,6 +398,12 @@ export async function uploadAvatarImage(file: File, walletAddress: string): Prom
         'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
       },
       body: formData,
+    });
+
+    console.log('📥 Edge Function response:', {
+      status: response.status,
+      statusText: response.statusText,
+      headers: Object.fromEntries(response.headers.entries())
     });
 
     // レスポンスを一度だけテキストとして読み取る
