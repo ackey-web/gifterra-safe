@@ -2794,6 +2794,7 @@ function ReceiveAddress({ isMobile }: { isMobile: boolean }) {
   const [showModal, setShowModal] = useState(false);
   const [qrDataURL, setQrDataURL] = useState<string>('');
   const [copySuccess, setCopySuccess] = useState(false);
+  const [urlCopySuccess, setUrlCopySuccess] = useState(false);
 
   // 受け取りアドレス用QRコード生成（Web URL形式）
   const generateQR = async (recipientAddress: string) => {
@@ -2839,6 +2840,20 @@ function ReceiveAddress({ isMobile }: { isMobile: boolean }) {
     } catch (err) {
       console.error('コピーエラー:', err);
       alert('コピーに失敗しました');
+    }
+  };
+
+  // URLをコピー
+  const handleUrlCopy = async () => {
+    if (!address) return;
+    try {
+      const receiveUrl = `${window.location.origin}/receive?address=${address}`;
+      await navigator.clipboard.writeText(receiveUrl);
+      setUrlCopySuccess(true);
+      setTimeout(() => setUrlCopySuccess(false), 2000);
+    } catch (err) {
+      console.error('URLコピーエラー:', err);
+      alert('URLコピーに失敗しました');
     }
   };
 
@@ -2994,11 +3009,30 @@ function ReceiveAddress({ isMobile }: { isMobile: boolean }) {
               <div style={{ fontWeight: 600, color: '#065f46', marginBottom: '8px' }}>
                 📱 QRコードの使い方
               </div>
-              <div style={{ fontSize: isMobile ? 11 : 12, color: '#047857' }}>
+              <div style={{ fontSize: isMobile ? 11 : 12, color: '#047857', marginBottom: '12px' }}>
                 スマートフォンのカメラやQRコードリーダーで読み取ると、<br />
                 受け取り専用ページが開きます。<br />
                 アドレスのコピーやMetaMaskアプリの起動が簡単にできます。
               </div>
+
+              {/* URLコピーボタン */}
+              <button
+                onClick={handleUrlCopy}
+                style={{
+                  width: '100%',
+                  background: urlCopySuccess ? '#d1fae5' : '#ffffff',
+                  border: urlCopySuccess ? '2px solid #10b981' : '2px solid #10b981',
+                  borderRadius: '8px',
+                  padding: isMobile ? '8px 12px' : '10px 14px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  fontSize: isMobile ? 11 : 12,
+                  fontWeight: 600,
+                  color: urlCopySuccess ? '#065f46' : '#047857',
+                }}
+              >
+                {urlCopySuccess ? '✅ URLをコピーしました！' : '🔗 受け取りURLをコピー'}
+              </button>
             </div>
 
             {/* QRコード */}
