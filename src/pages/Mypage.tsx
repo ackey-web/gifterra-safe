@@ -1165,26 +1165,13 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
         const maticBalance = await signer.getBalance();
 
         // トランザクションを直接送信
-          to: tokenAddress,
-          gasLimit: 65000,
-        });
         const tx = await signer.sendTransaction({
           to: tokenAddress,
           data: transferData,
           gasLimit: 65000, // ERC20 transferの標準的なガスリミット
         });
-          hash: tx.hash,
-          from: tx.from,
-          to: tx.to,
-          nonce: tx.nonce,
-        });
 
         const receipt = await tx.wait();
-          transactionHash: receipt.transactionHash,
-          blockNumber: receipt.blockNumber,
-          gasUsed: receipt.gasUsed.toString(),
-          status: receipt.status,
-        });
 
         // 残高は10秒ごとに自動更新されます
 
