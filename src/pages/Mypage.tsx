@@ -141,21 +141,8 @@ export function MypagePage() {
   // useWallets() は外部ウォレット（MetaMask）を優先してしまうため、直接 user.wallet を使う
   const privyEmbeddedWalletAddress = user?.wallet?.address;
 
-    walletsReady,
-    walletsCount: wallets.length,
-    allWallets: wallets.map(w => ({ type: w.walletClientType, address: w.address })),
-    privyEmbeddedWalletAddress: privyEmbeddedWalletAddress || 'なし',
-    userWalletAddress: user?.wallet?.address,
-    authenticated,
-  });
-
   // 表示するアドレス（Privy埋め込みウォレット優先、なければThirdweb）
   const displayAddress = privyEmbeddedWalletAddress || thirdwebAddress;
-
-    displayAddress,
-    privyEmbeddedWalletAddress,
-    thirdwebAddress,
-  });
 
   useEffect(() => {
     const handleResize = () => {
