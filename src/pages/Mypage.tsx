@@ -4524,15 +4524,6 @@ function HistorySection({
   const { transactions, loading } = useTransactionHistory(address);
   const { messages, isLoading: messagesLoading } = useReceivedTransferMessages(tenantId, address);
 
-    address,
-    tenantId,
-    transactionsCount: transactions.length,
-    loading,
-    messagesCount: messages.length,
-    messagesLoading,
-    transactions: transactions.slice(0, 3), // 最初の3件のみ表示
-  });
-
   return (
     <div style={{
       background: 'linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)',
