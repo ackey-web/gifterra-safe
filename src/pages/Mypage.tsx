@@ -3496,6 +3496,7 @@ function OverallKodomiTank({ isMobile }: { isMobile: boolean }) {
           borderRadius: '50% 50% 40% 40% / 10% 10% 40% 40%',
           textAlign: 'center',
           padding: isMobile ? 20 : 30,
+          zIndex: 10,
         }}>
           <div style={{
             fontSize: isMobile ? 18 : 24,
@@ -3834,6 +3835,7 @@ function ContributionTenants({ isMobile }: { isMobile: boolean }) {
           borderRadius: isMobile ? 16 : 24,
           textAlign: 'center',
           padding: isMobile ? 20 : 30,
+          zIndex: 10,
         }}>
           <div style={{
             fontSize: isMobile ? 18 : 24,
