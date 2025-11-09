@@ -94,23 +94,58 @@ export function ProfileEditModal({
     setError('');
 
     try {
+      console.log('💾 ProfileEditModal - Saving profile:', {
+        wallet_address: walletAddress.toLowerCase(),
+        display_name: displayName.trim(),
+        bio: bio.trim(),
+        avatar_url: avatarUrl || null,
+      });
+
       // upsert: 存在すれば更新、存在しなければ作成
-      const { error: upsertError } = await supabase
+      // まず既存のプロフィールを確認
+      const { data: existingProfile } = await supabase
         .from('user_profiles')
-        .upsert(
-          {
-            wallet_address: walletAddress.toLowerCase(),
+        .select('*')
+        .eq('tenant_id', 'default')
+        .eq('wallet_address', walletAddress.toLowerCase())
+        .maybeSingle();
+
+      console.log('📋 Existing profile:', existingProfile);
+
+      let upsertError;
+      if (existingProfile) {
+        // 既存プロフィールを更新
+        const { error } = await supabase
+          .from('user_profiles')
+          .update({
             display_name: displayName.trim(),
             bio: bio.trim(),
             avatar_url: avatarUrl || null,
             updated_at: new Date().toISOString(),
-          },
-          {
-            onConflict: 'wallet_address',
-          }
-        );
+          })
+          .eq('tenant_id', 'default')
+          .eq('wallet_address', walletAddress.toLowerCase());
+        upsertError = error;
+      } else {
+        // 新規プロフィールを作成
+        const { error } = await supabase
+          .from('user_profiles')
+          .insert({
+            tenant_id: 'default',
+            wallet_address: walletAddress.toLowerCase(),
+            display_name: displayName.trim(),
+            bio: bio.trim(),
+            avatar_url: avatarUrl || null,
+          });
+        upsertError = error;
+      }
 
-      if (upsertError) throw upsertError;
+      if (upsertError) {
+        console.error('❌ ProfileEditModal - Upsert error:', upsertError);
+        throw upsertError;
+      }
+
+      console.log('✅ ProfileEditModal - Profile saved successfully');
 
       onSave();
       onClose();

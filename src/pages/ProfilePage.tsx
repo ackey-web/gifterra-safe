@@ -2,7 +2,7 @@
 // プロフィールページ
 
 import { useState, useEffect } from 'react';
-import { usePrivy } from '@privy-io/react-auth';
+import { usePrivy, useWallets } from '@privy-io/react-auth';
 import { supabase } from '../lib/supabase';
 import { ProfileEditModal } from '../components/ProfileEditModal';
 
@@ -21,8 +21,16 @@ export function ProfilePage() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const { user } = usePrivy();
+  const { wallets } = useWallets();
 
-  const walletAddress = user?.wallet?.address || '';
+  // ウォレットアドレスを取得（Privy埋め込みウォレットまたは外部ウォレット）
+  const walletAddress = user?.wallet?.address || wallets[0]?.address || '';
+
+  console.log('👤 ProfilePage - Wallet info:', {
+    privyEmbeddedWallet: user?.wallet?.address,
+    externalWallet: wallets[0]?.address,
+    finalWalletAddress: walletAddress,
+  });
 
   useEffect(() => {
     const handleResize = () => {
@@ -34,24 +42,32 @@ export function ProfilePage() {
 
   // プロフィールデータ取得
   const fetchProfile = async () => {
-    if (!walletAddress) return;
+    if (!walletAddress) {
+      console.log('⚠️ ProfilePage - No wallet address');
+      return;
+    }
 
     setIsLoading(true);
     try {
+      console.log('📡 ProfilePage - Fetching profile for:', walletAddress.toLowerCase());
+
       const { data, error } = await supabase
         .from('user_profiles')
         .select('*')
+        .eq('tenant_id', 'default')
         .eq('wallet_address', walletAddress.toLowerCase())
-        .single();
+        .maybeSingle(); // single() の代わりに maybeSingle() を使用
 
-      if (error && error.code !== 'PGRST116') {
-        // PGRST116 = レコードが見つからない（初回）
-        console.error('プロフィール取得エラー:', error);
+      if (error) {
+        console.error('❌ ProfilePage - Profile fetch error:', error);
+        setProfile(null);
+      } else {
+        console.log('✅ ProfilePage - Profile fetched:', data);
+        setProfile(data || null);
       }
-
-      setProfile(data || null);
     } catch (err) {
-      console.error('プロフィール取得エラー:', err);
+      console.error('❌ ProfilePage - Profile fetch exception:', err);
+      setProfile(null);
     } finally {
       setIsLoading(false);
     }

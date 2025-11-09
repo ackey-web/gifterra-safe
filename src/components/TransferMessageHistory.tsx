@@ -1,0 +1,691 @@
+// src/components/TransferMessageHistory.tsx
+// 送金メッセージ受信履歴コンポーネント
+
+import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
+import { useReceivedTransferMessages, markMessageAsRead, type TransferMessage } from '../hooks/useTransferMessages';
+
+interface TransferMessageHistoryProps {
+  tenantId: string | undefined;
+  walletAddress: string | undefined;
+  isMobile: boolean;
+}
+
+export function TransferMessageHistory({
+  tenantId,
+  walletAddress,
+  isMobile,
+}: TransferMessageHistoryProps) {
+  const { messages, isLoading, error } = useReceivedTransferMessages(tenantId, walletAddress);
+  const [selectedMessage, setSelectedMessage] = useState<TransferMessage | null>(null);
+  const [showProfileBio, setShowProfileBio] = useState(false);
+
+  // アドレスを短縮表示する関数
+  const shortenAddress = (address: string): string => {
+    if (!address || address.length < 10) return address;
+    return `${address.slice(0, 6)}...${address.slice(-4)}`;
+  };
+
+  // メッセージを短縮表示する関数（30文字まで）
+  const shortenMessage = (message: string | undefined): string => {
+    if (!message) return '';
+    if (message.length <= 30) return message;
+    return `${message.slice(0, 30)}...`;
+  };
+
+  // 相対時刻を表示する関数（date-fnsの代わりにシンプルな実装）
+  const getRelativeTime = (dateString: string): string => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMinutes = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMinutes / 60);
+    const diffDays = Math.floor(diffHours / 24);
+
+    if (diffMinutes < 1) return 'たった今';
+    if (diffMinutes < 60) return `${diffMinutes}分前`;
+    if (diffHours < 24) return `${diffHours}時間前`;
+    if (diffDays < 7) return `${diffDays}日前`;
+
+    // 1週間以上前は日付表示
+    return date.toLocaleDateString('ja-JP', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
+
+  // モーダルを開く
+  const handleOpenModal = async (message: TransferMessage) => {
+    setSelectedMessage(message);
+    setShowProfileBio(false);
+
+    // 未読の場合は既読にする
+    if (!message.is_read) {
+      try {
+        await markMessageAsRead(message.id);
+      } catch (err) {
+        console.error('既読マーク失敗:', err);
+      }
+    }
+  };
+
+  // モーダルを閉じる
+  const handleCloseModal = () => {
+    setSelectedMessage(null);
+    setShowProfileBio(false);
+  };
+
+  // ローディング状態
+  if (isLoading) {
+    return (
+      <div
+        style={{
+          padding: isMobile ? 16 : 24,
+          textAlign: 'center',
+          color: 'rgba(255, 255, 255, 0.7)',
+        }}
+      >
+        <div
+          style={{
+            width: 40,
+            height: 40,
+            margin: '0 auto',
+            border: '4px solid rgba(255, 255, 255, 0.1)',
+            borderTop: '4px solid #667eea',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite',
+          }}
+        />
+        <p style={{ marginTop: 16, fontSize: isMobile ? 14 : 15 }}>
+          読み込み中...
+        </p>
+      </div>
+    );
+  }
+
+  // エラー状態
+  if (error) {
+    return (
+      <div
+        style={{
+          padding: isMobile ? 16 : 24,
+          background: 'rgba(239, 68, 68, 0.1)',
+          border: '1px solid rgba(239, 68, 68, 0.3)',
+          borderRadius: 12,
+          color: '#fca5a5',
+          fontSize: isMobile ? 14 : 15,
+          textAlign: 'center',
+        }}
+      >
+        メッセージの読み込みに失敗しました
+      </div>
+    );
+  }
+
+  // メッセージがない場合
+  if (!messages || messages.length === 0) {
+    return (
+      <div
+        style={{
+          padding: isMobile ? 24 : 32,
+          textAlign: 'center',
+          color: 'rgba(255, 255, 255, 0.5)',
+        }}
+      >
+        <div style={{ fontSize: isMobile ? 40 : 48, marginBottom: 16 }}>
+          📭
+        </div>
+        <p style={{ margin: 0, fontSize: isMobile ? 14 : 15 }}>
+          受信したメッセージはまだありません
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      {/* CSSアニメーション */}
+      <style>
+        {`
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        `}
+      </style>
+
+      {/* 履歴カードリスト（スクロール可能） */}
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: isMobile ? 6 : 8,
+          maxHeight: isMobile ? '300px' : '400px',
+          overflowY: 'auto',
+          paddingRight: 4,
+        }}
+      >
+        {messages.map((message) => (
+          <div
+            key={message.id}
+            onClick={() => handleOpenModal(message)}
+            style={{
+              background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%)',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              borderRadius: 8,
+              padding: isMobile ? '8px 10px' : '10px 12px',
+              transition: 'all 0.2s',
+              cursor: 'pointer',
+              position: 'relative',
+              display: 'flex',
+              alignItems: 'center',
+              gap: isMobile ? 8 : 10,
+              minHeight: isMobile ? 50 : 60,
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'scale(1.01)';
+              e.currentTarget.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.15)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'scale(1)';
+              e.currentTarget.style.boxShadow = 'none';
+            }}
+          >
+            {/* 未読バッジ */}
+            {!message.is_read && (
+              <div
+                style={{
+                  position: 'absolute',
+                  top: 6,
+                  left: 6,
+                  width: 6,
+                  height: 6,
+                  borderRadius: '50%',
+                  background: '#3b82f6',
+                  boxShadow: '0 0 8px #3b82f6',
+                }}
+              />
+            )}
+
+            {/* アバター */}
+            <div
+              style={{
+                width: isMobile ? 36 : 42,
+                height: isMobile ? 36 : 42,
+                borderRadius: '50%',
+                overflow: 'hidden',
+                background: message.sender_profile?.icon_url
+                  ? 'transparent'
+                  : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: isMobile ? 18 : 20,
+                flexShrink: 0,
+                border: '2px solid rgba(255, 255, 255, 0.1)',
+              }}
+            >
+              {message.sender_profile?.icon_url ? (
+                <img
+                  src={message.sender_profile.icon_url}
+                  alt="送信者"
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                  }}
+                />
+              ) : (
+                '👤'
+              )}
+            </div>
+
+            {/* メイン情報（送信者名・時刻・メッセージ） */}
+            <div
+              style={{
+                flex: 1,
+                minWidth: 0,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 2,
+              }}
+            >
+              {/* 送信者名と時刻 */}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  flexWrap: 'nowrap',
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: isMobile ? 13 : 14,
+                    fontWeight: 600,
+                    color: '#EAF2FF',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                  }}
+                >
+                  {message.sender_profile?.name || '匿名ユーザー'}
+                </div>
+                <div
+                  style={{
+                    fontSize: isMobile ? 11 : 12,
+                    color: 'rgba(255, 255, 255, 0.5)',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {getRelativeTime(message.created_at)}
+                </div>
+              </div>
+
+              {/* メッセージプレビュー */}
+              {message.message && (
+                <div
+                  style={{
+                    fontSize: isMobile ? 12 : 13,
+                    color: 'rgba(255, 255, 255, 0.7)',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                  }}
+                >
+                  {shortenMessage(message.message)}
+                </div>
+              )}
+            </div>
+
+            {/* 送金額 */}
+            <div
+              style={{
+                fontSize: isMobile ? 16 : 18,
+                fontWeight: 700,
+                color: '#667eea',
+                whiteSpace: 'nowrap',
+                flexShrink: 0,
+              }}
+            >
+              {message.amount} {message.token_symbol}
+            </div>
+
+            {/* アクションボタン */}
+            <div
+              style={{
+                display: 'flex',
+                gap: 4,
+                flexShrink: 0,
+              }}
+            >
+              {/* Polygonscanリンク */}
+              {message.tx_hash && (
+                <a
+                  href={`https://polygonscan.com/tx/${message.tx_hash}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    width: isMobile ? 28 : 32,
+                    height: isMobile ? 28 : 32,
+                    background: 'rgba(139, 92, 246, 0.1)',
+                    border: '1px solid rgba(139, 92, 246, 0.3)',
+                    borderRadius: 6,
+                    color: '#c4b5fd',
+                    fontSize: isMobile ? 14 : 16,
+                    textDecoration: 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    transition: 'all 0.2s',
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'rgba(139, 92, 246, 0.2)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'rgba(139, 92, 246, 0.1)';
+                  }}
+                  title="Polygonscanで確認"
+                >
+                  ↗
+                </a>
+              )}
+
+              {/* メッセージ詳細ボタン */}
+              {message.message && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleOpenModal(message);
+                  }}
+                  style={{
+                    width: isMobile ? 28 : 32,
+                    height: isMobile ? 28 : 32,
+                    background: 'rgba(59, 130, 246, 0.1)',
+                    border: '1px solid rgba(59, 130, 246, 0.3)',
+                    borderRadius: 6,
+                    color: '#93c5fd',
+                    fontSize: isMobile ? 14 : 16,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    transition: 'all 0.2s',
+                    padding: 0,
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'rgba(59, 130, 246, 0.2)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'rgba(59, 130, 246, 0.1)';
+                  }}
+                  title="メッセージを見る"
+                >
+                  💬
+                </button>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* メッセージ詳細モーダル */}
+      {selectedMessage &&
+        createPortal(
+          <div
+            style={{
+              position: 'fixed',
+              inset: 0,
+              background: 'rgba(0, 0, 0, 0.8)',
+              zIndex: 1000000,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: isMobile ? 16 : 24,
+            }}
+            onClick={handleCloseModal}
+          >
+            <div
+              style={{
+                background: 'linear-gradient(135deg, #1a1a24 0%, #2d2d3a 100%)',
+                borderRadius: isMobile ? 16 : 24,
+                maxWidth: isMobile ? '100%' : 500,
+                width: '100%',
+                maxHeight: '90vh',
+                overflowY: 'auto',
+                border: '1px solid rgba(59, 130, 246, 0.3)',
+                boxShadow: '0 20px 60px rgba(0, 0, 0, 0.5)',
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* モーダルヘッダー */}
+              <div
+                style={{
+                  padding: isMobile ? 20 : 24,
+                  borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                }}
+              >
+                <h2
+                  style={{
+                    margin: 0,
+                    fontSize: isMobile ? 18 : 20,
+                    fontWeight: 700,
+                    color: '#EAF2FF',
+                  }}
+                >
+                  メッセージ詳細
+                </h2>
+                <button
+                  onClick={handleCloseModal}
+                  style={{
+                    width: 32,
+                    height: 32,
+                    background: 'rgba(255, 255, 255, 0.05)',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    borderRadius: 8,
+                    color: '#EAF2FF',
+                    fontSize: 18,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    transition: 'all 0.2s',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+                  }}
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* モーダルコンテンツ */}
+              <div style={{ padding: isMobile ? 20 : 24 }}>
+                {/* 送信者情報 */}
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 16,
+                    marginBottom: 20,
+                  }}
+                >
+                  {/* プロフィール画像（クリック可能） */}
+                  <div
+                    onClick={() => setShowProfileBio(!showProfileBio)}
+                    style={{
+                      width: isMobile ? 60 : 70,
+                      height: isMobile ? 60 : 70,
+                      borderRadius: '50%',
+                      overflow: 'hidden',
+                      background: selectedMessage.sender_profile?.icon_url
+                        ? 'transparent'
+                        : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: isMobile ? 28 : 32,
+                      cursor: selectedMessage.sender_profile?.bio ? 'pointer' : 'default',
+                      border: '3px solid rgba(255, 255, 255, 0.2)',
+                      transition: 'all 0.2s',
+                    }}
+                    onMouseEnter={(e) => {
+                      if (selectedMessage.sender_profile?.bio) {
+                        e.currentTarget.style.transform = 'scale(1.05)';
+                        e.currentTarget.style.borderColor = 'rgba(102, 126, 234, 0.6)';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'scale(1)';
+                      e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+                    }}
+                  >
+                    {selectedMessage.sender_profile?.icon_url ? (
+                      <img
+                        src={selectedMessage.sender_profile.icon_url}
+                        alt="送信者"
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'cover',
+                        }}
+                      />
+                    ) : (
+                      '👤'
+                    )}
+                  </div>
+
+                  {/* 送信者名とアドレス */}
+                  <div style={{ flex: 1 }}>
+                    <div
+                      style={{
+                        fontSize: isMobile ? 16 : 18,
+                        fontWeight: 600,
+                        color: '#EAF2FF',
+                        marginBottom: 4,
+                      }}
+                    >
+                      {selectedMessage.sender_profile?.name || '匿名ユーザー'}
+                    </div>
+                    <div
+                      style={{
+                        fontSize: isMobile ? 12 : 13,
+                        color: 'rgba(255, 255, 255, 0.6)',
+                        fontFamily: 'monospace',
+                      }}
+                    >
+                      {shortenAddress(selectedMessage.from_address)}
+                    </div>
+                  </div>
+                </div>
+
+                {/* プロフィールbio（トグル展開） */}
+                {showProfileBio && selectedMessage.sender_profile?.bio && (
+                  <div
+                    style={{
+                      marginBottom: 20,
+                      padding: isMobile ? 12 : 16,
+                      background: 'rgba(102, 126, 234, 0.1)',
+                      border: '1px solid rgba(102, 126, 234, 0.3)',
+                      borderRadius: 8,
+                      color: 'rgba(255, 255, 255, 0.9)',
+                      fontSize: isMobile ? 13 : 14,
+                      lineHeight: 1.6,
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontSize: isMobile ? 11 : 12,
+                        color: 'rgba(255, 255, 255, 0.6)',
+                        marginBottom: 8,
+                        fontWeight: 600,
+                      }}
+                    >
+                      プロフィール
+                    </div>
+                    {selectedMessage.sender_profile.bio}
+                  </div>
+                )}
+
+                {/* 送金情報 */}
+                <div
+                  style={{
+                    marginBottom: 20,
+                    padding: isMobile ? 16 : 20,
+                    background: 'rgba(102, 126, 234, 0.05)',
+                    border: '1px solid rgba(102, 126, 234, 0.2)',
+                    borderRadius: 12,
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: isMobile ? 12 : 13,
+                      color: 'rgba(255, 255, 255, 0.6)',
+                      marginBottom: 8,
+                    }}
+                  >
+                    送金額
+                  </div>
+                  <div
+                    style={{
+                      fontSize: isMobile ? 28 : 32,
+                      fontWeight: 700,
+                      color: '#667eea',
+                    }}
+                  >
+                    {selectedMessage.amount} {selectedMessage.token_symbol}
+                  </div>
+                  <div
+                    style={{
+                      marginTop: 12,
+                      fontSize: isMobile ? 11 : 12,
+                      color: 'rgba(255, 255, 255, 0.5)',
+                    }}
+                  >
+                    {getRelativeTime(selectedMessage.created_at)}
+                  </div>
+                </div>
+
+                {/* メッセージ全文 */}
+                <div
+                  style={{
+                    marginBottom: 20,
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: isMobile ? 13 : 14,
+                      color: 'rgba(255, 255, 255, 0.7)',
+                      marginBottom: 8,
+                      fontWeight: 600,
+                    }}
+                  >
+                    メッセージ
+                  </div>
+                  <div
+                    style={{
+                      padding: isMobile ? 14 : 16,
+                      background: 'rgba(255, 255, 255, 0.05)',
+                      border: '1px solid rgba(255, 255, 255, 0.1)',
+                      borderRadius: 8,
+                      color: '#EAF2FF',
+                      fontSize: isMobile ? 14 : 15,
+                      lineHeight: 1.7,
+                      whiteSpace: 'pre-wrap',
+                      wordBreak: 'break-word',
+                    }}
+                  >
+                    {selectedMessage.message}
+                  </div>
+                </div>
+
+                {/* Polygonscanリンク */}
+                {selectedMessage.tx_hash && (
+                  <a
+                    href={`https://polygonscan.com/tx/${selectedMessage.tx_hash}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 8,
+                      padding: isMobile ? '12px' : '14px',
+                      background: 'rgba(139, 92, 246, 0.1)',
+                      border: '1px solid rgba(139, 92, 246, 0.3)',
+                      borderRadius: 8,
+                      color: '#c4b5fd',
+                      fontSize: isMobile ? 14 : 15,
+                      fontWeight: 600,
+                      textDecoration: 'none',
+                      transition: 'all 0.2s',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = 'rgba(139, 92, 246, 0.15)';
+                      e.currentTarget.style.transform = 'scale(1.02)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'rgba(139, 92, 246, 0.1)';
+                      e.currentTarget.style.transform = 'scale(1)';
+                    }}
+                  >
+                    <span>Polygonscanで確認</span>
+                    <span style={{ fontSize: isMobile ? 16 : 18 }}>↗</span>
+                  </a>
+                )}
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
+    </>
+  );
+}
