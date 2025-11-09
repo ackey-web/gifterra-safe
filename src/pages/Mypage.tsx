@@ -911,13 +911,6 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
   // Signerを取得し、実際のアドレスを取得
   useEffect(() => {
     const getSigner = async () => {
-        hasUserWallet: !!user?.wallet,
-        userWalletAddress: user?.wallet?.address,
-        walletsCount: wallets.length,
-        walletsReady,
-        allWallets: wallets.map(w => ({ address: w.address, type: w.walletClientType })),
-      });
-
       // walletsReadyがfalseの場合は待機
       if (!walletsReady) {
         return;
