@@ -816,18 +816,6 @@ function FlowModeContent({
   const isApprovedTenant = application?.status === 'approved' && tenantId && tenantRankPlan?.is_active;
   const showLockCard = !isApprovedTenant;
 
-  // 🔍 デバッグ: TenantPlanCard表示条件をログ出力
-    connectedAddress,
-    displayAddress: address,
-    tenantRank,
-    application,
-    applicationStatus: application?.status,
-    tenantId,
-    isApprovedTenant,
-    willRenderTenantPlanCard: isApprovedTenant && tenantId,
-    tenantRankPlan
-  });
-
   return (
     <>
       {/* 0. ウォレット接続情報（送金カードの上） */}
