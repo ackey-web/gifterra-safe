@@ -57,12 +57,11 @@ export default defineConfig(({ mode }) => {
     watch: {
       ignored: ['**/*.log', '**/build-output.log'],
     },
-    // ヘッダー設定を一時的に無効化してPrivy iframeとの互換性をテスト
-    // headers: {
-    //   // Thirdweb embeddedWallet (Google OAuth) に必要な COOP 設定
-    //   'Cross-Origin-Opener-Policy': 'unsafe-none',
-    //   'Cross-Origin-Embedder-Policy': 'credentialless',
-    // },
+    headers: {
+      // Privy Google OAuth iframeに必要な COOP 設定
+      'Cross-Origin-Opener-Policy': 'same-origin-allow-popups',
+      'Cross-Origin-Embedder-Policy': 'credentialless',
+    },
     proxy: {
       // API ルーティング: Vercel ローカル開発は3001にプロキシ
       '/api': {
