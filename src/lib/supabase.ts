@@ -141,12 +141,34 @@ export async function uploadFile(file: File, kind: UploadKind): Promise<string> 
     });
 
     if (!response.ok) {
-      const errorData = await response.json();
+      let errorData;
+      try {
+        errorData = await response.json();
+      } catch (e) {
+        const errorText = await response.text();
+        console.error('❌ Edge Function error (non-JSON):', {
+          status: response.status,
+          statusText: response.statusText,
+          body: errorText
+        });
+        throw new Error(`アップロードに失敗しました (Status: ${response.status}): ${errorText}`);
+      }
       console.error('❌ Edge Function upload error:', errorData);
       throw new Error(errorData.error || `Supabase Storage エラー (bucket: ${bucketName}, kind: ${kind})`);
     }
 
-    const data = await response.json();
+    let data;
+    try {
+      data = await response.json();
+    } catch (e) {
+      const responseText = await response.text();
+      console.error('❌ レスポンスのJSONパースに失敗:', {
+        status: response.status,
+        body: responseText,
+        error: e
+      });
+      throw new Error('サーバーからのレスポンスが不正です');
+    }
     console.log('✅ File uploaded successfully:', data);
 
     return data.url;
@@ -372,12 +394,35 @@ export async function uploadAvatarImage(file: File, walletAddress: string): Prom
     });
 
     if (!response.ok) {
-      const errorData = await response.json();
+      let errorData;
+      try {
+        errorData = await response.json();
+      } catch (e) {
+        // JSONパースに失敗した場合はテキストを取得
+        const errorText = await response.text();
+        console.error('❌ Edge Function error (non-JSON):', {
+          status: response.status,
+          statusText: response.statusText,
+          body: errorText
+        });
+        throw new Error(`アップロードに失敗しました (Status: ${response.status}): ${errorText}`);
+      }
       console.error('❌ Edge Function upload error:', errorData);
       throw new Error(errorData.error || 'アップロードに失敗しました');
     }
 
-    const data = await response.json();
+    let data;
+    try {
+      data = await response.json();
+    } catch (e) {
+      const responseText = await response.text();
+      console.error('❌ レスポンスのJSONパースに失敗:', {
+        status: response.status,
+        body: responseText,
+        error: e
+      });
+      throw new Error('サーバーからのレスポンスが不正です');
+    }
     console.log('✅ Avatar uploaded successfully:', data);
 
     return data.url;
