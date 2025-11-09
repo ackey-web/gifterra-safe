@@ -3,11 +3,17 @@ import react from '@vitejs/plugin-react'
 import fs from 'fs'
 import path from 'path'
 
-// 環境変数を直接読み込む関数
-function loadEnvDirect() {
-  const envFiles = ['.env.local', '.env']
-  const env: Record<string, string> = {}
+// https://vite.dev/config/
+export default defineConfig(({ mode }) => {
+  // Vercel環境ではprocess.envから直接取得、ローカルでは.envファイルから読み込む
+  const env = {
+    VITE_SUPABASE_URL: process.env.VITE_SUPABASE_URL || '',
+    VITE_SUPABASE_ANON_KEY: process.env.VITE_SUPABASE_ANON_KEY || '',
+    VITE_POLYGONSCAN_API_KEY: process.env.VITE_POLYGONSCAN_API_KEY || '',
+  }
 
+  // ローカル開発用: .envファイルが存在する場合は読み込む
+  const envFiles = ['.env.local', '.env']
   for (const file of envFiles) {
     const filePath = path.resolve(process.cwd(), file)
     if (fs.existsSync(filePath)) {
@@ -17,21 +23,19 @@ function loadEnvDirect() {
         if (match) {
           const key = match[1].trim()
           const value = match[2].trim().replace(/^["']|["']$/g, '')
-          if (key.startsWith('VITE_') && !env[key]) {
-            env[key] = value
+          if (key.startsWith('VITE_') && !env[key as keyof typeof env]) {
+            env[key as keyof typeof env] = value
           }
         }
       })
     }
   }
 
-  return env
-}
-
-// https://vite.dev/config/
-export default defineConfig(({ mode }) => {
-  // 環境変数を直接ファイルから読み込む
-  const env = loadEnvDirect()
+  console.log('🔧 Vite Config - Environment variables loaded:', {
+    VITE_SUPABASE_URL: env.VITE_SUPABASE_URL ? env.VITE_SUPABASE_URL.substring(0, 30) + '...' : 'NOT SET',
+    VITE_SUPABASE_ANON_KEY: env.VITE_SUPABASE_ANON_KEY ? 'SET (length: ' + env.VITE_SUPABASE_ANON_KEY.length + ')' : 'NOT SET',
+    VITE_POLYGONSCAN_API_KEY: env.VITE_POLYGONSCAN_API_KEY ? 'SET' : 'NOT SET',
+  })
 
   return {
   plugins: [react()],
