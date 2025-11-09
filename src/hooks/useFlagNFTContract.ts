@@ -2,7 +2,7 @@
 // FlagNFTコントラクトとのインタラクション用カスタムフック
 
 import { useContract, useContractRead, useContractWrite } from '@thirdweb-dev/react';
-import { FlagNFTCategory } from '../types/flagNFT';
+import type { FlagNFTCategory } from '../types/flagNFT';
 
 // コントラクトアドレス（デプロイ後に設定）
 const FLAG_NFT_CONTRACT_ADDRESS = import.meta.env.VITE_FLAG_NFT_CONTRACT_ADDRESS || '';

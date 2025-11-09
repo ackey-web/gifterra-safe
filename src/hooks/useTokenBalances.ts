@@ -26,14 +26,19 @@ export function useTokenBalances(address: string | undefined, signer: ethers.Sig
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   useEffect(() => {
-    if (!address || !signer) {
-      console.log('⚠️ useTokenBalances: No address or signer', { address, signer: !!signer });
+    if (!address) {
+      console.log('⚠️ useTokenBalances: No address', { address });
       setBalances({
         matic: { symbol: 'MATIC', balance: '0', formatted: '0.00', loading: false },
         jpyc: { symbol: 'JPYC', balance: '0', formatted: '0.00', loading: false },
         nht: { symbol: 'NHT', balance: '0', formatted: '0.00', loading: false },
       });
       return;
+    }
+
+    // signerは残高表示には不要（read-only操作のみ）
+    if (!signer) {
+      console.log('⚠️ useTokenBalances: No signer (read-only mode)', { address });
     }
 
     const fetchBalances = async () => {

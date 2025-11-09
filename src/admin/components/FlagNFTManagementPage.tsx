@@ -2,9 +2,12 @@
 // フラグNFT管理ページ
 // 法務対応: 「商品」「購入」などの表現を使用せず、「特典」「チップ」で統一
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import type { FlagNFTCategory } from '../../types/flagNFT';
 import { uploadImage, deleteFileFromUrl } from '../../lib/supabase';
+import { adminSupabase } from '../../lib/adminSupabase';
+import { useTenant } from '../contexts/TenantContext';
+import { useMintFlagNFT } from '../../hooks/useFlagNFTContract';
 
 type CreateStep = 'category' | 'basic' | 'detail';
 
@@ -70,6 +73,10 @@ interface BasicFormData {
   usageLimit: string;
   maxSupply: string;
   isTransferable: boolean;
+  isBurnable: boolean;
+  autoDistributionEnabled: boolean;
+  requiredTipAmount: string;
+  targetToken: 'JPYC' | 'tNHT' | 'both';
 }
 
 interface BenefitFormData {
@@ -128,10 +135,26 @@ interface CollectibleFormData {
 }
 
 export default function FlagNFTManagementPage() {
+  const { tenantId } = useTenant();
   const [view, setView] = useState<'list' | 'create'>('list');
   const [createStep, setCreateStep] = useState<CreateStep>('category');
   const [selectedCategory, setSelectedCategory] = useState<FlagNFTCategory | null>(null);
   const [categoryFilter, setCategoryFilter] = useState<FlagNFTCategory | 'ALL'>('ALL');
+  const [isSaving, setIsSaving] = useState(false);
+
+  // NFTリスト管理用の状態
+  const [flagNFTs, setFlagNFTs] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  // ミントモーダル用の状態
+  const [showMintModal, setShowMintModal] = useState(false);
+  const [selectedNFTForMint, setSelectedNFTForMint] = useState<any | null>(null);
+  const [mintToAddress, setMintToAddress] = useState('');
+  const [isMinting, setIsMinting] = useState(false);
+
+  // ミント用フック
+  const { mint: mintNFT, isLoading: isMintLoading } = useMintFlagNFT();
 
   // 基本情報フォームの状態
   const [formData, setFormData] = useState<BasicFormData>({
@@ -143,6 +166,10 @@ export default function FlagNFTManagementPage() {
     usageLimit: '-1',
     maxSupply: '',
     isTransferable: false,
+    isBurnable: false,
+    autoDistributionEnabled: false,
+    requiredTipAmount: '',
+    targetToken: 'both',
   });
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -232,8 +259,246 @@ export default function FlagNFTManagementPage() {
     );
   };
 
+  // フラグNFTリストをSupabaseから取得
+  useEffect(() => {
+    const loadFlagNFTs = async () => {
+      if (!adminSupabase || !tenantId) {
+        setIsLoading(false);
+        return;
+      }
+
+      setIsLoading(true);
+      try {
+        const { data, error } = await adminSupabase
+          .from('flag_nfts')
+          .select('*')
+          .eq('tenant_id', tenantId)
+          .eq('is_active', true)
+          .order('created_at', { ascending: false });
+
+        if (error) {
+          console.error('フラグNFT取得エラー:', error);
+          setFlagNFTs([]);
+        } else {
+          setFlagNFTs(data || []);
+        }
+      } catch (err) {
+        console.error('予期しないエラー:', err);
+        setFlagNFTs([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadFlagNFTs();
+  }, [tenantId, adminSupabase, refreshTrigger]);
+
+  // フラグNFTをSupabaseに保存する関数
+  const saveFlagNFT = async () => {
+    if (!adminSupabase) {
+      alert('管理者Supabaseクライアントが初期化されていません');
+      return;
+    }
+
+    if (!tenantId) {
+      alert('テナントIDが取得できません');
+      return;
+    }
+
+    setIsSaving(true);
+
+    try {
+      // カテゴリ別の設定をJSON化
+      let benefitConfig = null;
+      let stampRallyConfig = null;
+      let membershipConfig = null;
+      let achievementConfig = null;
+      let collectibleConfig = null;
+
+      if (selectedCategory === 'BENEFIT') {
+        benefitConfig = {
+          discountType: benefitData.discountType,
+          discountValue: parseFloat(benefitData.discountValue),
+          minTipAmount: benefitData.minTipAmount ? parseFloat(benefitData.minTipAmount) : undefined,
+          applicableGifts: benefitData.applicableGifts ? benefitData.applicableGifts.split(',').map(s => s.trim()) : undefined,
+          maxDiscountAmount: benefitData.maxDiscountAmount ? parseFloat(benefitData.maxDiscountAmount) : undefined,
+        };
+      } else if (selectedCategory === 'CAMPAIGN') {
+        // CAMPAIGNはスタンプラリー設定を使用
+        stampRallyConfig = {
+          checkpoints: stampRallyData.checkpoints.map(cp => ({
+            id: cp.id,
+            name: cp.name,
+            description: cp.description,
+            order: parseInt(cp.id.split('-')[1] || '0'),
+            nfcTagId: cp.nfcTagId || undefined,
+            nfcEnabled: cp.nfcEnabled,
+            qrCode: cp.qrCode || undefined,
+            qrEnabled: cp.qrEnabled,
+            location: (cp.locationLat && cp.locationLng) ? {
+              lat: parseFloat(cp.locationLat),
+              lng: parseFloat(cp.locationLng),
+              radiusMeters: cp.radiusMeters ? parseFloat(cp.radiusMeters) : undefined,
+            } : undefined,
+            checkInCount: 0,
+          })),
+          completionReward: stampRallyData.completionReward || undefined,
+          requireSequential: stampRallyData.requireSequential,
+          verificationMethod: stampRallyData.verificationMethod,
+        };
+      } else if (selectedCategory === 'MEMBERSHIP') {
+        membershipConfig = {
+          membershipLevel: membershipData.membershipLevel,
+          accessAreas: membershipData.accessAreas.split(',').map(s => s.trim()),
+          benefits: membershipData.benefits.split(',').map(s => s.trim()),
+          renewalType: membershipData.renewalType,
+        };
+      } else if (selectedCategory === 'ACHIEVEMENT') {
+        achievementConfig = {
+          triggerType: achievementData.triggerType,
+          threshold: parseFloat(achievementData.threshold),
+          autoDistribute: achievementData.autoDistribute,
+          additionalBenefits: achievementData.additionalBenefits ? achievementData.additionalBenefits.split(',').map(s => s.trim()) : undefined,
+        };
+      } else if (selectedCategory === 'COLLECTIBLE') {
+        collectibleConfig = {
+          seriesName: collectibleData.seriesName,
+          seriesNumber: collectibleData.seriesNumber ? parseInt(collectibleData.seriesNumber) : undefined,
+          totalInSeries: collectibleData.totalInSeries ? parseInt(collectibleData.totalInSeries) : undefined,
+          collectionGoal: collectibleData.collectionGoal ? parseInt(collectibleData.collectionGoal) : undefined,
+          progressReward: collectibleData.progressReward || undefined,
+          distributionTrigger: collectibleData.distributionTrigger,
+          requiredCondition: collectibleData.requiredCondition || undefined,
+          artist: collectibleData.artist || undefined,
+          releaseDate: collectibleData.releaseDate || undefined,
+          description: collectibleData.description || undefined,
+        };
+      } else if (selectedCategory === 'ACCESS_PASS') {
+        // ACCESS_PASSはメンバーシップ設定を使用
+        membershipConfig = {
+          membershipLevel: membershipData.membershipLevel,
+          accessAreas: membershipData.accessAreas.split(',').map(s => s.trim()),
+          benefits: membershipData.benefits.split(',').map(s => s.trim()),
+          renewalType: membershipData.renewalType,
+        };
+      }
+
+      // Supabaseに保存するデータ
+      const flagNFTData = {
+        tenant_id: tenantId,
+        name: formData.name,
+        description: formData.description,
+        image: formData.image,
+        category: selectedCategory,
+        usage_limit: parseInt(formData.usageLimit),
+        valid_from: formData.validFrom,
+        valid_until: formData.validUntil || null,
+        is_active: true,
+        is_transferable: formData.isTransferable,
+        is_burnable: formData.isBurnable,
+        auto_distribution_enabled: formData.autoDistributionEnabled,
+        required_tip_amount: formData.requiredTipAmount ? parseFloat(formData.requiredTipAmount) : null,
+        target_token: formData.targetToken,
+        flags: [],
+        total_minted: 0,
+        total_used: 0,
+        max_supply: formData.maxSupply ? parseInt(formData.maxSupply) : null,
+        benefit_config: benefitConfig,
+        stamp_rally_config: stampRallyConfig,
+        membership_config: membershipConfig,
+        achievement_config: achievementConfig,
+        collectible_config: collectibleConfig,
+      };
+
+      const { data, error } = await adminSupabase
+        .from('flag_nfts')
+        .insert(flagNFTData)
+        .select();
+
+      if (error) {
+        console.error('Supabase保存エラー:', error);
+        alert(`保存に失敗しました: ${error.message}`);
+        return;
+      }
+
+      alert('フラグNFTを作成しました！');
+      setView('list');
+    } catch (err) {
+      console.error('保存処理でエラーが発生しました:', err);
+      alert(`エラーが発生しました: ${err}`);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // 手動ミント処理
+  const handleManualMint = async () => {
+    if (!selectedNFTForMint || !mintToAddress) {
+      alert('ミント先アドレスを入力してください');
+      return;
+    }
+
+    setIsMinting(true);
+    try {
+      // 1. コントラクトでNFTをミント
+      console.log('🎨 NFTミント開始:', {
+        category: selectedNFTForMint.category,
+        toAddress: mintToAddress,
+      });
+
+      const tx = await mintNFT(mintToAddress, selectedNFTForMint.category);
+      console.log('✅ NFTミント成功:', tx);
+
+      // 2. 配布履歴をSupabaseに保存
+      if (adminSupabase) {
+        const { error: historyError } = await adminSupabase
+          .from('flag_nft_distributions')
+          .insert({
+            flag_nft_id: selectedNFTForMint.id,
+            user_address: mintToAddress,
+            distribution_type: 'MANUAL',
+            distributed_at: new Date().toISOString(),
+          });
+
+        if (historyError) {
+          console.error('配布履歴保存エラー:', historyError);
+        }
+
+        // 3. total_mintedをインクリメント
+        const { error: updateError } = await adminSupabase
+          .from('flag_nfts')
+          .update({
+            total_minted: (selectedNFTForMint.total_minted || 0) + 1
+          })
+          .eq('id', selectedNFTForMint.id);
+
+        if (updateError) {
+          console.error('発行数更新エラー:', updateError);
+        }
+      }
+
+      alert(`✅ NFTをミントしました！\nアドレス: ${mintToAddress.slice(0, 6)}...${mintToAddress.slice(-4)}`);
+
+      // モーダルを閉じてリフレッシュ
+      setShowMintModal(false);
+      setMintToAddress('');
+      setSelectedNFTForMint(null);
+      setRefreshTrigger(prev => prev + 1);
+    } catch (error) {
+      console.error('❌ ミントエラー:', error);
+      alert(`ミントに失敗しました: ${error}`);
+    } finally {
+      setIsMinting(false);
+    }
+  };
+
   // リスト表示
   if (view === 'list') {
+    // フィルタリング処理
+    const filteredNFTs = categoryFilter === 'ALL'
+      ? flagNFTs
+      : flagNFTs.filter(nft => nft.category === categoryFilter);
+
     return (
       <div style={{ padding: 24 }}>
         {/* ヘッダー */}
@@ -277,7 +542,7 @@ export default function FlagNFTManagementPage() {
           </button>
         </div>
 
-        {/* フィルター */}
+        {/* カテゴリフィルター */}
         <div style={{
           display: 'flex',
           gap: 8,
@@ -323,22 +588,232 @@ export default function FlagNFTManagementPage() {
           ))}
         </div>
 
-        {/* 一覧（空の状態） */}
-        <div style={{
-          background: 'rgba(255,255,255,0.05)',
-          borderRadius: 12,
-          padding: 48,
-          textAlign: 'center',
-          border: '2px dashed rgba(255,255,255,0.2)',
-        }}>
-          <div style={{ fontSize: 48, marginBottom: 16 }}>🚩</div>
-          <p style={{ fontSize: 16, color: 'rgba(255,255,255,0.7)', margin: 0 }}>
-            まだフラグNFTが作成されていません
-          </p>
-          <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)', margin: '8px 0 24px 0' }}>
-            「新規作成」ボタンから最初のフラグNFTを作成しましょう
-          </p>
-        </div>
+        {/* NFTリスト */}
+        {isLoading ? (
+          <div style={{ textAlign: 'center', padding: 48, color: 'rgba(255,255,255,0.7)' }}>
+            読み込み中...
+          </div>
+        ) : filteredNFTs.length === 0 ? (
+          <div style={{
+            background: 'rgba(255,255,255,0.05)',
+            borderRadius: 12,
+            padding: 48,
+            textAlign: 'center',
+            border: '2px dashed rgba(255,255,255,0.2)',
+          }}>
+            <div style={{ fontSize: 48, marginBottom: 16 }}>🚩</div>
+            <p style={{ fontSize: 16, color: 'rgba(255,255,255,0.7)', margin: 0 }}>
+              {categoryFilter === 'ALL'
+                ? 'まだフラグNFTが作成されていません'
+                : `${CATEGORY_OPTIONS.find(c => c.id === categoryFilter)?.label}がありません`
+              }
+            </p>
+            <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)', margin: '8px 0 24px 0' }}>
+              「新規作成」ボタンから最初のフラグNFTを作成しましょう
+            </p>
+          </div>
+        ) : (
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
+            gap: 16,
+          }}>
+            {filteredNFTs.map((nft) => {
+              const categoryInfo = CATEGORY_OPTIONS.find(c => c.id === nft.category);
+              return (
+                <div
+                  key={nft.id}
+                  style={{
+                    background: 'rgba(255,255,255,0.05)',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    borderRadius: 12,
+                    overflow: 'hidden',
+                    transition: 'all 0.3s',
+                  }}
+                >
+                  {/* NFT画像 */}
+                  <div style={{
+                    width: '100%',
+                    height: 200,
+                    backgroundImage: `url(${nft.image})`,
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                    position: 'relative',
+                  }}>
+                    <div style={{
+                      position: 'absolute',
+                      top: 12,
+                      left: 12,
+                      padding: '6px 12px',
+                      background: categoryInfo?.color || '#666',
+                      borderRadius: 6,
+                      fontSize: 12,
+                      fontWeight: 600,
+                      color: '#fff',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                    }}>
+                      <span>{categoryInfo?.icon}</span>
+                      <span>{categoryInfo?.label}</span>
+                    </div>
+                  </div>
+
+                  {/* NFT情報 */}
+                  <div style={{ padding: 16 }}>
+                    <h3 style={{ fontSize: 18, fontWeight: 700, color: '#fff', margin: '0 0 8px 0' }}>
+                      {nft.name}
+                    </h3>
+                    <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)', margin: '0 0 16px 0', lineHeight: 1.5 }}>
+                      {nft.description.length > 80
+                        ? nft.description.substring(0, 80) + '...'
+                        : nft.description
+                      }
+                    </p>
+
+                    {/* 統計情報 */}
+                    <div style={{
+                      display: 'flex',
+                      gap: 16,
+                      marginBottom: 16,
+                      fontSize: 12,
+                      color: 'rgba(255,255,255,0.7)',
+                    }}>
+                      <div>
+                        <span style={{ opacity: 0.6 }}>発行数: </span>
+                        <span style={{ fontWeight: 600 }}>{nft.total_minted || 0}</span>
+                        {nft.max_supply && <span style={{ opacity: 0.6 }}> / {nft.max_supply}</span>}
+                      </div>
+                      <div>
+                        <span style={{ opacity: 0.6 }}>使用回数: </span>
+                        <span style={{ fontWeight: 600 }}>{nft.total_used || 0}</span>
+                      </div>
+                    </div>
+
+                    {/* ミントボタン */}
+                    <button
+                      onClick={() => {
+                        setSelectedNFTForMint(nft);
+                        setShowMintModal(true);
+                      }}
+                      style={{
+                        width: '100%',
+                        padding: '10px 16px',
+                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                        border: 'none',
+                        borderRadius: 8,
+                        color: '#fff',
+                        fontSize: 14,
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        transition: 'all 0.3s',
+                      }}
+                    >
+                      🎨 手動ミント
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* ミントモーダル */}
+        {showMintModal && selectedNFTForMint && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0,0,0,0.8)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999,
+          }}>
+            <div style={{
+              background: '#1a1a2e',
+              borderRadius: 16,
+              padding: 32,
+              maxWidth: 500,
+              width: '90%',
+              maxHeight: '90vh',
+              overflow: 'auto',
+            }}>
+              <h2 style={{ fontSize: 24, fontWeight: 700, color: '#fff', margin: '0 0 8px 0' }}>
+                NFTを手動ミント
+              </h2>
+              <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.6)', margin: '0 0 24px 0' }}>
+                {selectedNFTForMint.name}
+              </p>
+
+              <div style={{ marginBottom: 24 }}>
+                <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: '#fff', marginBottom: 8 }}>
+                  ミント先アドレス
+                </label>
+                <input
+                  type="text"
+                  value={mintToAddress}
+                  onChange={(e) => setMintToAddress(e.target.value)}
+                  placeholder="0x..."
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    background: 'rgba(255,255,255,0.05)',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    borderRadius: 8,
+                    color: '#fff',
+                    fontSize: 14,
+                  }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: 12 }}>
+                <button
+                  onClick={() => {
+                    setShowMintModal(false);
+                    setMintToAddress('');
+                    setSelectedNFTForMint(null);
+                  }}
+                  style={{
+                    flex: 1,
+                    padding: '12px 24px',
+                    background: 'rgba(255,255,255,0.1)',
+                    border: 'none',
+                    borderRadius: 8,
+                    color: '#fff',
+                    fontSize: 15,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                  }}
+                >
+                  キャンセル
+                </button>
+                <button
+                  onClick={handleManualMint}
+                  disabled={isMinting || !mintToAddress}
+                  style={{
+                    flex: 1,
+                    padding: '12px 24px',
+                    background: isMinting || !mintToAddress
+                      ? 'rgba(102, 126, 234, 0.3)'
+                      : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    border: 'none',
+                    borderRadius: 8,
+                    color: '#fff',
+                    fontSize: 15,
+                    fontWeight: 600,
+                    cursor: isMinting || !mintToAddress ? 'not-allowed' : 'pointer',
+                    opacity: isMinting || !mintToAddress ? 0.6 : 1,
+                  }}
+                >
+                  {isMinting ? 'ミント中...' : 'ミント実行'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -717,6 +1192,97 @@ export default function FlagNFTManagementPage() {
               </p>
             </div>
 
+            {/* バーン機能設定 */}
+            <div style={{ marginBottom: 32 }}>
+              <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={formData.isBurnable}
+                  onChange={(e) => setFormData(prev => ({ ...prev, isBurnable: e.target.checked }))}
+                  style={{ marginRight: 8, width: 18, height: 18, cursor: 'pointer' }}
+                />
+                <span style={{ fontSize: 14, fontWeight: 600, color: '#fff' }}>
+                  NFTのバーン（焼却）を許可する
+                </span>
+              </label>
+              <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', marginTop: 6, marginLeft: 26 }}>
+                チェックを入れると、ユーザーがNFTをバーン（削除）できます。クーポン使用後の処理などに使用
+              </p>
+            </div>
+
+            {/* 自動配布設定 */}
+            <div style={{ marginBottom: 32, padding: 20, background: 'rgba(255,255,255,0.05)', borderRadius: 12, border: '1px solid rgba(255,255,255,0.1)' }}>
+              <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', marginBottom: 16 }}>
+                <input
+                  type="checkbox"
+                  checked={formData.autoDistributionEnabled}
+                  onChange={(e) => setFormData(prev => ({ ...prev, autoDistributionEnabled: e.target.checked }))}
+                  style={{ marginRight: 8, width: 18, height: 18, cursor: 'pointer' }}
+                />
+                <span style={{ fontSize: 14, fontWeight: 600, color: '#fff' }}>
+                  投げ銭累積による自動配布を有効化
+                </span>
+              </label>
+              <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', marginBottom: 16, marginLeft: 26 }}>
+                ユーザーの累積投げ銭額が条件を達成したとき、自動的にこのNFTを配布します
+              </p>
+
+              {formData.autoDistributionEnabled && (
+                <div style={{ marginLeft: 26 }}>
+                  <div style={{ marginBottom: 16 }}>
+                    <label style={{ fontSize: 13, fontWeight: 500, color: 'rgba(255,255,255,0.8)', display: 'block', marginBottom: 6 }}>
+                      必要な累積額
+                    </label>
+                    <input
+                      type="number"
+                      value={formData.requiredTipAmount}
+                      onChange={(e) => setFormData(prev => ({ ...prev, requiredTipAmount: e.target.value }))}
+                      placeholder="例: 1000"
+                      style={{
+                        width: '100%',
+                        padding: '10px 12px',
+                        background: 'rgba(255,255,255,0.05)',
+                        border: '1px solid rgba(255,255,255,0.2)',
+                        borderRadius: 8,
+                        color: '#fff',
+                        fontSize: 14,
+                      }}
+                    />
+                    <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginTop: 4 }}>
+                      トークン単位での累積額（JPYC: 1000 = 1000円相当）
+                    </p>
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: 13, fontWeight: 500, color: 'rgba(255,255,255,0.8)', display: 'block', marginBottom: 6 }}>
+                      対象トークン
+                    </label>
+                    <select
+                      value={formData.targetToken}
+                      onChange={(e) => setFormData(prev => ({ ...prev, targetToken: e.target.value as 'JPYC' | 'tNHT' | 'both' }))}
+                      style={{
+                        width: '100%',
+                        padding: '10px 12px',
+                        background: 'rgba(255,255,255,0.05)',
+                        border: '1px solid rgba(255,255,255,0.2)',
+                        borderRadius: 8,
+                        color: '#fff',
+                        fontSize: 14,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <option value="both">JPYC + tNHT（両方）</option>
+                      <option value="JPYC">JPYCのみ</option>
+                      <option value="tNHT">tNHTのみ</option>
+                    </select>
+                    <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginTop: 4 }}>
+                      どのトークンの累積額をカウントするか
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+
             {/* ボタン */}
             <div style={{ display: 'flex', gap: 12 }}>
               <button
@@ -923,14 +1489,11 @@ export default function FlagNFTManagementPage() {
                   ← 戻る
                 </button>
                 <button
-                  onClick={() => {
-                    alert('作成処理は次のコミットで実装します');
-                    setView('list');
-                  }}
-                  disabled={!benefitData.discountValue}
+                  onClick={saveFlagNFT}
+                  disabled={isSaving || !benefitData.discountValue}
                   style={{
                     padding: '12px 24px',
-                    background: benefitData.discountValue
+                    background: (benefitData.discountValue && !isSaving)
                       ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
                       : 'rgba(255,255,255,0.1)',
                     border: 'none',
@@ -938,11 +1501,11 @@ export default function FlagNFTManagementPage() {
                     color: '#fff',
                     fontSize: 15,
                     fontWeight: 600,
-                    cursor: benefitData.discountValue ? 'pointer' : 'not-allowed',
-                    opacity: benefitData.discountValue ? 1 : 0.5,
+                    cursor: (benefitData.discountValue && !isSaving) ? 'pointer' : 'not-allowed',
+                    opacity: (benefitData.discountValue && !isSaving) ? 1 : 0.5,
                   }}
                 >
-                  作成して公開
+                  {isSaving ? '保存中...' : '作成して公開'}
                 </button>
               </div>
             </div>

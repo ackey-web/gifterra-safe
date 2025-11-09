@@ -15,6 +15,15 @@ export const LoginPage: React.FC = () => {
   const { login, authenticated, user } = usePrivy();
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
+  // デバッグログ
+  console.log('🔍 Login page state:', {
+    authenticated,
+    hasUser: !!user,
+    hasLogin: typeof login === 'function',
+    address,
+    connectionStatus,
+  });
+
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth <= 768);
     window.addEventListener("resize", handleResize);
@@ -201,7 +210,14 @@ export const LoginPage: React.FC = () => {
         {/* Privyログインボタン（Google/Email） */}
         <div style={{ marginBottom: 16 }}>
           <button
-            onClick={login}
+            onClick={() => {
+              console.log('🔐 Privy login button clicked');
+              if (typeof login === 'function') {
+                login();
+              } else {
+                console.error('❌ login is not a function:', login);
+              }
+            }}
             style={{
               width: "100%",
               height: 52,

@@ -14,8 +14,10 @@ import { useTransactionHistory, type Transaction } from '../hooks/useTransaction
 import { useMyTenantApplication, useSubmitTenantApplication } from '../hooks/useTenantApplications';
 import { useRankPlanPricing, getPlanPrice } from '../hooks/useRankPlanPricing';
 import { useTenantRankPlan } from '../hooks/useTenantRankPlan';
+import { saveTransferMessage, useReceivedTransferMessages } from '../hooks/useTransferMessages';
 import { TenantPlanCard } from '../components/TenantPlanCard';
 import { SettingsModal } from '../components/SettingsModal';
+import { TransferMessageHistory } from '../components/TransferMessageHistory';
 import flowImage from '../assets/flow.png';
 import studioImage from '../assets/studio.png';
 import studioProImage from '../assets/studio-pro.png';
@@ -96,9 +98,21 @@ function incrementBulkSendCount(): void {
 // ========================================
 async function getPrivyEthersSigner(privyWallet: any): Promise<ethers.Signer | null> {
   try {
+    console.log('🔍 getPrivyEthersSigner:', {
+      hasWallet: !!privyWallet,
+      walletAddress: privyWallet?.address,
+      walletType: privyWallet?.walletClientType,
+      hasGetEthereumProvider: typeof privyWallet?.getEthereumProvider === 'function',
+    });
+
+    if (!privyWallet || typeof privyWallet.getEthereumProvider !== 'function') {
+      console.error('❌ Invalid wallet object or missing getEthereumProvider');
+      return null;
+    }
+
     // Safeラッパーを経由せず、直接EOAプロバイダーを取得
-    // 通常のgetEthereumProvider()ではなく、EOA専用のメソッドを使用
     const provider = await privyWallet.getEthereumProvider();
+    console.log('✅ Provider取得成功');
 
     // 重要: リクエスト時にSafeを無効化するオプションを指定
     const ethersProvider = new ethers.providers.Web3Provider(provider, 'any');
@@ -106,14 +120,16 @@ async function getPrivyEthersSigner(privyWallet: any): Promise<ethers.Signer | n
 
     // デバッグ: アドレスがEOAかSafeかを確認
     const signerAddress = await signer.getAddress();
+    console.log('✅ Signer address:', signerAddress);
 
     // アドレスが一致しない場合は警告
     if (signerAddress.toLowerCase() !== privyWallet.address.toLowerCase()) {
+      console.warn('⚠️ Address mismatch:', { signerAddress, walletAddress: privyWallet.address });
     }
 
     return signer;
   } catch (error) {
-    console.error('Failed to get Privy signer:', error);
+    console.error('❌ Failed to get Privy signer:', error);
     return null;
   }
 }
@@ -127,8 +143,30 @@ export function MypagePage() {
   const { user, authenticated } = usePrivy();
   const thirdwebAddress = useAddress(); // Thirdwebウォレット
 
-  // 表示するアドレス（Privy優先、なければThirdweb）
-  const displayAddress = user?.wallet?.address || thirdwebAddress;
+  // Privyの全ウォレットを取得
+  const { wallets, ready: walletsReady } = useWallets();
+
+  // user.wallet を優先的に使用（Privy埋め込みウォレット）
+  // useWallets() は外部ウォレット（MetaMask）を優先してしまうため、直接 user.wallet を使う
+  const privyEmbeddedWalletAddress = user?.wallet?.address;
+
+  console.log('🔍 利用可能なウォレット:', {
+    walletsReady,
+    walletsCount: wallets.length,
+    allWallets: wallets.map(w => ({ type: w.walletClientType, address: w.address })),
+    privyEmbeddedWalletAddress: privyEmbeddedWalletAddress || 'なし',
+    userWalletAddress: user?.wallet?.address,
+    authenticated,
+  });
+
+  // 表示するアドレス（Privy埋め込みウォレット優先、なければThirdweb）
+  const displayAddress = privyEmbeddedWalletAddress || thirdwebAddress;
+
+  console.log('🔍 DisplayAddress:', {
+    displayAddress,
+    privyEmbeddedWalletAddress,
+    thirdwebAddress,
+  });
 
   useEffect(() => {
     const handleResize = () => {
@@ -831,17 +869,21 @@ function FlowModeContent({
         <ReceiveAddress isMobile={isMobile} />
       </div>
 
-      {/* 1.5. ウォレット情報（残高とNFT） */}
+      {/* 2. 履歴 */}
+      <HistorySection
+        isMobile={isMobile}
+        address={connectedAddress}
+        tenantId={tenantId}
+      />
+
+      {/* 3. ウォレット情報（残高とNFT） */}
       <WalletInfo isMobile={isMobile} />
 
-      {/* 2. 全体kodomiタンク */}
+      {/* 4. 全体kodomiタンク */}
       <OverallKodomiTank isMobile={isMobile} />
 
-      {/* 3. 応援テナント別カード */}
+      {/* 5. 応援テナント別カード */}
       <ContributionTenants isMobile={isMobile} />
-
-      {/* 4. 履歴 */}
-      <HistorySection isMobile={isMobile} address={address} />
 
       {/* 5. プランカード / ロックカード */}
       {(() => {
@@ -892,12 +934,14 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
   // Privyウォレット
   const { user, authenticated, ready, createWallet } = usePrivy();
   const { wallets, ready: walletsReady } = useWallets();
-  // Privyの埋め込みウォレットを検索（walletClientTypeは'privy'または埋め込みウォレット）
-  const privyWallet = wallets.find(w =>
-    w.walletClientType === 'privy' ||
-    w.walletClientType?.includes('privy') ||
-    (w as any).connectorType === 'embedded'
-  ) || wallets[0]; // フォールバック: 最初のウォレットを使用
+
+  // user.wallet から埋め込みウォレットを直接取得
+  // useWallets() は外部ウォレット（MetaMask）を優先してしまうため、user.wallet を使う
+  // ただし、wallets 配列からも同じアドレスのウォレットを探す必要がある（signer取得のため）
+  const privyEmbeddedAddress = user?.wallet?.address;
+  const privyWallet = privyEmbeddedAddress
+    ? wallets.find(w => w.address.toLowerCase() === privyEmbeddedAddress.toLowerCase())
+    : null;
 
   const selectedToken = 'JPYC'; // JPYC固定
   const [sendMode, setSendMode] = useState<SendMode | null>(null); // null = 未選択
@@ -920,22 +964,47 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
   // Signerを取得し、実際のアドレスを取得
   useEffect(() => {
     const getSigner = async () => {
+      console.log('🔍 getSigner開始:', {
+        hasUserWallet: !!user?.wallet,
+        userWalletAddress: user?.wallet?.address,
+        walletsCount: wallets.length,
+        walletsReady,
+        allWallets: wallets.map(w => ({ address: w.address, type: w.walletClientType })),
+      });
+
+      // walletsReadyがfalseの場合は待機
+      if (!walletsReady) {
+        console.log('⏳ Waiting for wallets to be ready...');
+        return;
+      }
+
       // Privyの埋め込みウォレットを最優先
-      if (user?.wallet) {
+      // user.wallet にはアドレス情報のみ、実際のプロバイダーは wallets 配列から取得
+      if (user?.wallet?.address) {
         try {
-          // Privyの埋め込みウォレット用のsignerを取得
-          const embeddedWallet = wallets.find(w => w.address === user.wallet.address);
+          // wallets配列から同じアドレスのウォレットを探す
+          const embeddedWallet = wallets.find(
+            w => w.address.toLowerCase() === user.wallet.address.toLowerCase()
+          );
+
+          console.log('🔍 Embedded wallet found:', !!embeddedWallet);
+
           if (embeddedWallet) {
             const privySigner = await getPrivyEthersSigner(embeddedWallet);
+            console.log('✅ Privy embedded wallet signer取得成功:', !!privySigner);
             setSigner(privySigner);
             if (privySigner) {
               const addr = await privySigner.getAddress();
               setActualAddress(addr);
+              console.log('✅ Signer address:', addr);
             }
             return;
+          } else {
+            console.warn('⚠️ Embedded wallet not found in wallets array');
+            console.warn('⚠️ This may happen if the wallet needs to be created first');
           }
         } catch (error) {
-          console.error('Failed to get Privy embedded wallet signer:', error);
+          console.error('❌ Failed to get Privy embedded wallet signer:', error);
         }
       }
 
@@ -952,20 +1021,29 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
         const addr = await thirdwebSigner.getAddress();
         setActualAddress(addr);
       } else {
+        console.log('⚠️ No signer available');
         setSigner(null);
         setActualAddress('');
       }
     };
     getSigner();
-  }, [user, wallets, privyWallet, thirdwebSigner]);
+  }, [user, wallets, privyWallet, thirdwebSigner, walletsReady]);
 
   // 使用するアドレス（Privyの埋め込みウォレットを最優先）
-  const privyEmbeddedAddress = user?.wallet?.address;
   const walletAddress = privyEmbeddedAddress || actualAddress || privyWallet?.address || thirdwebAddress || '';
 
   // デバッグログ: どのウォレットの残高を表示しているか確認
   useEffect(() => {
-  }, [walletAddress, privyEmbeddedAddress, actualAddress, privyWallet, thirdwebAddress]);
+    console.log('🔍 SendForm walletAddress詳細:', {
+      walletAddress,
+      privyEmbeddedAddress,
+      actualAddress,
+      privyWalletAddress: privyWallet?.address,
+      thirdwebAddress,
+      signer: !!signer,
+      signerAddress: signer ? '取得中...' : 'なし',
+    });
+  }, [walletAddress, privyEmbeddedAddress, actualAddress, privyWallet, thirdwebAddress, signer]);
 
   // トークン残高を取得
   const { balances } = useTokenBalances(walletAddress, signer);
@@ -1007,15 +1085,50 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
   // ガスレス送金処理
   const handleSend = async () => {
     // デバッグ: ウォレット接続状態を確認
+    console.log('🔍 ウォレット状態確認:', {
+      privyWallet: privyWallet ? `存在 (${privyWallet.address})` : 'なし',
+      thirdwebSigner: thirdwebSigner ? '存在' : 'なし',
+      thirdwebAddress,
+      authenticated,
+      walletsReady,
+    });
 
     // Signerとアドレスの取得（PrivyまたはThirdweb）
     let signer: ethers.Signer | null = null;
     let userAddress: string | null = null;
 
-    // Privyウォレットを優先 - walletsが空でもuserオブジェクトからウォレットを探す
-    if (privyWallet) {
-      // walletsから取得できた場合
+    // Privyの埋め込みウォレットを最優先
+    if (user?.wallet?.address) {
+      console.log('✅ Privy埋め込みウォレットを使用します:', user.wallet.address);
+      try {
+        // wallets配列から同じアドレスのウォレットを探す
+        const embeddedWallet = wallets.find(
+          w => w.address.toLowerCase() === user.wallet.address.toLowerCase()
+        );
 
+        if (embeddedWallet) {
+          signer = await getPrivyEthersSigner(embeddedWallet);
+          userAddress = user.wallet.address;
+
+          if (signer) {
+            const signerAddress = await signer.getAddress();
+            console.log('✅ Signer取得成功:', signerAddress);
+          }
+        } else {
+          console.warn('⚠️ Embedded wallet not found in wallets array (handleSend)');
+          // walletsReady が false の可能性があるので、エラーメッセージを表示
+          if (!walletsReady) {
+            alert('ウォレットの初期化に失敗しました。ページをリロードしてください。\n\nPrivy iframe読み込みエラーの可能性があります。ブラウザのキャッシュをクリアしてお試しください。');
+            return;
+          }
+        }
+      } catch (error) {
+        console.error('❌ Failed to get Privy embedded wallet signer:', error);
+        signer = null;
+        userAddress = null;
+      }
+    } else if (privyWallet) {
+      console.log('✅ Privyウォレットを使用します:', privyWallet.address);
       try {
         signer = await getPrivyEthersSigner(privyWallet);
         userAddress = privyWallet.address || null;
@@ -1029,12 +1142,6 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
         userAddress = null;
       }
     } else if (authenticated && user) {
-      // walletsReady がfalseの場合は、ウォレット読み込み待ち
-      if (!walletsReady) {
-        alert('ウォレットを読み込み中です。少しお待ちください。');
-        return;
-      }
-
       // walletsが空でも、userオブジェクトから直接ウォレット情報を取得
 
       // linkedAccountsから埋め込みウォレットを探す
@@ -1053,6 +1160,7 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
       }
     } else if (thirdwebSigner) {
       // Thirdwebウォレット
+      console.log('⚠️ Thirdwebウォレットを使用します（Privyウォレットが見つからなかったため）:', thirdwebAddress);
       signer = thirdwebSigner;
       userAddress = thirdwebAddress || null;
     } else {
@@ -1083,12 +1191,23 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
     try {
       setIsSending(true);
 
+      console.log('🚀 送金処理開始:', {
+        sendMode,
+        selectedToken,
+        amount,
+        address: trimmedAddress,
+        message: message || '(メッセージなし)',
+        userAddress,
+        selectedTenant: selectedTenant?.name || '(なし)',
+      });
 
       // トークンアドレスを取得（メインネット用）
       const tokenAddress = selectedToken === 'JPYC' ? JPYC_TOKEN.ADDRESS : NHT_TOKEN.ADDRESS;
+      console.log('🔍 トークンアドレス:', tokenAddress);
 
       // 数量をwei単位に変換
       const amountWei = ethers.utils.parseUnits(amount, 18);
+      console.log('🔍 送金額 (wei):', amountWei.toString());
 
       // テナントチップモードの場合は従来のコントラクトを使用
       if (sendMode === 'tenant') {
@@ -1133,6 +1252,7 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
 
         // アドレスを正規化（チェックサム形式に変換）
         const normalizedAddress = ethers.utils.getAddress(trimmedAddress);
+        console.log('🔍 正規化されたアドレス:', normalizedAddress);
 
         // ERC20 Interface を使用して transfer データを手動エンコード
         const erc20Interface = new ethers.utils.Interface(ERC20_MIN_ABI);
@@ -1140,17 +1260,57 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
           normalizedAddress,
           amountWei
         ]);
+        console.log('🔍 エンコードされたトランザクションデータ:', transferData);
+
+        // MATICバランスチェック
+        const maticBalance = await signer.getBalance();
+        console.log('🔍 MATICバランス (wei):', maticBalance.toString());
+        console.log('🔍 MATICバランス (MATIC):', ethers.utils.formatEther(maticBalance));
 
         // トランザクションを直接送信
+        console.log('🚀 トランザクション送信開始...', {
+          to: tokenAddress,
+          gasLimit: 65000,
+        });
         const tx = await signer.sendTransaction({
           to: tokenAddress,
           data: transferData,
           gasLimit: 65000, // ERC20 transferの標準的なガスリミット
         });
+        console.log('✅ トランザクション送信完了:', {
+          hash: tx.hash,
+          from: tx.from,
+          to: tx.to,
+          nonce: tx.nonce,
+        });
 
+        console.log('⏳ トランザクション確認待機中...');
         const receipt = await tx.wait();
+        console.log('✅ トランザクション確認完了:', {
+          transactionHash: receipt.transactionHash,
+          blockNumber: receipt.blockNumber,
+          gasUsed: receipt.gasUsed.toString(),
+          status: receipt.status,
+        });
 
         // 残高は10秒ごとに自動更新されます
+
+        // トランザクション成功後、Supabaseに送金メッセージを保存
+        try {
+          await saveTransferMessage({
+            tenantId: selectedTenant?.id || 'default', // テナント申請していない場合は'default'を使用
+            fromAddress: actualAddress || '',
+            toAddress: trimmedAddress,
+            tokenSymbol: selectedToken,
+            amount: amount,
+            message: message || undefined,
+            txHash: receipt.transactionHash,
+          });
+          console.log('✅ 送金メッセージを保存しました');
+        } catch (saveError) {
+          console.error('❌ 送金メッセージの保存に失敗:', saveError);
+          // 保存失敗してもトランザクション自体は成功しているので処理を継続
+        }
 
         alert(
           `✅ 送金が完了しました！\n\n` +
@@ -1168,8 +1328,16 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
       setSelectedTenant(null);
 
     } catch (error: any) {
-      console.error('送金エラー:', error);
-      alert(`❌ 送金に失敗しました\n\nエラー: ${error.message || '不明なエラー'}`);
+      console.error('❌ 送金エラー:', error);
+      console.error('❌ エラー詳細:', {
+        message: error.message,
+        code: error.code,
+        reason: error.reason,
+        transaction: error.transaction,
+        receipt: error.receipt,
+        stack: error.stack,
+      });
+      alert(`❌ 送金に失敗しました\n\nエラー: ${error.message || '不明なエラー'}\nコード: ${error.code || 'N/A'}`);
     } finally {
       setIsSending(false);
     }
@@ -1563,8 +1731,8 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
         </div>
       </div>
 
-      {/* メッセージ欄（テナントチップと一括送金のみ） */}
-      {sendMode && sendMode !== 'simple' && (
+      {/* メッセージ欄 */}
+      {sendMode && (
         <div style={{ marginBottom: 20 }}>
           <label style={{ display: 'block', fontSize: isMobile ? 13 : 14, color: '#1a1a1a', fontWeight: 700, marginBottom: 8 }}>
             メッセージ（任意）
@@ -2317,12 +2485,12 @@ function BulkSendForm({ isMobile, onChangeMode }: {
   // Privyウォレット
   const { user } = usePrivy();
   const { wallets } = useWallets();
-  // Privyの埋め込みウォレットを検索（walletClientTypeは'privy'または埋め込みウォレット）
-  const privyWallet = wallets.find(w =>
-    w.walletClientType === 'privy' ||
-    w.walletClientType?.includes('privy') ||
-    (w as any).connectorType === 'embedded'
-  ) || wallets[0]; // フォールバック: 最初のウォレットを使用
+
+  // user.wallet から埋め込みウォレットを直接取得
+  const privyEmbeddedAddress = user?.wallet?.address;
+  const privyWallet = privyEmbeddedAddress
+    ? wallets.find(w => w.address.toLowerCase() === privyEmbeddedAddress.toLowerCase())
+    : null;
 
   const selectedToken = 'JPYC'; // JPYC固定
   const [recipients, setRecipients] = useState([
@@ -2367,11 +2535,20 @@ function BulkSendForm({ isMobile, onChangeMode }: {
     // Signerとアドレスの取得（PrivyまたはThirdweb）
     let signer: ethers.Signer | null = null;
     let userAddress: string | null = null;
-    const isPrivyWallet = !!privyWallet;
+    const isPrivyWallet = !!user?.wallet;
 
-    if (privyWallet) {
+    if (user?.wallet?.address) {
+      // Privy埋め込みウォレット: wallets配列から同じアドレスのウォレットを探す
+      const embeddedWallet = wallets.find(
+        w => w.address.toLowerCase() === user.wallet.address.toLowerCase()
+      );
+      if (embeddedWallet) {
+        signer = await getPrivyEthersSigner(embeddedWallet);
+        userAddress = user.wallet.address;
+      }
+    } else if (privyWallet) {
       signer = await getPrivyEthersSigner(privyWallet);
-      userAddress = user?.wallet?.address || null;
+      userAddress = privyWallet.address;
     } else if (thirdwebSigner) {
       signer = thirdwebSigner;
       userAddress = thirdwebAddress || null;
@@ -2725,15 +2902,14 @@ function ReceiveAddress({ isMobile }: { isMobile: boolean }) {
   // Privyウォレット
   const { user } = usePrivy();
   const { wallets } = useWallets();
-  // Privyの埋め込みウォレットを検索（walletClientTypeは'privy'または埋め込みウォレット）
-  const privyWallet = wallets.find(w =>
-    w.walletClientType === 'privy' ||
-    w.walletClientType?.includes('privy') ||
-    (w as any).connectorType === 'embedded'
-  ) || wallets[0]; // フォールバック: 最初のウォレットを使用
+
+  // user.wallet から埋め込みウォレットを直接取得
+  const privyEmbeddedAddress = user?.wallet?.address;
+  const privyWallet = privyEmbeddedAddress
+    ? wallets.find(w => w.address.toLowerCase() === privyEmbeddedAddress.toLowerCase())
+    : null;
 
   // 優先順位: Privyの埋め込みウォレット > 接続されたPrivyウォレット > Thirdwebウォレット
-  const privyEmbeddedAddress = user?.wallet?.address;
   const address = privyEmbeddedAddress || privyWallet?.address || thirdwebAddress;
 
   const [showModal, setShowModal] = useState(false);
@@ -3067,12 +3243,12 @@ function WalletInfo({ isMobile }: { isMobile: boolean }) {
   // Privyウォレット
   const { user } = usePrivy();
   const { wallets } = useWallets();
-  // Privyの埋め込みウォレットを検索（walletClientTypeは'privy'または埋め込みウォレット）
-  const privyWallet = wallets.find(w =>
-    w.walletClientType === 'privy' ||
-    w.walletClientType?.includes('privy') ||
-    (w as any).connectorType === 'embedded'
-  ) || wallets[0]; // フォールバック: 最初のウォレットを使用
+
+  // user.wallet から埋め込みウォレットを直接取得
+  const privyEmbeddedAddress = user?.wallet?.address;
+  const privyWallet = privyEmbeddedAddress
+    ? wallets.find(w => w.address.toLowerCase() === privyEmbeddedAddress.toLowerCase())
+    : null;
 
   // Signerを取得
   const [signer, setSigner] = useState<ethers.Signer | null>(null);
@@ -3081,10 +3257,14 @@ function WalletInfo({ isMobile }: { isMobile: boolean }) {
   useEffect(() => {
     const getSigner = async () => {
       // Privyの埋め込みウォレットを最優先
-      if (user?.wallet) {
+      // user.wallet にはアドレス情報のみ、実際のプロバイダーは wallets 配列から取得
+      if (user?.wallet?.address) {
         try {
-          // Privyの埋め込みウォレット用のsignerを取得
-          const embeddedWallet = wallets.find(w => w.address === user.wallet.address);
+          // wallets配列から同じアドレスのウォレットを探す
+          const embeddedWallet = wallets.find(
+            w => w.address.toLowerCase() === user.wallet.address.toLowerCase()
+          );
+
           if (embeddedWallet) {
             const privySigner = await getPrivyEthersSigner(embeddedWallet);
             setSigner(privySigner);
@@ -3095,7 +3275,7 @@ function WalletInfo({ isMobile }: { isMobile: boolean }) {
             return;
           }
         } catch (error) {
-          console.error('Failed to get Privy embedded wallet signer:', error);
+          console.error('❌ Failed to get Privy embedded wallet signer (WalletInfo):', error);
         }
       }
 
@@ -3120,12 +3300,19 @@ function WalletInfo({ isMobile }: { isMobile: boolean }) {
   }, [user, wallets, privyWallet, thirdwebSigner]);
 
   // 使用するアドレス（Privyの埋め込みウォレットを最優先）
-  const privyEmbeddedAddress = user?.wallet?.address;
   const address = privyEmbeddedAddress || actualAddress || privyWallet?.address || thirdwebAddress;
 
   // デバッグログ: どのウォレットの残高を表示しているか確認
   useEffect(() => {
-  }, [address, privyEmbeddedAddress, actualAddress, privyWallet, thirdwebAddress]);
+    console.log('🔍 NHT/NFT Section address詳細:', {
+      address,
+      privyEmbeddedAddress,
+      actualAddress,
+      privyWalletAddress: privyWallet?.address,
+      thirdwebAddress,
+      signer: !!signer,
+    });
+  }, [address, privyEmbeddedAddress, actualAddress, privyWallet, thirdwebAddress, signer]);
 
   // トークン残高を取得
   const { balances, refetch: refetchBalances } = useTokenBalances(address, signer);
@@ -4451,15 +4638,29 @@ function AddTenantModal({ isMobile, onClose, onAddTenant }: {
   );
 }
 
-// 5. 履歴セクション
+// 5. 履歴セクション（タブ式）
 function HistorySection({
   isMobile,
-  address
+  address,
+  tenantId,
 }: {
   isMobile: boolean;
   address: string | undefined;
+  tenantId: string | null;
 }) {
+  const [activeTab, setActiveTab] = useState<'sent' | 'received'>('sent');
   const { transactions, loading } = useTransactionHistory(address);
+  const { messages, isLoading: messagesLoading } = useReceivedTransferMessages(tenantId, address);
+
+  console.log('📋 HistorySection:', {
+    address,
+    tenantId,
+    transactionsCount: transactions.length,
+    loading,
+    messagesCount: messages.length,
+    messagesLoading,
+    transactions: transactions.slice(0, 3), // 最初の3件のみ表示
+  });
 
   return (
     <div style={{
@@ -4473,38 +4674,101 @@ function HistorySection({
       <h2 style={{ margin: '0 0 16px 0', fontSize: isMobile ? 18 : 22, fontWeight: 700 }}>
         💳 履歴
       </h2>
-      <p style={{ fontSize: isMobile ? 13 : 14, color: 'rgba(255,255,255,0.7)', margin: '0 0 20px 0' }}>
-        最近の送受信履歴（最新20件）
-      </p>
 
-      {loading ? (
-        <div style={{
-          fontSize: isMobile ? 12 : 13,
-          color: 'rgba(255,255,255,0.5)',
-          textAlign: 'center',
-          padding: '20px 0'
-        }}>
-          読み込み中...
-        </div>
-      ) : transactions.length === 0 ? (
-        <div style={{
-          fontSize: isMobile ? 12 : 13,
-          color: 'rgba(255,255,255,0.4)',
-          textAlign: 'center',
-          padding: '20px 0'
-        }}>
-          まだ履歴がありません
-        </div>
+      {/* タブ切り替え */}
+      <div style={{
+        display: 'flex',
+        gap: 8,
+        marginBottom: 20,
+        borderBottom: '2px solid rgba(255,255,255,0.1)',
+      }}>
+        <button
+          onClick={() => setActiveTab('sent')}
+          style={{
+            flex: 1,
+            padding: isMobile ? '10px 16px' : '12px 20px',
+            background: activeTab === 'sent' ? 'rgba(255,255,255,0.15)' : 'transparent',
+            border: 'none',
+            borderBottom: activeTab === 'sent' ? '3px solid #fbbf24' : '3px solid transparent',
+            color: activeTab === 'sent' ? '#ffffff' : 'rgba(255,255,255,0.6)',
+            fontSize: isMobile ? 14 : 15,
+            fontWeight: 600,
+            cursor: 'pointer',
+            transition: 'all 0.2s',
+            borderRadius: '8px 8px 0 0',
+          }}
+        >
+          📤 送信履歴
+        </button>
+        <button
+          onClick={() => setActiveTab('received')}
+          style={{
+            flex: 1,
+            padding: isMobile ? '10px 16px' : '12px 20px',
+            background: activeTab === 'received' ? 'rgba(255,255,255,0.15)' : 'transparent',
+            border: 'none',
+            borderBottom: activeTab === 'received' ? '3px solid #10b981' : '3px solid transparent',
+            color: activeTab === 'received' ? '#ffffff' : 'rgba(255,255,255,0.6)',
+            fontSize: isMobile ? 14 : 15,
+            fontWeight: 600,
+            cursor: 'pointer',
+            transition: 'all 0.2s',
+            borderRadius: '8px 8px 0 0',
+          }}
+        >
+          📥 受信履歴/メッセージ
+        </button>
+      </div>
+
+      {/* タブコンテンツ */}
+      {activeTab === 'sent' ? (
+        // 送信履歴タブ
+        loading ? (
+          <div style={{
+            fontSize: isMobile ? 12 : 13,
+            color: 'rgba(255,255,255,0.5)',
+            textAlign: 'center',
+            padding: '20px 0'
+          }}>
+            読み込み中...
+          </div>
+        ) : transactions.filter(tx => tx.type === 'send').length === 0 ? (
+          <div style={{
+            fontSize: isMobile ? 12 : 13,
+            color: 'rgba(255,255,255,0.4)',
+            textAlign: 'center',
+            padding: '20px 0'
+          }}>
+            まだ送信履歴がありません
+          </div>
+        ) : (
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: isMobile ? 6 : 8,
+            maxHeight: isMobile ? '300px' : '400px',
+            overflowY: 'auto',
+            paddingRight: 4,
+          }}>
+            {transactions.filter(tx => tx.type === 'send').map((tx) => (
+              <TransactionItem key={tx.hash} tx={tx} isMobile={isMobile} />
+            ))}
+          </div>
+        )
       ) : (
-        <div style={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 12,
-        }}>
-          {transactions.map((tx) => (
-            <TransactionItem key={tx.hash} tx={tx} isMobile={isMobile} />
-          ))}
-        </div>
+        // 受信メッセージタブ
+        <>
+          {console.log('🔍 TransferMessageHistory props:', {
+            tenantId,
+            address,
+            hasAddress: !!address,
+          })}
+          <TransferMessageHistory
+            tenantId={tenantId}
+            walletAddress={address}
+            isMobile={isMobile}
+          />
+        </>
       )}
     </div>
   );
@@ -4525,46 +4789,59 @@ function TransactionItem({ tx, isMobile }: { tx: Transaction; isMobile: boolean 
       style={{
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: isMobile ? '12px 14px' : '14px 18px',
+        gap: isMobile ? 8 : 10,
+        padding: isMobile ? '8px 10px' : '10px 12px',
         background: 'rgba(255,255,255,0.1)',
-        borderRadius: 12,
+        borderRadius: 8,
         border: '1px solid rgba(255,255,255,0.1)',
         textDecoration: 'none',
         color: 'inherit',
         transition: 'all 0.2s',
         cursor: 'pointer',
+        minHeight: isMobile ? 50 : 60,
       }}
       onMouseEnter={(e) => {
+        e.currentTarget.style.transform = 'scale(1.01)';
         e.currentTarget.style.background = 'rgba(255,255,255,0.15)';
       }}
       onMouseLeave={(e) => {
+        e.currentTarget.style.transform = 'scale(1)';
         e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
       }}
     >
-      {/* Left: Type & Address */}
-      <div style={{ flex: 1 }}>
+      {/* アイコン */}
+      <div style={{
+        fontSize: isMobile ? 20 : 24,
+        flexShrink: 0,
+      }}>
+        {isSend ? '📤' : '📥'}
+      </div>
+
+      {/* メイン情報（タイプとアドレス） */}
+      <div style={{
+        flex: 1,
+        minWidth: 0,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 2,
+      }}>
         <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-          marginBottom: 4,
+          fontSize: isMobile ? 13 : 14,
+          fontWeight: 600,
+          color: isSend ? '#fbbf24' : '#10b981',
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
         }}>
-          <div style={{ fontSize: isMobile ? 18 : 20 }}>
-            {isSend ? '📤' : '📥'}
-          </div>
-          <div style={{
-            fontSize: isMobile ? 13 : 14,
-            fontWeight: 600,
-            color: isSend ? '#fbbf24' : '#10b981',
-          }}>
-            {isSend ? '送金' : '受取'}
-          </div>
+          {isSend ? '送金' : '受取'}
         </div>
         <div style={{
-          fontSize: isMobile ? 10 : 11,
+          fontSize: isMobile ? 11 : 12,
           color: 'rgba(255,255,255,0.6)',
           fontFamily: 'monospace',
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
         }}>
           {isSend
             ? `${tx.to.slice(0, 6)}...${tx.to.slice(-4)}`
@@ -4573,34 +4850,42 @@ function TransactionItem({ tx, isMobile }: { tx: Transaction; isMobile: boolean 
         </div>
       </div>
 
-      {/* Center: Amount */}
+      {/* 金額 */}
       <div style={{
-        textAlign: 'right',
-        marginRight: isMobile ? 12 : 16,
+        fontSize: isMobile ? 16 : 18,
+        fontWeight: 700,
+        color: isSend ? '#fbbf24' : '#10b981',
+        whiteSpace: 'nowrap',
+        flexShrink: 0,
       }}>
-        <div style={{
-          fontSize: isMobile ? 14 : 16,
-          fontWeight: 700,
-          color: isSend ? '#fbbf24' : '#10b981',
-        }}>
-          {isSend ? '-' : '+'}{amount}
-        </div>
-        <div style={{
-          fontSize: isMobile ? 10 : 11,
-          color: 'rgba(255,255,255,0.6)',
-        }}>
-          {tx.tokenSymbol}
-        </div>
+        {isSend ? '-' : '+'}{amount} {tx.tokenSymbol}
       </div>
 
-      {/* Right: Date */}
+      {/* 日時 */}
       <div style={{
-        fontSize: isMobile ? 10 : 11,
+        fontSize: isMobile ? 11 : 12,
         color: 'rgba(255,255,255,0.5)',
-        minWidth: isMobile ? 50 : 60,
-        textAlign: 'right',
+        whiteSpace: 'nowrap',
+        flexShrink: 0,
       }}>
         {formattedDate}
+      </div>
+
+      {/* Polygonscanアイコン */}
+      <div style={{
+        width: isMobile ? 28 : 32,
+        height: isMobile ? 28 : 32,
+        background: 'rgba(139, 92, 246, 0.1)',
+        border: '1px solid rgba(139, 92, 246, 0.3)',
+        borderRadius: 6,
+        color: '#c4b5fd',
+        fontSize: isMobile ? 14 : 16,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexShrink: 0,
+      }}>
+        ↗
       </div>
     </a>
   );

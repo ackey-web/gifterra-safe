@@ -43,6 +43,12 @@ export interface FlagNFT {
   // ステータス
   isActive: boolean;
   isTransferable: boolean; // 譲渡可能か
+  isBurnable: boolean; // バーン（焼却）可能か
+
+  // 自動配布設定
+  autoDistributionEnabled: boolean; // 自動配布を有効化
+  requiredTipAmount?: number; // 必要な累積チップ額（JPYC/tNHT換算）
+  targetToken?: 'JPYC' | 'tNHT' | 'both'; // 対象トークン
 
   // フラグ・属性（柔軟な拡張用）
   flags: FlagAttribute[];

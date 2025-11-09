@@ -346,17 +346,17 @@ export async function uploadAvatarImage(file: File, walletAddress: string): Prom
 
     // 既存のアバターがあれば削除
     const { data: existingFiles } = await supabase.storage
-      .from('avatars')
+      .from('gh-avatars')
       .list(walletAddress.toLowerCase());
 
     if (existingFiles && existingFiles.length > 0) {
       const filesToDelete = existingFiles.map(f => `${walletAddress.toLowerCase()}/${f.name}`);
-      await supabase.storage.from('avatars').remove(filesToDelete);
+      await supabase.storage.from('gh-avatars').remove(filesToDelete);
     }
 
     // 新しいアバターをアップロード
     const { error } = await supabase.storage
-      .from('avatars')
+      .from('gh-avatars')
       .upload(fileName, resizedFile, {
         cacheControl: '3600',
         upsert: true
@@ -369,7 +369,7 @@ export async function uploadAvatarImage(file: File, walletAddress: string): Prom
 
     // 公開URLを取得
     const { data: publicData } = supabase.storage
-      .from('avatars')
+      .from('gh-avatars')
       .getPublicUrl(fileName);
 
     return publicData.publicUrl;
@@ -388,7 +388,7 @@ export async function uploadAvatarImage(file: File, walletAddress: string): Prom
 export async function deleteAvatarImage(walletAddress: string): Promise<boolean> {
   try {
     const { data: existingFiles } = await supabase.storage
-      .from('avatars')
+      .from('gh-avatars')
       .list(walletAddress.toLowerCase());
 
     if (!existingFiles || existingFiles.length === 0) {
@@ -397,7 +397,7 @@ export async function deleteAvatarImage(walletAddress: string): Promise<boolean>
 
     const filesToDelete = existingFiles.map(f => `${walletAddress.toLowerCase()}/${f.name}`);
     const { error } = await supabase.storage
-      .from('avatars')
+      .from('gh-avatars')
       .remove(filesToDelete);
 
     if (error) {

@@ -138,19 +138,60 @@ export function TenantProvider({ children }: { children: ReactNode }) {
   // Get address from Privy wallet
   useEffect(() => {
     async function getPrivyAddress() {
-      if (!privyAuthenticated || !wallets || wallets.length === 0) {
+      console.log('🔑 [getPrivyAddress] Starting...', {
+        privyAuthenticated,
+        walletsCount: wallets?.length || 0,
+        wallets: wallets?.map(w => ({
+          address: w.address,
+          walletClientType: w.walletClientType,
+          connectorType: w.connectorType,
+        })),
+      });
+
+      if (!privyAuthenticated) {
+        console.log('❌ [getPrivyAddress] Not authenticated with Privy');
         setPrivyAddress('');
         return;
       }
+
+      if (!wallets || wallets.length === 0) {
+        console.log('❌ [getPrivyAddress] No wallets found');
+        setPrivyAddress('');
+        return;
+      }
+
       try {
         const wallet = wallets[0];
+        console.log('🔍 [getPrivyAddress] Using wallet:', {
+          address: wallet.address,
+          walletClientType: wallet.walletClientType,
+          connectorType: wallet.connectorType,
+        });
+
+        // Try to get address directly from wallet object first
+        if (wallet.address) {
+          console.log('✅ [getPrivyAddress] Got address directly from wallet:', wallet.address);
+          setPrivyAddress(wallet.address);
+          return;
+        }
+
+        // Fallback: try to get from provider
+        console.log('🔄 [getPrivyAddress] No direct address, trying provider...');
         const provider = await wallet.getEthereumProvider();
+        console.log('📡 [getPrivyAddress] Got provider:', typeof provider);
+
         const ethersProvider = new ethers.providers.Web3Provider(provider, 'any');
         const signer = ethersProvider.getSigner();
         const addr = await signer.getAddress();
+
+        console.log('✅ [getPrivyAddress] Got address from signer:', addr);
         setPrivyAddress(addr);
       } catch (error) {
-        console.error('Failed to get Privy address:', error);
+        console.error('❌ [getPrivyAddress] Failed to get Privy address:', error);
+        console.error('Error details:', {
+          message: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined,
+        });
         setPrivyAddress('');
       }
     }
