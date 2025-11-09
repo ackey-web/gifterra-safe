@@ -850,19 +850,7 @@ function FlowModeContent({
 
       {/* 5. プランカード / ロックカード */}
       {(() => {
-          isApprovedTenant,
-          tenantId,
-          bothConditions: isApprovedTenant && tenantId,
-          willRenderTenantPlanCard: (isApprovedTenant && tenantId) ? 'YES' : 'NO',
-          showLockCard,
-          tenantRankPlan,
-        });
-
         if (isApprovedTenant && tenantId) {
-            isMobile,
-            currentPlan: tenantRankPlan,
-            tenantId,
-          });
           return (
             <TenantPlanCard
               isMobile={isMobile}
