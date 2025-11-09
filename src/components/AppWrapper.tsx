@@ -24,6 +24,9 @@ export function AppWrapper({ children, isMobile = false }: AppWrapperProps) {
   const handleAccept = () => {
     setTermsConsent();
     setShowTermsModal(false);
+
+    // 利用規約に同意したらログイン画面にリダイレクト
+    window.location.href = '/login';
   };
 
   // チェック中は何も表示しない（ちらつき防止）
