@@ -15,6 +15,7 @@ import { useMyTenantApplication, useSubmitTenantApplication } from '../hooks/use
 import { useRankPlanPricing, getPlanPrice } from '../hooks/useRankPlanPricing';
 import { useTenantRankPlan } from '../hooks/useTenantRankPlan';
 import { saveTransferMessage, useReceivedTransferMessages } from '../hooks/useTransferMessages';
+import { useRecipientProfile } from '../hooks/useRecipientProfile';
 import { TenantPlanCard } from '../components/TenantPlanCard';
 import { SettingsModal } from '../components/SettingsModal';
 import { TransferMessageHistory } from '../components/TransferMessageHistory';
@@ -966,6 +967,30 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
   const [showQRScanner, setShowQRScanner] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [isCreatingWallet, setIsCreatingWallet] = useState(false);
+  const [showReceiveMessageModal, setShowReceiveMessageModal] = useState(false);
+  const [recipientReceiveMessage, setRecipientReceiveMessage] = useState<string>('');
+
+  // 受取人プロフィールを取得（デバウンス500ms）
+  // Debug: sendMode and address state for production troubleshooting
+  console.log('🔍 [Mypage] useRecipientProfile hook params:', {
+    sendMode,
+    address,
+    shouldFetch: sendMode === 'simple' || sendMode === 'bulk',
+    addressToFetch: sendMode === 'simple' || sendMode === 'bulk' ? address : '',
+  });
+
+  const { profile: recipientProfile, isLoading: isLoadingProfile } = useRecipientProfile(
+    sendMode === 'simple' || sendMode === 'bulk' ? address : '',
+    500
+  );
+
+  // Debug: recipientProfile changes
+  useEffect(() => {
+    console.log('📋 [Mypage] recipientProfile updated:', {
+      profile: recipientProfile,
+      isLoading: isLoadingProfile,
+    });
+  }, [recipientProfile, isLoadingProfile]);
 
   // 現在のウォレットアドレスとsignerを取得
   const [signer, setSigner] = useState<ethers.Signer | null>(null);
@@ -1254,12 +1279,18 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
           // 保存失敗してもトランザクション自体は成功しているので処理を継続
         }
 
-        alert(
-          `✅ 送金が完了しました！\n\n` +
-          `送金先: ${trimmedAddress.slice(0, 6)}...${trimmedAddress.slice(-4)}\n` +
-          `数量: ${amount} ${selectedToken}\n\n` +
-          `💡 MATICガス代が必要です。残高が更新されました。`
-        );
+        // 送金完了後、GIFTERRAユーザーへの送金なら受取メッセージを表示
+        if (recipientProfile?.isGifterraUser && recipientProfile?.receive_message) {
+          setRecipientReceiveMessage(recipientProfile.receive_message);
+          setShowReceiveMessageModal(true);
+        } else {
+          alert(
+            `✅ 送金が完了しました！\n\n` +
+            `送金先: ${trimmedAddress.slice(0, 6)}...${trimmedAddress.slice(-4)}\n` +
+            `数量: ${amount} ${selectedToken}\n\n` +
+            `💡 MATICガス代が必要です。残高が更新されました。`
+          );
+        }
       }
 
       // フォームをリセット
@@ -1589,6 +1620,124 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
             </button>
           )}
         </div>
+
+        {/* 受取人プロフィール表示 */}
+        {(sendMode === 'simple' || sendMode === 'bulk') && address && address.trim().length === 42 && (
+          <div style={{
+            marginTop: 12,
+            padding: isMobile ? '12px' : '14px',
+            background: recipientProfile?.isGifterraUser
+              ? 'rgba(16, 185, 129, 0.1)'
+              : 'rgba(156, 163, 175, 0.1)',
+            border: `1px solid ${recipientProfile?.isGifterraUser ? 'rgba(16, 185, 129, 0.3)' : 'rgba(156, 163, 175, 0.3)'}`,
+            borderRadius: 8,
+          }}>
+            {isLoadingProfile ? (
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                color: '#6b7280',
+                fontSize: isMobile ? 13 : 14,
+              }}>
+                <div style={{
+                  width: 14,
+                  height: 14,
+                  border: '2px solid rgba(107, 114, 128, 0.3)',
+                  borderTop: '2px solid #6b7280',
+                  borderRadius: '50%',
+                  animation: 'spin 1s linear infinite',
+                }} />
+                確認中...
+              </div>
+            ) : recipientProfile?.isGifterraUser ? (
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
+              }}>
+                <div style={{
+                  width: isMobile ? 40 : 48,
+                  height: isMobile ? 40 : 48,
+                  borderRadius: '50%',
+                  overflow: 'hidden',
+                  background: recipientProfile.avatar_url
+                    ? 'transparent'
+                    : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: isMobile ? 20 : 24,
+                  flexShrink: 0,
+                }}>
+                  {recipientProfile.avatar_url ? (
+                    <img
+                      src={recipientProfile.avatar_url}
+                      alt={recipientProfile.display_name || 'User'}
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover',
+                      }}
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                        const parent = e.currentTarget.parentElement;
+                        if (parent) parent.innerHTML = '👤';
+                      }}
+                    />
+                  ) : (
+                    '👤'
+                  )}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    marginBottom: 4,
+                  }}>
+                    <span style={{
+                      fontSize: isMobile ? 12 : 13,
+                      fontWeight: 600,
+                      color: '#10b981',
+                    }}>
+                      GIFTERRAユーザー
+                    </span>
+                  </div>
+                  <div style={{
+                    fontSize: isMobile ? 15 : 16,
+                    fontWeight: 700,
+                    color: '#1a1a1a',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}>
+                    {recipientProfile.display_name || '名前未設定'}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+              }}>
+                <span style={{
+                  fontSize: isMobile ? 18 : 20,
+                }}>
+                  ⚠️
+                </span>
+                <div style={{
+                  fontSize: isMobile ? 13 : 14,
+                  fontWeight: 600,
+                  color: '#6b7280',
+                }}>
+                  外部ウォレット（GIFTERRA未登録）
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <div style={{ marginBottom: 16 }}>
@@ -1785,6 +1934,110 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
           onClose={() => setShowQRScanner(false)}
           placeholder="ウォレットアドレスを入力"
         />
+      )}
+
+      {/* 受取メッセージモーダル */}
+      {showReceiveMessageModal && createPortal(
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100vw',
+            height: '100vh',
+            background: 'rgba(0, 0, 0, 0.85)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 999999,
+            padding: isMobile ? 16 : 24,
+          }}
+          onClick={() => setShowReceiveMessageModal(false)}
+        >
+          <div
+            style={{
+              background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)',
+              borderRadius: 20,
+              padding: isMobile ? 24 : 32,
+              maxWidth: 500,
+              width: '100%',
+              border: '2px solid rgba(59, 130, 246, 0.3)',
+              boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{
+              textAlign: 'center',
+              marginBottom: 24,
+            }}>
+              <div style={{
+                fontSize: isMobile ? 48 : 56,
+                marginBottom: 16,
+              }}>
+                ✅
+              </div>
+              <h3 style={{
+                margin: '0 0 12px 0',
+                fontSize: isMobile ? 20 : 24,
+                fontWeight: 700,
+                color: '#1a1a1a',
+              }}>
+                送金が完了しました！
+              </h3>
+              <div style={{
+                padding: isMobile ? '16px 20px' : '20px 24px',
+                background: 'rgba(255, 255, 255, 0.8)',
+                borderRadius: 12,
+                border: '1px solid rgba(59, 130, 246, 0.2)',
+                marginTop: 20,
+              }}>
+                <div style={{
+                  fontSize: isMobile ? 13 : 14,
+                  color: '#6b7280',
+                  marginBottom: 8,
+                  fontWeight: 600,
+                }}>
+                  受取人からのメッセージ
+                </div>
+                <div style={{
+                  fontSize: isMobile ? 16 : 18,
+                  color: '#1a1a1a',
+                  fontWeight: 600,
+                  lineHeight: 1.6,
+                  whiteSpace: 'pre-wrap',
+                }}>
+                  {recipientReceiveMessage}
+                </div>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setShowReceiveMessageModal(false)}
+              style={{
+                width: '100%',
+                padding: isMobile ? '14px' : '16px',
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                border: 'none',
+                borderRadius: 12,
+                color: '#fff',
+                fontSize: isMobile ? 15 : 16,
+                fontWeight: 700,
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                boxShadow: '0 4px 12px rgba(102, 126, 234, 0.4)',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'scale(1.02)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'scale(1)';
+              }}
+            >
+              閉じる
+            </button>
+          </div>
+        </div>,
+        document.body
       )}
 
       {/* JPYC準備モーダル */}
