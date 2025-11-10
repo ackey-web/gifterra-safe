@@ -2724,7 +2724,7 @@ function BulkSendForm({ isMobile, onChangeMode }: {
           try {
             const { data, error } = await supabase
               .from('user_profiles')
-              .select('wallet_address, display_name, avatar_url')
+              .select('wallet_address, display_name, avatar_url, receive_message')
               .eq('wallet_address', recipient.address.trim().toLowerCase())
               .maybeSingle();
 
@@ -2735,7 +2735,7 @@ function BulkSendForm({ isMobile, onChangeMode }: {
                   wallet_address: data.wallet_address,
                   display_name: data.display_name,
                   avatar_url: data.avatar_url,
-                  receive_message: 'ありがとうございました。',
+                  receive_message: data.receive_message || 'ありがとうございました。',
                   isGifterraUser: true,
                 },
               }));
