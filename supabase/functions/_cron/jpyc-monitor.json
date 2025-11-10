@@ -1,0 +1,5 @@
+{
+  "name": "jpyc-transfer-monitor",
+  "schedule": "*/5 * * * *",
+  "description": "Monitor JPYC Transfer events every 5 minutes"
+}
