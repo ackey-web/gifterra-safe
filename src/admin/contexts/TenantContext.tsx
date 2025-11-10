@@ -6,7 +6,8 @@ import type { ReactNode } from 'react';
 import { useAddress, useContract, ConnectWallet } from '@thirdweb-dev/react';
 import { usePrivy, useWallets } from '@privy-io/react-auth';
 import { ethers } from 'ethers';
-import { CONTRACT_ADDRESS, TOKEN, CONTRACT_ABI, ERC20_MIN_ABI } from '../../contract';
+import { CONTRACT_ADDRESS, CONTRACT_ABI, ERC20_MIN_ABI } from '../../contract';
+import { getDefaultToken } from '../../config/tokenHelpers';
 
 /* =========================================
    開発環境用デバッグスーパーアドミン設定
@@ -65,12 +66,13 @@ export interface TenantConfig {
 }
 
 // デフォルトテナント（現在の単一コントラクト環境）
+// 環境に応じてトークンアドレスが自動的に切り替わる（testnet: tNHT, mainnet: NHT）
 const DEFAULT_TENANT: TenantConfig = {
   id: 'default',
   name: 'METATRON Default',
   contracts: {
     gifterra: CONTRACT_ADDRESS,
-    rewardToken: TOKEN.ADDRESS,
+    rewardToken: getDefaultToken().currentAddress,
     // TODO: GifterraFactoryから実際のPaymentSplitterアドレスを取得
     // 現時点では仮アドレス（後で実際のデプロイアドレスに置き換え）
     paymentSplitter: '0x0000000000000000000000000000000000000000', // PLACEHOLDER

@@ -2,7 +2,8 @@
 // リワードUI管理ページ - タブ切り替え式（GIFT HUB管理画面と統一）
 import React, { useState, useRef } from 'react';
 import { uploadImage, deleteFileFromUrl } from '../../lib/supabase';
-import { TOKEN, CONTRACT_ADDRESS } from '../../contract';
+import { CONTRACT_ADDRESS } from '../../contract';
+import { getDefaultToken } from '../../config/tokenHelpers';
 import { RewardDistributionHistoryTab } from './components/RewardDistributionHistoryTab';
 
 export interface AdData {
@@ -41,6 +42,8 @@ export function RewardUIManagementPage({
   RewardTokenChargeSection,
   RewardAmountSettingSection
 }: RewardUIManagementPageProps) {
+  // マルチトークン対応：環境に応じたトークン設定
+  const defaultToken = getDefaultToken();
   const [activeTab, setActiveTab] = useState<TabType>('contract');
   const [rewardBgImage, setRewardBgImage] = useState<string>(() => {
     return localStorage.getItem('reward-bg-image') || '';
@@ -289,7 +292,7 @@ export function RewardUIManagementPage({
                     contractBalanceError ? (
                       <span style={{ color: "#ff6b6b" }}>読み込みエラー (Amoyネットワーク制限の可能性)</span>
                     ) : contractBalance ? (
-                      `${Number(contractBalance) / 1e18} ${TOKEN.SYMBOL}`
+                      `${Number(contractBalance) / 1e18} ${defaultToken.symbol}`
                     ) : (
                       "読み込み中..."
                     )
@@ -300,7 +303,7 @@ export function RewardUIManagementPage({
                     dailyRewardError ? (
                       <span style={{ color: "#ff6b6b" }}>読み込みエラー</span>
                     ) : currentDailyReward ? (
-                      `${Number(currentDailyReward) / 1e18} ${TOKEN.SYMBOL}`
+                      `${Number(currentDailyReward) / 1e18} ${defaultToken.symbol}`
                     ) : (
                       "読み込み中..."
                     )

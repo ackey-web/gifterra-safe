@@ -1,11 +1,13 @@
 // src/pages/ReceivePage.tsx
 import { useEffect, useState } from 'react';
-import { QRCodeSVG } from 'qrcode.react';
+import { supabase } from '../lib/supabase';
 
 export function ReceivePage() {
   const [address, setAddress] = useState<string>('');
   const [copySuccess, setCopySuccess] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [displayName, setDisplayName] = useState<string>('');
+  const [profileImage, setProfileImage] = useState<string>('');
 
   // URLパラメータからアドレスを取得（ログイン不要）
   useEffect(() => {
@@ -21,6 +23,45 @@ export function ReceivePage() {
     // モバイル判定
     setIsMobile(window.innerWidth <= 768);
   }, []);
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      if (!address) {
+        console.log('❌ ReceivePage: No address provided');
+        return;
+      }
+
+      console.log('🔍 ReceivePage: Fetching profile for address:', address);
+
+      try {
+        const { data, error } = await supabase
+          .from('user_profiles')
+          .select('display_name, avatar_url')
+          .eq('wallet_address', address.toLowerCase())
+          .single();
+
+        if (error) {
+          console.error('❌ ReceivePage: Supabase error:', error);
+          throw error;
+        }
+
+        console.log('✅ ReceivePage: Profile data fetched:', data);
+
+        if (data) {
+          setDisplayName(data.display_name || '');
+          setProfileImage(data.avatar_url || '');
+          console.log('✅ ReceivePage: Display name:', data.display_name);
+          console.log('✅ ReceivePage: Profile image:', data.avatar_url);
+        } else {
+          console.log('⚠️ ReceivePage: No profile data found for this address');
+        }
+      } catch (error) {
+        console.error('❌ ReceivePage: Failed to fetch profile:', error);
+      }
+    };
+
+    fetchProfile();
+  }, [address]);
 
   const handleCopy = async () => {
     if (!address) return;
@@ -108,34 +149,56 @@ export function ReceivePage() {
           </p>
         </div>
 
-        {/* QRコード */}
+        {/* プロフィール画像 */}
         <div style={{
           display: 'flex',
           justifyContent: 'center',
           marginBottom: isMobile ? '12px' : '20px',
         }}>
           <div style={{
-            padding: isMobile ? '10px' : '14px',
-            background: '#ffffff',
-            border: isMobile ? '2px solid #10b981' : '3px solid #10b981',
-            borderRadius: isMobile ? '10px' : '14px',
-            display: 'inline-block',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+            width: isMobile ? 100 : 140,
+            height: isMobile ? 100 : 140,
+            borderRadius: '50%',
+            overflow: 'hidden',
+            border: isMobile ? '3px solid #10b981' : '4px solid #10b981',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+            background: '#f0f0f0',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
           }}>
-            <QRCodeSVG
-              value={`${window.location.origin}/receive?address=${address}`}
-              size={isMobile ? 140 : 200}
-              level="H"
-              includeMargin={false}
-              imageSettings={{
-                src: '/polygon-logo.png',
-                height: isMobile ? 28 : 40,
-                width: isMobile ? 28 : 40,
-                excavate: true,
-              }}
-            />
+            {profileImage ? (
+              <img
+                src={profileImage}
+                alt="Profile"
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',
+                }}
+              />
+            ) : (
+              <div style={{
+                fontSize: isMobile ? 40 : 60,
+              }}>
+                👤
+              </div>
+            )}
           </div>
         </div>
+
+        {/* 表示名 */}
+        {displayName && (
+          <div style={{
+            textAlign: 'center',
+            marginBottom: isMobile ? '12px' : '20px',
+            fontSize: isMobile ? 16 : 20,
+            fontWeight: 700,
+            color: '#1a1a1a',
+          }}>
+            {displayName}
+          </div>
+        )}
 
         {/* アドレス表示 (タップでコピー) */}
         <button
@@ -225,9 +288,7 @@ export function ReceivePage() {
             lineHeight: isMobile ? 1.4 : 1.6,
           }}>
             <li>アドレスをタップしてコピー</li>
-            <li>MetaMaskアプリを開く</li>
-            <li>ネットワークを <strong>Polygon</strong> に変更</li>
-            <li>送金するトークンを選択</li>
+            <li>GIFTERRAを使って送るをタップ</li>
             <li>コピーしたアドレスを貼り付けて送金</li>
           </ol>
         </div>

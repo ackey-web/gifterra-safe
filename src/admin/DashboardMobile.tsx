@@ -2,7 +2,8 @@
 import { useEffect, useState } from "react";
 import { useAddress, ConnectWallet } from "@thirdweb-dev/react";
 import { ethers } from "ethers";
-import { CONTRACT_ADDRESS, TOKEN } from "../contract";
+import { CONTRACT_ADDRESS } from "../contract";
+import { getDefaultToken, formatTokenShort } from "../config/tokenHelpers";
 import { setEmergencyFlag, readEmergencyFlag } from "../lib/emergency";
 
 /* ---------- Types & Helpers ---------- */
@@ -14,11 +15,9 @@ type TipItem = {
   txHash?: string;
 };
 
-const fmt18 = (v: bigint) => {
+const fmt18 = (v: bigint, tokenId: 'NHT' | 'JPYC' = 'NHT') => {
   try {
-    const s = ethers.utils.formatUnits(v.toString(), TOKEN.DECIMALS);
-    const [a, b = ""] = s.split(".");
-    return b ? `${a}.${b.slice(0, 4)}` : a;
+    return formatTokenShort(v, tokenId);
   } catch {
     return "0";
   }
@@ -31,6 +30,9 @@ const shortAddress = (addr: string) => `${addr.slice(0, 6)}...${addr.slice(-4)}`
 // スマホ用Admin Dashboard
 export default function DashboardMobile() {
   const address = useAddress();
+
+  // マルチトークン対応：環境に応じたトークン設定
+  const defaultToken = getDefaultToken();
   
 
 
@@ -470,7 +472,7 @@ export default function DashboardMobile() {
                   opacity: 0.7,
                   marginTop: "4px"
                 }}>
-                  累積 {TOKEN.SYMBOL}
+                  累積 {defaultToken.symbol}
                 </div>
               </div>
               <div>
@@ -628,7 +630,7 @@ export default function DashboardMobile() {
                         fontWeight: "600",
                         color: "#f59e0b"
                       }}>
-                        {fmt18(supporter.amount)} {TOKEN.SYMBOL}
+                        {fmt18(supporter.amount)} {defaultToken.symbol}
                       </span>
                     </div>
                   ))}
@@ -942,7 +944,7 @@ export default function DashboardMobile() {
           }}>
             <div>🔗 ウォレット: {address ? `${address.slice(0, 10)}...${address.slice(-6)}` : "未接続"}</div>
             <div>📄 コントラクト: {CONTRACT_ADDRESS.slice(0, 10)}...{CONTRACT_ADDRESS.slice(-6)}</div>
-            <div>📊 データ状況: Tips={tips.length}件, 総額={fmt18(totalTips)} {TOKEN.SYMBOL} (イベント集計)</div>
+            <div>📊 データ状況: Tips={tips.length}件, 総額={fmt18(totalTips)} {defaultToken.symbol} (イベント集計)</div>
             <div>⏰ 分析: 今日={dailyTips}, 今週={weeklyTips}, サポーター={topSupporters.length}名</div>
           </div>
 

@@ -11,7 +11,9 @@ import {
   CartesianGrid,
   ResponsiveContainer,
 } from "recharts";
-import { CONTRACT_ADDRESS, CONTRACT_ABI, TOKEN } from "../contract";
+import { CONTRACT_ADDRESS, CONTRACT_ABI } from "../contract";
+import { getActiveTokens, getDefaultToken, formatTokenShort, TOKEN } from "../config/tokenHelpers";
+import { getNetworkEnv } from "../config/tokens";
 import {
   fetchAnnotationsCached,
   prefetchAnnotations,
@@ -34,7 +36,7 @@ import { canUseSbtRank, canUseAdvancedAnalytics, getTenantPlanDetails, getUpgrad
 
 /* ---------- Types & Helpers ---------- */
 type Period = "day" | "week" | "month" | "all";
-type TokenFilter = "tNHT" | "JPYC" | "all";
+type TokenFilter = "NHT" | "JPYC" | "all"; // NHT will be tNHT in testnet automatically
 type RankingTab = "kodomi" | "jpyc";
 type TipItem = {
   from: string;
@@ -53,11 +55,9 @@ type TipItem = {
 // - plan-management: プラン管理（スーパーアドミン専用）
 // - user-management: ユーザー管理（テナント管理者用）
 
-const fmt18 = (v: bigint) => {
+const fmt18 = (v: bigint, tokenId: 'NHT' | 'JPYC' = 'NHT') => {
   try {
-    const s = ethers.utils.formatUnits(v.toString(), TOKEN.DECIMALS);
-    const [a, b = ""] = s.split(".");
-    return b ? `${a}.${b.slice(0, 4)}` : a;
+    return formatTokenShort(v, tokenId);
   } catch {
     return "0";
   }
@@ -353,6 +353,11 @@ export default function AdminDashboard() {
   // テナントランクプラン取得（機能制限チェック用）
   const { plan: tenantRankPlan } = useTenantRankPlan(tenant?.id);
 
+  // マルチトークン対応：環境に応じたトークン設定
+  const activeTokens = getActiveTokens();
+  const defaultToken = getDefaultToken();
+  const networkEnv = getNetworkEnv();
+
   const address = useAddress();
   const { contract } = useContract(CONTRACT_ADDRESS, CONTRACT_ABI);
   
@@ -525,7 +530,8 @@ export default function AdminDashboard() {
               const amount = BigInt(log.data);
               const blockNumber = BigInt(parseInt(log.blockNumber, 16));
               const txHash = (log.transactionHash || "").toLowerCase();
-              return { from, amount, blockNumber, txHash };
+              // TODO: Add token field detection when multi-token support is implemented
+              return { from, amount, blockNumber, txHash, token: 'NHT' };
             });
 
             // 既存データに新しいイベントを追加してソート
@@ -585,7 +591,10 @@ export default function AdminDashboard() {
           const amount = BigInt(log.data);
           const blockNumber = BigInt(parseInt(log.blockNumber, 16));
           const txHash = (log.transactionHash || "").toLowerCase();
-          return { from, amount, blockNumber, txHash };
+          // TODO: Add token field detection when multi-token support is implemented
+          // For now, all tips default to NHT (tNHT on testnet)
+          // Future: Determine token from contract address or event signature
+          return { from, amount, blockNumber, txHash, token: 'NHT' };
         });
 
         items.sort((a, b) =>
@@ -744,22 +753,57 @@ export default function AdminDashboard() {
   }, [tips, period]);
 
   const total = filtered.reduce((a, b) => a + b.amount, 0n);
+
+  // Calculate totals by token
+  const totalNHT = useMemo(
+    () => filtered.reduce((sum, t) => sum + ((t.token === 'NHT' || !t.token) ? t.amount : 0n), 0n),
+    [filtered]
+  );
+
+  const totalJPYC = useMemo(
+    () => filtered.reduce((sum, t) => sum + (t.token === 'JPYC' ? t.amount : 0n), 0n),
+    [filtered]
+  );
+
   const uniqueUsers = useMemo(
     () => new Set(filtered.map((t) => t.from.toLowerCase())).size,
     [filtered]
   );
 
-  const ranking = useMemo(() => {
+  // Top Supporters for kodomi (NHT only)
+  const topSupportersNHT = useMemo(() => {
     const map = new Map<string, bigint>();
     for (const t of filtered) {
-      const a = t.from.toLowerCase();
-      map.set(a, (map.get(a) ?? 0n) + t.amount);
+      if (t.token === 'NHT' || !t.token) {
+        const a = t.from.toLowerCase();
+        map.set(a, (map.get(a) ?? 0n) + t.amount);
+      }
     }
     return [...map.entries()]
       .map(([addr, amt]) => ({ addr, amount: amt }))
       .sort((a, b) => (b.amount > a.amount ? 1 : -1))
-      .slice(0, 10);
+      .slice(0, 15);
   }, [filtered]);
+
+  // Top Supporters for JPYC only
+  const topSupportersJPYC = useMemo(() => {
+    const map = new Map<string, bigint>();
+    for (const t of filtered) {
+      if (t.token === 'JPYC') {
+        const a = t.from.toLowerCase();
+        map.set(a, (map.get(a) ?? 0n) + t.amount);
+      }
+    }
+    return [...map.entries()]
+      .map(([addr, amt]) => ({ addr, amount: amt }))
+      .sort((a, b) => (b.amount > a.amount ? 1 : -1))
+      .slice(0, 15);
+  }, [filtered]);
+
+  // Use the appropriate ranking based on the selected tab
+  const ranking = useMemo(() => {
+    return rankingTab === "kodomi" ? topSupportersNHT : topSupportersJPYC;
+  }, [rankingTab, topSupportersNHT, topSupportersJPYC]);
 
   // ランキングユーザーのプロフィールを取得
   useEffect(() => {
@@ -799,12 +843,27 @@ export default function AdminDashboard() {
   const [analysisPage, setAnalysisPage] = useState(0);
   const [showTipGraph, setShowTipGraph] = useState(true);
   const [showHeatGraph, setShowHeatGraph] = useState(false);
+  const [graphLines, setGraphLines] = useState({
+    jpyc: true,
+    nht: true,
+    kodomi: true
+  });
   const RECENT_PAGE_SIZE = 10;
   const ANALYSIS_ITEMS_PER_PAGE = 10;
-  const totalRecentPages = Math.max(1, Math.ceil(filtered.length / RECENT_PAGE_SIZE));
+
+  // Apply token filter to recent tips
+  const recentFiltered = useMemo(() => {
+    if (tokenFilter === 'all') return filtered;
+    return filtered.filter(t => {
+      const tipToken = t.token || 'NHT'; // Default to NHT if token is not specified
+      return tipToken === tokenFilter;
+    });
+  }, [filtered, tokenFilter]);
+
+  const totalRecentPages = Math.max(1, Math.ceil(recentFiltered.length / RECENT_PAGE_SIZE));
   useEffect(() => {
     setRecentPage(0);
-  }, [period, filtered.length]);
+  }, [period, recentFiltered.length, tokenFilter]);
 
   /* ---------- Export Functions ---------- */
   const downloadFile = (filename: string, content: string, type: string) => {
@@ -922,13 +981,14 @@ export default function AdminDashboard() {
     };
     downloadFile(`gifterra-analysis-${periodLabel}.json`, JSON.stringify(data, null, 2), "application/json");
   };
+
   const recentPaged = useMemo(
     () =>
-      filtered.slice(
+      recentFiltered.slice(
         recentPage * RECENT_PAGE_SIZE,
         recentPage * RECENT_PAGE_SIZE + RECENT_PAGE_SIZE
       ),
-    [filtered, recentPage]
+    [recentFiltered, recentPage]
   );
 
   const chartData = useMemo(() => {
@@ -961,14 +1021,21 @@ export default function AdminDashboard() {
       }
     };
 
-    const byPeriod = new Map<string, bigint>();
+    const byPeriodNHT = new Map<string, bigint>();
+    const byPeriodJPYC = new Map<string, bigint>();
     for (const t of filtered) {
       if (!t.timestamp) continue;
       const key = getKeyFromTimestamp(t.timestamp);
-      byPeriod.set(key, (byPeriod.get(key) ?? 0n) + t.amount);
+      const tokenId = t.token || 'NHT';
+      if (tokenId === 'NHT') {
+        byPeriodNHT.set(key, (byPeriodNHT.get(key) ?? 0n) + t.amount);
+      } else if (tokenId === 'JPYC') {
+        byPeriodJPYC.set(key, (byPeriodJPYC.get(key) ?? 0n) + t.amount);
+      }
     }
 
-    const keys = [...byPeriod.keys()].sort();
+    const allKeys = new Set([...byPeriodNHT.keys(), ...byPeriodJPYC.keys()]);
+    const keys = [...allKeys].sort();
     let minDate: Date;
     let maxDate: Date;
     const today0 = new Date();
@@ -1010,20 +1077,25 @@ export default function AdminDashboard() {
     if (!fillEmptyDays || period === "all") {
       return [...keys].map((key) => ({
         day: key,
-        amount: Number(ethers.utils.formatUnits((byPeriod.get(key) ?? 0n).toString(), TOKEN.DECIMALS)),
+        amountNHT: Number(ethers.utils.formatUnits((byPeriodNHT.get(key) ?? 0n).toString(), 18)),
+        amountJPYC: Number(ethers.utils.formatUnits((byPeriodJPYC.get(key) ?? 0n).toString(), 18)),
+        amount: Number(ethers.utils.formatUnits(((byPeriodNHT.get(key) ?? 0n) + (byPeriodJPYC.get(key) ?? 0n)).toString(), 18)),
       }));
     }
 
-    const full: Array<{ day: string; amount: number }> = [];
-    
+    const full: Array<{ day: string; amountNHT: number; amountJPYC: number; amount: number }> = [];
+
     if (period === "day") {
       const cur = new Date(minDate);
       while (cur <= maxDate) {
         const key = getKeyFromDate(cur);
-        const amt = byPeriod.get(key) ?? 0n;
+        const amtNHT = byPeriodNHT.get(key) ?? 0n;
+        const amtJPYC = byPeriodJPYC.get(key) ?? 0n;
         full.push({
           day: key,
-          amount: Number(ethers.utils.formatUnits(amt.toString(), TOKEN.DECIMALS)),
+          amountNHT: Number(ethers.utils.formatUnits(amtNHT.toString(), 18)),
+          amountJPYC: Number(ethers.utils.formatUnits(amtJPYC.toString(), 18)),
+          amount: Number(ethers.utils.formatUnits((amtNHT + amtJPYC).toString(), 18)),
         });
         cur.setMinutes(cur.getMinutes() + 15);
       }
@@ -1031,10 +1103,13 @@ export default function AdminDashboard() {
       const cur = new Date(minDate);
       for (let i = 0; i <= 6; i++) {
         const key = getKeyFromDate(cur);
-        const amt = byPeriod.get(key) ?? 0n;
+        const amtNHT = byPeriodNHT.get(key) ?? 0n;
+        const amtJPYC = byPeriodJPYC.get(key) ?? 0n;
         full.push({
           day: key,
-          amount: Number(ethers.utils.formatUnits(amt.toString(), TOKEN.DECIMALS)),
+          amountNHT: Number(ethers.utils.formatUnits(amtNHT.toString(), 18)),
+          amountJPYC: Number(ethers.utils.formatUnits(amtJPYC.toString(), 18)),
+          amount: Number(ethers.utils.formatUnits((amtNHT + amtJPYC).toString(), 18)),
         });
         cur.setDate(cur.getDate() + 1);
       }
@@ -1042,10 +1117,13 @@ export default function AdminDashboard() {
       const cur = new Date(minDate);
       while (cur <= maxDate) {
         const key = getKeyFromDate(cur);
-        const amt = byPeriod.get(key) ?? 0n;
+        const amtNHT = byPeriodNHT.get(key) ?? 0n;
+        const amtJPYC = byPeriodJPYC.get(key) ?? 0n;
         full.push({
           day: key,
-          amount: Number(ethers.utils.formatUnits(amt.toString(), TOKEN.DECIMALS)),
+          amountNHT: Number(ethers.utils.formatUnits(amtNHT.toString(), 18)),
+          amountJPYC: Number(ethers.utils.formatUnits(amtJPYC.toString(), 18)),
+          amount: Number(ethers.utils.formatUnits((amtNHT + amtJPYC).toString(), 18)),
         });
         cur.setDate(cur.getDate() + 1);
       }
@@ -1091,21 +1169,21 @@ export default function AdminDashboard() {
 
   // グラフ用の統合データ
   const displayChartData = useMemo(() => {
-    if (!showHeatGraph) return chartData;
-    
+    if (!graphLines.kodomi) return chartData;
+
     const combined = chartData.map(d => ({ ...d, heat: 0 }));
-    
+
     for (const heatDay of heatChartData) {
       const existingDay = combined.find(d => d.day === heatDay.day);
       if (existingDay) {
         existingDay.heat = heatDay.heat;
       } else {
-        combined.push({ day: heatDay.day, amount: 0, heat: heatDay.heat });
+        combined.push({ day: heatDay.day, amountNHT: 0, amountJPYC: 0, amount: 0, heat: heatDay.heat });
       }
     }
-    
+
     return combined.sort((a, b) => a.day.localeCompare(b.day));
-  }, [chartData, heatChartData, showHeatGraph]);
+  }, [chartData, heatChartData, graphLines.kodomi]);
 
   const allAddrsToAnnotate = useMemo(() => {
     const s = new Set<string>();
@@ -1395,7 +1473,7 @@ export default function AdminDashboard() {
         // コントラクトに直接トークンを転送
         const tx = await (contract as any).call("transfer", [CONTRACT_ADDRESS, amountWei]);
         
-        alert(`✅ ${amount} ${TOKEN.SYMBOL} をコントラクトにチャージしました！\nTxHash: ${tx.hash || 'N/A'}`);
+        alert(`✅ ${amount} ${defaultToken.symbol} をコントラクトにチャージしました！\nTxHash: ${tx.hash || 'N/A'}`);
         setChargeAmount("");
         
       } catch (error: any) {
@@ -1423,7 +1501,7 @@ export default function AdminDashboard() {
         <h3 style={{ margin: "0 0 12px 0", fontSize: 16 }}>🔋 トークンチャージ</h3>
         <div style={{ marginBottom: 12 }}>
           <label style={{ display: "block", marginBottom: 6, fontSize: 14 }}>
-            チャージ金額 ({TOKEN.SYMBOL})
+            チャージ金額 ({defaultToken.symbol})
           </label>
           <input
             type="number"
@@ -1493,7 +1571,7 @@ export default function AdminDashboard() {
         // 日次リワード量を更新
         const tx = await (contract as any).call("setDailyRewardAmount", [amountWei]);
         
-        alert(`✅ 日次リワード量を ${amount} ${TOKEN.SYMBOL} に更新しました！\nTxHash: ${tx.hash || 'N/A'}`);
+        alert(`✅ 日次リワード量を ${amount} ${defaultToken.symbol} に更新しました！\nTxHash: ${tx.hash || 'N/A'}`);
         setNewDailyReward("");
         
       } catch (error: any) {
@@ -1521,7 +1599,7 @@ export default function AdminDashboard() {
         <h3 style={{ margin: "0 0 12px 0", fontSize: 16 }}>⚙️ 日次リワード量設定</h3>
         <div style={{ marginBottom: 12 }}>
           <label style={{ display: "block", marginBottom: 6, fontSize: 14 }}>
-            新しい日次リワード量 ({TOKEN.SYMBOL})
+            新しい日次リワード量 ({defaultToken.symbol})
           </label>
           <input
             type="number"
@@ -1676,7 +1754,7 @@ export default function AdminDashboard() {
         for (let i = 1; i <= Number(maxLevel); i++) {
           try {
             const threshold = await contract.call("rankThresholds", [i]);
-            thresholdInputs[i] = ethersUtils.formatUnits(BigInt(threshold).toString(), TOKEN.DECIMALS);
+            thresholdInputs[i] = ethersUtils.formatUnits(BigInt(threshold).toString(), defaultToken.decimals);
           } catch {
             thresholdInputs[i] = "";
           }
@@ -1756,10 +1834,10 @@ export default function AdminDashboard() {
       }
 
       try {
-        const amountWei = ethersUtils.parseUnits(value, TOKEN.DECIMALS);
+        const amountWei = ethersUtils.parseUnits(value, defaultToken.decimals);
         const tx = await contract.call("setRankThreshold", [rank, amountWei.toString()]);
         await tx.wait?.();
-        alert(`✅ ランク${rank}の閾値を ${value} ${TOKEN.SYMBOL} に設定しました`);
+        alert(`✅ ランク${rank}の閾値を ${value} ${defaultToken.symbol} に設定しました`);
       } catch (error: any) {
         console.error("setRankThreshold error:", error);
         alert(`❌ 閾値の設定に失敗しました\n${error?.message || error}`);
@@ -2131,7 +2209,7 @@ export default function AdminDashboard() {
                     {/* 閾値設定 */}
                     <div style={{ marginBottom: 12 }}>
                       <label style={{ display: "block", fontSize: 13, fontWeight: 600, marginBottom: 8, opacity: 0.8 }}>
-                        必要累積TIP額 ({TOKEN.SYMBOL})
+                        必要累積TIP額 ({defaultToken.symbol})
                       </label>
                       <div style={{ display: "flex", gap: 8 }}>
                         <input
@@ -2536,14 +2614,20 @@ export default function AdminDashboard() {
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(4, 1fr)",
+            gridTemplateColumns: "repeat(5, 1fr)",
             gap: 10,
           }}
         >
           <div style={{...card, display: "flex", flexDirection: "column", justifyContent: "center", textAlign: "left"}}>
-            <div style={{ opacity: 0.8, fontSize: 12 }}>合計</div>
+            <div style={{ opacity: 0.8, fontSize: 12 }}>合計 NHT</div>
             <div style={{ fontWeight: 800, fontSize: 18 }}>
-              {fmt18(total)} {TOKEN.SYMBOL}
+              {fmt18(totalNHT, 'NHT')} NHT
+            </div>
+          </div>
+          <div style={{...card, display: "flex", flexDirection: "column", justifyContent: "center", textAlign: "left"}}>
+            <div style={{ opacity: 0.8, fontSize: 12 }}>合計 JPYC</div>
+            <div style={{ fontWeight: 800, fontSize: 18 }}>
+              {fmt18(totalJPYC, 'JPYC')} JPYC
             </div>
           </div>
           <div style={{...card, display: "flex", flexDirection: "column", justifyContent: "center", textAlign: "left"}}>
@@ -2603,19 +2687,27 @@ export default function AdminDashboard() {
               <label style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 12 }}>
                 <input
                   type="checkbox"
-                  checked={showTipGraph}
-                  onChange={(e) => setShowTipGraph(e.target.checked)}
+                  checked={graphLines.jpyc}
+                  onChange={(e) => setGraphLines(prev => ({ ...prev, jpyc: e.target.checked }))}
                 />
-                🎁 Tip数
+                💰 JPYC
               </label>
               <label style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 12 }}>
                 <input
                   type="checkbox"
-                  checked={showHeatGraph}
-                  onChange={(e) => setShowHeatGraph(e.target.checked)}
+                  checked={graphLines.nht}
+                  onChange={(e) => setGraphLines(prev => ({ ...prev, nht: e.target.checked }))}
+                />
+                💎 NHT
+              </label>
+              <label style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 12 }}>
+                <input
+                  type="checkbox"
+                  checked={graphLines.kodomi}
+                  onChange={(e) => setGraphLines(prev => ({ ...prev, kodomi: e.target.checked }))}
                   disabled={!heatResults.length}
                 />
-                🔥 熱量スコア
+                🔥 kodomi
               </label>
             </div>
 
@@ -2631,7 +2723,7 @@ export default function AdminDashboard() {
             )}
           </div>
 
-          {(!showTipGraph && !showHeatGraph) || chartData.length === 0 ? (
+          {(!graphLines.jpyc && !graphLines.nht && !graphLines.kodomi) || chartData.length === 0 ? (
             <div style={{ opacity: 0.8, fontSize: 13, textAlign: "center", padding: 40 }}>
               いずれかのグラフを選択してください
             </div>
@@ -2642,16 +2734,19 @@ export default function AdminDashboard() {
                   <CartesianGrid stroke="rgba(255,255,255,.08)" />
                   <XAxis dataKey="day" tick={{ fontSize: 12 }} />
                   <YAxis yAxisId="amount" orientation="left" tick={{ fontSize: 12 }} />
-                  {showHeatGraph && <YAxis yAxisId="heat" orientation="right" tick={{ fontSize: 12 }} />}
+                  {graphLines.kodomi && <YAxis yAxisId="heat" orientation="right" tick={{ fontSize: 12 }} />}
                   <Tooltip
-                    formatter={(value, name) => [
-                      name === 'amount' ? `${value} Tips` : `${value} Heat`,
-                      name === 'amount' ? 'Tip数' : '熱量スコア'
-                    ]}
+                    formatter={(value, name) => {
+                      if (name === 'amountJPYC') return [`${value} JPYC`, 'JPYC'];
+                      if (name === 'amountNHT') return [`${value} NHT`, 'NHT'];
+                      if (name === 'heat') return [`${value}`, 'kodomi'];
+                      return [value, name];
+                    }}
                   />
-                  {showTipGraph && <Line yAxisId="amount" type="monotone" dataKey="amount" stroke="#3b82f6" dot={false} />}
-                  {showHeatGraph && heatResults.length > 0 && (
-                    <Line yAxisId="heat" type="monotone" dataKey="heat" stroke="#8b5cf6" dot={false} />
+                  {graphLines.jpyc && <Line yAxisId="amount" type="monotone" dataKey="amountJPYC" stroke="#f59e0b" dot={false} name="amountJPYC" />}
+                  {graphLines.nht && <Line yAxisId="amount" type="monotone" dataKey="amountNHT" stroke="#3b82f6" dot={false} name="amountNHT" />}
+                  {graphLines.kodomi && heatResults.length > 0 && (
+                    <Line yAxisId="heat" type="monotone" dataKey="heat" stroke="#8b5cf6" dot={false} name="heat" />
                   )}
                 </LineChart>
               </ResponsiveContainer>
@@ -2772,7 +2867,11 @@ export default function AdminDashboard() {
                         </div>
                       </td>
                       <td style={{ ...td, textAlign: "right", fontWeight: 800, whiteSpace: "nowrap" }}>
-                        {fmt18(r.amount)} {TOKEN.SYMBOL}
+                        {rankingTab === "kodomi" ? (
+                          `${fmt18(r.amount, 'NHT')} NHT`
+                        ) : (
+                          `${fmt18(r.amount, 'JPYC')} JPYC`
+                        )}
                       </td>
                     </tr>
                   );
@@ -2833,27 +2932,30 @@ export default function AdminDashboard() {
             {/* トークンフィルタ */}
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
               <span style={{ fontSize: 12, opacity: 0.7, fontWeight: 600 }}>💎 Token:</span>
-              {(["all", "tNHT", "JPYC"] as TokenFilter[]).map((token) => (
-                <button
-                  key={token}
-                  onClick={() => setTokenFilter(token)}
-                  style={{
-                    padding: "6px 14px",
-                    background: tokenFilter === token ? "#8b5cf6" : "rgba(255,255,255,0.1)",
-                    color: "#fff",
-                    border: tokenFilter === token ? "1px solid rgba(139, 92, 246, 0.5)" : "1px solid rgba(255,255,255,0.2)",
-                    borderRadius: 6,
-                    fontSize: 11,
-                    fontWeight: 700,
-                    cursor: "pointer",
-                    transition: "all 0.2s ease",
-                  }}
-                >
-                  {token === "all" ? "All" : token}
-                </button>
-              ))}
+              {(["all", ...activeTokens.map(t => t.id)] as TokenFilter[]).map((token) => {
+                const displayToken = token === "all" ? "all" : (activeTokens.find(t => t.id === token)?.symbol || token);
+                return (
+                  <button
+                    key={token}
+                    onClick={() => setTokenFilter(token)}
+                    style={{
+                      padding: "6px 14px",
+                      background: tokenFilter === token ? "#8b5cf6" : "rgba(255,255,255,0.1)",
+                      color: "#fff",
+                      border: tokenFilter === token ? "1px solid rgba(139, 92, 246, 0.5)" : "1px solid rgba(255,255,255,0.2)",
+                      borderRadius: 6,
+                      fontSize: 11,
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      transition: "all 0.2s ease",
+                    }}
+                  >
+                    {token === "all" ? "All" : displayToken}
+                  </button>
+                );
+              })}
               <span style={{ marginLeft: "auto", fontSize: 11, opacity: 0.6 }}>
-                {tokenFilter === "all" ? "全トークン表示" : `${tokenFilter}のみ表示`}
+                {tokenFilter === "all" ? "全トークン表示" : `${activeTokens.find(t => t.id === tokenFilter)?.symbol || tokenFilter}のみ表示`}
               </span>
             </div>
           </div>
@@ -2895,7 +2997,11 @@ export default function AdminDashboard() {
                         </div>
                       </td>
                       <td style={{ ...td, textAlign: "right", whiteSpace: "nowrap", fontWeight: 800 }}>
-                        {fmt18(t.amount)} {TOKEN.SYMBOL}
+                        {(() => {
+                          const tokenId = (t.token || 'NHT') as 'NHT' | 'JPYC';
+                          const tokenSymbol = activeTokens.find(tok => tok.id === tokenId)?.symbol || tokenId;
+                          return `${fmt18(t.amount, tokenId)} ${tokenSymbol}`;
+                        })()}
                       </td>
                       <td style={td}>
                         {txHash ? (
@@ -3203,7 +3309,7 @@ export default function AdminDashboard() {
                               </div>
                             </td>
                             <td style={{ ...td, textAlign: "right", whiteSpace: "nowrap" }}>
-                              {r.totalAmount} {TOKEN.SYMBOL}
+                              {r.totalAmount} {defaultToken.symbol}
                             </td>
                           </tr>
                         );
