@@ -1,0 +1,31 @@
+name: JPYC Transfer Monitor
+
+on:
+  schedule:
+    # 5分ごとに実行（UTC時間）
+    - cron: '*/5 * * * *'
+  workflow_dispatch:  # 手動実行も可能
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call JPYC Monitor Edge Function
+        run: |
+          echo "🔍 Calling JPYC Transfer Monitor..."
+          response=$(curl -s -w "\n%{http_code}" -X POST \
+            'https://druscvcjjhzxnerssanv.supabase.co/functions/v1/jpyc-transfer-monitor' \
+            -H 'Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}')
+
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | sed '$d')
+
+          echo "HTTP Status: $http_code"
+          echo "Response: $body"
+
+          if [ "$http_code" -eq 200 ]; then
+            echo "✅ JPYC Monitor executed successfully"
+          else
+            echo "❌ JPYC Monitor failed with status $http_code"
+            exit 1
+          fi
