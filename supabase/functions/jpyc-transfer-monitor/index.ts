@@ -4,6 +4,7 @@
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { generateJPYCReceivedEmail, generateEmailSubject } from '../_shared/emailTemplates.ts';
 
 const JPYC_TOKEN_ADDRESS = '0x6AE7Dfc73E0dDE2aa99ac063DcF7e8A63265108c'; // Polygon JPYC
 const POLYGON_RPC_URL = 'https://polygon-rpc.com';
@@ -17,6 +18,71 @@ interface TransferEvent {
   from: string;
   to: string;
   value: string;
+}
+
+// メール送信ヘルパー関数
+async function sendEmailNotification(
+  supabaseUrl: string,
+  supabaseKey: string,
+  to: string,
+  amount: string,
+  tokenSymbol: string,
+  fromAddress: string,
+  txHash: string
+) {
+  try {
+    // ユーザーの通知設定を確認
+    const supabase = createClient(supabaseUrl, supabaseKey);
+    const { data: settings } = await supabase
+      .from('user_notification_settings')
+      .select('*')
+      .eq('user_address', to)
+      .single();
+
+    // メール通知が有効で、メールアドレスが登録されており、jpyc_received通知がONの場合のみ送信
+    if (
+      settings?.email_notifications_enabled &&
+      settings?.email_address &&
+      settings?.notification_types?.jpyc_received !== false
+    ) {
+      const emailHtml = generateJPYCReceivedEmail({
+        amount,
+        tokenSymbol,
+        fromAddress,
+        txHash,
+        recipientAddress: to,
+      });
+
+      const subject = generateEmailSubject('jpyc_received', { amount });
+
+      // send-email Edge Function を呼び出し
+      const emailResponse = await fetch(`${supabaseUrl}/functions/v1/send-email`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabaseKey}`,
+        },
+        body: JSON.stringify({
+          to: settings.email_address,
+          subject,
+          html: emailHtml,
+          notificationType: 'jpyc_received',
+        }),
+      });
+
+      if (emailResponse.ok) {
+        console.log(`📧 Email sent to ${settings.email_address}`);
+      } else {
+        const errorData = await emailResponse.json();
+        console.error('❌ Failed to send email:', errorData);
+      }
+    } else {
+      console.log(`⏭️  Email notification disabled for ${to}`);
+    }
+  } catch (error) {
+    console.error('❌ Error sending email notification:', error);
+    // メール送信のエラーは通知作成を妨げないようにログのみ
+  }
 }
 
 serve(async (req) => {
@@ -126,6 +192,17 @@ serve(async (req) => {
           } else {
             console.log(`✅ Notification created for ${to}`);
             notificationsCreated++;
+
+            // メール通知を送信（非同期、エラーは通知作成に影響しない）
+            await sendEmailNotification(
+              supabaseUrl,
+              supabaseKey,
+              to,
+              amount,
+              'JPYC',
+              from,
+              log.transactionHash
+            );
           }
         } else {
           console.log(`⏭️  Notification already exists for tx ${log.transactionHash}`);

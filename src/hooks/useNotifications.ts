@@ -120,7 +120,6 @@ export function useNotifications(userAddress: string | undefined) {
           filter: `user_address=eq.${userAddress.toLowerCase()}`,
         },
         (payload) => {
-          console.log('新しい通知:', payload.new);
           setNotifications(prev => [payload.new as Notification, ...prev]);
           setUnreadCount(prev => prev + 1);
         }
@@ -134,7 +133,6 @@ export function useNotifications(userAddress: string | undefined) {
           filter: `user_address=eq.${userAddress.toLowerCase()}`,
         },
         (payload) => {
-          console.log('通知更新:', payload.new);
           setNotifications(prev =>
             prev.map(n => (n.id === (payload.new as Notification).id ? (payload.new as Notification) : n))
           );

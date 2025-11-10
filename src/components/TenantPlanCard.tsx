@@ -101,19 +101,8 @@ const getNextPlan = (currentPlan: RankPlan): RankPlan | null => {
 export function TenantPlanCard({ isMobile, currentPlan, tenantId }: TenantPlanCardProps) {
   const [showUpgradeForm, setShowUpgradeForm] = useState(false);
 
-  console.log('🎯 TenantPlanCard レンダリング開始:', { currentPlan, tenantId, isMobile });
-
-  // マウント/アンマウント追跡
-  useEffect(() => {
-    console.log('✅ TenantPlanCard MOUNTED');
-    return () => {
-      console.log('❌ TenantPlanCard UNMOUNTED');
-    };
-  }, []);
-
   if (!currentPlan || !currentPlan.is_active) {
     // プランが存在しないか非アクティブの場合は何も表示しない
-    console.log('❌ TenantPlanCard: プランが存在しないか非アクティブ:', currentPlan);
     return null;
   }
 

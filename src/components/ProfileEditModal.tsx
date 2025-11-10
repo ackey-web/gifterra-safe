@@ -94,13 +94,6 @@ export function ProfileEditModal({
     setError('');
 
     try {
-      console.log('💾 ProfileEditModal - Saving profile:', {
-        wallet_address: walletAddress.toLowerCase(),
-        display_name: displayName.trim(),
-        bio: bio.trim(),
-        avatar_url: avatarUrl || null,
-      });
-
       // upsert: 存在すれば更新、存在しなければ作成
       // Supabaseの.upsert()を使用（onConflictでユニーク制約を指定）
       const { error: upsertError } = await supabase
@@ -120,8 +113,6 @@ export function ProfileEditModal({
         console.error('❌ ProfileEditModal - Upsert error:', upsertError);
         throw upsertError;
       }
-
-      console.log('✅ ProfileEditModal - Profile saved successfully');
 
       onSave();
       onClose();

@@ -200,8 +200,6 @@ export function useApproveTenantApplication() {
         ],
       });
 
-      console.log('✅ テナント作成トランザクション成功:', tx);
-
       // トランザクションからテナントIDとコントラクトアドレスを取得
       const receipt = tx.receipt;
       const event = receipt.events?.find((e: any) => e.event === 'TenantCreated');
@@ -213,15 +211,6 @@ export function useApproveTenantApplication() {
       const paySplitterAddress = event?.args?.payLitter; // Note: イベントでは "payLitter" という名前
       const flagNFTAddress = event?.args?.flagNFT;
       const randomRewardEngineAddress = event?.args?.randomRewardEngine;
-
-      console.log('📋 デプロイされたコントラクトアドレス:', {
-        tenantId: tenantId ? Number(tenantId) : null,
-        gifterra: gifterraAddress,
-        rewardNFT: rewardNFTAddress,
-        paySplitter: paySplitterAddress,
-        flagNFT: flagNFTAddress,
-        randomRewardEngine: randomRewardEngineAddress,
-      });
 
       // DB更新: 承認済みに変更 + コントラクトアドレスを保存
       const { error: updateError } = await supabase

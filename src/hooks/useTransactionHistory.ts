@@ -30,7 +30,6 @@ export function useTransactionHistory(address: string | undefined) {
 
   useEffect(() => {
     if (!address) {
-      console.log('⚠️ useTransactionHistory: No address provided');
       setTransactions([]);
       setLoading(false);
       return;
@@ -40,7 +39,6 @@ export function useTransactionHistory(address: string | undefined) {
       try {
         setLoading(true);
         const normalizedAddress = address.toLowerCase();
-        console.log('📡 useTransactionHistory: Fetching transactions for address:', normalizedAddress);
 
         // SUPPORTED_TOKENS に登録されている全トークンのトランザクションを取得
         const txPromises = SUPPORTED_TOKENS.map(token =>
@@ -48,20 +46,11 @@ export function useTransactionHistory(address: string | undefined) {
         );
 
         const allTokenTxs = await Promise.all(txPromises);
-        console.log('📊 useTransactionHistory: Fetched token transactions:', {
-          totalTokens: SUPPORTED_TOKENS.length,
-          results: allTokenTxs.map((txs, i) => ({
-            token: SUPPORTED_TOKENS[i].SYMBOL,
-            count: txs.length
-          }))
-        });
 
         // 全トランザクションをマージして時刻順にソート
         const allTxs = allTokenTxs
           .flat()
           .sort((a, b) => b.timestamp - a.timestamp);
-
-        console.log('✅ useTransactionHistory: Total transactions:', allTxs.length);
 
         // 最新20件のみ表示
         setTransactions(allTxs.slice(0, 20));
@@ -103,16 +92,8 @@ async function fetchTokenTransactions(
     // PolygonScan API エンドポイント（正しいPolygon Mainnet用）
     const apiUrl = `https://api.polygonscan.com/api?module=account&action=tokentx&contractaddress=${tokenAddress}&address=${address}&page=1&offset=20&sort=desc&apikey=${apiKey}`;
 
-    console.log(`🔍 Fetching ${tokenSymbol} transactions from PolygonScan V2 API...`);
     const response = await fetch(apiUrl);
     const data = await response.json();
-
-    console.log(`📦 ${tokenSymbol} API response:`, {
-      status: data.status,
-      message: data.message,
-      result: data.result,
-      resultCount: Array.isArray(data.result) ? data.result.length : 0
-    });
 
     if (data.status !== '1') {
       console.warn(`⚠️ ${tokenSymbol}: PolygonScan API error - ${data.message}. Result:`, data.result);
@@ -120,7 +101,6 @@ async function fetchTokenTransactions(
     }
 
     if (!data.result || !Array.isArray(data.result) || data.result.length === 0) {
-      console.log(`ℹ️ ${tokenSymbol}: No transactions found for this token`);
       return [];
     }
 
@@ -139,7 +119,6 @@ async function fetchTokenTransactions(
       } as Transaction;
     });
 
-    console.log(`✅ ${tokenSymbol}: Processed ${transactions.length} transactions`);
     return transactions;
   } catch (error) {
     console.error(`❌ Failed to fetch ${tokenSymbol} (${tokenAddress}) transactions:`, error);

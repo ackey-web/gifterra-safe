@@ -101,13 +101,6 @@ export function useKodomi() {
       setRank(rankInfo.rank);
       setColor(rankInfo.color);
       setPercentage(rankInfo.progress);
-
-      console.log('✅ kodomi取得成功:', {
-        address,
-        totalTips,
-        rank: rankInfo.rank,
-        progress: rankInfo.progress,
-      });
     } catch (err) {
       console.error('❌ kodomi取得に失敗:', err);
       setError(err instanceof Error ? err.message : 'Unknown error');

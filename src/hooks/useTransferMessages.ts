@@ -41,16 +41,6 @@ export async function saveTransferMessage(params: {
   // テナントIDがない場合はデフォルト値を使用
   const effectiveTenantId = tenantId || 'default';
 
-  console.log('💾 saveTransferMessage called with:', {
-    tenantId: effectiveTenantId,
-    fromAddress,
-    toAddress,
-    tokenSymbol,
-    amount,
-    message,
-    txHash,
-  });
-
   // 送信者のプロフィール情報を取得
   // まずテナントIDでフィルタリングして検索し、なければウォレットアドレスのみで検索
   let profileData = null;
@@ -84,8 +74,6 @@ export async function saveTransferMessage(params: {
     icon_url: profileData.avatar_url || profileData.icon_url || null,
   } : null;
 
-  console.log('👤 Sender profile:', senderProfile);
-
   // transfer_messagesテーブルに保存
   const insertData = {
     tenant_id: effectiveTenantId,
@@ -98,8 +86,6 @@ export async function saveTransferMessage(params: {
     tx_hash: txHash || null,
   };
 
-  console.log('📝 Inserting data:', insertData);
-
   const { data, error } = await supabase
     .from('transfer_messages')
     .insert(insertData)
@@ -111,7 +97,6 @@ export async function saveTransferMessage(params: {
     throw error;
   }
 
-  console.log('✅ 送金メッセージ保存成功:', data);
   return data;
 }
 
@@ -131,14 +116,7 @@ export function useReceivedTransferMessages(
     // テナントIDがない場合はデフォルト値を使用
     const effectiveTenantId = tenantId || 'default';
 
-    console.log('🔍 useReceivedTransferMessages:', {
-      tenantId: effectiveTenantId,
-      walletAddress,
-      originalTenantId: tenantId,
-    });
-
     if (!walletAddress) {
-      console.log('⚠️ walletAddress is missing');
       setMessages([]);
       setUnreadCount(0);
       setIsLoading(false);
@@ -156,11 +134,6 @@ export function useReceivedTransferMessages(
           ? ['default']
           : [effectiveTenantId, 'default'];
 
-        console.log('📡 Fetching messages with:', {
-          tenant_ids: tenantIdsToSearch,
-          to_address: walletAddress.toLowerCase(),
-        });
-
         const { data, error: fetchError } = await supabase
           .from('transfer_messages')
           .select('*')
@@ -174,7 +147,6 @@ export function useReceivedTransferMessages(
           throw fetchError;
         }
 
-        console.log('✅ Fetched messages:', data);
         setMessages(data || []);
         setUnreadCount((data || []).filter((m: TransferMessage) => !m.is_read).length);
       } catch (err) {
