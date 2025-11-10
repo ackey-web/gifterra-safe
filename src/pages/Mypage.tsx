@@ -301,6 +301,57 @@ export function MypagePage() {
         />
       </div>
 
+      {/* チェーン警告バナー */}
+      {actualChainId && actualChainId !== 137 && (
+        <div style={{
+          maxWidth: isMobile ? '100%' : 600,
+          margin: isMobile ? '0 16px 12px' : '0 auto 16px',
+          background: '#fef3c7',
+          border: '2px solid #f59e0b',
+          borderRadius: isMobile ? 12 : 16,
+          padding: isMobile ? '12px 14px' : '16px 20px',
+          boxShadow: '0 4px 12px rgba(245, 158, 11, 0.3)',
+        }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: isMobile ? 10 : 12,
+            marginBottom: isMobile ? 8 : 10,
+          }}>
+            <div style={{ fontSize: isMobile ? 24 : 28 }}>⚠️</div>
+            <div style={{
+              fontWeight: 700,
+              fontSize: isMobile ? 14 : 16,
+              color: '#92400e',
+            }}>
+              ネットワークを切り替えてください
+            </div>
+          </div>
+          <div style={{
+            fontSize: isMobile ? 12 : 13,
+            color: '#78350f',
+            lineHeight: 1.6,
+            marginBottom: isMobile ? 6 : 8,
+          }}>
+            現在 <strong>{actualChainId === 1 ? 'Ethereum Mainnet' : `Chain ID: ${actualChainId}`}</strong> に接続されています。
+            <br />
+            GIFTERRAを使用するには <strong>Polygon Mainnet</strong> に切り替えてください。
+          </div>
+          <div style={{
+            fontSize: isMobile ? 11 : 12,
+            color: '#92400e',
+            padding: isMobile ? '8px 10px' : '10px 12px',
+            background: 'rgba(255, 255, 255, 0.5)',
+            borderRadius: isMobile ? 6 : 8,
+            border: '1px solid #fbbf24',
+          }}>
+            <strong>手動切り替え方法:</strong>
+            <br />
+            MetaMaskまたはウォレットのネットワーク選択から「Polygon Mainnet」を選択してください
+          </div>
+        </div>
+      )}
+
       {/* [B] メインコンテンツエリア */}
       <div style={{
         position: 'relative',
@@ -1238,7 +1289,7 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
 
   return (
     <div style={{
-      background: '#ffffff',
+      background: 'linear-gradient(135deg, #f0f7ff 0%, #e0f0ff 100%)',
       border: '2px solid rgba(59, 130, 246, 0.2)',
       borderRadius: isMobile ? 16 : 24,
       padding: isMobile ? 20 : 28,

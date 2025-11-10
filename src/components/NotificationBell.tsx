@@ -1,5 +1,6 @@
 // src/components/NotificationBell.tsx
 import { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useNotifications, type Notification } from '../hooks/useNotifications';
 
 interface NotificationBellProps {
@@ -9,13 +10,19 @@ interface NotificationBellProps {
 
 export function NotificationBell({ userAddress, isMobile }: NotificationBellProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [buttonRect, setButtonRect] = useState<DOMRect | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
   const { notifications, unreadCount, loading, markAsRead, markAllAsRead } = useNotifications(userAddress);
 
   // ドロップダウン外クリックで閉じる
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      if (
+        dropdownRef.current && !dropdownRef.current.contains(target) &&
+        buttonRef.current && !buttonRef.current.contains(target)
+      ) {
         setIsOpen(false);
       }
     };
@@ -59,6 +66,14 @@ export function NotificationBell({ userAddress, isMobile }: NotificationBellProp
     return date.toLocaleDateString('ja-JP', { month: 'short', day: 'numeric' });
   };
 
+  // ベルボタンをクリック
+  const handleBellClick = () => {
+    if (!isOpen && buttonRef.current) {
+      setButtonRect(buttonRef.current.getBoundingClientRect());
+    }
+    setIsOpen(!isOpen);
+  };
+
   // 通知をクリック
   const handleNotificationClick = async (notification: Notification) => {
     if (!notification.is_read) {
@@ -71,10 +86,11 @@ export function NotificationBell({ userAddress, isMobile }: NotificationBellProp
   };
 
   return (
-    <div style={{ position: 'relative' }} ref={dropdownRef}>
+    <>
       {/* ベルアイコンボタン */}
       <button
-        onClick={() => setIsOpen(!isOpen)}
+        ref={buttonRef}
+        onClick={handleBellClick}
         style={{
           position: 'relative',
           width: isMobile ? 36 : 40,
@@ -124,20 +140,21 @@ export function NotificationBell({ userAddress, isMobile }: NotificationBellProp
         )}
       </button>
 
-      {/* ドロップダウン */}
-      {isOpen && (
+      {/* ドロップダウン（Portal経由で描画） */}
+      {isOpen && buttonRect && createPortal(
         <div
+          ref={dropdownRef}
           style={{
-            position: 'absolute',
-            top: isMobile ? 45 : 50,
-            right: 0,
+            position: 'fixed',
+            top: buttonRect.bottom + 5,
+            right: window.innerWidth - buttonRect.right,
             width: isMobile ? 320 : 380,
             maxHeight: isMobile ? 400 : 500,
             background: '#ffffff',
             borderRadius: 12,
             boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
             border: '1px solid #e2e8f0',
-            zIndex: 1000,
+            zIndex: 2147483647,
             overflow: 'hidden',
             display: 'flex',
             flexDirection: 'column',
@@ -325,8 +342,9 @@ export function NotificationBell({ userAddress, isMobile }: NotificationBellProp
               </button>
             </div>
           )}
-        </div>
+        </div>,
+        document.body
       )}
-    </div>
+    </>
   );
 }
