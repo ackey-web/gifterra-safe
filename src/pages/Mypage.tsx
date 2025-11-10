@@ -15,8 +15,9 @@ import { useMyTenantApplication, useSubmitTenantApplication } from '../hooks/use
 import { useRankPlanPricing, getPlanPrice } from '../hooks/useRankPlanPricing';
 import { useTenantRankPlan } from '../hooks/useTenantRankPlan';
 import { saveTransferMessage, useReceivedTransferMessages } from '../hooks/useTransferMessages';
-import { useRecipientProfile } from '../hooks/useRecipientProfile';
+import { useRecipientProfile, type RecipientProfile } from '../hooks/useRecipientProfile';
 import { TenantPlanCard } from '../components/TenantPlanCard';
+import { supabase } from '../lib/supabase';
 import { SettingsModal } from '../components/SettingsModal';
 import { TransferMessageHistory } from '../components/TransferMessageHistory';
 import { NotificationBell } from '../components/NotificationBell';
@@ -971,26 +972,11 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
   const [recipientReceiveMessage, setRecipientReceiveMessage] = useState<string>('');
 
   // 受取人プロフィールを取得（デバウンス500ms）
-  // Debug: sendMode and address state for production troubleshooting
-  console.log('🔍 [Mypage] useRecipientProfile hook params:', {
-    sendMode,
-    address,
-    shouldFetch: sendMode === 'simple' || sendMode === 'bulk',
-    addressToFetch: sendMode === 'simple' || sendMode === 'bulk' ? address : '',
-  });
-
+  // sendMode に関わらず常にアドレスが入力されたらプロフィールを取得
   const { profile: recipientProfile, isLoading: isLoadingProfile } = useRecipientProfile(
-    sendMode === 'simple' || sendMode === 'bulk' ? address : '',
+    address,
     500
   );
-
-  // Debug: recipientProfile changes
-  useEffect(() => {
-    console.log('📋 [Mypage] recipientProfile updated:', {
-      profile: recipientProfile,
-      isLoading: isLoadingProfile,
-    });
-  }, [recipientProfile, isLoadingProfile]);
 
   // 現在のウォレットアドレスとsignerを取得
   const [signer, setSigner] = useState<ethers.Signer | null>(null);
@@ -2688,10 +2674,13 @@ function BulkSendForm({ isMobile, onChangeMode }: {
     : null;
 
   const selectedToken = 'JPYC'; // JPYC固定
-  const [recipients, setRecipients] = useState([
+  const [recipients, setRecipients] = useState<Array<{ id: number; address: string; amount: string }>>([
     { id: 1, address: '', amount: '' },
   ]);
   const [isSending, setIsSending] = useState(false);
+
+  // 各受取人のプロフィールを管理
+  const [recipientProfiles, setRecipientProfiles] = useState<Record<number, RecipientProfile | null>>({});
 
   const tokenInfo = {
     name: 'JPYC',
@@ -2724,6 +2713,57 @@ function BulkSendForm({ isMobile, onChangeMode }: {
     const amount = parseFloat(r.amount) || 0;
     return sum + amount;
   }, 0);
+
+  // 各受取人のプロフィールを取得（デバウンス付き）
+  useEffect(() => {
+    const timers: NodeJS.Timeout[] = [];
+
+    recipients.forEach((recipient) => {
+      if (recipient.address && recipient.address.trim().startsWith('0x') && recipient.address.trim().length === 42) {
+        const timer = setTimeout(async () => {
+          try {
+            const { data, error } = await supabase
+              .from('user_profiles')
+              .select('wallet_address, display_name, avatar_url')
+              .eq('wallet_address', recipient.address.trim().toLowerCase())
+              .maybeSingle();
+
+            if (!error && data) {
+              setRecipientProfiles(prev => ({
+                ...prev,
+                [recipient.id]: {
+                  wallet_address: data.wallet_address,
+                  display_name: data.display_name,
+                  avatar_url: data.avatar_url,
+                  receive_message: 'ありがとうございました。',
+                  isGifterraUser: true,
+                },
+              }));
+            } else {
+              setRecipientProfiles(prev => ({
+                ...prev,
+                [recipient.id]: null,
+              }));
+            }
+          } catch (error) {
+            console.error('Failed to fetch profile:', error);
+          }
+        }, 500);
+        timers.push(timer);
+      } else {
+        // アドレスが無効な場合はプロフィールをクリア
+        setRecipientProfiles(prev => {
+          const newProfiles = { ...prev };
+          delete newProfiles[recipient.id];
+          return newProfiles;
+        });
+      }
+    });
+
+    return () => {
+      timers.forEach(timer => clearTimeout(timer));
+    };
+  }, [recipients]);
 
   // 一括送金処理（Privyは制限付きガスレス、外部ウォレットは通常送金）
   const handleBulkSend = async () => {
@@ -2978,23 +3018,43 @@ function BulkSendForm({ isMobile, onChangeMode }: {
                   </button>
                 )}
               </div>
-              <input
-                type="text"
-                placeholder="0x..."
-                value={recipient.address}
-                onChange={(e) => updateRecipient(recipient.id, 'address', e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: isMobile ? '8px 10px' : '10px 12px',
-                  background: 'linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)',
-                  border: '1px solid rgba(0,0,0,0.08)',
-                  borderRadius: 8,
-                  color: '#ffffff',
-                  fontSize: isMobile ? 13 : 14,
-                  marginBottom: 8,
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                }}
-              />
+              <div style={{ position: 'relative', marginBottom: 8 }}>
+                <input
+                  type="text"
+                  placeholder="0x..."
+                  value={recipient.address}
+                  onChange={(e) => updateRecipient(recipient.id, 'address', e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: isMobile ? '8px 10px' : '10px 12px',
+                    paddingRight: recipientProfiles[recipient.id]?.display_name ? '120px' : undefined,
+                    background: 'linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)',
+                    border: '1px solid rgba(0,0,0,0.08)',
+                    borderRadius: 8,
+                    color: '#ffffff',
+                    fontSize: isMobile ? 13 : 14,
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                  }}
+                />
+                {recipientProfiles[recipient.id]?.display_name && (
+                  <div style={{
+                    position: 'absolute',
+                    right: 12,
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    fontSize: 11,
+                    fontWeight: 600,
+                    color: 'rgba(16, 185, 129, 1)',
+                    background: 'rgba(16, 185, 129, 0.15)',
+                    padding: '3px 8px',
+                    borderRadius: 4,
+                    whiteSpace: 'nowrap',
+                    pointerEvents: 'none',
+                  }}>
+                    {recipientProfiles[recipient.id]?.display_name}
+                  </div>
+                )}
+              </div>
               <input
                 type="number"
                 placeholder="数量"
