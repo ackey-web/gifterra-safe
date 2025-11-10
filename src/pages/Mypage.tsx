@@ -132,6 +132,7 @@ export function MypagePage() {
   const [tenantRank, setTenantRank] = useState<TenantRank>('R0'); // TODO: 実データから取得
   const [showWalletSetupModal, setShowWalletSetupModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [actualChainId, setActualChainId] = useState<number | undefined>(undefined);
   const { user, authenticated } = usePrivy();
   const thirdwebAddress = useAddress(); // Thirdwebウォレット
 
@@ -363,7 +364,7 @@ export function MypagePage() {
 
         {/* [B] コンテンツ */}
         {viewMode === 'flow' ? (
-          <FlowModeContent isMobile={isMobile} tenantRank={tenantRank} address={displayAddress} />
+          <FlowModeContent isMobile={isMobile} tenantRank={tenantRank} address={displayAddress} onChainIdChange={setActualChainId} />
         ) : (
           <TenantModeContent isMobile={isMobile} />
         )}
@@ -615,7 +616,7 @@ function Header({ viewMode, setViewMode, isMobile, tenantRank, showSettingsModal
 // ========================================
 // ウォレット接続情報コンポーネント
 // ========================================
-function WalletConnectionInfo({ isMobile }: { isMobile: boolean }) {
+function WalletConnectionInfo({ isMobile, onChainIdChange }: { isMobile: boolean; onChainIdChange: (chainId: number | undefined) => void }) {
   const address = useAddress(); // Thirdwebウォレット
   const thirdwebChainId = useChainId();
   const { user, authenticated } = usePrivy(); // Privyユーザー情報
@@ -627,6 +628,7 @@ function WalletConnectionInfo({ isMobile }: { isMobile: boolean }) {
       // Privyウォレットの場合は常にPolygon Mainnet（137）
       if (user?.wallet?.address && !address) {
         setActualChainId(137);
+        onChainIdChange(137);
         return;
       }
 
@@ -636,13 +638,16 @@ function WalletConnectionInfo({ isMobile }: { isMobile: boolean }) {
           const chainId = await window.ethereum.request({ method: 'eth_chainId' });
           const numericChainId = parseInt(chainId, 16);
           setActualChainId(numericChainId);
+          onChainIdChange(numericChainId);
         } catch (error) {
           console.error('Failed to fetch chainId from window.ethereum:', error);
           setActualChainId(thirdwebChainId);
+          onChainIdChange(thirdwebChainId);
         }
       } else {
         // window.ethereumが存在しない場合はThirdwebのchainIdを使用
         setActualChainId(thirdwebChainId);
+        onChainIdChange(thirdwebChainId);
       }
     };
 
@@ -653,13 +658,14 @@ function WalletConnectionInfo({ isMobile }: { isMobile: boolean }) {
       const handleChainChanged = (chainId: string) => {
         const numericChainId = parseInt(chainId, 16);
         setActualChainId(numericChainId);
+        onChainIdChange(numericChainId);
       };
       window.ethereum.on('chainChanged', handleChainChanged);
       return () => {
         window.ethereum.removeListener('chainChanged', handleChainChanged);
       };
     }
-  }, [address, thirdwebChainId, user]);
+  }, [address, thirdwebChainId, user, onChainIdChange]);
 
   // Privyウォレット作成フック
   const { createWallet } = useCreateWallet({
@@ -848,11 +854,13 @@ function WalletConnectionInfo({ isMobile }: { isMobile: boolean }) {
 function FlowModeContent({
   isMobile,
   tenantRank,
-  address
+  address,
+  onChainIdChange
 }: {
   isMobile: boolean;
   tenantRank: TenantRank;
   address: string | undefined;
+  onChainIdChange: (chainId: number | undefined) => void;
 }) {
   // useAddress()を呼び出して実際の接続アドレスを取得
   const thirdwebAddress = useAddress();
@@ -874,7 +882,7 @@ function FlowModeContent({
   return (
     <>
       {/* 0. ウォレット接続情報（送金カードの上） */}
-      <WalletConnectionInfo isMobile={isMobile} />
+      <WalletConnectionInfo isMobile={isMobile} onChainIdChange={onChainIdChange} />
 
       {/* 1. 送金・受信（縦並び） */}
       <div style={{
