@@ -10,6 +10,7 @@ interface UserProfile {
   display_name: string;
   bio: string;
   avatar_url?: string;
+  receive_message?: string;
   wallet_address: string;
   created_at: string;
   updated_at: string;
@@ -344,6 +345,7 @@ export function ProfilePage() {
             display_name: profile?.display_name || '',
             bio: profile?.bio || '',
             avatar_url: profile?.avatar_url || '',
+            receive_message: profile?.receive_message || 'ありがとうございました。',
           }}
           walletAddress={walletAddress}
         />
