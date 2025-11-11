@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { usePrivy } from '@privy-io/react-auth';
-import { ConnectWallet } from '@thirdweb-dev/react';
+import { ConnectWallet, useAddress, useDisconnect } from '@thirdweb-dev/react';
 import { supabase } from '../../lib/supabase';
 import { getTokenConfig } from '../../config/tokens';
 import {
@@ -31,8 +31,15 @@ interface PaymentHistory {
 }
 
 export function PaymentTerminal() {
-  const { user, login } = usePrivy();
-  const walletAddress = user?.wallet?.address;
+  const { user, login, logout: privyLogout } = usePrivy();
+  const thirdwebAddress = useAddress();
+  const disconnect = useDisconnect();
+
+  // Privy または Thirdweb のいずれかからウォレットアドレスを取得
+  const walletAddress = user?.wallet?.address || thirdwebAddress;
+
+  // 接続中のウォレット情報を状態管理
+  const [showWalletSelection, setShowWalletSelection] = useState(false);
 
   // JPYC設定を取得
   const jpycConfig = getTokenConfig('JPYC');
@@ -311,107 +318,176 @@ export function PaymentTerminal() {
             margin: '40px auto',
           }}
         >
-          <h2 style={{ fontSize: '28px', marginBottom: '12px', fontWeight: 'bold' }}>
-            ウォレットを接続してください
-          </h2>
-          <p style={{ opacity: 0.7, marginBottom: '32px', fontSize: '15px' }}>
-            レジを使用するにはウォレット接続が必要です
-          </p>
+          {showWalletSelection ? (
+            // 別のウォレットに変更モード
+            <>
+              <h2 style={{ fontSize: '28px', marginBottom: '12px', fontWeight: 'bold' }}>
+                ウォレットを接続してください
+              </h2>
+              <p style={{ opacity: 0.7, marginBottom: '32px', fontSize: '15px' }}>
+                レジを使用するにはウォレット接続が必要です
+              </p>
 
-          {/* Privyログインボタン（推奨） */}
-          <div style={{ marginBottom: '20px' }}>
-            <button
-              onClick={() => {
-                if (typeof login === 'function') {
-                  login();
-                } else {
-                  console.error('login is not a function:', login);
-                }
-              }}
-              style={{
-                width: '100%',
-                padding: '18px 24px',
-                fontSize: '18px',
-                fontWeight: 'bold',
-                background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                color: 'white',
-                border: 'none',
-                borderRadius: '12px',
-                cursor: 'pointer',
-                boxShadow: '0 4px 15px rgba(16, 185, 129, 0.3)',
-                transition: 'all 0.2s',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '10px',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = 'translateY(-2px)';
-                e.currentTarget.style.boxShadow = '0 6px 20px rgba(16, 185, 129, 0.4)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = '0 4px 15px rgba(16, 185, 129, 0.3)';
-              }}
-            >
-              <span style={{ fontSize: '22px' }}>🔐</span>
-              Google / SNS でログイン（推奨）
-            </button>
-          </div>
+              {/* Privyログインボタン（推奨） */}
+              <div style={{ marginBottom: '20px' }}>
+                <button
+                  onClick={() => {
+                    if (typeof login === 'function') {
+                      login();
+                    }
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '18px 24px',
+                    fontSize: '18px',
+                    fontWeight: 'bold',
+                    background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '12px',
+                    cursor: 'pointer',
+                    boxShadow: '0 4px 15px rgba(16, 185, 129, 0.3)',
+                    transition: 'all 0.2s',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '10px',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                    e.currentTarget.style.boxShadow = '0 6px 20px rgba(16, 185, 129, 0.4)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = '0 4px 15px rgba(16, 185, 129, 0.3)';
+                  }}
+                >
+                  <span style={{ fontSize: '22px' }}>🔐</span>
+                  Google / SNS でログイン（推奨）
+                </button>
+              </div>
 
-          {/* 区切り線 */}
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              margin: '24px 0',
-            }}
-          >
-            <div
-              style={{
-                flex: 1,
-                height: '1px',
-                background: 'linear-gradient(to right, transparent, rgba(255,255,255,0.3), transparent)',
-              }}
-            />
-            <span
-              style={{
-                padding: '0 16px',
-                fontSize: '13px',
-                color: 'rgba(255,255,255,0.6)',
-                fontWeight: '600',
-              }}
-            >
-              または
-            </span>
-            <div
-              style={{
-                flex: 1,
-                height: '1px',
-                background: 'linear-gradient(to left, transparent, rgba(255,255,255,0.3), transparent)',
-              }}
-            />
-          </div>
+              {/* 区切り線 */}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  margin: '24px 0',
+                }}
+              >
+                <div
+                  style={{
+                    flex: 1,
+                    height: '1px',
+                    background: 'linear-gradient(to right, transparent, rgba(255,255,255,0.3), transparent)',
+                  }}
+                />
+                <span
+                  style={{
+                    padding: '0 16px',
+                    fontSize: '13px',
+                    color: 'rgba(255,255,255,0.6)',
+                    fontWeight: '600',
+                  }}
+                >
+                  または
+                </span>
+                <div
+                  style={{
+                    flex: 1,
+                    height: '1px',
+                    background: 'linear-gradient(to left, transparent, rgba(255,255,255,0.3), transparent)',
+                  }}
+                />
+              </div>
 
-          {/* ウォレット接続ボタン */}
-          <div>
-            <ConnectWallet
-              theme="dark"
-              btnTitle="既存ウォレットで接続"
-              modalTitle="ウォレット接続"
-              style={{
-                width: '100%',
-                padding: '18px 24px',
-                fontSize: '18px',
-                fontWeight: 'bold',
-                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                border: 'none',
-                borderRadius: '12px',
-                boxShadow: '0 4px 15px rgba(102, 126, 234, 0.3)',
-                transition: 'all 0.2s',
-              }}
-            />
-          </div>
+              {/* ウォレット接続ボタン */}
+              <div>
+                <ConnectWallet
+                  theme="dark"
+                  btnTitle="既存ウォレットで接続"
+                  modalTitle="ウォレット接続"
+                  style={{
+                    width: '100%',
+                    padding: '18px 24px',
+                    fontSize: '18px',
+                    fontWeight: 'bold',
+                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    border: 'none',
+                    borderRadius: '12px',
+                    boxShadow: '0 4px 15px rgba(102, 126, 234, 0.3)',
+                    transition: 'all 0.2s',
+                  }}
+                />
+              </div>
+            </>
+          ) : (
+            // 接続中のウォレットで続行モード
+            <>
+              <h2 style={{ fontSize: '28px', marginBottom: '12px', fontWeight: 'bold' }}>
+                ウォレットを接続してください
+              </h2>
+              <p style={{ opacity: 0.7, marginBottom: '32px', fontSize: '15px' }}>
+                レジを使用するにはウォレット接続が必要です
+              </p>
+
+              <div style={{ marginBottom: '16px' }}>
+                <button
+                  onClick={() => {
+                    // ウォレット選択をスキップして続行（リロードして再接続）
+                    window.location.reload();
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '18px 24px',
+                    fontSize: '18px',
+                    fontWeight: 'bold',
+                    background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '12px',
+                    cursor: 'pointer',
+                    boxShadow: '0 4px 15px rgba(16, 185, 129, 0.3)',
+                    transition: 'all 0.2s',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                    e.currentTarget.style.boxShadow = '0 6px 20px rgba(16, 185, 129, 0.4)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = '0 4px 15px rgba(16, 185, 129, 0.3)';
+                  }}
+                >
+                  接続中のウォレットで続行
+                </button>
+              </div>
+
+              <button
+                onClick={() => setShowWalletSelection(true)}
+                style={{
+                  width: '100%',
+                  padding: '14px 20px',
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  background: 'rgba(255,255,255,0.1)',
+                  color: '#fff',
+                  border: '1px solid rgba(255,255,255,0.3)',
+                  borderRadius: '12px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'rgba(255,255,255,0.15)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
+                }}
+              >
+                別のウォレットに変更
+              </button>
+            </>
+          )}
         </div>
       ) : (
         <div

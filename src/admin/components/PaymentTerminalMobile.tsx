@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { usePrivy } from '@privy-io/react-auth';
-import { ConnectWallet } from '@thirdweb-dev/react';
+import { ConnectWallet, useAddress, useDisconnect } from '@thirdweb-dev/react';
 import { supabase } from '../../lib/supabase';
 import { getTokenConfig } from '../../config/tokens';
 import {
@@ -31,8 +31,15 @@ interface PaymentHistory {
 }
 
 export function PaymentTerminalMobile() {
-  const { user, login } = usePrivy();
-  const walletAddress = user?.wallet?.address;
+  const { user, login, logout: privyLogout } = usePrivy();
+  const thirdwebAddress = useAddress();
+  const disconnect = useDisconnect();
+
+  // Privy または Thirdweb のいずれかからウォレットアドレスを取得
+  const walletAddress = user?.wallet?.address || thirdwebAddress;
+
+  // 接続中のウォレット情報を状態管理
+  const [showWalletSelection, setShowWalletSelection] = useState(false);
 
   // JPYC設定を取得
   const jpycConfig = getTokenConfig('JPYC');
@@ -290,10 +297,141 @@ export function PaymentTerminalMobile() {
       </header>
 
       {!walletAddress ? (
-        <div style={{ textAlign: 'center', marginTop: '60px' }}>
-          <div style={{ fontSize: '64px', marginBottom: '24px' }}>🔐</div>
-          <p style={{ marginBottom: '32px', opacity: 0.9 }}>ウォレットを接続してください</p>
-          <ConnectWallet theme="dark" btnTitle="ウォレット接続" />
+        <div style={{
+          textAlign: 'center',
+          padding: '30px 20px',
+          background: 'rgba(255,255,255,0.1)',
+          borderRadius: '16px',
+          marginTop: '40px',
+          maxWidth: '400px',
+          margin: '40px auto',
+        }}>
+          {showWalletSelection ? (
+            // 別のウォレットに変更モード
+            <>
+              <div style={{ fontSize: '64px', marginBottom: '16px' }}>🔐</div>
+              <h2 style={{ fontSize: '24px', marginBottom: '8px', fontWeight: 'bold' }}>
+                ウォレットを接続してください
+              </h2>
+              <p style={{ opacity: 0.7, marginBottom: '24px', fontSize: '14px' }}>
+                レジを使用するにはウォレット接続が必要です
+              </p>
+
+              {/* Privyログインボタン */}
+              <div style={{ marginBottom: '16px' }}>
+                <button
+                  onClick={() => {
+                    if (typeof login === 'function') {
+                      login();
+                    }
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '16px 20px',
+                    fontSize: '16px',
+                    fontWeight: 'bold',
+                    background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '12px',
+                    cursor: 'pointer',
+                    boxShadow: '0 4px 15px rgba(16, 185, 129, 0.3)',
+                  }}
+                >
+                  <span style={{ fontSize: '20px', marginRight: '8px' }}>🔐</span>
+                  Google / SNS でログイン
+                </button>
+              </div>
+
+              {/* 区切り線 */}
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                margin: '20px 0',
+              }}>
+                <div style={{
+                  flex: 1,
+                  height: '1px',
+                  background: 'linear-gradient(to right, transparent, rgba(255,255,255,0.3), transparent)',
+                }} />
+                <span style={{
+                  padding: '0 12px',
+                  fontSize: '12px',
+                  color: 'rgba(255,255,255,0.6)',
+                  fontWeight: '600',
+                }}>
+                  または
+                </span>
+                <div style={{
+                  flex: 1,
+                  height: '1px',
+                  background: 'linear-gradient(to left, transparent, rgba(255,255,255,0.3), transparent)',
+                }} />
+              </div>
+
+              {/* ウォレット接続ボタン */}
+              <ConnectWallet
+                theme="dark"
+                btnTitle="既存ウォレットで接続"
+                style={{
+                  width: '100%',
+                  padding: '16px 20px',
+                  fontSize: '16px',
+                  fontWeight: 'bold',
+                }}
+              />
+            </>
+          ) : (
+            // 接続中のウォレットで続行モード
+            <>
+              <div style={{ fontSize: '64px', marginBottom: '16px' }}>🔐</div>
+              <h2 style={{ fontSize: '24px', marginBottom: '8px', fontWeight: 'bold' }}>
+                ウォレットを接続してください
+              </h2>
+              <p style={{ opacity: 0.7, marginBottom: '24px', fontSize: '14px' }}>
+                レジを使用するにはウォレット接続が必要です
+              </p>
+
+              <div style={{ marginBottom: '12px' }}>
+                <button
+                  onClick={() => {
+                    window.location.reload();
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '16px 20px',
+                    fontSize: '16px',
+                    fontWeight: 'bold',
+                    background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '12px',
+                    cursor: 'pointer',
+                    boxShadow: '0 4px 15px rgba(16, 185, 129, 0.3)',
+                  }}
+                >
+                  接続中のウォレットで続行
+                </button>
+              </div>
+
+              <button
+                onClick={() => setShowWalletSelection(true)}
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  background: 'rgba(255,255,255,0.1)',
+                  color: '#fff',
+                  border: '1px solid rgba(255,255,255,0.3)',
+                  borderRadius: '12px',
+                  cursor: 'pointer',
+                }}
+              >
+                別のウォレットに変更
+              </button>
+            </>
+          )}
         </div>
       ) : (
         <div style={{ maxWidth: '500px', margin: '0 auto' }}>
