@@ -1,0 +1,541 @@
+// src/admin/components/PaymentTerminal.tsx
+// タブレット専用レジUI - 実店舗向けに最適化
+
+import { useState, useEffect } from 'react';
+import { QRCodeSVG } from 'qrcode.react';
+import { usePrivy } from '@privy-io/react-auth';
+import { ConnectWallet } from '@thirdweb-dev/react';
+import { supabase } from '../../lib/supabase';
+import { getTokenConfig } from '../../config/tokens';
+import {
+  encodeX402,
+  parsePaymentAmount,
+  generateRequestId,
+} from '../../utils/x402';
+
+interface PaymentHistory {
+  id: string;
+  amount: string;
+  completed_at: string;
+  completed_by: string;
+}
+
+export function PaymentTerminal() {
+  const { user, login } = usePrivy();
+  const walletAddress = user?.wallet?.address;
+
+  // JPYC設定を取得
+  const jpycConfig = getTokenConfig('JPYC');
+
+  // 金額入力
+  const [amount, setAmount] = useState('');
+  const [displayAmount, setDisplayAmount] = useState('0');
+
+  // QRコード
+  const [qrData, setQrData] = useState<string | null>(null);
+  const [expiryMinutes, setExpiryMinutes] = useState(5);
+
+  // 決済履歴
+  const [recentPayments, setRecentPayments] = useState<PaymentHistory[]>([]);
+
+  // エラー・成功メッセージ
+  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  // 決済履歴の自動更新
+  useEffect(() => {
+    if (!walletAddress) return;
+
+    const fetchRecentPayments = async () => {
+      const { data } = await supabase
+        .from('payment_requests')
+        .select('id, amount, completed_at, completed_by')
+        .eq('tenant_address', walletAddress.toLowerCase())
+        .eq('status', 'completed')
+        .order('completed_at', { ascending: false })
+        .limit(5);
+
+      if (data) {
+        setRecentPayments(data);
+      }
+    };
+
+    fetchRecentPayments();
+
+    // 10秒ごとに更新
+    const interval = setInterval(fetchRecentPayments, 10000);
+    return () => clearInterval(interval);
+  }, [walletAddress]);
+
+  // テンキー入力
+  const handleNumberClick = (num: string) => {
+    if (displayAmount === '0') {
+      setDisplayAmount(num);
+    } else {
+      setDisplayAmount(displayAmount + num);
+    }
+  };
+
+  // クリア
+  const handleClear = () => {
+    setDisplayAmount('0');
+    setAmount('');
+    setQrData(null);
+    setMessage(null);
+  };
+
+  // プリセット金額
+  const handlePresetAmount = (presetAmount: number) => {
+    setDisplayAmount(presetAmount.toString());
+  };
+
+  // QR生成
+  const handleGenerateQR = async () => {
+    try {
+      if (!walletAddress) {
+        setMessage({ type: 'error', text: 'ウォレット未接続' });
+        return;
+      }
+
+      const amountValue = parseInt(displayAmount);
+      if (isNaN(amountValue) || amountValue <= 0) {
+        setMessage({ type: 'error', text: '金額を入力してください' });
+        return;
+      }
+
+      const amountWei = parsePaymentAmount(displayAmount, jpycConfig.decimals);
+      const expires = Math.floor(Date.now() / 1000) + expiryMinutes * 60;
+      const requestId = generateRequestId();
+
+      const paymentData = encodeX402({
+        to: walletAddress,
+        token: jpycConfig.currentAddress,
+        amount: amountWei,
+        message: `${displayAmount}円のお支払い`,
+        expires,
+        requestId,
+      });
+
+      // Supabaseに保存
+      const { error } = await supabase.from('payment_requests').insert({
+        request_id: requestId,
+        tenant_address: walletAddress.toLowerCase(),
+        amount: displayAmount,
+        message: `${displayAmount}円のお支払い`,
+        expires_at: new Date(expires * 1000).toISOString(),
+        status: 'pending',
+      });
+
+      if (error) throw error;
+
+      setQrData(paymentData);
+      setAmount(displayAmount);
+      setMessage({ type: 'success', text: 'QRコード生成完了' });
+
+      // 3秒後にメッセージを消す
+      setTimeout(() => setMessage(null), 3000);
+    } catch (error) {
+      console.error('QR生成エラー:', error);
+      setMessage({ type: 'error', text: '生成に失敗しました' });
+    }
+  };
+
+  return (
+    <div
+      style={{
+        minHeight: '100vh',
+        background: 'linear-gradient(135deg, #1e3a8a 0%, #1e293b 100%)',
+        color: '#fff',
+        padding: '20px',
+        fontFamily: 'system-ui, -apple-system, sans-serif',
+      }}
+    >
+      {/* ヘッダー */}
+      <header
+        style={{
+          textAlign: 'center',
+          marginBottom: '20px',
+          paddingBottom: '15px',
+          borderBottom: '2px solid rgba(255,255,255,0.2)',
+        }}
+      >
+        <h1
+          style={{
+            fontSize: '32px',
+            margin: '0 0 8px 0',
+            fontWeight: 'bold',
+            letterSpacing: '1px',
+          }}
+        >
+          💳 JPYC Terminal
+        </h1>
+        <p style={{ fontSize: '14px', opacity: 0.8, margin: 0 }}>
+          {walletAddress ? `店舗: ${walletAddress.slice(0, 8)}...${walletAddress.slice(-6)}` : 'ウォレット未接続'}
+        </p>
+      </header>
+
+      {!walletAddress ? (
+        <div
+          style={{
+            textAlign: 'center',
+            padding: '40px 30px',
+            background: 'rgba(255,255,255,0.1)',
+            borderRadius: '16px',
+            marginTop: '40px',
+            maxWidth: '500px',
+            margin: '40px auto',
+          }}
+        >
+          <h2 style={{ fontSize: '28px', marginBottom: '12px', fontWeight: 'bold' }}>
+            ウォレットを接続してください
+          </h2>
+          <p style={{ opacity: 0.7, marginBottom: '32px', fontSize: '15px' }}>
+            レジを使用するにはウォレット接続が必要です
+          </p>
+
+          {/* Privyログインボタン（推奨） */}
+          <div style={{ marginBottom: '20px' }}>
+            <button
+              onClick={() => {
+                if (typeof login === 'function') {
+                  login();
+                } else {
+                  console.error('login is not a function:', login);
+                }
+              }}
+              style={{
+                width: '100%',
+                padding: '18px 24px',
+                fontSize: '18px',
+                fontWeight: 'bold',
+                background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                color: 'white',
+                border: 'none',
+                borderRadius: '12px',
+                cursor: 'pointer',
+                boxShadow: '0 4px 15px rgba(16, 185, 129, 0.3)',
+                transition: 'all 0.2s',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '10px',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'translateY(-2px)';
+                e.currentTarget.style.boxShadow = '0 6px 20px rgba(16, 185, 129, 0.4)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = '0 4px 15px rgba(16, 185, 129, 0.3)';
+              }}
+            >
+              <span style={{ fontSize: '22px' }}>🔐</span>
+              Google / SNS でログイン（推奨）
+            </button>
+          </div>
+
+          {/* 区切り線 */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              margin: '24px 0',
+            }}
+          >
+            <div
+              style={{
+                flex: 1,
+                height: '1px',
+                background: 'linear-gradient(to right, transparent, rgba(255,255,255,0.3), transparent)',
+              }}
+            />
+            <span
+              style={{
+                padding: '0 16px',
+                fontSize: '13px',
+                color: 'rgba(255,255,255,0.6)',
+                fontWeight: '600',
+              }}
+            >
+              または
+            </span>
+            <div
+              style={{
+                flex: 1,
+                height: '1px',
+                background: 'linear-gradient(to left, transparent, rgba(255,255,255,0.3), transparent)',
+              }}
+            />
+          </div>
+
+          {/* ウォレット接続ボタン */}
+          <div>
+            <ConnectWallet
+              theme="dark"
+              btnTitle="既存ウォレットで接続"
+              modalTitle="ウォレット接続"
+              style={{
+                width: '100%',
+                padding: '18px 24px',
+                fontSize: '18px',
+                fontWeight: 'bold',
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                border: 'none',
+                borderRadius: '12px',
+                boxShadow: '0 4px 15px rgba(102, 126, 234, 0.3)',
+                transition: 'all 0.2s',
+              }}
+            />
+          </div>
+        </div>
+      ) : (
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr 1.2fr',
+            gap: '20px',
+            maxWidth: '1200px',
+            margin: '0 auto',
+          }}
+        >
+          {/* 左側: 入力エリア */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            {/* プリセット金額 */}
+            <div
+              style={{
+                background: 'rgba(255,255,255,0.1)',
+                borderRadius: '12px',
+                padding: '20px',
+              }}
+            >
+              <h3 style={{ margin: '0 0 12px 0', fontSize: '16px', opacity: 0.9 }}>よく使う金額</h3>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
+                {[100, 300, 500, 1000, 1500, 2000].map((preset) => (
+                  <button
+                    key={preset}
+                    onClick={() => handlePresetAmount(preset)}
+                    style={{
+                      padding: '16px',
+                      fontSize: '18px',
+                      fontWeight: 'bold',
+                      background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      transition: 'transform 0.1s',
+                    }}
+                    onMouseDown={(e) => (e.currentTarget.style.transform = 'scale(0.95)')}
+                    onMouseUp={(e) => (e.currentTarget.style.transform = 'scale(1)')}
+                  >
+                    ¥{preset}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* 金額表示 */}
+            <div
+              style={{
+                background: 'rgba(255,255,255,0.1)',
+                borderRadius: '12px',
+                padding: '24px',
+                textAlign: 'center',
+              }}
+            >
+              <div style={{ fontSize: '14px', opacity: 0.7, marginBottom: '8px' }}>支払金額</div>
+              <div
+                style={{
+                  fontSize: '56px',
+                  fontWeight: 'bold',
+                  fontFamily: 'monospace',
+                  color: '#22c55e',
+                  textShadow: '0 2px 10px rgba(34, 197, 94, 0.3)',
+                }}
+              >
+                ¥{displayAmount.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+              </div>
+            </div>
+
+            {/* テンキー */}
+            <div
+              style={{
+                background: 'rgba(255,255,255,0.1)',
+                borderRadius: '12px',
+                padding: '20px',
+              }}
+            >
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
+                {['7', '8', '9', '4', '5', '6', '1', '2', '3', '00', '0', 'C'].map((key) => (
+                  <button
+                    key={key}
+                    onClick={() => (key === 'C' ? handleClear() : handleNumberClick(key))}
+                    style={{
+                      padding: '24px',
+                      fontSize: '28px',
+                      fontWeight: 'bold',
+                      background: key === 'C' ? '#ef4444' : 'rgba(255,255,255,0.2)',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '12px',
+                      cursor: 'pointer',
+                      transition: 'all 0.1s',
+                    }}
+                    onMouseDown={(e) => {
+                      e.currentTarget.style.transform = 'scale(0.95)';
+                      e.currentTarget.style.background = key === 'C' ? '#dc2626' : 'rgba(255,255,255,0.3)';
+                    }}
+                    onMouseUp={(e) => {
+                      e.currentTarget.style.transform = 'scale(1)';
+                      e.currentTarget.style.background = key === 'C' ? '#ef4444' : 'rgba(255,255,255,0.2)';
+                    }}
+                  >
+                    {key}
+                  </button>
+                ))}
+              </div>
+
+              {/* QR生成ボタン */}
+              <button
+                onClick={handleGenerateQR}
+                style={{
+                  width: '100%',
+                  marginTop: '16px',
+                  padding: '20px',
+                  fontSize: '24px',
+                  fontWeight: 'bold',
+                  background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '12px',
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 15px rgba(34, 197, 94, 0.3)',
+                  transition: 'all 0.2s',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 6px 20px rgba(34, 197, 94, 0.4)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 4px 15px rgba(34, 197, 94, 0.3)';
+                }}
+              >
+                QR生成
+              </button>
+
+              {/* メッセージ */}
+              {message && (
+                <div
+                  style={{
+                    marginTop: '12px',
+                    padding: '12px',
+                    background: message.type === 'success' ? 'rgba(34, 197, 94, 0.2)' : 'rgba(239, 68, 68, 0.2)',
+                    borderRadius: '8px',
+                    textAlign: 'center',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                  }}
+                >
+                  {message.text}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* 右側: QRコード・履歴エリア */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            {/* QRコード表示 */}
+            <div
+              style={{
+                background: 'rgba(255,255,255,0.1)',
+                borderRadius: '12px',
+                padding: '30px',
+                textAlign: 'center',
+                minHeight: '400px',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center',
+                alignItems: 'center',
+              }}
+            >
+              {qrData ? (
+                <>
+                  <h3 style={{ margin: '0 0 20px 0', fontSize: '24px' }}>お客様にご提示ください</h3>
+                  <div
+                    style={{
+                      background: 'white',
+                      padding: '24px',
+                      borderRadius: '16px',
+                      boxShadow: '0 8px 30px rgba(0,0,0,0.3)',
+                    }}
+                  >
+                    <QRCodeSVG value={qrData} size={280} level="H" includeMargin={true} />
+                  </div>
+                  <div style={{ marginTop: '20px', fontSize: '32px', fontWeight: 'bold', color: '#22c55e' }}>
+                    ¥{amount.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                  </div>
+                  <div style={{ marginTop: '8px', fontSize: '14px', opacity: 0.7 }}>
+                    有効期限: {expiryMinutes}分
+                  </div>
+                </>
+              ) : (
+                <div style={{ opacity: 0.5 }}>
+                  <div style={{ fontSize: '64px', marginBottom: '16px' }}>📱</div>
+                  <div style={{ fontSize: '18px' }}>金額を入力してQRコードを生成してください</div>
+                </div>
+              )}
+            </div>
+
+            {/* 最近の決済履歴 */}
+            <div
+              style={{
+                background: 'rgba(255,255,255,0.1)',
+                borderRadius: '12px',
+                padding: '20px',
+              }}
+            >
+              <h3 style={{ margin: '0 0 16px 0', fontSize: '18px' }}>📊 最近の決済</h3>
+              {recentPayments.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '20px', opacity: 0.5 }}>決済履歴がありません</div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {recentPayments.map((payment) => (
+                    <div
+                      key={payment.id}
+                      style={{
+                        background: 'rgba(34, 197, 94, 0.1)',
+                        borderRadius: '8px',
+                        padding: '12px 16px',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                      }}
+                    >
+                      <div>
+                        <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#22c55e' }}>
+                          ¥{parseInt(payment.amount).toLocaleString()}
+                        </div>
+                        <div style={{ fontSize: '11px', opacity: 0.7, marginTop: '2px' }}>
+                          {new Date(payment.completed_at).toLocaleString('ja-JP')}
+                        </div>
+                      </div>
+                      <div
+                        style={{
+                          fontSize: '11px',
+                          fontFamily: 'monospace',
+                          opacity: 0.6,
+                        }}
+                      >
+                        {payment.completed_by.slice(0, 8)}...
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

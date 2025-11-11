@@ -5,6 +5,7 @@ import { ethers } from "ethers";
 import { CONTRACT_ADDRESS } from "../contract";
 import { getDefaultToken, formatTokenShort } from "../config/tokenHelpers";
 import { setEmergencyFlag, readEmergencyFlag } from "../lib/emergency";
+import { PaymentQRGenerator } from "./components/PaymentQRGenerator";
 
 /* ---------- Types & Helpers ---------- */
 type TipItem = {
@@ -854,6 +855,9 @@ export default function DashboardMobile() {
               }
             </p>
           </div>
+
+          {/* X402決済QRコード生成 */}
+          <PaymentQRGenerator />
 
           {/* 最近のTip履歴 */}
           <div style={{

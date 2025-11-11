@@ -13,12 +13,14 @@ import VendingApp from "./vending-ui/App";
 import AdminDashboard from "./admin/Dashboard";
 import { SuperAdminPage } from "./pages/SuperAdmin";
 import { TenantProvider } from "./admin/contexts/TenantContext";
+import { PaymentTerminal } from "./admin/components/PaymentTerminal";
 import { ThirdwebProvider } from "@thirdweb-dev/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AppWrapper } from "./components/AppWrapper";
 import { TermsOfServicePage } from "./pages/TermsOfService";
 import { PrivacyPolicyPage } from "./pages/PrivacyPolicy";
 import { ProfilePage } from "./pages/ProfilePage";
+import { PaymentScanPage } from "./pages/PaymentScanPage";
 
 // Polyfill Buffer for browser environment (required for Web3 libraries)
 window.Buffer = window.Buffer || Buffer;
@@ -89,6 +91,8 @@ const wantsTip = path.includes("/tip") || uiParam === "tip";
 const wantsVending = path.includes("/vending") || path.includes("/content") || uiParam === "vending" || uiParam === "content";
 const wantsAdmin = path.includes("/admin") || uiParam === "admin";
 const wantsSuperAdmin = path.includes("/super-admin") || uiParam === "super-admin";
+const wantsTerminal = path.includes("/terminal") || uiParam === "terminal";
+const wantsPayment = path.includes("/payment") || uiParam === "payment";
 const wantsLegacy = path.includes("/legacy");
 const wantsLogin = path.includes("/login") || uiParam === "login";
 const wantsMypage = path.includes("/mypage") || uiParam === "mypage";
@@ -138,6 +142,61 @@ if (wantsTerms) {
           clientId={import.meta.env.VITE_THIRDWEB_CLIENT_ID}
         >
           <SuperAdminPage />
+        </ThirdwebProvider>
+      </QueryClientProvider>
+    </React.StrictMode>
+  );
+} else if (wantsTerminal) {
+  // タブレット専用レジ（Privy + Thirdweb）
+  root.render(
+    <React.StrictMode>
+      <QueryClientProvider client={queryClient}>
+        <ThirdwebProvider
+          activeChain={polygonChain}
+          clientId={import.meta.env.VITE_THIRDWEB_CLIENT_ID}
+        >
+          <PrivyProvider
+            appId={import.meta.env.VITE_PRIVY_APP_ID || ""}
+            config={{
+              loginMethods: ["email", "google", "twitter", "discord", "wallet"],
+              appearance: {
+                theme: "dark",
+                accentColor: "#02bbd1",
+                logo: "/gifterra-logo.png",
+              },
+              embeddedWallets: {
+                createOnLogin: 'all-users',
+                noPromptOnSignature: false,
+              },
+              defaultChain: {
+                id: 137,
+                name: "Polygon Mainnet",
+                network: "polygon",
+                nativeCurrency: {
+                  name: "MATIC",
+                  symbol: "MATIC",
+                  decimals: 18,
+                },
+                rpcUrls: {
+                  default: {
+                    http: ["https://polygon-rpc.com"],
+                  },
+                  public: {
+                    http: ["https://polygon-rpc.com"],
+                  },
+                },
+                blockExplorers: {
+                  default: {
+                    name: "PolygonScan",
+                    url: "https://polygonscan.com",
+                  },
+                },
+                testnet: false,
+              },
+            }}
+          >
+            <PaymentTerminal />
+          </PrivyProvider>
         </ThirdwebProvider>
       </QueryClientProvider>
     </React.StrictMode>
@@ -255,6 +314,8 @@ if (wantsTerms) {
                 <MypagePage />
               ) : wantsProfile ? (
                 <ProfilePage />
+              ) : wantsPayment ? (
+                <PaymentScanPage />
               ) : wantsReward ? (
                 <RewardApp />
               ) : wantsTip ? (

@@ -13,6 +13,7 @@ interface ProfileEditModalProps {
     display_name: string;
     bio: string;
     avatar_url?: string;
+    receive_message?: string;
   };
   walletAddress: string;
 }
@@ -26,6 +27,7 @@ export function ProfileEditModal({
 }: ProfileEditModalProps) {
   const [displayName, setDisplayName] = useState(currentProfile.display_name || '');
   const [bio, setBio] = useState(currentProfile.bio || '');
+  const [receiveMessage, setReceiveMessage] = useState(currentProfile.receive_message || 'ありがとうございました。');
   const [avatarUrl, setAvatarUrl] = useState(currentProfile.avatar_url || '');
   const [avatarPreview, setAvatarPreview] = useState(currentProfile.avatar_url || '');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -90,6 +92,11 @@ export function ProfileEditModal({
       return;
     }
 
+    if (receiveMessage.length > 100) {
+      setError('受け取り時メッセージは100文字以内で入力してください');
+      return;
+    }
+
     setIsSubmitting(true);
     setError('');
 
@@ -103,6 +110,7 @@ export function ProfileEditModal({
           wallet_address: walletAddress.toLowerCase(),
           display_name: displayName.trim(),
           bio: bio.trim(),
+          receive_message: receiveMessage.trim(),
           avatar_url: avatarUrl || null,
           updated_at: new Date().toISOString(),
         }, {
@@ -426,6 +434,74 @@ export function ProfileEditModal({
                 }}
               >
                 {bio.length}/140
+              </div>
+            </div>
+
+            {/* 受け取り時メッセージ */}
+            <div style={{ marginBottom: 20 }}>
+              <label
+                style={{
+                  display: 'block',
+                  marginBottom: 8,
+                  fontSize: isMobile ? 13 : 14,
+                  fontWeight: 600,
+                  color: '#EAF2FF',
+                }}
+              >
+                受け取り時メッセージ（100文字以内）
+              </label>
+              <textarea
+                value={receiveMessage}
+                onChange={(e) => setReceiveMessage(e.target.value)}
+                placeholder="送金してくれた方に表示されるメッセージ（例: ありがとうございました。）"
+                rows={3}
+                maxLength={100}
+                style={{
+                  width: '100%',
+                  padding: isMobile ? '10px 12px' : '12px 16px',
+                  background: 'rgba(255, 255, 255, 0.05)',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  borderRadius: 8,
+                  color: '#EAF2FF',
+                  fontSize: isMobile ? 14 : 15,
+                  outline: 'none',
+                  resize: 'vertical',
+                  fontFamily: 'inherit',
+                  lineHeight: 1.5,
+                  transition: 'all 0.2s',
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.5)';
+                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)';
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+                }}
+              />
+              <div
+                style={{
+                  marginTop: 4,
+                  fontSize: isMobile ? 11 : 12,
+                  color: receiveMessage.length > 100 ? '#f87171' : 'rgba(255, 255, 255, 0.5)',
+                  textAlign: 'right',
+                }}
+              >
+                {receiveMessage.length}/100
+              </div>
+              <div
+                style={{
+                  marginTop: 8,
+                  padding: isMobile ? '8px 10px' : '10px 12px',
+                  background: 'rgba(59, 130, 246, 0.1)',
+                  border: '1px solid rgba(59, 130, 246, 0.2)',
+                  borderRadius: 6,
+                  fontSize: isMobile ? 11 : 12,
+                  color: 'rgba(255, 255, 255, 0.7)',
+                  lineHeight: 1.5,
+                }}
+              >
+                💡 送金完了時に送信者へ表示されるメッセージです。お礼の言葉やメッセージを設定できます。
               </div>
             </div>
 

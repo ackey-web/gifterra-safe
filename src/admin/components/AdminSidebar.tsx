@@ -237,6 +237,75 @@ export default function AdminSidebar({
             </div>
           </div>
         ))}
+
+        {/* 決済ターミナル（外部リンク） */}
+        <div style={{ marginBottom: 24 }}>
+          {!isCollapsed && (
+            <div
+              style={{
+                padding: "8px 16px",
+                fontSize: 11,
+                fontWeight: 700,
+                color: "rgba(255,255,255,0.5)",
+                textTransform: "uppercase",
+                letterSpacing: "0.05em",
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+              }}
+            >
+              <span>💳</span>
+              <span>決済</span>
+            </div>
+          )}
+
+          {isCollapsed && (
+            <div
+              style={{
+                textAlign: "center",
+                fontSize: 18,
+                padding: "8px 0",
+                opacity: 0.6,
+              }}
+              title="決済"
+            >
+              💳
+            </div>
+          )}
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            <button
+              onClick={() => window.open('/terminal', '_blank')}
+              style={{
+                background: "transparent",
+                borderLeft: "3px solid transparent",
+                color: "rgba(255,255,255,0.7)",
+                border: "none",
+                borderRadius: 0,
+                padding: isCollapsed ? "12px 8px" : "10px 16px",
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: "pointer",
+                textAlign: "left",
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                transition: "all 0.2s ease",
+                justifyContent: isCollapsed ? "center" : "flex-start",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "rgba(255,255,255,0.05)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "transparent";
+              }}
+              title={isCollapsed ? "JPYC Terminal" : undefined}
+            >
+              <span style={{ fontSize: 16 }}>🏪</span>
+              {!isCollapsed && <span>JPYC Terminal</span>}
+            </button>
+          </div>
+        </div>
       </nav>
 
       {/* フッター（バージョン情報など） */}

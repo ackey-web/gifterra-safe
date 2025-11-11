@@ -1,12 +1,14 @@
 // src/components/SettingsModal.tsx
 // 設定モーダル（マイページの⚙️アイコンから開く）
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { ContactFormModal } from './ContactFormModal';
 import { NotificationSettings } from './NotificationSettings';
+import { ProfileEditModal } from './ProfileEditModal';
 import { usePrivy } from '@privy-io/react-auth';
 import { useAddress } from '@thirdweb-dev/react';
+import { supabase } from '../lib/supabase';
 
 interface SettingsModalProps {
   onClose: () => void;
@@ -16,10 +18,39 @@ interface SettingsModalProps {
 export function SettingsModal({ onClose, isMobile }: SettingsModalProps) {
   const [showContactForm, setShowContactForm] = useState(false);
   const [showNotificationSettings, setShowNotificationSettings] = useState(false);
+  const [showProfileEdit, setShowProfileEdit] = useState(false);
+  const [userProfile, setUserProfile] = useState<any>(null);
   const { user } = usePrivy();
   const thirdwebAddress = useAddress();
   const privyAddress = user?.wallet?.address;
   const connectedAddress = privyAddress || thirdwebAddress;
+
+  // プロフィール情報を取得
+  useEffect(() => {
+    const fetchProfile = async () => {
+      if (!connectedAddress) return;
+
+      try {
+        const { data, error } = await supabase
+          .from('user_profiles')
+          .select('*')
+          .eq('tenant_id', 'default')
+          .eq('wallet_address', connectedAddress.toLowerCase())
+          .maybeSingle();
+
+        if (error) {
+          console.error('Failed to fetch profile:', error);
+          return;
+        }
+
+        setUserProfile(data);
+      } catch (err) {
+        console.error('Error fetching profile:', err);
+      }
+    };
+
+    fetchProfile();
+  }, [connectedAddress]);
 
   return (
     <>
@@ -98,6 +129,61 @@ export function SettingsModal({ onClose, isMobile }: SettingsModalProps) {
 
         {/* メニューリスト */}
         <div style={{ padding: isMobile ? 16 : 20 }}>
+          {/* プロフィール編集 */}
+          {connectedAddress && (
+            <button
+              onClick={() => setShowProfileEdit(true)}
+              style={{
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
+                padding: isMobile ? 14 : 16,
+                background: 'rgba(255, 255, 255, 0.03)',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+                borderRadius: 12,
+                marginBottom: 12,
+                textDecoration: 'none',
+                color: '#EAF2FF',
+                transition: 'all 0.2s',
+                cursor: 'pointer',
+                textAlign: 'left',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)';
+                e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.3)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)';
+                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+              }}
+            >
+              <span style={{ fontSize: 20 }}>👤</span>
+              <div style={{ flex: 1 }}>
+                <div
+                  style={{
+                    fontSize: isMobile ? 14 : 15,
+                    fontWeight: 600,
+                    marginBottom: 4,
+                  }}
+                >
+                  プロフィール編集
+                </div>
+                <div
+                  style={{
+                    fontSize: isMobile ? 11 : 12,
+                    color: 'rgba(255, 255, 255, 0.6)',
+                  }}
+                >
+                  表示名や受け取り時メッセージを設定
+                </div>
+              </div>
+              <span style={{ fontSize: 14, color: 'rgba(255, 255, 255, 0.4)' }}>
+                →
+              </span>
+            </button>
+          )}
+
           {/* 利用規約 */}
           <a
             href="/terms"
@@ -462,6 +548,39 @@ export function SettingsModal({ onClose, isMobile }: SettingsModalProps) {
           </div>
         </div>,
         document.body
+      )}
+
+      {/* プロフィール編集モーダル */}
+      {showProfileEdit && connectedAddress && (
+        <ProfileEditModal
+          onClose={() => setShowProfileEdit(false)}
+          onSave={async () => {
+            setShowProfileEdit(false);
+            // プロフィール情報を再取得
+            try {
+              const { data, error } = await supabase
+                .from('user_profiles')
+                .select('*')
+                .eq('tenant_id', 'default')
+                .eq('wallet_address', connectedAddress.toLowerCase())
+                .maybeSingle();
+
+              if (!error) {
+                setUserProfile(data);
+              }
+            } catch (err) {
+              console.error('Error refreshing profile:', err);
+            }
+          }}
+          isMobile={isMobile}
+          currentProfile={{
+            display_name: userProfile?.display_name || '',
+            bio: userProfile?.bio || '',
+            avatar_url: userProfile?.avatar_url || '',
+            receive_message: userProfile?.receive_message || 'ありがとうございました。',
+          }}
+          walletAddress={connectedAddress}
+        />
       )}
     </>
   );

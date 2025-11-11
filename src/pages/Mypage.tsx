@@ -6,7 +6,6 @@ import { createPortal } from 'react-dom';
 import { useDisconnect, useSigner, useAddress, ConnectWallet, useChainId, useNetwork } from '@thirdweb-dev/react';
 import { usePrivy, useCreateWallet, useWallets } from '@privy-io/react-auth';
 import { ethers } from 'ethers';
-import { QRScanner } from '../components/QRScanner';
 import { JPYC_TOKEN, TNHT_TOKEN, NHT_TOKEN, SBT_CONTRACT, CONTRACT_ABI, ERC20_MIN_ABI } from '../contract';
 import { useTokenBalances } from '../hooks/useTokenBalances';
 import { useUserNFTs } from '../hooks/useUserNFTs';
@@ -21,6 +20,7 @@ import { supabase } from '../lib/supabase';
 import { SettingsModal } from '../components/SettingsModal';
 import { TransferMessageHistory } from '../components/TransferMessageHistory';
 import { NotificationBell } from '../components/NotificationBell';
+import { X402PaymentSection } from '../components/X402PaymentSection';
 import flowImage from '../assets/flow.png';
 import studioImage from '../assets/studio.png';
 import studioProImage from '../assets/studio-pro.png';
@@ -886,7 +886,7 @@ function FlowModeContent({
       {/* 0. ウォレット接続情報（送金カードの上） */}
       <WalletConnectionInfo isMobile={isMobile} onChainIdChange={onChainIdChange} />
 
-      {/* 1. 送金・受信（縦並び） */}
+      {/* 1. 送金・決済・受信（縦並び） */}
       <div style={{
         display: 'flex',
         flexDirection: 'column',
@@ -894,6 +894,7 @@ function FlowModeContent({
         marginBottom: isMobile ? 40 : 48,
       }}>
         <SendForm isMobile={isMobile} />
+        <X402PaymentSection isMobile={isMobile} />
         <ReceiveAddress isMobile={isMobile} />
       </div>
 
@@ -965,7 +966,6 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
   const [address, setAddress] = useState('');
   const [amount, setAmount] = useState('');
   const [message, setMessage] = useState('');
-  const [showQRScanner, setShowQRScanner] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [isCreatingWallet, setIsCreatingWallet] = useState(false);
   const [showReceiveMessageModal, setShowReceiveMessageModal] = useState(false);
@@ -1580,31 +1580,6 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
               boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)',
             }}
           />
-          {sendMode !== 'tenant' && (
-            <button
-              onClick={() => setShowQRScanner(true)}
-              style={{
-                position: 'absolute',
-                right: isMobile ? 8 : 10,
-                top: '50%',
-                transform: 'translateY(-50%)',
-                padding: isMobile ? '6px 10px' : '8px 12px',
-                background: 'linear-gradient(135deg, #667EEA 0%, #764BA2 100%)',
-                border: 'none',
-                borderRadius: 6,
-                color: '#fff',
-                fontSize: isMobile ? 18 : 20,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                lineHeight: 1,
-              }}
-              title="QRコードスキャン"
-            >
-              📷
-            </button>
-          )}
         </div>
 
         {/* 受取人プロフィール表示 */}
@@ -1907,18 +1882,6 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
             }
           }}
           onSelectTenant={handleTenantSelect}
-        />
-      )}
-
-      {/* QRスキャナーモーダル */}
-      {showQRScanner && (
-        <QRScanner
-          onScan={(scannedAddress) => {
-            setAddress(scannedAddress);
-            setShowQRScanner(false);
-          }}
-          onClose={() => setShowQRScanner(false)}
-          placeholder="ウォレットアドレスを入力"
         />
       )}
 
