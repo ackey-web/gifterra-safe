@@ -4,7 +4,7 @@
 import { useState } from 'react';
 import { useSigner, useAddress } from '@thirdweb-dev/react';
 import { ethers } from 'ethers';
-import { QRScannerSimple } from './QRScannerSimple';
+import { QRScannerCamera } from './QRScannerCamera';
 import { supabase } from '../lib/supabase';
 import { getTokenConfig } from '../config/tokens';
 import {
@@ -26,6 +26,8 @@ interface X402PaymentSectionProps {
   isMobile?: boolean;
 }
 
+const X402_CONSENT_KEY = 'gifterra_x402_consent_accepted';
+
 export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps) {
   const walletAddress = useAddress();
   const signer = useSigner();
@@ -35,6 +37,9 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
   const [isProcessing, setIsProcessing] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null);
   const [balance, setBalance] = useState<string>('0');
+  const [showConsentModal, setShowConsentModal] = useState(false);
+  const [consentAccepted, setConsentAccepted] = useState(false);
+  const [showConfirmation, setShowConfirmation] = useState(false);
 
   const jpycConfig = getTokenConfig('JPYC');
 
@@ -60,9 +65,16 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
         setBalance(ethers.utils.formatUnits(userBalance, decimals));
       }
 
+      // X402形式のQRコードを検知 - 初回同意チェック
+      const hasConsented = localStorage.getItem(X402_CONSENT_KEY) === 'true';
+      if (!hasConsented) {
+        setShowConsentModal(true);
+      } else {
+        setShowConfirmation(true);
+      }
+
       setMessage({ type: 'info', text: '決済内容を確認してください' });
     } catch (error) {
-      console.error('❌ QR decode error:', error);
       setMessage({ type: 'error', text: 'QRコードの読み取りに失敗しました' });
     }
   };
@@ -111,6 +123,9 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
 
       setMessage({ type: 'success', text: '✅ 支払いが完了しました！' });
 
+      // 確認画面を閉じる
+      setShowConfirmation(false);
+
       // 3秒後にリセット
       setTimeout(() => {
         setPaymentData(null);
@@ -118,8 +133,6 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
       }, 3000);
 
     } catch (error: any) {
-      console.error('❌ Payment error:', error);
-
       let errorMessage = '支払いに失敗しました';
       if (error.code === 4001) {
         errorMessage = 'トランザクションがキャンセルされました';
@@ -142,168 +155,99 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
         boxShadow: '0 8px 32px rgba(102, 126, 234, 0.3)',
       }}
     >
-      <h3
-        style={{
-          margin: '0 0 16px 0',
-          fontSize: isMobile ? '18px' : '20px',
-          fontWeight: 'bold',
-          color: '#fff',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-        }}
-      >
-        💳 JPYC 決済
-      </h3>
-
-      {!paymentData ? (
-        // QRスキャンボタン
-        <div style={{ textAlign: 'center' }}>
-          <button
-            onClick={() => setShowScanner(true)}
-            disabled={!walletAddress}
-            style={{
-              width: '100%',
-              padding: isMobile ? '14px' : '16px',
-              fontSize: isMobile ? '16px' : '18px',
-              fontWeight: 'bold',
-              background: walletAddress
-                ? 'rgba(255,255,255,0.95)'
-                : 'rgba(255,255,255,0.3)',
-              color: walletAddress ? '#667eea' : '#fff',
-              border: 'none',
-              borderRadius: '12px',
-              cursor: walletAddress ? 'pointer' : 'not-allowed',
-              boxShadow: walletAddress ? '0 4px 16px rgba(0,0,0,0.1)' : 'none',
-              transition: 'all 0.2s',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '10px',
-            }}
-          >
+      <div>
+        <h3
+          style={{
+            margin: '0 0 8px 0',
+            fontSize: isMobile ? '18px' : '20px',
+            fontWeight: 'bold',
+            color: '#fff',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            flexWrap: 'wrap',
+          }}
+        >
+          <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <img
-              src="/CAMERA.png"
-              alt="camera"
+              src="/JPYC-logo.png"
+              alt="JPYC"
               style={{
-                width: isMobile ? '24px' : '28px',
-                height: isMobile ? '24px' : '28px',
-              }}
-            />
-            スキャンして支払う
-          </button>
-
-          {!walletAddress && (
-            <p style={{ marginTop: '12px', fontSize: '13px', opacity: 0.9, color: '#fff' }}>
-              ウォレット接続が必要です
-            </p>
-          )}
-        </div>
-      ) : (
-        // 支払い確認画面
-        <div>
-          {/* 金額表示 */}
-          <div
-            style={{
-              background: 'rgba(255,255,255,0.2)',
-              borderRadius: '12px',
-              padding: isMobile ? '16px' : '20px',
-              marginBottom: '16px',
-              textAlign: 'center',
+                width: isMobile ? '20px' : '24px',
+                height: isMobile ? '20px' : '24px',
+              objectFit: 'contain',
             }}
-          >
-            <div style={{ fontSize: '12px', opacity: 0.9, marginBottom: '6px', color: '#fff' }}>
-              お支払い金額
-            </div>
-            <div style={{ fontSize: isMobile ? '36px' : '42px', fontWeight: 'bold', color: '#22c55e' }}>
-              ¥{formatPaymentAmount(paymentData.amount, jpycConfig.decimals)}
-            </div>
-            {paymentData.message && (
-              <div style={{ marginTop: '8px', fontSize: '13px', opacity: 0.9, color: '#fff' }}>
-                {paymentData.message}
-              </div>
-            )}
-          </div>
+          />
+          JPYC送信
+          </span>
+          <span style={{
+            fontSize: isMobile ? '10px' : '11px',
+            fontWeight: '600',
+            padding: '3px 8px',
+            background: 'rgba(255, 193, 7, 0.2)',
+            border: '1px solid rgba(255, 193, 7, 0.4)',
+            borderRadius: '4px',
+            color: '#ffc107',
+          }}>
+            実装テスト中
+          </span>
+        </h3>
+        <p
+          style={{
+            margin: '0 0 16px 0',
+            fontSize: '10px',
+            lineHeight: 1.4,
+            color: 'rgba(255,255,255,0.7)',
+            opacity: 0.8,
+          }}
+        >
+          このセクションはJPYC送信（x402ベース／互換・独自実装）です。現在のGIFTERRA FLOWプランでは特典配布とは連動しません。取消不可。返金は当事者間の合意により受領者が別送金で対応する場合があります。GIFTERRAは返金の当事者ではありません。
+        </p>
+      </div>
 
-          {/* 支払先 */}
-          <div style={{ marginBottom: '12px' }}>
-            <div style={{ fontSize: '12px', opacity: 0.8, marginBottom: '4px', color: '#fff' }}>支払先</div>
-            <div
-              style={{
-                fontSize: '11px',
-                fontFamily: 'monospace',
-                background: 'rgba(0,0,0,0.2)',
-                padding: '8px',
-                borderRadius: '6px',
-                wordBreak: 'break-all',
-                color: '#fff',
-              }}
-            >
-              {paymentData.to}
-            </div>
-          </div>
+      {/* QRスキャンボタン - 常に表示 */}
+      <div style={{ textAlign: 'center' }}>
+        <button
+          onClick={() => setShowScanner(true)}
+          disabled={!walletAddress}
+          style={{
+            width: '100%',
+            padding: isMobile ? '14px' : '16px',
+            fontSize: isMobile ? '16px' : '18px',
+            fontWeight: 'bold',
+            background: walletAddress
+              ? 'rgba(255,255,255,0.95)'
+              : 'rgba(255,255,255,0.3)',
+            color: walletAddress ? '#667eea' : '#fff',
+            border: 'none',
+            borderRadius: '12px',
+            cursor: walletAddress ? 'pointer' : 'not-allowed',
+            boxShadow: walletAddress ? '0 4px 16px rgba(0,0,0,0.1)' : 'none',
+            transition: 'all 0.2s',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '10px',
+          }}
+        >
+          <img
+            src="/CAMERA.png"
+            alt="camera"
+            style={{
+              width: isMobile ? '24px' : '28px',
+              height: isMobile ? '24px' : '28px',
+            }}
+          />
+          スキャンして送信する
+        </button>
 
-          {/* 残高表示 */}
-          <div style={{ marginBottom: '16px' }}>
-            <div style={{ fontSize: '12px', opacity: 0.8, marginBottom: '4px', color: '#fff' }}>
-              あなたの残高
-            </div>
-            <div style={{ fontSize: '16px', fontWeight: '600', color: '#fff' }}>¥{balance} JPYC</div>
-          </div>
+        {!walletAddress && (
+          <p style={{ marginTop: '12px', fontSize: '13px', opacity: 0.9, color: '#fff' }}>
+            ウォレット接続が必要です
+          </p>
+        )}
+      </div>
 
-          {/* 有効期限 */}
-          {paymentData.expires && (
-            <div style={{ marginBottom: '16px', fontSize: '12px', opacity: 0.9, color: '#fff' }}>
-              有効期限: 残り {Math.floor(getTimeUntilExpiry(paymentData.expires) / 60)} 分
-            </div>
-          )}
-
-          {/* ボタン */}
-          <div style={{ display: 'flex', gap: '10px' }}>
-            <button
-              onClick={() => {
-                setPaymentData(null);
-                setMessage(null);
-              }}
-              disabled={isProcessing}
-              style={{
-                flex: 1,
-                padding: isMobile ? '12px' : '14px',
-                fontSize: isMobile ? '14px' : '15px',
-                fontWeight: 'bold',
-                background: 'rgba(255,255,255,0.2)',
-                color: 'white',
-                border: 'none',
-                borderRadius: '10px',
-                cursor: isProcessing ? 'not-allowed' : 'pointer',
-                opacity: isProcessing ? 0.5 : 1,
-              }}
-            >
-              キャンセル
-            </button>
-            <button
-              onClick={handlePayment}
-              disabled={isProcessing}
-              style={{
-                flex: 2,
-                padding: isMobile ? '12px' : '14px',
-                fontSize: isMobile ? '14px' : '15px',
-                fontWeight: 'bold',
-                background: isProcessing
-                  ? 'rgba(100,100,100,0.5)'
-                  : 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
-                color: 'white',
-                border: 'none',
-                borderRadius: '10px',
-                cursor: isProcessing ? 'not-allowed' : 'pointer',
-                boxShadow: isProcessing ? 'none' : '0 4px 16px rgba(34, 197, 94, 0.4)',
-              }}
-            >
-              {isProcessing ? '処理中...' : '💰 支払う'}
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* メッセージ表示 */}
       {message && (
@@ -337,11 +281,292 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
 
       {/* QRスキャナー */}
       {showScanner && (
-        <QRScannerSimple
+        <QRScannerCamera
           onScan={handleScan}
           onClose={() => setShowScanner(false)}
-          placeholder="X402決済QRコードを入力"
+          placeholder="X402決済QRコードをスキャン"
         />
+      )}
+
+      {/* 初回同意モーダル (X402検知時) */}
+      {showConsentModal && paymentData && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0,0,0,0.9)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 10000,
+          padding: isMobile ? 16 : 20,
+        }}>
+          <div style={{
+            background: 'linear-gradient(135deg, #1e3a8a 0%, #1e293b 100%)',
+            borderRadius: 20,
+            padding: isMobile ? 24 : 32,
+            maxWidth: 600,
+            width: '100%',
+            maxHeight: '90vh',
+            overflowY: 'auto',
+            boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
+          }}>
+            <h2 style={{
+              fontSize: isMobile ? 20 : 24,
+              marginBottom: 20,
+              textAlign: 'center',
+              color: '#fff',
+            }}>
+              JPYC送受信（x402ベース／互換・独自実装）について
+            </h2>
+
+            <div style={{
+              fontSize: isMobile ? 13 : 14,
+              lineHeight: 1.8,
+              marginBottom: 24,
+              color: '#e0e0e0',
+            }}>
+              <ul style={{ paddingLeft: 20, marginBottom: 20 }}>
+                <li style={{ marginBottom: 12 }}>
+                  GIFTERRAは決済事業者ではありません。
+                </li>
+                <li style={{ marginBottom: 12 }}>
+                  この送受信はGIFTERRAの独自実装で、JPYCがx402を公式提供・連携していることを示すものではありません。
+                </li>
+                <li style={{ marginBottom: 12 }}>
+                  FLOWでは特典配布と連動しません。STUDIO有効時は送金完了後に別イベントとして任意のギフティングが行われる場合があります（支払いの対価ではありません）。
+                </li>
+                <li style={{ marginBottom: 12 }}>
+                  送受信は取消できません。返金は当事者間の合意により受領者が別送金で対応することがあります。GIFTERRAは返金の当事者ではありません。
+                </li>
+              </ul>
+            </div>
+
+            <div style={{ marginBottom: 20 }}>
+              <label style={{
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: 12,
+                cursor: 'pointer',
+                fontSize: isMobile ? 13 : 14,
+                color: '#fff',
+              }}>
+                <input
+                  type="checkbox"
+                  checked={consentAccepted}
+                  onChange={(e) => setConsentAccepted(e.target.checked)}
+                  style={{
+                    marginTop: 4,
+                    width: 18,
+                    height: 18,
+                    cursor: 'pointer',
+                  }}
+                />
+                <span>
+                  同意して続行（
+                  <a href="/terms" target="_blank" style={{ color: '#60a5fa', textDecoration: 'underline' }}>利用規約</a>
+                  {' / '}
+                  <a href="/privacy" target="_blank" style={{ color: '#60a5fa', textDecoration: 'underline' }}>プライバシーポリシー</a>
+                  ）
+                </span>
+              </label>
+            </div>
+
+            <div style={{ display: 'flex', gap: 12 }}>
+              <button
+                onClick={() => {
+                  setShowConsentModal(false);
+                  setPaymentData(null);
+                  setConsentAccepted(false);
+                }}
+                style={{
+                  flex: 1,
+                  padding: isMobile ? 12 : 14,
+                  fontSize: isMobile ? 14 : 15,
+                  fontWeight: '600',
+                  background: 'rgba(255,255,255,0.1)',
+                  color: '#fff',
+                  border: '1px solid rgba(255,255,255,0.2)',
+                  borderRadius: 10,
+                  cursor: 'pointer',
+                }}
+              >
+                キャンセル
+              </button>
+              <button
+                onClick={() => {
+                  localStorage.setItem(X402_CONSENT_KEY, 'true');
+                  setShowConsentModal(false);
+                  setShowConfirmation(true);
+                }}
+                disabled={!consentAccepted}
+                style={{
+                  flex: 2,
+                  padding: isMobile ? 12 : 14,
+                  fontSize: isMobile ? 14 : 15,
+                  fontWeight: '600',
+                  background: consentAccepted
+                    ? 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)'
+                    : 'rgba(255,255,255,0.05)',
+                  color: consentAccepted ? '#fff' : 'rgba(255,255,255,0.3)',
+                  border: 'none',
+                  borderRadius: 10,
+                  cursor: consentAccepted ? 'pointer' : 'not-allowed',
+                  boxShadow: consentAccepted ? '0 4px 16px rgba(34, 197, 94, 0.4)' : 'none',
+                }}
+              >
+                同意して続行
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 送信確認モーダル (毎回表示) */}
+      {showConfirmation && paymentData && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0,0,0,0.9)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 10000,
+          padding: isMobile ? 16 : 20,
+        }}>
+          <div style={{
+            background: 'linear-gradient(135deg, #1e3a8a 0%, #1e293b 100%)',
+            borderRadius: 20,
+            padding: isMobile ? 24 : 32,
+            maxWidth: 500,
+            width: '100%',
+            boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
+          }}>
+            <h2 style={{
+              fontSize: isMobile ? 18 : 22,
+              marginBottom: 16,
+              textAlign: 'center',
+              color: '#fff',
+            }}>
+              送信内容の確認
+            </h2>
+
+            {/* 金額表示 */}
+            <div style={{
+              background: 'rgba(255,255,255,0.1)',
+              borderRadius: 12,
+              padding: isMobile ? 16 : 20,
+              marginBottom: 16,
+              textAlign: 'center',
+            }}>
+              <div style={{ fontSize: 12, opacity: 0.9, marginBottom: 6, color: '#fff' }}>
+                お支払い金額
+              </div>
+              <div style={{ fontSize: isMobile ? 36 : 42, fontWeight: 'bold', color: '#22c55e' }}>
+                ¥{formatPaymentAmount(paymentData.amount, jpycConfig.decimals)}
+              </div>
+              {paymentData.message && (
+                <div style={{ marginTop: 8, fontSize: 13, opacity: 0.9, color: '#fff' }}>
+                  {paymentData.message}
+                </div>
+              )}
+            </div>
+
+            {/* 支払先 */}
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', marginBottom: 6 }}>支払先</div>
+              <div style={{
+                fontSize: 11,
+                fontFamily: 'monospace',
+                background: 'rgba(0,0,0,0.3)',
+                padding: 10,
+                borderRadius: 8,
+                wordBreak: 'break-all',
+                color: '#fff',
+              }}>
+                {paymentData.to}
+              </div>
+            </div>
+
+            {/* 残高表示 */}
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', marginBottom: 6 }}>
+                あなたの残高
+              </div>
+              <div style={{ fontSize: 16, fontWeight: '600', color: '#fff' }}>¥{balance} JPYC</div>
+            </div>
+
+            {/* 有効期限 */}
+            {paymentData.expires && (
+              <div style={{ marginBottom: 16, fontSize: 12, opacity: 0.9, color: '#fff' }}>
+                有効期限: 残り {Math.floor(getTimeUntilExpiry(paymentData.expires) / 60)} 分
+              </div>
+            )}
+
+            {/* 警告テキスト */}
+            <div style={{
+              background: 'rgba(239, 68, 68, 0.2)',
+              border: '1px solid rgba(239, 68, 68, 0.4)',
+              borderRadius: 10,
+              padding: isMobile ? 12 : 14,
+              marginBottom: 20,
+              fontSize: isMobile ? 11 : 12,
+              lineHeight: 1.6,
+              color: '#fca5a5',
+              textAlign: 'center',
+            }}>
+              <strong>取消不可／返金は当事者間の別送金。</strong>
+              <br />
+              GIFTERRAは返金の当事者ではありません。
+              <br />
+              （x402ベース／互換・独自実装）
+            </div>
+
+            {/* ボタン */}
+            <div style={{ display: 'flex', gap: 12 }}>
+              <button
+                onClick={() => {
+                  setShowConfirmation(false);
+                  setPaymentData(null);
+                }}
+                disabled={isProcessing}
+                style={{
+                  flex: 1,
+                  padding: isMobile ? 12 : 14,
+                  fontSize: isMobile ? 14 : 15,
+                  fontWeight: '600',
+                  background: 'rgba(255,255,255,0.1)',
+                  color: '#fff',
+                  border: '1px solid rgba(255,255,255,0.2)',
+                  borderRadius: 10,
+                  cursor: isProcessing ? 'not-allowed' : 'pointer',
+                  opacity: isProcessing ? 0.5 : 1,
+                }}
+              >
+                キャンセル
+              </button>
+              <button
+                onClick={handlePayment}
+                disabled={isProcessing}
+                style={{
+                  flex: 2,
+                  padding: isMobile ? 12 : 14,
+                  fontSize: isMobile ? 14 : 15,
+                  fontWeight: '600',
+                  background: isProcessing
+                    ? 'rgba(100,100,100,0.5)'
+                    : 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 10,
+                  cursor: isProcessing ? 'not-allowed' : 'pointer',
+                  boxShadow: isProcessing ? 'none' : '0 4px 16px rgba(34, 197, 94, 0.4)',
+                }}
+              >
+                {isProcessing ? '処理中...' : '💰 送信する'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

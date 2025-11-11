@@ -255,7 +255,7 @@ export default function AdminSidebar({
               }}
             >
               <span>💳</span>
-              <span>決済</span>
+              <span>受取</span>
             </div>
           )}
 
@@ -267,7 +267,7 @@ export default function AdminSidebar({
                 padding: "8px 0",
                 opacity: 0.6,
               }}
-              title="決済"
+              title="受取"
             >
               💳
             </div>
@@ -302,7 +302,7 @@ export default function AdminSidebar({
               title={isCollapsed ? "JPYC Terminal" : undefined}
             >
               <span style={{ fontSize: 16 }}>🏪</span>
-              {!isCollapsed && <span>JPYC Terminal</span>}
+              {!isCollapsed && <span>JPYC 受取ターミナル</span>}
             </button>
           </div>
         </div>

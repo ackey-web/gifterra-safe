@@ -12,12 +12,22 @@ import {
   parsePaymentAmount,
   generateRequestId,
 } from '../../utils/x402';
+import {
+  generateCSV,
+  downloadCSV,
+  shareReceipt,
+  filterPaymentsByPeriod,
+  calculateSummary,
+} from '../../utils/paymentExport';
 
 interface PaymentHistory {
   id: string;
+  request_id: string;
   amount: string;
   completed_at: string;
   completed_by: string;
+  message?: string;
+  tenant_address: string;
 }
 
 export function PaymentTerminal() {
@@ -37,6 +47,12 @@ export function PaymentTerminal() {
 
   // 決済履歴
   const [recentPayments, setRecentPayments] = useState<PaymentHistory[]>([]);
+  const [allPayments, setAllPayments] = useState<PaymentHistory[]>([]);
+
+  // エクスポート・領収書
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [exportPeriod, setExportPeriod] = useState<'today' | 'week' | 'month'>('today');
+  const [lastCompletedPayment, setLastCompletedPayment] = useState<PaymentHistory | null>(null);
 
   // エラー・成功メッセージ
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -46,16 +62,34 @@ export function PaymentTerminal() {
     if (!walletAddress) return;
 
     const fetchRecentPayments = async () => {
-      const { data } = await supabase
+      // 最近の決済（5件）
+      const { data: recentData } = await supabase
         .from('payment_requests')
-        .select('id, amount, completed_at, completed_by')
+        .select('id, request_id, amount, completed_at, completed_by, message, tenant_address')
         .eq('tenant_address', walletAddress.toLowerCase())
         .eq('status', 'completed')
         .order('completed_at', { ascending: false })
         .limit(5);
 
-      if (data) {
-        setRecentPayments(data);
+      if (recentData) {
+        setRecentPayments(recentData);
+
+        // 最新の完了済み決済を保存（領収書発行用）
+        if (recentData.length > 0) {
+          setLastCompletedPayment(recentData[0]);
+        }
+      }
+
+      // すべての決済（エクスポート用）
+      const { data: allData } = await supabase
+        .from('payment_requests')
+        .select('id, request_id, amount, completed_at, completed_by, message, tenant_address')
+        .eq('tenant_address', walletAddress.toLowerCase())
+        .eq('status', 'completed')
+        .order('completed_at', { ascending: false });
+
+      if (allData) {
+        setAllPayments(allData);
       }
     };
 
@@ -139,6 +173,79 @@ export function PaymentTerminal() {
     }
   };
 
+  // アドレス共有機能
+  const handleShareAddress = async () => {
+    if (!walletAddress) return;
+
+    try {
+      // Web Share API対応チェック
+      if (navigator.share) {
+        await navigator.share({
+          title: 'JPYC決済アドレス',
+          text: `支払先アドレス: ${walletAddress}`,
+        });
+      } else {
+        // フォールバック: クリップボードにコピー
+        await navigator.clipboard.writeText(walletAddress);
+        setMessage({ type: 'success', text: 'アドレスをコピーしました' });
+        setTimeout(() => setMessage(null), 2000);
+      }
+    } catch (error) {
+      // ユーザーがキャンセルした場合など
+      if (error instanceof Error && error.name !== 'AbortError') {
+        console.error('共有エラー:', error);
+      }
+    }
+  };
+
+  // CSVエクスポート
+  const handleExportCSV = () => {
+    try {
+      const filtered = filterPaymentsByPeriod(allPayments, exportPeriod);
+      if (filtered.length === 0) {
+        setMessage({ type: 'error', text: '指定期間のデータがありません' });
+        setTimeout(() => setMessage(null), 2000);
+        return;
+      }
+
+      const csv = generateCSV(filtered);
+      const filename = `jpyc_sales_${exportPeriod}_${new Date().toISOString().split('T')[0]}.csv`;
+      downloadCSV(csv, filename);
+
+      setMessage({ type: 'success', text: `${filtered.length}件のデータをエクスポートしました` });
+      setTimeout(() => setMessage(null), 2000);
+      setShowExportModal(false);
+    } catch (error) {
+      console.error('エクスポートエラー:', error);
+      setMessage({ type: 'error', text: 'エクスポートに失敗しました' });
+    }
+  };
+
+  // 領収書発行
+  const handleShareReceipt = async () => {
+    if (!lastCompletedPayment) {
+      setMessage({ type: 'error', text: '発行可能な領収書がありません' });
+      setTimeout(() => setMessage(null), 2000);
+      return;
+    }
+
+    try {
+      const result = await shareReceipt(lastCompletedPayment);
+
+      if (result.success) {
+        if (result.fallback) {
+          setMessage({ type: 'success', text: '領収書をダウンロードしました' });
+        } else if (!result.cancelled) {
+          setMessage({ type: 'success', text: '領収書を共有しました' });
+        }
+        setTimeout(() => setMessage(null), 2000);
+      }
+    } catch (error) {
+      console.error('領収書発行エラー:', error);
+      setMessage({ type: 'error', text: '領収書発行に失敗しました' });
+    }
+  };
+
   return (
     <div
       style={{
@@ -158,19 +265,38 @@ export function PaymentTerminal() {
           borderBottom: '2px solid rgba(255,255,255,0.2)',
         }}
       >
-        <h1
-          style={{
-            fontSize: '32px',
-            margin: '0 0 8px 0',
-            fontWeight: 'bold',
-            letterSpacing: '1px',
-          }}
-        >
-          💳 JPYC Terminal
-        </h1>
-        <p style={{ fontSize: '14px', opacity: 0.8, margin: 0 }}>
-          {walletAddress ? `店舗: ${walletAddress.slice(0, 8)}...${walletAddress.slice(-6)}` : 'ウォレット未接続'}
-        </p>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+          <h1
+            style={{
+              fontSize: '32px',
+              margin: 0,
+              fontWeight: 'bold',
+              letterSpacing: '1px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+              flexWrap: 'wrap',
+              justifyContent: 'center',
+            }}
+          >
+            <span>💳 JPYC 受取ターミナル</span>
+            <span style={{
+              fontSize: '13px',
+              fontWeight: '600',
+              padding: '4px 12px',
+              background: 'rgba(255, 193, 7, 0.2)',
+              border: '1px solid rgba(255, 193, 7, 0.4)',
+              borderRadius: '6px',
+              color: '#ffc107',
+              letterSpacing: '0.5px',
+            }}>
+              実装テスト中
+            </span>
+          </h1>
+          <p style={{ fontSize: '14px', opacity: 0.8, margin: 0 }}>
+            {walletAddress ? `店舗: ${walletAddress.slice(0, 8)}...${walletAddress.slice(-6)}` : 'ウォレット未接続'}
+          </p>
+        </div>
       </header>
 
       {!walletAddress ? (
@@ -477,6 +603,47 @@ export function PaymentTerminal() {
                   <div style={{ marginTop: '8px', fontSize: '14px', opacity: 0.7 }}>
                     有効期限: {expiryMinutes}分
                   </div>
+
+                  {/* 支払先アドレス表示（タップで共有） */}
+                  {walletAddress && (
+                    <button
+                      onClick={handleShareAddress}
+                      style={{
+                        marginTop: '16px',
+                        padding: '12px 20px',
+                        background: 'rgba(59, 130, 246, 0.1)',
+                        border: '1px solid rgba(59, 130, 246, 0.3)',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s',
+                        width: '100%',
+                        maxWidth: '350px',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = 'rgba(59, 130, 246, 0.2)';
+                        e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.5)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = 'rgba(59, 130, 246, 0.1)';
+                        e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.3)';
+                      }}
+                    >
+                      <div style={{ fontSize: '11px', opacity: 0.7, marginBottom: '4px' }}>
+                        📤 タップして共有 (AirDrop/Nearby Share対応)
+                      </div>
+                      <div
+                        style={{
+                          fontSize: '13px',
+                          fontFamily: 'monospace',
+                          fontWeight: '600',
+                          color: '#3b82f6',
+                          wordBreak: 'break-all',
+                        }}
+                      >
+                        {walletAddress.slice(0, 10)}...{walletAddress.slice(-8)}
+                      </div>
+                    </button>
+                  )}
                 </>
               ) : (
                 <div style={{ opacity: 0.5 }}>
@@ -532,6 +699,176 @@ export function PaymentTerminal() {
                   ))}
                 </div>
               )}
+            </div>
+
+            {/* エクスポート・領収書ボタン */}
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button
+                onClick={() => setShowExportModal(true)}
+                disabled={allPayments.length === 0}
+                style={{
+                  flex: 1,
+                  padding: '14px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  background: allPayments.length > 0 ? 'rgba(59, 130, 246, 0.2)' : 'rgba(255,255,255,0.05)',
+                  color: allPayments.length > 0 ? '#3b82f6' : 'rgba(255,255,255,0.3)',
+                  border: `1px solid ${allPayments.length > 0 ? 'rgba(59, 130, 246, 0.4)' : 'rgba(255,255,255,0.1)'}`,
+                  borderRadius: '10px',
+                  cursor: allPayments.length > 0 ? 'pointer' : 'not-allowed',
+                  transition: 'all 0.2s',
+                }}
+              >
+                📥 売上エクスポート
+              </button>
+              <button
+                onClick={handleShareReceipt}
+                disabled={!lastCompletedPayment}
+                style={{
+                  flex: 1,
+                  padding: '14px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  background: lastCompletedPayment ? 'rgba(34, 197, 94, 0.2)' : 'rgba(255,255,255,0.05)',
+                  color: lastCompletedPayment ? '#22c55e' : 'rgba(255,255,255,0.3)',
+                  border: `1px solid ${lastCompletedPayment ? 'rgba(34, 197, 94, 0.4)' : 'rgba(255,255,255,0.1)'}`,
+                  borderRadius: '10px',
+                  cursor: lastCompletedPayment ? 'pointer' : 'not-allowed',
+                  transition: 'all 0.2s',
+                }}
+              >
+                📄 領収書発行
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* エクスポートモーダル */}
+      {showExportModal && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0,0,0,0.7)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+          }}
+          onClick={() => setShowExportModal(false)}
+        >
+          <div
+            style={{
+              background: 'linear-gradient(135deg, #1e3a8a 0%, #1e293b 100%)',
+              borderRadius: '16px',
+              padding: '30px',
+              maxWidth: '450px',
+              width: '90%',
+              boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 style={{ margin: '0 0 24px 0', fontSize: '24px', color: '#fff' }}>📥 売上データエクスポート</h2>
+
+            {/* 期間選択 */}
+            <div style={{ marginBottom: '24px' }}>
+              <div style={{ fontSize: '14px', marginBottom: '12px', opacity: 0.9, color: '#fff' }}>エクスポート期間</div>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                {(['today', 'week', 'month'] as const).map((period) => (
+                  <button
+                    key={period}
+                    onClick={() => setExportPeriod(period)}
+                    style={{
+                      flex: 1,
+                      padding: '12px',
+                      fontSize: '13px',
+                      fontWeight: '600',
+                      background: exportPeriod === period ? 'rgba(59, 130, 246, 0.3)' : 'rgba(255,255,255,0.1)',
+                      color: '#fff',
+                      border: `2px solid ${exportPeriod === period ? '#3b82f6' : 'transparent'}`,
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                    }}
+                  >
+                    {period === 'today' ? '今日' : period === 'week' ? '今週' : '今月'}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* 集計情報 */}
+            <div
+              style={{
+                background: 'rgba(255,255,255,0.1)',
+                borderRadius: '12px',
+                padding: '16px',
+                marginBottom: '24px',
+              }}
+            >
+              {(() => {
+                const filtered = filterPaymentsByPeriod(allPayments, exportPeriod);
+                const summary = calculateSummary(filtered);
+                return (
+                  <>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', color: '#fff' }}>
+                      <span style={{ fontSize: '13px', opacity: 0.8 }}>件数</span>
+                      <span style={{ fontSize: '16px', fontWeight: '600' }}>{summary.count}件</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', color: '#fff' }}>
+                      <span style={{ fontSize: '13px', opacity: 0.8 }}>合計売上</span>
+                      <span style={{ fontSize: '18px', fontWeight: '700', color: '#22c55e' }}>
+                        ¥{summary.total.toLocaleString()}
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#fff' }}>
+                      <span style={{ fontSize: '13px', opacity: 0.8 }}>平均単価</span>
+                      <span style={{ fontSize: '14px', fontWeight: '600' }}>¥{summary.average.toLocaleString()}</span>
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
+
+            {/* ボタン */}
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button
+                onClick={() => setShowExportModal(false)}
+                style={{
+                  flex: 1,
+                  padding: '14px',
+                  fontSize: '15px',
+                  fontWeight: '600',
+                  background: 'rgba(255,255,255,0.1)',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '10px',
+                  cursor: 'pointer',
+                }}
+              >
+                キャンセル
+              </button>
+              <button
+                onClick={handleExportCSV}
+                style={{
+                  flex: 2,
+                  padding: '14px',
+                  fontSize: '15px',
+                  fontWeight: '600',
+                  background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '10px',
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 16px rgba(59, 130, 246, 0.4)',
+                }}
+              >
+                📥 CSVダウンロード
+              </button>
             </div>
           </div>
         </div>

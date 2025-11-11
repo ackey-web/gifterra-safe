@@ -14,13 +14,13 @@ import AdminDashboard from "./admin/Dashboard";
 import { SuperAdminPage } from "./pages/SuperAdmin";
 import { TenantProvider } from "./admin/contexts/TenantContext";
 import { PaymentTerminal } from "./admin/components/PaymentTerminal";
+import { PaymentTerminalMobile } from "./admin/components/PaymentTerminalMobile";
 import { ThirdwebProvider } from "@thirdweb-dev/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AppWrapper } from "./components/AppWrapper";
 import { TermsOfServicePage } from "./pages/TermsOfService";
 import { PrivacyPolicyPage } from "./pages/PrivacyPolicy";
 import { ProfilePage } from "./pages/ProfilePage";
-import { PaymentScanPage } from "./pages/PaymentScanPage";
 
 // Polyfill Buffer for browser environment (required for Web3 libraries)
 window.Buffer = window.Buffer || Buffer;
@@ -65,6 +65,9 @@ const queryClient = new QueryClient({
 console.log('🚀 main.tsx loading...', {
   pathname: location.pathname,
   search: location.search,
+  isMobileDevice: window.innerWidth < 768 || /iPhone|iPod|Android/i.test(navigator.userAgent),
+  screenWidth: window.innerWidth,
+  userAgent: navigator.userAgent,
 });
 
 // URL判定
@@ -92,13 +95,17 @@ const wantsVending = path.includes("/vending") || path.includes("/content") || u
 const wantsAdmin = path.includes("/admin") || uiParam === "admin";
 const wantsSuperAdmin = path.includes("/super-admin") || uiParam === "super-admin";
 const wantsTerminal = path.includes("/terminal") || uiParam === "terminal";
-const wantsPayment = path.includes("/payment") || uiParam === "payment";
 const wantsLegacy = path.includes("/legacy");
 const wantsLogin = path.includes("/login") || uiParam === "login";
 const wantsMypage = path.includes("/mypage") || uiParam === "mypage";
 const wantsTerms = path.includes("/terms");
 const wantsPrivacy = path.includes("/privacy");
 const wantsProfile = path.includes("/profile") || uiParam === "profile";
+
+// =============================
+// デバイス判別（モバイル vs タブレット/デスクトップ）
+// =============================
+const isMobileDevice = window.innerWidth < 768 || /iPhone|iPod|Android/i.test(navigator.userAgent);
 
 // =============================
 // ReactDOM ルート作成
@@ -147,7 +154,7 @@ if (wantsTerms) {
     </React.StrictMode>
   );
 } else if (wantsTerminal) {
-  // タブレット専用レジ（Privy + Thirdweb）
+  // 受取ターミナルUI（デバイス判別：モバイル/タブレット）
   root.render(
     <React.StrictMode>
       <QueryClientProvider client={queryClient}>
@@ -195,7 +202,7 @@ if (wantsTerms) {
               },
             }}
           >
-            <PaymentTerminal />
+            {isMobileDevice ? <PaymentTerminalMobile /> : <PaymentTerminal />}
           </PrivyProvider>
         </ThirdwebProvider>
       </QueryClientProvider>
@@ -314,8 +321,6 @@ if (wantsTerms) {
                 <MypagePage />
               ) : wantsProfile ? (
                 <ProfilePage />
-              ) : wantsPayment ? (
-                <PaymentScanPage />
               ) : wantsReward ? (
                 <RewardApp />
               ) : wantsTip ? (

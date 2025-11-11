@@ -204,8 +204,6 @@ export const LoginPage: React.FC = () => {
             onClick={() => {
               if (typeof login === 'function') {
                 login();
-              } else {
-                console.error('❌ login is not a function:', login);
               }
             }}
             style={{

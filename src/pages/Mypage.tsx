@@ -621,8 +621,9 @@ function Header({ viewMode, setViewMode, isMobile, tenantRank, showSettingsModal
 function WalletConnectionInfo({ isMobile, onChainIdChange }: { isMobile: boolean; onChainIdChange: (chainId: number | undefined) => void }) {
   const address = useAddress(); // Thirdwebウォレット
   const thirdwebChainId = useChainId();
-  const { user, authenticated } = usePrivy(); // Privyユーザー情報
+  const { user, authenticated, ready } = usePrivy(); // Privyユーザー情報
   const [actualChainId, setActualChainId] = useState<number | undefined>(undefined);
+  const [isLoadingWallet, setIsLoadingWallet] = useState(true);
 
   // 実際のチェーンIDを取得（MetaMaskなど外部ウォレット対応）
   useEffect(() => {
@@ -681,6 +682,22 @@ function WalletConnectionInfo({ isMobile, onChainIdChange }: { isMobile: boolean
 
   const [isCreatingWallet, setIsCreatingWallet] = useState(false);
 
+  // ウォレット読み込み状態の監視
+  useEffect(() => {
+    // Privyが準備完了していて、ユーザー認証済みまたはアドレスが取得できた場合
+    if (ready && (authenticated || address)) {
+      // 少し遅延を持たせてローディングを解除（UIの安定性のため）
+      const timer = setTimeout(() => {
+        setIsLoadingWallet(false);
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+    // Privyが準備完了していて、認証もアドレスもない場合
+    else if (ready && !authenticated && !address) {
+      setIsLoadingWallet(false);
+    }
+  }, [ready, authenticated, address, user]);
+
   // デバッグログ
   useEffect(() => {
   }, [authenticated, user, address, thirdwebChainId, actualChainId]);
@@ -732,7 +749,40 @@ function WalletConnectionInfo({ isMobile, onChainIdChange }: { isMobile: boolean
     }}>
       {/* ウォレット接続ボタン */}
       <div style={{ flex: isMobile ? 'none' : 1 }}>
-        {displayAddress ? (
+        {isLoadingWallet ? (
+          // ウォレット読み込み中表示
+          <div style={{
+            width: '100%',
+            height: isMobile ? 40 : 44,
+            borderRadius: 8,
+            background: 'rgba(255, 255, 255, 0.05)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '0 12px',
+            fontSize: isMobile ? 12 : 14,
+            fontWeight: 600,
+            color: '#ffffff',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            gap: 8,
+          }}>
+            <div style={{
+              width: 16,
+              height: 16,
+              border: '2px solid rgba(255, 255, 255, 0.3)',
+              borderTop: '2px solid #ffffff',
+              borderRadius: '50%',
+              animation: 'spin 1s linear infinite',
+            }} />
+            <span style={{ opacity: 0.8 }}>ウォレット接続中...</span>
+            <style>{`
+              @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+              }
+            `}</style>
+          </div>
+        ) : displayAddress ? (
           // ウォレットアドレス表示
           <div style={{
             width: '100%',
@@ -886,7 +936,7 @@ function FlowModeContent({
       {/* 0. ウォレット接続情報（送金カードの上） */}
       <WalletConnectionInfo isMobile={isMobile} onChainIdChange={onChainIdChange} />
 
-      {/* 1. 送金・決済・受信（縦並び） */}
+      {/* 1. 送金・受信（縦並び） */}
       <div style={{
         display: 'flex',
         flexDirection: 'column',
@@ -1251,9 +1301,15 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
 
         // トランザクション成功後、Supabaseに送金メッセージを保存
         try {
+          // 送金元アドレスをログ出力（デバッグ用）
+          console.log('📤 Transfer message save - fromAddress:', walletAddress);
+          console.log('📤 Transfer message save - actualAddress:', actualAddress);
+          console.log('📤 Transfer message save - privyEmbeddedAddress:', privyEmbeddedAddress);
+          console.log('📤 Transfer message save - thirdwebAddress:', thirdwebAddress);
+
           await saveTransferMessage({
             tenantId: selectedTenant?.id || 'default', // テナント申請していない場合は'default'を使用
-            fromAddress: actualAddress || '',
+            fromAddress: walletAddress || '',
             toAddress: trimmedAddress,
             tokenSymbol: selectedToken,
             amount: amount,
@@ -1319,6 +1375,7 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
       borderRadius: isMobile ? 16 : 24,
       padding: isMobile ? 20 : 28,
       boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
+      position: 'relative',
     }}>
       <h2 style={{ margin: '0 0 20px 0', fontSize: isMobile ? 18 : 22, fontWeight: 700, color: '#1a1a1a' }}>
         送金
@@ -3210,11 +3267,11 @@ function ReceiveAddress({ isMobile }: { isMobile: boolean }) {
       <div style={{
         background: '#ffffff',
         border: '2px solid rgba(59, 130, 246, 0.2)',
-        borderRadius: isMobile ? 16 : 24,
-        padding: isMobile ? 20 : 28,
+        borderRadius: isMobile ? 16 : 20,
+        padding: isMobile ? '16px 20px' : '20px 28px',
         boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
       }}>
-        <h2 style={{ margin: '0 0 12px 0', fontSize: isMobile ? 18 : 22, fontWeight: 700, color: '#1a1a1a' }}>
+        <h2 style={{ margin: '0 0 8px 0', fontSize: isMobile ? 18 : 20, fontWeight: 700, color: '#1a1a1a' }}>
           💴 受け取りアドレス
         </h2>
 
@@ -3223,11 +3280,11 @@ function ReceiveAddress({ isMobile }: { isMobile: boolean }) {
           <div
             onClick={handleCopy}
             style={{
-              padding: isMobile ? '14px' : '16px',
+              padding: isMobile ? '10px' : '12px',
               background: copySuccess ? '#d1fae5' : '#f7fafc',
               border: copySuccess ? '2px solid #10b981' : '2px solid #e2e8f0',
               borderRadius: 12,
-              marginBottom: 12,
+              marginBottom: 8,
               cursor: 'pointer',
               transition: 'all 0.2s',
             }}
@@ -3235,7 +3292,7 @@ function ReceiveAddress({ isMobile }: { isMobile: boolean }) {
             <div style={{
               fontSize: isMobile ? 11 : 12,
               color: '#718096',
-              marginBottom: 6,
+              marginBottom: 4,
               fontWeight: 600,
             }}>
               {copySuccess ? '✅ コピーしました！' : '📋 タップしてコピー'}
@@ -3257,7 +3314,7 @@ function ReceiveAddress({ isMobile }: { isMobile: boolean }) {
           disabled={!address}
           style={{
             width: '100%',
-            padding: isMobile ? '14px' : '16px',
+            padding: isMobile ? '12px' : '14px',
             background: address
               ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
               : '#cccccc',
