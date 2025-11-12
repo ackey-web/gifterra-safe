@@ -324,6 +324,25 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
         />
       )}
 
+      {/* デバッグ表示 - 状態確認 */}
+      <div style={{
+        position: 'fixed',
+        top: 10,
+        left: 10,
+        background: 'orange',
+        color: 'black',
+        padding: 10,
+        zIndex: 99999999,
+        fontSize: 12,
+        fontWeight: 'bold',
+        maxWidth: 200,
+        wordBreak: 'break-all',
+      }}>
+        showConsent: {String(showConsentModal)}<br/>
+        showConfirm: {String(showConfirmation)}<br/>
+        hasData: {String(!!paymentData)}
+      </div>
+
       {/* デバッグ表示 */}
       {showConsentModal && !paymentData && (
         <div style={{
