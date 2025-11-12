@@ -204,6 +204,10 @@ export function ContactFormModal({ onClose, isMobile, userEmail }: ContactFormMo
               >
                 お問い合わせ内容を入力してください。
                 担当者が48時間以内にご連絡いたします。
+                <br />
+                <span style={{ fontSize: isMobile ? 11 : 12, color: 'rgba(255, 255, 255, 0.5)' }}>
+                  お急ぎの場合: eleven.jubilantbass@gmail.com
+                </span>
               </p>
 
               {/* お名前 */}
