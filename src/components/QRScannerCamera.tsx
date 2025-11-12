@@ -69,10 +69,27 @@ export function QRScannerCamera({ onScan, onClose, placeholder = 'X402決済コ�
             // QRコード読み取り成功
             console.log('📷 QRコード読み取り成功:', decodedText);
 
-            if (isMounted.current) {
-              scanner.stop().then(() => {
-                console.log('📷 カメラ停止完了 - バリデーション開始');
+            if (isMounted.current && scannerRef.current) {
+              // スキャナーの状態を確認してから停止
+              const stopScanner = async () => {
+                try {
+                  if (scannerRef.current) {
+                    const state = await scannerRef.current.getState();
+                    console.log('📷 スキャナー状態:', state);
 
+                    // スキャナーが実行中の場合のみ停止
+                    if (state === 2) { // Html5QrcodeScannerState.SCANNING = 2
+                      await scannerRef.current.stop();
+                      console.log('📷 カメラ停止完了');
+                    }
+                  }
+                } catch (err) {
+                  console.warn('⚠️ カメラ停止時の警告:', err);
+                  // 停止エラーは無視して続行
+                }
+
+                // バリデーション処理
+                console.log('📷 バリデーション開始');
                 const validation = validateAndProcessScan(decodedText);
                 if (validation.isValid) {
                   console.log('✅ バリデーション成功 - onScan呼び出し');
@@ -84,9 +101,9 @@ export function QRScannerCamera({ onScan, onClose, placeholder = 'X402決済コ�
                   setIsScanning(false);
                   setShowManualInput(true);
                 }
-              }).catch((err) => {
-                console.error('❌ カメラ停止エラー:', err);
-              });
+              };
+
+              stopScanner();
             }
           },
           (errorMessage) => {
