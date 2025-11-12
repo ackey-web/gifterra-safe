@@ -18,6 +18,7 @@ export function QRScannerCamera({ onScan, onClose, placeholder = 'X402決済コ�
   const [cameraError, setCameraError] = useState<string | null>(null);
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const isMounted = useRef(true);
+  const isStoppingRef = useRef(false); // 停止処理中フラグ
 
   // X402形式かウォレットアドレスかを判定してバリデーション
   const validateAndProcessScan = (data: string): { isValid: boolean; error?: string } => {
@@ -69,26 +70,28 @@ export function QRScannerCamera({ onScan, onClose, placeholder = 'X402決済コ�
             // QRコード読み取り成功
             console.log('📷 QRコード読み取り成功:', decodedText);
 
+            // 二重呼び出し防止
+            if (isStoppingRef.current) {
+              console.log('⚠️ 既に停止処理中のため、スキップします');
+              return;
+            }
+
             if (isMounted.current && scannerRef.current) {
-              // スキャナーの状態を確認してから停止
+              isStoppingRef.current = true; // 停止処理開始
+
+              // スキャナー停止とバリデーション処理
               const stopScanner = async () => {
                 try {
                   if (scannerRef.current) {
-                    const state = await scannerRef.current.getState();
-                    console.log('📷 スキャナー状態:', state);
-
-                    // スキャナーが実行中の場合のみ停止
-                    if (state === 2) { // Html5QrcodeScannerState.SCANNING = 2
-                      await scannerRef.current.stop();
-                      console.log('📷 カメラ停止完了');
-                    }
+                    await scannerRef.current.stop();
+                    console.log('📷 カメラ停止完了');
                   }
                 } catch (err) {
                   console.warn('⚠️ カメラ停止時の警告:', err);
                   // 停止エラーは無視して続行
                 }
 
-                // バリデーション処理
+                // バリデーション処理（エラーが発生しても必ず実行）
                 console.log('📷 バリデーション開始');
                 const validation = validateAndProcessScan(decodedText);
                 if (validation.isValid) {
@@ -100,6 +103,7 @@ export function QRScannerCamera({ onScan, onClose, placeholder = 'X402決済コ�
                   setCameraError(validation.error || '無効なQRコードです');
                   setIsScanning(false);
                   setShowManualInput(true);
+                  isStoppingRef.current = false; // 失敗時はフラグをリセット
                 }
               };
 
