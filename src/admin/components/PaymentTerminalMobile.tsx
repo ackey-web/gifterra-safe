@@ -727,7 +727,7 @@ export function PaymentTerminalMobile() {
                 onClick={(e) => e.stopPropagation()}
               >
                 <h2 style={{ fontSize: '20px', marginBottom: '20px', textAlign: 'center' }}>
-                  📥 売上データエクスポート
+                  📥 受信履歴エクスポート
                 </h2>
 
                 {/* 期間選択 */}
@@ -779,7 +779,7 @@ export function PaymentTerminalMobile() {
                       }}
                     >
                       <div style={{ fontSize: '12px', opacity: 0.7, marginBottom: '8px' }}>
-                        選択期間の売上サマリー
+                        選択期間の受信サマリー
                       </div>
                       <div
                         style={{
@@ -790,7 +790,7 @@ export function PaymentTerminalMobile() {
                         }}
                       >
                         <div>
-                          <div style={{ fontSize: '11px', opacity: 0.7 }}>総売上</div>
+                          <div style={{ fontSize: '11px', opacity: 0.7 }}>合計受信額</div>
                           <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#22c55e' }}>
                             {summary.total.toLocaleString()} JPYC
                           </div>
@@ -802,7 +802,7 @@ export function PaymentTerminalMobile() {
                           </div>
                         </div>
                         <div style={{ gridColumn: 'span 2' }}>
-                          <div style={{ fontSize: '11px', opacity: 0.7 }}>平均単価</div>
+                          <div style={{ fontSize: '11px', opacity: 0.7 }}>平均受信額</div>
                           <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#22c55e' }}>
                             {summary.average.toLocaleString()} JPYC
                           </div>
