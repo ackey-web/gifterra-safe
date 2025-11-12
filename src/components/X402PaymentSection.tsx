@@ -736,11 +736,12 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
               <div style={{ fontSize: isMobile ? 36 : 42, fontWeight: 'bold', color: '#16a34a' }}>
                 {formatPaymentAmount(paymentData.amount, jpycConfig.decimals)} JPYC
               </div>
-              {paymentData.message && (
+              {/* 法務リスク回避のため、QRコード作成者のメッセージは非表示 */}
+              {/* paymentData.message && (
                 <div style={{ marginTop: 8, fontSize: 13, color: '#166534' }}>
                   {paymentData.message}
                 </div>
-              )}
+              ) */}
             </div>
 
             {/* 送信先 */}
