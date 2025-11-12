@@ -65,6 +65,17 @@ export function PaymentTerminal() {
   // エラー・成功メッセージ
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
+  // 設定モーダル
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [presetAmounts, setPresetAmounts] = useState<number[]>([100, 300, 500, 1000, 1500, 2000]);
+  const [tempPresetAmounts, setTempPresetAmounts] = useState<number[]>([100, 300, 500, 1000, 1500, 2000]);
+  const [tempExpiryMinutes, setTempExpiryMinutes] = useState(5);
+
+  // 受信履歴のプライバシー設定
+  const [historyPrivacy, setHistoryPrivacy] = useState(false);
+  const [historyPage, setHistoryPage] = useState(0);
+  const itemsPerPage = 5;
+
   // 決済履歴の自動更新
   useEffect(() => {
     if (!walletAddress) return;
@@ -107,6 +118,58 @@ export function PaymentTerminal() {
     const interval = setInterval(fetchRecentPayments, 10000);
     return () => clearInterval(interval);
   }, [walletAddress]);
+
+  // LocalStorageから設定を読み込み
+  useEffect(() => {
+    try {
+      const savedPresets = localStorage.getItem('terminal_preset_amounts');
+      const savedExpiry = localStorage.getItem('terminal_qr_expiry');
+      const savedPrivacy = localStorage.getItem('terminal_history_privacy');
+
+      if (savedPresets) {
+        const parsed = JSON.parse(savedPresets);
+        setPresetAmounts(parsed);
+        setTempPresetAmounts(parsed);
+      }
+
+      if (savedExpiry) {
+        const expiryValue = parseInt(savedExpiry);
+        setExpiryMinutes(expiryValue);
+        setTempExpiryMinutes(expiryValue);
+      }
+
+      if (savedPrivacy) {
+        setHistoryPrivacy(savedPrivacy === 'true');
+      }
+    } catch (error) {
+      console.error('設定の読み込みエラー:', error);
+    }
+  }, []);
+
+  // 設定を保存
+  const handleSaveSettings = () => {
+    try {
+      localStorage.setItem('terminal_preset_amounts', JSON.stringify(tempPresetAmounts));
+      localStorage.setItem('terminal_qr_expiry', tempExpiryMinutes.toString());
+
+      setPresetAmounts(tempPresetAmounts);
+      setExpiryMinutes(tempExpiryMinutes);
+
+      setShowSettingsModal(false);
+      setMessage({ type: 'success', text: '設定を保存しました' });
+      setTimeout(() => setMessage(null), 2000);
+    } catch (error) {
+      console.error('設定の保存エラー:', error);
+      setMessage({ type: 'error', text: '設定の保存に失敗しました' });
+    }
+  };
+
+  // プライバシー設定の保存
+  const toggleHistoryPrivacy = () => {
+    const newValue = !historyPrivacy;
+    setHistoryPrivacy(newValue);
+    localStorage.setItem('terminal_history_privacy', newValue.toString());
+  };
 
   // テンキー入力
   const handleNumberClick = (num: string) => {
@@ -271,8 +334,47 @@ export function PaymentTerminal() {
           marginBottom: '20px',
           paddingBottom: '15px',
           borderBottom: '2px solid rgba(255,255,255,0.2)',
+          position: 'relative',
         }}
       >
+        {/* 設定ボタン */}
+        {walletAddress && walletConfirmed && (
+          <button
+            onClick={() => {
+              setTempPresetAmounts([...presetAmounts]);
+              setTempExpiryMinutes(expiryMinutes);
+              setShowSettingsModal(true);
+            }}
+            style={{
+              position: 'absolute',
+              right: 0,
+              top: 0,
+              width: '44px',
+              height: '44px',
+              background: 'rgba(255, 255, 255, 0.1)',
+              border: '1px solid rgba(255, 255, 255, 0.2)',
+              borderRadius: '10px',
+              color: '#fff',
+              fontSize: '20px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transition: 'all 0.2s',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)';
+              e.currentTarget.style.transform = 'scale(1.05)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+              e.currentTarget.style.transform = 'scale(1)';
+            }}
+          >
+            ⚙️
+          </button>
+        )}
+
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
           <h1
             style={{
@@ -509,9 +611,9 @@ export function PaymentTerminal() {
             >
               <h3 style={{ margin: '0 0 12px 0', fontSize: '16px', opacity: 0.9 }}>よく使う金額</h3>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
-                {[100, 300, 500, 1000, 1500, 2000].map((preset) => (
+                {presetAmounts.map((preset, index) => (
                   <button
-                    key={preset}
+                    key={`preset-${index}`}
                     onClick={() => handlePresetAmount(preset)}
                     style={{
                       padding: '16px',
@@ -735,43 +837,130 @@ export function PaymentTerminal() {
                 padding: '20px',
               }}
             >
-              <h3 style={{ margin: '0 0 16px 0', fontSize: '18px' }}>📊 最近の受信履歴</h3>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                <h3 style={{ margin: 0, fontSize: '18px' }}>📊 最近の受信履歴</h3>
+                <button
+                  onClick={toggleHistoryPrivacy}
+                  style={{
+                    width: '36px',
+                    height: '36px',
+                    background: historyPrivacy ? 'rgba(59, 130, 246, 0.2)' : 'rgba(255, 255, 255, 0.1)',
+                    border: `1px solid ${historyPrivacy ? 'rgba(59, 130, 246, 0.4)' : 'rgba(255, 255, 255, 0.2)'}`,
+                    borderRadius: '8px',
+                    color: '#fff',
+                    fontSize: '16px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    transition: 'all 0.2s',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = historyPrivacy ? 'rgba(59, 130, 246, 0.3)' : 'rgba(255, 255, 255, 0.15)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = historyPrivacy ? 'rgba(59, 130, 246, 0.2)' : 'rgba(255, 255, 255, 0.1)';
+                  }}
+                  title={historyPrivacy ? '金額を表示' : '金額を非表示'}
+                >
+                  {historyPrivacy ? '👁️' : '👁️‍🗨️'}
+                </button>
+              </div>
               {recentPayments.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '20px', opacity: 0.5 }}>決済履歴がありません</div>
               ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  {recentPayments.map((payment) => (
-                    <div
-                      key={payment.id}
-                      style={{
-                        background: 'rgba(34, 197, 94, 0.1)',
-                        borderRadius: '8px',
-                        padding: '12px 16px',
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                      }}
-                    >
-                      <div>
-                        <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#22c55e' }}>
-                          {parseInt(payment.amount).toLocaleString()} JPYC
-                        </div>
-                        <div style={{ fontSize: '11px', opacity: 0.7, marginTop: '2px' }}>
-                          {new Date(payment.completed_at).toLocaleString('ja-JP')}
-                        </div>
-                      </div>
+                <>
+                  <div
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '8px',
+                      maxHeight: '320px',
+                      overflowY: 'auto',
+                    }}
+                  >
+                    {recentPayments.slice(historyPage * itemsPerPage, (historyPage + 1) * itemsPerPage).map((payment) => (
                       <div
+                        key={payment.id}
                         style={{
-                          fontSize: '11px',
-                          fontFamily: 'monospace',
-                          opacity: 0.6,
+                          background: 'rgba(34, 197, 94, 0.1)',
+                          borderRadius: '8px',
+                          padding: '12px 16px',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
                         }}
                       >
-                        {payment.completed_by.slice(0, 8)}...
+                        <div>
+                          <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#22c55e' }}>
+                            {historyPrivacy ? '****' : `${parseInt(payment.amount).toLocaleString()} JPYC`}
+                          </div>
+                          <div style={{ fontSize: '11px', opacity: 0.7, marginTop: '2px' }}>
+                            {new Date(payment.completed_at).toLocaleString('ja-JP')}
+                          </div>
+                        </div>
+                        <div
+                          style={{
+                            fontSize: '11px',
+                            fontFamily: 'monospace',
+                            opacity: 0.6,
+                          }}
+                        >
+                          {payment.completed_by.slice(0, 8)}...
+                        </div>
                       </div>
+                    ))}
+                  </div>
+                  {/* ページネーション */}
+                  {recentPayments.length > itemsPerPage && (
+                    <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginTop: '12px' }}>
+                      <button
+                        onClick={() => setHistoryPage(Math.max(0, historyPage - 1))}
+                        disabled={historyPage === 0}
+                        style={{
+                          padding: '8px 16px',
+                          fontSize: '12px',
+                          fontWeight: '600',
+                          background: historyPage === 0 ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.1)',
+                          color: historyPage === 0 ? 'rgba(255,255,255,0.3)' : '#fff',
+                          border: 'none',
+                          borderRadius: '6px',
+                          cursor: historyPage === 0 ? 'not-allowed' : 'pointer',
+                        }}
+                      >
+                        ← 前へ
+                      </button>
+                      <span style={{ display: 'flex', alignItems: 'center', fontSize: '12px', opacity: 0.7 }}>
+                        {historyPage + 1} / {Math.ceil(recentPayments.length / itemsPerPage)}
+                      </span>
+                      <button
+                        onClick={() => setHistoryPage(Math.min(Math.ceil(recentPayments.length / itemsPerPage) - 1, historyPage + 1))}
+                        disabled={historyPage >= Math.ceil(recentPayments.length / itemsPerPage) - 1}
+                        style={{
+                          padding: '8px 16px',
+                          fontSize: '12px',
+                          fontWeight: '600',
+                          background:
+                            historyPage >= Math.ceil(recentPayments.length / itemsPerPage) - 1
+                              ? 'rgba(255,255,255,0.05)'
+                              : 'rgba(255,255,255,0.1)',
+                          color:
+                            historyPage >= Math.ceil(recentPayments.length / itemsPerPage) - 1
+                              ? 'rgba(255,255,255,0.3)'
+                              : '#fff',
+                          border: 'none',
+                          borderRadius: '6px',
+                          cursor:
+                            historyPage >= Math.ceil(recentPayments.length / itemsPerPage) - 1
+                              ? 'not-allowed'
+                              : 'pointer',
+                        }}
+                      >
+                        次へ →
+                      </button>
                     </div>
-                  ))}
-                </div>
+                  )}
+                </>
               )}
             </div>
 
@@ -812,6 +1001,143 @@ export function PaymentTerminal() {
                 }}
               >
                 📄 トランザクションレシート
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 設定モーダル */}
+      {showSettingsModal && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0,0,0,0.7)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1001,
+          }}
+          onClick={() => setShowSettingsModal(false)}
+        >
+          <div
+            style={{
+              background: 'linear-gradient(135deg, #1e3a8a 0%, #1e293b 100%)',
+              borderRadius: '16px',
+              padding: '30px',
+              maxWidth: '550px',
+              width: '90%',
+              maxHeight: '80vh',
+              overflowY: 'auto',
+              boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 style={{ margin: '0 0 24px 0', fontSize: '24px', color: '#fff' }}>⚙️ ターミナル設定</h2>
+
+            {/* よく使う金額の編集 */}
+            <div style={{ marginBottom: '28px' }}>
+              <div style={{ fontSize: '16px', marginBottom: '12px', fontWeight: '600', color: '#fff' }}>
+                よく使う金額（JPYC）
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                {tempPresetAmounts.map((amount, index) => (
+                  <div key={`preset-input-${index}`} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontSize: '14px', color: 'rgba(255,255,255,0.7)', minWidth: '30px' }}>
+                      {index + 1}.
+                    </span>
+                    <input
+                      type="number"
+                      value={amount}
+                      onChange={(e) => {
+                        const newPresets = [...tempPresetAmounts];
+                        newPresets[index] = Math.max(0, parseInt(e.target.value) || 0);
+                        setTempPresetAmounts(newPresets);
+                      }}
+                      style={{
+                        flex: 1,
+                        padding: '10px 12px',
+                        fontSize: '15px',
+                        background: 'rgba(255,255,255,0.1)',
+                        border: '1px solid rgba(255,255,255,0.2)',
+                        borderRadius: '8px',
+                        color: '#fff',
+                        outline: 'none',
+                      }}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* QRコード有効時間 */}
+            <div style={{ marginBottom: '28px' }}>
+              <div style={{ fontSize: '16px', marginBottom: '12px', fontWeight: '600', color: '#fff' }}>
+                QRコード有効時間
+              </div>
+              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                {[3, 5, 10, 15, 30].map((minutes) => (
+                  <button
+                    key={minutes}
+                    onClick={() => setTempExpiryMinutes(minutes)}
+                    style={{
+                      flex: '1 1 calc(33.333% - 8px)',
+                      minWidth: '90px',
+                      padding: '12px',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      background: tempExpiryMinutes === minutes ? 'rgba(34, 197, 94, 0.3)' : 'rgba(255,255,255,0.1)',
+                      color: '#fff',
+                      border: `2px solid ${tempExpiryMinutes === minutes ? '#22c55e' : 'transparent'}`,
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                    }}
+                  >
+                    {minutes}分
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* ボタン */}
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button
+                onClick={() => setShowSettingsModal(false)}
+                style={{
+                  flex: 1,
+                  padding: '14px',
+                  fontSize: '15px',
+                  fontWeight: '600',
+                  background: 'rgba(255,255,255,0.1)',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '10px',
+                  cursor: 'pointer',
+                }}
+              >
+                キャンセル
+              </button>
+              <button
+                onClick={handleSaveSettings}
+                style={{
+                  flex: 2,
+                  padding: '14px',
+                  fontSize: '15px',
+                  fontWeight: '600',
+                  background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '10px',
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 16px rgba(34, 197, 94, 0.4)',
+                }}
+              >
+                💾 保存
               </button>
             </div>
           </div>

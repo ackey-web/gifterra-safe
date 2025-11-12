@@ -65,6 +65,17 @@ export function PaymentTerminalMobile() {
   // メッセージ
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
+  // 設定モーダル
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [presetAmounts, setPresetAmounts] = useState<number[]>([100, 500, 1000, 3000, 5000, 10000]);
+  const [tempPresetAmounts, setTempPresetAmounts] = useState<number[]>([100, 500, 1000, 3000, 5000, 10000]);
+  const [tempExpiryMinutes, setTempExpiryMinutes] = useState(5);
+
+  // 受信履歴のプライバシー設定
+  const [historyPrivacy, setHistoryPrivacy] = useState(false);
+  const [historyPage, setHistoryPage] = useState(0);
+  const itemsPerPage = 5;
+
   // テンキー入力
   const handleNumberClick = (num: string) => {
     if (displayAmount === '0') {
@@ -135,6 +146,58 @@ export function PaymentTerminalMobile() {
       supabase.removeChannel(channel);
     };
   }, [walletAddress]);
+
+  // LocalStorageから設定を読み込み
+  useEffect(() => {
+    try {
+      const savedPresets = localStorage.getItem('terminal_preset_amounts');
+      const savedExpiry = localStorage.getItem('terminal_qr_expiry');
+      const savedPrivacy = localStorage.getItem('terminal_history_privacy');
+
+      if (savedPresets) {
+        const parsed = JSON.parse(savedPresets);
+        setPresetAmounts(parsed);
+        setTempPresetAmounts(parsed);
+      }
+
+      if (savedExpiry) {
+        const expiryValue = parseInt(savedExpiry);
+        setExpiryMinutes(expiryValue);
+        setTempExpiryMinutes(expiryValue);
+      }
+
+      if (savedPrivacy) {
+        setHistoryPrivacy(savedPrivacy === 'true');
+      }
+    } catch (error) {
+      console.error('設定の読み込みエラー:', error);
+    }
+  }, []);
+
+  // 設定を保存
+  const handleSaveSettings = () => {
+    try {
+      localStorage.setItem('terminal_preset_amounts', JSON.stringify(tempPresetAmounts));
+      localStorage.setItem('terminal_qr_expiry', tempExpiryMinutes.toString());
+
+      setPresetAmounts(tempPresetAmounts);
+      setExpiryMinutes(tempExpiryMinutes);
+
+      setShowSettingsModal(false);
+      setMessage({ type: 'success', text: '設定を保存しました' });
+      setTimeout(() => setMessage(null), 2000);
+    } catch (error) {
+      console.error('設定の保存エラー:', error);
+      setMessage({ type: 'error', text: '設定の保存に失敗しました' });
+    }
+  };
+
+  // プライバシー設定の保存
+  const toggleHistoryPrivacy = () => {
+    const newValue = !historyPrivacy;
+    setHistoryPrivacy(newValue);
+    localStorage.setItem('terminal_history_privacy', newValue.toString());
+  };
 
   // QR生成
   const handleGenerateQR = async () => {
@@ -267,7 +330,37 @@ export function PaymentTerminalMobile() {
       }}
     >
       {/* ヘッダー */}
-      <header style={{ textAlign: 'center', marginBottom: '24px' }}>
+      <header style={{ textAlign: 'center', marginBottom: '24px', position: 'relative' }}>
+        {/* 設定ボタン */}
+        {walletAddress && walletConfirmed && (
+          <button
+            onClick={() => {
+              setTempPresetAmounts([...presetAmounts]);
+              setTempExpiryMinutes(expiryMinutes);
+              setShowSettingsModal(true);
+            }}
+            style={{
+              position: 'absolute',
+              right: 0,
+              top: 0,
+              width: '36px',
+              height: '36px',
+              background: 'rgba(255, 255, 255, 0.1)',
+              border: '1px solid rgba(255, 255, 255, 0.2)',
+              borderRadius: '8px',
+              color: '#fff',
+              fontSize: '18px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              touchAction: 'manipulation',
+            }}
+          >
+            ⚙️
+          </button>
+        )}
+
         <h1 style={{
           fontSize: '24px',
           margin: '0 0 8px 0',
@@ -523,9 +616,38 @@ export function PaymentTerminalMobile() {
                     marginBottom: '16px',
                   }}
                 >
-                  <h3 style={{ margin: '0 0 12px 0', fontSize: '16px' }}>📊 最近の受信履歴</h3>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    {recentPayments.slice(0, 3).map((payment) => (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                    <h3 style={{ margin: 0, fontSize: '16px' }}>📊 最近の受信履歴</h3>
+                    <button
+                      onClick={toggleHistoryPrivacy}
+                      style={{
+                        width: '32px',
+                        height: '32px',
+                        background: historyPrivacy ? 'rgba(59, 130, 246, 0.2)' : 'rgba(255, 255, 255, 0.1)',
+                        border: `1px solid ${historyPrivacy ? 'rgba(59, 130, 246, 0.4)' : 'rgba(255, 255, 255, 0.2)'}`,
+                        borderRadius: '8px',
+                        color: '#fff',
+                        fontSize: '14px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        touchAction: 'manipulation',
+                      }}
+                    >
+                      {historyPrivacy ? '👁️' : '👁️‍🗨️'}
+                    </button>
+                  </div>
+                  <div
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '8px',
+                      maxHeight: '280px',
+                      overflowY: 'auto',
+                    }}
+                  >
+                    {recentPayments.slice(historyPage * itemsPerPage, (historyPage + 1) * itemsPerPage).map((payment) => (
                       <div
                         key={payment.id}
                         style={{
@@ -538,7 +660,7 @@ export function PaymentTerminalMobile() {
                         }}
                       >
                         <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#22c55e' }}>
-                          {payment.amount.replace(/\B(?=(\d{3})+(?!\d))/g, ',')} JPYC
+                          {historyPrivacy ? '****' : `${payment.amount.replace(/\B(?=(\d{3})+(?!\d))/g, ',')} JPYC`}
                         </div>
                         <div style={{ fontSize: '11px', opacity: 0.7 }}>
                           {new Date(payment.completed_at).toLocaleTimeString('ja-JP', {
@@ -549,6 +671,57 @@ export function PaymentTerminalMobile() {
                       </div>
                     ))}
                   </div>
+                  {/* ページネーション */}
+                  {recentPayments.length > itemsPerPage && (
+                    <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginTop: '12px' }}>
+                      <button
+                        onClick={() => setHistoryPage(Math.max(0, historyPage - 1))}
+                        disabled={historyPage === 0}
+                        style={{
+                          padding: '8px 12px',
+                          fontSize: '11px',
+                          fontWeight: '600',
+                          background: historyPage === 0 ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.1)',
+                          color: historyPage === 0 ? 'rgba(255,255,255,0.3)' : '#fff',
+                          border: 'none',
+                          borderRadius: '6px',
+                          cursor: historyPage === 0 ? 'not-allowed' : 'pointer',
+                          touchAction: 'manipulation',
+                        }}
+                      >
+                        ← 前へ
+                      </button>
+                      <span style={{ display: 'flex', alignItems: 'center', fontSize: '11px', opacity: 0.7 }}>
+                        {historyPage + 1} / {Math.ceil(recentPayments.length / itemsPerPage)}
+                      </span>
+                      <button
+                        onClick={() => setHistoryPage(Math.min(Math.ceil(recentPayments.length / itemsPerPage) - 1, historyPage + 1))}
+                        disabled={historyPage >= Math.ceil(recentPayments.length / itemsPerPage) - 1}
+                        style={{
+                          padding: '8px 12px',
+                          fontSize: '11px',
+                          fontWeight: '600',
+                          background:
+                            historyPage >= Math.ceil(recentPayments.length / itemsPerPage) - 1
+                              ? 'rgba(255,255,255,0.05)'
+                              : 'rgba(255,255,255,0.1)',
+                          color:
+                            historyPage >= Math.ceil(recentPayments.length / itemsPerPage) - 1
+                              ? 'rgba(255,255,255,0.3)'
+                              : '#fff',
+                          border: 'none',
+                          borderRadius: '6px',
+                          cursor:
+                            historyPage >= Math.ceil(recentPayments.length / itemsPerPage) - 1
+                              ? 'not-allowed'
+                              : 'pointer',
+                          touchAction: 'manipulation',
+                        }}
+                      >
+                        次へ →
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -693,6 +866,144 @@ export function PaymentTerminalMobile() {
               }}
             >
               {message.text}
+            </div>
+          )}
+
+          {/* 設定モーダル */}
+          {showSettingsModal && (
+            <div
+              style={{
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                background: 'rgba(0,0,0,0.8)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '20px',
+                zIndex: 1001,
+              }}
+              onClick={() => setShowSettingsModal(false)}
+            >
+              <div
+                style={{
+                  background: 'linear-gradient(135deg, #1e3a8a 0%, #1e293b 100%)',
+                  borderRadius: '16px',
+                  padding: '24px',
+                  maxWidth: '400px',
+                  width: '100%',
+                  maxHeight: '85vh',
+                  overflowY: 'auto',
+                }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <h2 style={{ fontSize: '20px', marginBottom: '20px', textAlign: 'center' }}>
+                  ⚙️ ターミナル設定
+                </h2>
+
+                {/* よく使う金額の編集 */}
+                <div style={{ marginBottom: '24px' }}>
+                  <div style={{ fontSize: '15px', marginBottom: '12px', fontWeight: '600', color: '#fff' }}>
+                    よく使う金額（JPYC）
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    {tempPresetAmounts.map((amount, index) => (
+                      <div key={`preset-input-${index}`} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.7)', minWidth: '24px' }}>
+                          {index + 1}.
+                        </span>
+                        <input
+                          type="number"
+                          value={amount}
+                          onChange={(e) => {
+                            const newPresets = [...tempPresetAmounts];
+                            newPresets[index] = Math.max(0, parseInt(e.target.value) || 0);
+                            setTempPresetAmounts(newPresets);
+                          }}
+                          style={{
+                            flex: 1,
+                            padding: '10px 12px',
+                            fontSize: '14px',
+                            background: 'rgba(255,255,255,0.1)',
+                            border: '1px solid rgba(255,255,255,0.2)',
+                            borderRadius: '8px',
+                            color: '#fff',
+                            outline: 'none',
+                          }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* QRコード有効時間 */}
+                <div style={{ marginBottom: '24px' }}>
+                  <div style={{ fontSize: '15px', marginBottom: '12px', fontWeight: '600', color: '#fff' }}>
+                    QRコード有効時間
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                    {[3, 5, 10, 15, 30].map((minutes) => (
+                      <button
+                        key={minutes}
+                        onClick={() => setTempExpiryMinutes(minutes)}
+                        style={{
+                          padding: '10px',
+                          fontSize: '13px',
+                          fontWeight: '600',
+                          background: tempExpiryMinutes === minutes ? 'rgba(34, 197, 94, 0.3)' : 'rgba(255,255,255,0.1)',
+                          color: '#fff',
+                          border: `2px solid ${tempExpiryMinutes === minutes ? '#22c55e' : 'transparent'}`,
+                          borderRadius: '8px',
+                          cursor: 'pointer',
+                          touchAction: 'manipulation',
+                        }}
+                      >
+                        {minutes}分
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* ボタン */}
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button
+                    onClick={() => setShowSettingsModal(false)}
+                    style={{
+                      flex: 1,
+                      padding: '14px',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      background: 'rgba(255,255,255,0.1)',
+                      color: '#fff',
+                      border: 'none',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      touchAction: 'manipulation',
+                    }}
+                  >
+                    キャンセル
+                  </button>
+                  <button
+                    onClick={handleSaveSettings}
+                    style={{
+                      flex: 1,
+                      padding: '14px',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
+                      color: '#fff',
+                      border: 'none',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      touchAction: 'manipulation',
+                    }}
+                  >
+                    💾 保存
+                  </button>
+                </div>
+              </div>
             </div>
           )}
 
