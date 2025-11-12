@@ -299,10 +299,10 @@ export default function AdminSidebar({
               onMouseLeave={(e) => {
                 e.currentTarget.style.background = "transparent";
               }}
-              title={isCollapsed ? "JPYC Terminal" : undefined}
+              title={isCollapsed ? "GIFTERRA FLOW Terminal" : undefined}
             >
               <span style={{ fontSize: 16 }}>🏪</span>
-              {!isCollapsed && <span>JPYC 受取ターミナル</span>}
+              {!isCollapsed && <span>GIFTERRA FLOW Terminal</span>}
             </button>
           </div>
         </div>

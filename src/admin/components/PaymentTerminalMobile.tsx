@@ -252,7 +252,7 @@ export function PaymentTerminalMobile() {
       }
     } catch (error) {
       console.error('領収書発行エラー:', error);
-      setMessage({ type: 'error', text: '領収書発行に失敗しました' });
+      setMessage({ type: 'error', text: 'トランザクションレシート発行に失敗しました' });
     }
   };
 
@@ -278,18 +278,16 @@ export function PaymentTerminalMobile() {
           gap: '8px',
         }}>
           <span style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', justifyContent: 'center' }}>
-            <span>💳 JPYC Terminal</span>
-            <span style={{
-              fontSize: '10px',
-              fontWeight: '600',
-              padding: '3px 8px',
-              background: 'rgba(255, 193, 7, 0.2)',
-              border: '1px solid rgba(255, 193, 7, 0.4)',
-              borderRadius: '4px',
-              color: '#ffc107',
-            }}>
-              実装テスト中
-            </span>
+            <img
+              src="/gifterra-logo.png"
+              alt="GIFTERRA"
+              style={{
+                height: '24px',
+                width: 'auto',
+                verticalAlign: 'middle',
+              }}
+            />
+            <span>GIFTERRA FLOW Terminal</span>
           </span>
         </h1>
         <p style={{ fontSize: '12px', opacity: 0.8, margin: 0 }}>
@@ -450,7 +448,7 @@ export function PaymentTerminalMobile() {
                   textAlign: 'center',
                 }}
               >
-                <div style={{ fontSize: '12px', opacity: 0.7, marginBottom: '8px' }}>支払金額</div>
+                <div style={{ fontSize: '12px', opacity: 0.7, marginBottom: '8px' }}>受信金額</div>
                 <div
                   style={{
                     fontSize: '48px',
@@ -525,7 +523,7 @@ export function PaymentTerminalMobile() {
                     marginBottom: '16px',
                   }}
                 >
-                  <h3 style={{ margin: '0 0 12px 0', fontSize: '16px' }}>📊 最近の決済</h3>
+                  <h3 style={{ margin: '0 0 12px 0', fontSize: '16px' }}>📊 最近の受信履歴</h3>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     {recentPayments.slice(0, 3).map((payment) => (
                       <div
@@ -581,7 +579,7 @@ export function PaymentTerminalMobile() {
                     touchAction: 'manipulation',
                   }}
                 >
-                  📥 売上エクスポート
+                  📥 受信履歴エクスポート
                 </button>
                 <button
                   onClick={handleShareReceipt}
@@ -599,7 +597,7 @@ export function PaymentTerminalMobile() {
                     touchAction: 'manipulation',
                   }}
                 >
-                  📄 領収書発行
+                  📄 トランザクションレシート
                 </button>
               </div>
             </>

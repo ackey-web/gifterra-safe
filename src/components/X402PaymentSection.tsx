@@ -299,17 +299,6 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
           />
           JPYC送信
           </span>
-          <span style={{
-            fontSize: isMobile ? '10px' : '11px',
-            fontWeight: '600',
-            padding: '3px 8px',
-            background: 'rgba(255, 193, 7, 0.2)',
-            border: '1px solid rgba(255, 193, 7, 0.4)',
-            borderRadius: '4px',
-            color: '#ffc107',
-          }}>
-            実装テスト中
-          </span>
         </h3>
         <p
           style={{

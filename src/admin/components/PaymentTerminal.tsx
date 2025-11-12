@@ -250,7 +250,7 @@ export function PaymentTerminal() {
       }
     } catch (error) {
       console.error('領収書発行エラー:', error);
-      setMessage({ type: 'error', text: '領収書発行に失敗しました' });
+      setMessage({ type: 'error', text: 'トランザクションレシート発行に失敗しました' });
     }
   };
 
@@ -287,19 +287,16 @@ export function PaymentTerminal() {
               justifyContent: 'center',
             }}
           >
-            <span>💳 JPYC 受取ターミナル</span>
-            <span style={{
-              fontSize: '13px',
-              fontWeight: '600',
-              padding: '4px 12px',
-              background: 'rgba(255, 193, 7, 0.2)',
-              border: '1px solid rgba(255, 193, 7, 0.4)',
-              borderRadius: '6px',
-              color: '#ffc107',
-              letterSpacing: '0.5px',
-            }}>
-              実装テスト中
-            </span>
+            <img
+              src="/gifterra-logo.png"
+              alt="GIFTERRA"
+              style={{
+                height: '32px',
+                width: 'auto',
+                verticalAlign: 'middle',
+              }}
+            />
+            <span>GIFTERRA FLOW Terminal</span>
           </h1>
           <p style={{ fontSize: '14px', opacity: 0.8, margin: 0 }}>
             {walletAddress ? `店舗: ${walletAddress.slice(0, 8)}...${walletAddress.slice(-6)}` : 'ウォレット未接続'}
@@ -545,7 +542,7 @@ export function PaymentTerminal() {
                 textAlign: 'center',
               }}
             >
-              <div style={{ fontSize: '14px', opacity: 0.7, marginBottom: '8px' }}>支払金額</div>
+              <div style={{ fontSize: '14px', opacity: 0.7, marginBottom: '8px' }}>受信金額</div>
               <div
                 style={{
                   fontSize: '56px',
@@ -738,7 +735,7 @@ export function PaymentTerminal() {
                 padding: '20px',
               }}
             >
-              <h3 style={{ margin: '0 0 16px 0', fontSize: '18px' }}>📊 最近の決済</h3>
+              <h3 style={{ margin: '0 0 16px 0', fontSize: '18px' }}>📊 最近の受信履歴</h3>
               {recentPayments.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '20px', opacity: 0.5 }}>決済履歴がありません</div>
               ) : (
@@ -796,7 +793,7 @@ export function PaymentTerminal() {
                   transition: 'all 0.2s',
                 }}
               >
-                📥 売上エクスポート
+                📥 受信履歴エクスポート
               </button>
               <button
                 onClick={handleShareReceipt}
@@ -814,7 +811,7 @@ export function PaymentTerminal() {
                   transition: 'all 0.2s',
                 }}
               >
-                📄 領収書発行
+                📄 トランザクションレシート
               </button>
             </div>
           </div>
