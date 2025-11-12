@@ -32,10 +32,13 @@ const X402_CONSENT_KEY = 'gifterra_x402_consent_accepted';
 export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps) {
   const thirdwebAddress = useAddress();
   const thirdwebSigner = useSigner();
-  const { user, getEthersProvider, getEthersSigner } = usePrivy();
+  const { user, getEthersProvider } = usePrivy();
 
-  // Privyの埋め込みウォレットアドレスとThirdwebのアドレスを統合
-  const privyEmbeddedWalletAddress = user?.wallet?.address;
+  // Privyの埋め込みウォレットアドレスを正しく取得
+  const privyEmbeddedWallet = user?.linkedAccounts?.find(
+    (account: any) => account.type === 'wallet' && account.walletClient === 'privy'
+  );
+  const privyEmbeddedWalletAddress = privyEmbeddedWallet?.address;
   const walletAddress = privyEmbeddedWalletAddress || thirdwebAddress || '';
 
   // signerの取得: Privyの埋め込みウォレットを使用している場合はPrivyのsignerを使用
@@ -44,30 +47,43 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
   useEffect(() => {
     const getSigner = async () => {
       console.log('🔍 Signer取得開始:', {
-        hasPrivyAddress: !!privyEmbeddedWalletAddress,
-        hasGetEthersSigner: !!getEthersSigner,
+        user: !!user,
+        linkedAccounts: user?.linkedAccounts?.length,
+        privyWallet: privyEmbeddedWallet,
+        privyAddress: privyEmbeddedWalletAddress,
+        hasGetEthersProvider: !!getEthersProvider,
       });
 
-      if (privyEmbeddedWalletAddress && getEthersSigner) {
+      if (privyEmbeddedWalletAddress && getEthersProvider) {
         try {
-          const s = await getEthersSigner();
-          setPrivySigner(s);
-          console.log('✅ Privy signer取得成功:', !!s);
+          console.log('🔄 getEthersProvider呼び出し中...');
+          const provider = await getEthersProvider();
+          console.log('✅ provider取得:', !!provider);
 
-          // signerのアドレスも確認
-          if (s) {
-            const addr = await s.getAddress();
-            console.log('📧 Signer address:', addr);
+          if (provider) {
+            const web3Provider = new ethers.providers.Web3Provider(provider as any);
+            const s = web3Provider.getSigner();
+            setPrivySigner(s);
+            console.log('✅ Privy signer作成成功:', !!s);
+
+            // signerのアドレスも確認
+            if (s) {
+              const addr = await s.getAddress();
+              console.log('📧 Signer address:', addr);
+            }
           }
         } catch (e: any) {
           console.error('❌ Privy signer取得エラー:', e.message, e);
         }
       } else {
-        console.warn('⚠️ Privy signer取得条件不足');
+        console.warn('⚠️ Privy signer取得条件不足:', {
+          hasAddress: !!privyEmbeddedWalletAddress,
+          hasProvider: !!getEthersProvider,
+        });
       }
     };
     getSigner();
-  }, [privyEmbeddedWalletAddress, getEthersSigner]);
+  }, [privyEmbeddedWalletAddress, getEthersProvider, user]);
 
   // signerの優先順位: Privy signer > Thirdweb signer
   const signer = privySigner || thirdwebSigner;
@@ -181,35 +197,42 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
       // signerがない場合、Privyから取得を試みる
       if (!currentSigner && privyEmbeddedWalletAddress) {
         log('🔄 signer再取得を試みます...');
+        log('  privyAddress:' + privyEmbeddedWalletAddress.substring(0, 10) + '...');
 
-        // 方法1: getEthersSignerを試す
-        if (getEthersSigner) {
-          try {
-            currentSigner = await getEthersSigner();
-            log('✅ getEthersSigner成功:' + !!currentSigner);
-          } catch (e: any) {
-            log('❌ getEthersSigner失敗:' + e.message);
-          }
-        }
-
-        // 方法2: getEthereumProviderを試す（方法1が失敗した場合）
-        if (!currentSigner && getEthersProvider) {
+        if (getEthersProvider) {
           try {
             log('🔄 getEthersProvider経由でsigner作成を試みます...');
             const provider = await getEthersProvider();
+            log('  provider取得:' + !!provider);
+
             if (provider) {
               const web3Provider = new ethers.providers.Web3Provider(provider as any);
               currentSigner = web3Provider.getSigner();
               log('✅ Web3Provider経由でsigner作成成功:' + !!currentSigner);
+
+              // アドレス確認
+              try {
+                const addr = await currentSigner.getAddress();
+                log('  signer address:' + addr.substring(0, 10) + '...');
+              } catch (e: any) {
+                log('⚠️ アドレス取得失敗:' + e.message);
+              }
+            } else {
+              log('❌ provider is null');
             }
           } catch (e: any) {
-            log('❌ Web3Provider経由失敗:' + e.message);
+            log('❌ getEthersProvider失敗:' + e.message);
+            log('  エラー詳細:' + JSON.stringify(e).substring(0, 50));
           }
+        } else {
+          log('❌ getEthersProvider is not available');
         }
 
         if (!currentSigner) {
-          log('❌ 全ての方法でsigner取得失敗');
+          log('❌ signer取得失敗');
         }
+      } else if (!currentSigner) {
+        log('⚠️ signerなし & privyAddressなし');
       }
 
       if (currentSigner) {
