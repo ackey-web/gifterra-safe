@@ -21,22 +21,30 @@ export function QRScannerCamera({ onScan, onClose, placeholder = 'X402決済コ�
 
   // X402形式かウォレットアドレスかを判定してバリデーション
   const validateAndProcessScan = (data: string): { isValid: boolean; error?: string } => {
+    console.log('🔎 QRScannerCamera - バリデーション開始:', data);
+
     // まずX402形式のJSONかどうかを確認
     try {
       const parsed = JSON.parse(data);
+      console.log('📋 JSONパース成功:', parsed);
       // X402形式の必須フィールドをチェック
       if (parsed.to && parsed.token && parsed.amount) {
+        console.log('✅ X402形式として認識');
         return { isValid: true };
       }
+      console.log('⚠️ X402必須フィールドが不足');
     } catch (e) {
+      console.log('⚠️ JSONパースエラー - ウォレットアドレスかチェック');
       // JSONパースエラー - ウォレットアドレスかもしれない
     }
 
     // ウォレットアドレス形式をチェック (0xで始まる42文字の16進数)
     if (/^0x[a-fA-F0-9]{40}$/.test(data)) {
+      console.log('✅ ウォレットアドレスとして認識');
       return { isValid: true };
     }
 
+    console.log('❌ バリデーション失敗');
     return { isValid: false, error: '無効なQRコードです。X402決済コードまたはウォレットアドレスを使用してください。' };
   };
 
@@ -59,18 +67,24 @@ export function QRScannerCamera({ onScan, onClose, placeholder = 'X402決済コ�
           },
           (decodedText) => {
             // QRコード読み取り成功
+            console.log('📷 QRコード読み取り成功:', decodedText);
             if (isMounted.current) {
               scanner.stop().then(() => {
+                console.log('📷 カメラ停止完了 - バリデーション開始');
                 const validation = validateAndProcessScan(decodedText);
                 if (validation.isValid) {
+                  console.log('✅ バリデーション成功 - onScan呼び出し');
                   onScan(decodedText);
                   onClose();
                 } else {
+                  console.log('❌ バリデーション失敗:', validation.error);
                   setCameraError(validation.error || '無効なQRコードです');
                   setIsScanning(false);
                   setShowManualInput(true);
                 }
-              }).catch(() => {});
+              }).catch((err) => {
+                console.error('❌ カメラ停止エラー:', err);
+              });
             }
           },
           (errorMessage) => {
