@@ -3,6 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { usePrivy, useWallets } from '@privy-io/react-auth';
+import { useAddress } from '@thirdweb-dev/react';
 import { supabase } from '../lib/supabase';
 import { ProfileEditModal } from '../components/ProfileEditModal';
 
@@ -22,10 +23,12 @@ export function ProfilePage() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const { user } = usePrivy();
-  const { wallets } = useWallets();
+  const thirdwebAddress = useAddress(); // Thirdwebウォレット（MetaMaskなど）
 
-  // ウォレットアドレスを取得（Privy埋め込みウォレットまたは外部ウォレット）
-  const walletAddress = user?.wallet?.address || wallets[0]?.address || '';
+  // ウォレットアドレスを取得（Privy埋め込みウォレット優先、なければThirdweb）
+  // Mypageと同じロジックで、メタマスクアカウント切り替えに対応
+  const privyEmbeddedWalletAddress = user?.wallet?.address;
+  const walletAddress = privyEmbeddedWalletAddress || thirdwebAddress || '';
 
   useEffect(() => {
     const handleResize = () => {
