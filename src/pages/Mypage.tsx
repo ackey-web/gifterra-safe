@@ -648,13 +648,17 @@ function WalletConnectionInfo({ isMobile, onChainIdChange }: { isMobile: boolean
           onChainIdChange(numericChainId);
         } catch (error) {
           console.error('Failed to fetch chainId from window.ethereum:', error);
-          setActualChainId(thirdwebChainId);
-          onChainIdChange(thirdwebChainId);
+          // エラー時もthirdwebChainIdまたはデフォルト値を設定
+          const fallbackChainId = thirdwebChainId || 137;
+          setActualChainId(fallbackChainId);
+          onChainIdChange(fallbackChainId);
         }
       } else {
-        // window.ethereumが存在しない場合はThirdwebのchainIdを使用
-        setActualChainId(thirdwebChainId);
-        onChainIdChange(thirdwebChainId);
+        // window.ethereumが存在しない場合
+        // thirdwebChainIdがundefinedの場合はPolygon Mainnet (137) をデフォルトとする
+        const fallbackChainId = thirdwebChainId || 137;
+        setActualChainId(fallbackChainId);
+        onChainIdChange(fallbackChainId);
       }
     };
 
