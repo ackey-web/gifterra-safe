@@ -32,14 +32,32 @@ const X402_CONSENT_KEY = 'gifterra_x402_consent_accepted';
 export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps) {
   const thirdwebAddress = useAddress();
   const thirdwebSigner = useSigner();
-  const { user } = usePrivy();
+  const { user, getEthersProvider, getEthersSigner } = usePrivy();
 
   // Privyの埋め込みウォレットアドレスとThirdwebのアドレスを統合
   const privyEmbeddedWalletAddress = user?.wallet?.address;
   const walletAddress = privyEmbeddedWalletAddress || thirdwebAddress || '';
 
-  // signerの取得: Thirdwebのsignerを優先（Privyの場合もThirdwebのラッパーを使用）
-  const signer = thirdwebSigner;
+  // signerの取得: Privyの埋め込みウォレットを使用している場合はPrivyのsignerを使用
+  const [privySigner, setPrivySigner] = useState<ethers.Signer | null>(null);
+
+  useEffect(() => {
+    const getSigner = async () => {
+      if (privyEmbeddedWalletAddress && getEthersSigner) {
+        try {
+          const s = await getEthersSigner();
+          setPrivySigner(s);
+          console.log('✅ Privy signerを取得:', !!s);
+        } catch (e) {
+          console.error('❌ Privy signer取得エラー:', e);
+        }
+      }
+    };
+    getSigner();
+  }, [privyEmbeddedWalletAddress, getEthersSigner]);
+
+  // signerの優先順位: Privy signer > Thirdweb signer
+  const signer = privySigner || thirdwebSigner;
 
   const [showScanner, setShowScanner] = useState(false);
   const [paymentData, setPaymentData] = useState<X402PaymentData | null>(null);
