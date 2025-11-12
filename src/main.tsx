@@ -26,153 +26,21 @@ import { ProfilePage } from "./pages/ProfilePage";
 window.Buffer = window.Buffer || Buffer;
 
 // =============================
-// グローバルエラーハンドラー（X402デバッグ用）
+// グローバルエラーハンドラー（本番環境用 - デバッグUI無効化）
 // =============================
-const ERROR_LOG_KEY = 'x402_error_log';
-const RELOAD_LOG_KEY = 'x402_reload_log';
 
-// 永続的なデバッグパネルを作成（ページクラッシュ後も確認可能）
-window.addEventListener('load', () => {
-  // デバッグパネル作成
-  const debugPanel = document.createElement('div');
-  debugPanel.id = 'qr-scan-persistent-debug';
-  debugPanel.style.cssText = `
-    position: fixed;
-    top: 10px;
-    right: 10px;
-    width: 200px;
-    background: rgba(255, 0, 0, 0.95);
-    color: white;
-    padding: 8px;
-    z-index: 999999999;
-    font-size: 9px;
-    font-family: monospace;
-    max-height: 150px;
-    overflow-y: scroll;
-    -webkit-overflow-scrolling: touch;
-    border: 2px solid yellow;
-    border-radius: 8px;
-    pointer-events: auto;
-    word-break: break-all;
-    line-height: 1.3;
-    cursor: pointer;
-  `;
-  document.body.appendChild(debugPanel);
-
-  // 前回のログを表示
-  const previousLogs = localStorage.getItem('qr_scan_debug_log');
-  if (previousLogs) {
-    debugPanel.innerHTML = '<strong>前回のログ:</strong><br/>' +
-      previousLogs.split('\n')
-        .filter(l => l.trim())
-        .slice(-10)
-        .join('<br/>');
-  } else {
-    debugPanel.innerHTML = 'QRスキャンデバッグパネル起動中...';
-  }
-
-  setTimeout(() => {
-    // 既存のエラーログを表示（前回のクラッシュ情報）
-    const previousErrors = localStorage.getItem(ERROR_LOG_KEY);
-    if (previousErrors) {
-      console.error('🚨 前回のセッションでエラーが発生していました:', JSON.parse(previousErrors));
-      // アラートで表示（モバイルでも確認できる）
-      alert(`🚨 前回エラー検出:\n${JSON.parse(previousErrors).message}\n\n詳細はコンソール参照`);
-      // 表示後は削除
-      localStorage.removeItem(ERROR_LOG_KEY);
-    }
-
-    // 既存のリロードログを表示
-    const previousReload = localStorage.getItem(RELOAD_LOG_KEY);
-    if (previousReload) {
-      console.warn('⚠️ 前回のセッションでページリロードが発生していました:', JSON.parse(previousReload));
-
-      // X402スキャンの進行状況もチェック
-      const scanStart = localStorage.getItem('x402_scan_start');
-      const scanResult = localStorage.getItem('x402_scan_result');
-
-      let reloadMessage = `⚠️ ページリロード検出:\n${JSON.parse(previousReload).timestamp}\n場所: ${JSON.parse(previousReload).location}`;
-
-      if (scanStart) {
-        reloadMessage += `\n\n📷 QRスキャン開始: ${scanStart}`;
-      }
-
-      if (scanResult) {
-        reloadMessage += `\n最終状態: ${scanResult}`;
-      }
-
-      alert(reloadMessage);
-
-      localStorage.removeItem(RELOAD_LOG_KEY);
-      localStorage.removeItem('x402_scan_start');
-      localStorage.removeItem('x402_scan_result');
-    }
-
-    // 前回のログをクリア（新しいセッション開始）
-    setTimeout(() => {
-      localStorage.removeItem('qr_scan_debug_log');
-      debugPanel.innerHTML = 'デバッグパネル準備完了';
-    }, 3000);
-  }, 1000); // 1秒待ってから表示
-});
-
-// グローバルエラーハンドラー（同期エラー）
+// QRスキャナーのstopエラーを抑制（ユーザーに影響なし）
 window.onerror = (message, source, lineno, colno, error) => {
-  const errorInfo = {
-    type: 'window.onerror',
-    message: String(message),
-    source,
-    lineno,
-    colno,
-    stack: error?.stack,
-    timestamp: new Date().toISOString(),
-    location: window.location.href,
-  };
-
-  console.error('🚨 グローバルエラー捕捉:', errorInfo);
-
   // QRスキャナーのstopエラーは無視
   if (message && message.includes('Cannot stop, scanner is not running')) {
     console.log('⚠️ QRスキャナー停止エラー（無視）');
     return true; // エラーを抑制
   }
 
-  localStorage.setItem(ERROR_LOG_KEY, JSON.stringify(errorInfo));
-
-  // エラーを即座に表示
-  alert(`🚨 JavaScriptエラー:\n${message}\n\n${source}:${lineno}:${colno}`);
-
-  return false; // デフォルトのエラーハンドリングも実行
+  // その他のエラーはコンソールにのみ記録
+  console.error('エラー:', { message, source, lineno, colno, error });
+  return false;
 };
-
-// グローバルエラーハンドラー（非同期エラー・Promise rejection）
-window.addEventListener('unhandledrejection', (event) => {
-  const errorInfo = {
-    type: 'unhandledrejection',
-    reason: event.reason?.message || String(event.reason),
-    stack: event.reason?.stack,
-    timestamp: new Date().toISOString(),
-    location: window.location.href,
-  };
-
-  console.error('🚨 未処理のPromise rejection:', errorInfo);
-  localStorage.setItem(ERROR_LOG_KEY, JSON.stringify(errorInfo));
-
-  // エラーを即座に表示
-  alert(`🚨 Promise エラー:\n${errorInfo.reason}`);
-});
-
-// ページリロード検出
-window.addEventListener('beforeunload', (event) => {
-  const reloadInfo = {
-    timestamp: new Date().toISOString(),
-    location: window.location.href,
-    pathname: window.location.pathname,
-  };
-
-  console.warn('⚠️ ページアンロード検出:', reloadInfo);
-  localStorage.setItem(RELOAD_LOG_KEY, JSON.stringify(reloadInfo));
-});
 
 // Polygon Mainnet configuration for ThirdwebProvider
 const polygonChain = {

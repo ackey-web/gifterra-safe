@@ -46,106 +46,37 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
   const privyEmbeddedWalletAddress = user?.wallet?.address;
   const walletAddress = privyEmbeddedWalletAddress || thirdwebAddress || '';
 
-  // デバッグログ: ウォレット接続状態を確認
-  useEffect(() => {
-    console.log('🔍 X402PaymentSection - ウォレット接続状態チェック:', {
-      hasUser: !!user,
-      hasPrivyWallet: !!user?.wallet,
-      privyWalletAddress: user?.wallet?.address ? user.wallet.address.substring(0, 10) + '...' : 'なし',
-      privyEmbeddedWalletAddress: privyEmbeddedWalletAddress ? privyEmbeddedWalletAddress.substring(0, 10) + '...' : 'なし',
-      thirdwebAddress: thirdwebAddress ? thirdwebAddress.substring(0, 10) + '...' : 'なし',
-      finalWalletAddress: walletAddress ? walletAddress.substring(0, 10) + '...' : 'なし',
-
-      // 修正案の表示
-      recommendation: !walletAddress && thirdwebAddress
-        ? 'Thirdwebアドレスが利用可能ですが、walletAddressに設定されていません'
-        : walletAddress
-        ? 'ウォレット接続OK'
-        : 'ウォレット未接続',
-    });
-  }, [user, privyEmbeddedWalletAddress, thirdwebAddress, walletAddress]);
 
   // signerの取得: Privyの埋め込みウォレットを使用している場合はPrivyのsignerを使用
   const [privySigner, setPrivySigner] = useState<ethers.Signer | null>(null);
 
   useEffect(() => {
     const getSigner = async () => {
-      console.log('🔍 Signer取得開始:', {
-        ready,
-        user: !!user,
-        privyWallet: !!user?.wallet,
-        privyAddress: privyEmbeddedWalletAddress,
-        hasGetEthersProvider: !!getEthersProvider,
-        walletsCount: wallets?.length || 0,
-        hasSendTransaction: !!sendTransaction,
-      });
-
-      // Privy埋め込みウォレットアドレスがあるが、wallets配列が空の場合
-      // → read-only providerを使用して残高取得は可能にする
-      if (privyEmbeddedWalletAddress && (!wallets || wallets.length === 0)) {
-        console.warn('⚠️ Privy wallets配列が空です。Read-only providerを作成します。');
-
-        // Polygon mainnet read-only provider
-        try {
-          const readOnlyProvider = new ethers.providers.JsonRpcProvider('https://polygon-rpc.com');
-          console.log('✅ Read-only provider作成成功');
-
-          // signerは作成できないが、balanceOf呼び出しには使える
-          // トランザクション署名時に別の方法を使う必要がある
-          console.log('⚠️ Read-only providerのため、トランザクション署名には使えません');
-        } catch (e: any) {
-          console.error('❌ Read-only provider作成エラー:', e.message);
-        }
-      }
-
       // Privy walletsから直接signerを取得（推奨方法）
       if (wallets && wallets.length > 0 && privyEmbeddedWalletAddress) {
         try {
-          console.log('🔄 Privy walletsからsigner取得を試みます...');
-          const embeddedWallet = wallets[0]; // 最初のウォレットを使用
-          console.log('📱 Embedded wallet:', {
-            address: embeddedWallet.address?.substring(0, 10) + '...',
-            walletClientType: embeddedWallet.walletClientType,
-            connectorType: embeddedWallet.connectorType,
-          });
-
-          // Privy walletからEthers providerを取得
+          const embeddedWallet = wallets[0];
           const provider = await embeddedWallet.getEthersProvider();
-          console.log('✅ Privy wallet provider取得成功');
-
           const web3Provider = new ethers.providers.Web3Provider(provider as any);
           const s = web3Provider.getSigner();
           setPrivySigner(s);
-          console.log('✅ Privy signer作成成功');
-
-          // アドレス確認
-          const addr = await s.getAddress();
-          console.log('📧 Signer address:', addr);
           return;
         } catch (e: any) {
-          console.error('❌ Privy wallet signer取得エラー:', e.message);
-          console.log('💡 フォールバック: getEthersProviderを試します');
+          console.error('Privy signer取得エラー:', e.message);
         }
       }
 
       // フォールバック: 従来のgetEthersProvider方式
       if (getEthersProvider && privyEmbeddedWalletAddress) {
         try {
-          console.log('🔄 getEthersProvider呼び出し中...');
           const provider = await getEthersProvider();
-          console.log('✅ provider取得:', !!provider);
-
           if (provider) {
             const web3Provider = new ethers.providers.Web3Provider(provider as any);
             const s = web3Provider.getSigner();
             setPrivySigner(s);
-            console.log('✅ Privy signer作成成功 (フォールバック)');
-
-            const addr = await s.getAddress();
-            console.log('📧 Signer address:', addr);
           }
         } catch (e: any) {
-          console.error('❌ getEthersProvider signer取得エラー:', e.message);
+          console.error('getEthersProvider signer取得エラー:', e.message);
         }
       }
     };
@@ -158,40 +89,18 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
   // フォールバック: window.ethereumから直接signerを取得
   useEffect(() => {
     const getFallbackSigner = async () => {
-      console.log('🔍 Fallback signer取得チェック:', {
-        hasPrivySigner: !!privySigner,
-        hasThirdwebSigner: !!thirdwebSigner,
-        hasWindowEthereum: typeof window !== 'undefined' && !!window.ethereum,
-        windowType: typeof window,
-      });
-
       if (privySigner || thirdwebSigner) {
-        console.log('⏭️ 既存signerあり、フォールバックスキップ');
-        return; // 既にsignerがある場合はスキップ
+        return;
       }
 
       if (typeof window !== 'undefined' && window.ethereum) {
         try {
-          console.log('🔄 window.ethereumからsigner取得を試みます...');
           const provider = new ethers.providers.Web3Provider(window.ethereum as any);
-          console.log('✅ Web3Provider作成成功');
           const s = provider.getSigner();
-          console.log('✅ getSigner()成功');
           setFallbackSigner(s);
-          console.log('✅ window.ethereum signer作成成功');
-
-          // アドレス確認
-          try {
-            const addr = await s.getAddress();
-            console.log('📧 Fallback signer address:', addr);
-          } catch (addrErr: any) {
-            console.error('❌ アドレス取得エラー:', addrErr.message);
-          }
         } catch (e: any) {
-          console.error('❌ window.ethereum signer取得エラー:', e.message, e);
+          console.error('window.ethereum signer取得エラー:', e.message);
         }
-      } else {
-        console.warn('⚠️ window.ethereumが利用できません');
       }
     };
     getFallbackSigner();
@@ -210,154 +119,54 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
 
   const jpycConfig = getTokenConfig('JPYC');
 
-  // デバッグボックスをbodyに直接追加（Reactとは独立）
-  useEffect(() => {
-    const debugBox = document.createElement('div');
-    debugBox.id = 'x402-debug-box';
-    debugBox.style.cssText = `
-      position: fixed;
-      top: 10px;
-      left: 10px;
-      background: orange;
-      color: black;
-      padding: 10px;
-      z-index: 999999999;
-      font-size: 12px;
-      font-weight: bold;
-      max-width: 200px;
-      word-break: break-all;
-      pointer-events: none;
-    `;
-    document.body.appendChild(debugBox);
-
-    return () => {
-      const box = document.getElementById('x402-debug-box');
-      if (box) box.remove();
-    };
-  }, []);
-
-  // デバッグボックスの内容を更新
-  useEffect(() => {
-    const debugBox = document.getElementById('x402-debug-box');
-    if (debugBox) {
-      debugBox.innerHTML = `
-        showScanner: ${showScanner}<br/>
-        showConsent: ${showConsentModal}<br/>
-        showConfirm: ${showConfirmation}<br/>
-        hasData: ${!!paymentData}
-      `;
-    }
-  }, [showScanner, showConsentModal, showConfirmation, paymentData]);
 
   // QRコードスキャン処理
   const handleScan = async (data: string) => {
-    // 永続的なデバッグログ（localStorage + DOM）
-    const log = (message: string) => {
-      const timestamp = new Date().toISOString().split('T')[1].slice(0, 8);
-      const logEntry = `[${timestamp}] ${message}`;
-
-      // localStorageに追記
-      const existingLogs = localStorage.getItem('qr_scan_debug_log') || '';
-      localStorage.setItem('qr_scan_debug_log', existingLogs + '\n' + logEntry);
-
-      // DOM要素に反映（React非依存）
-      const debugDiv = document.getElementById('qr-scan-persistent-debug');
-      if (debugDiv) {
-        const allLogs = (existingLogs + '\n' + logEntry)
-          .split('\n')
-          .filter(l => l.trim());
-
-        // 最新30行を表示（増やした）
-        debugDiv.innerHTML = allLogs.slice(-30).join('<br/>');
-
-        // 自動スクロール（最下部へ）
-        debugDiv.scrollTop = debugDiv.scrollHeight;
-      }
-
-      console.log(logEntry);
-    };
-
     try {
-      log('🚀 handleScan開始');
-
-      // ページリロード防止：早期に記録
-      localStorage.setItem('x402_scan_start', new Date().toISOString());
-
-      log('🔍 デコード開始');
       const decoded = decodeX402(data);
-      log('✅ デコード成功');
 
       // 有効期限チェック
       if (isPaymentExpired(decoded.expires)) {
-        log('⚠️ 有効期限切れ');
         setMessage({ type: 'error', text: 'このQRコードは有効期限切れです' });
-        localStorage.setItem('x402_scan_result', 'expired');
         return;
       }
 
       // 残高確認（read-only providerを使用）
-      log('💰 残高確認開始');
-      log('  wallet:' + walletAddress.substring(0, 10) + '...');
-      log('  hasSendTransaction:' + !!sendTransaction);
-
       let userBalance = '0';
 
-      // Read-only providerで残高取得（signerなしで可能）
       try {
-        log('🔄 Read-only providerで残高取得');
         const readOnlyProvider = new ethers.providers.JsonRpcProvider('https://polygon-rpc.com');
         const tokenContract = new ethers.Contract(decoded.token, ERC20_ABI, readOnlyProvider);
 
-        log('📞 balanceOf呼び出し');
         const balance = await tokenContract.balanceOf(walletAddress);
-        log('✅ balance取得:' + balance.toString());
-
-        log('📞 decimals呼び出し');
         const decimals = await tokenContract.decimals();
-        log('✅ decimals取得:' + decimals);
 
         userBalance = ethers.utils.formatUnits(balance, decimals);
-        log('✅ 残高計算完了:' + userBalance + ' JPYC');
       } catch (balanceError: any) {
-        log('❌ 残高取得エラー:' + balanceError.message);
+        console.error('残高取得エラー:', balanceError.message);
         userBalance = '0';
       }
 
       // X402形式のQRコードを検知 - 初回同意チェック
       const hasConsented = localStorage.getItem(X402_CONSENT_KEY) === 'true';
-      log('📋 同意状態:' + hasConsented);
 
-      // まずpaymentDataとbalanceを設定
-      log('📝 状態設定開始');
-      localStorage.setItem('x402_scan_result', 'setting_state');
+      // paymentDataとbalanceを設定
       setPaymentData(decoded);
       setBalance(userBalance);
       setShowScanner(false);
       setMessage({ type: 'info', text: '決済内容を確認してください' });
-      log('✅ 状態設定完了');
-
-      localStorage.setItem('x402_scan_result', 'state_set_complete');
 
       // 次のレンダリングサイクルでモーダルを表示
-      // setTimeoutを使ってReactの状態更新を確実に完了させる
-      log('⏰ モーダル表示待機中...');
       setTimeout(() => {
-        log('📺 モーダル表示開始');
-        localStorage.setItem('x402_scan_result', 'showing_modal');
         if (!hasConsented) {
-          log('✅ 同意モーダル表示');
           setShowConsentModal(true);
         } else {
-          log('✅ 確認モーダル表示');
           setShowConfirmation(true);
         }
-        localStorage.setItem('x402_scan_result', 'modal_triggered');
-        log('🎉 handleScan完了');
       }, 50);
 
     } catch (error: any) {
-      log('❌ エラー発生:' + error.message);
-      localStorage.setItem('x402_scan_result', `error: ${error}`);
+      console.error('QRコード読み取りエラー:', error.message);
       setMessage({ type: 'error', text: 'QRコードの読み取りに失敗しました' });
       setShowScanner(false);
     }
@@ -374,20 +183,12 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
     setMessage(null);
 
     try {
-      console.log('🚀 handlePayment開始');
-      console.log('  walletAddress:', walletAddress.substring(0, 10) + '...');
-      console.log('  hasSigner:', !!signer);
-      console.log('  hasSendTransaction:', !!sendTransaction);
-      console.log('  isPrivyWallet:', !!privyEmbeddedWalletAddress);
-
       // 残高確認用のread-only provider
       const readOnlyProvider = new ethers.providers.JsonRpcProvider('https://polygon-rpc.com');
       const tokenContract = new ethers.Contract(paymentData.token, ERC20_ABI, readOnlyProvider);
 
       // 残高確認
-      console.log('💰 残高確認中...');
       const userBalance = await tokenContract.balanceOf(walletAddress);
-      console.log('  残高:', ethers.utils.formatUnits(userBalance, 18), 'JPYC');
 
       if (userBalance.lt(paymentData.amount)) {
         setMessage({ type: 'error', text: '残高不足です' });
@@ -401,18 +202,10 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
         paymentData.amount
       ]);
 
-      console.log('📝 トランザクションデータ:', {
-        to: paymentData.token,
-        data: transferData.substring(0, 20) + '...',
-        value: '0',
-      });
-
       let txHash: string;
 
       // Privy埋め込みウォレットの場合はPrivy sendTransactionを使用
       if (privyEmbeddedWalletAddress && sendTransaction) {
-        console.log('🔐 Privy sendTransaction使用');
-
         const txRequest = {
           to: paymentData.token,
           data: transferData,
@@ -420,25 +213,19 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
           chainId: 137, // Polygon Mainnet
         };
 
-        console.log('📤 トランザクション送信中...');
         const result = await sendTransaction(txRequest);
         txHash = result.transactionHash;
-        console.log('✅ トランザクションハッシュ:', txHash);
       } else if (signer) {
         // 通常のsigner (MetaMask等)
-        console.log('🔐 通常のsigner使用');
         const tokenContractWithSigner = new ethers.Contract(paymentData.token, ERC20_ABI, signer);
         const tx = await tokenContractWithSigner.transfer(paymentData.to, paymentData.amount);
         txHash = tx.hash;
-        console.log('✅ トランザクションハッシュ:', txHash);
 
         setMessage({ type: 'info', text: 'トランザクション送信中...' });
         await tx.wait();
       } else {
         throw new Error('署名方法が利用できません');
       }
-
-      console.log('⏳ トランザクション確認待ち...');
 
       // Supabaseの支払いリクエストを更新
       if (paymentData.requestId) {
@@ -453,6 +240,7 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
       }
 
       setMessage({ type: 'success', text: '✅ 支払いが完了しました！' });
+      setIsProcessing(false);
 
       // 確認画面を閉じる
       setShowConfirmation(false);
