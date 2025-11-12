@@ -314,31 +314,41 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
 
       {/* 初回同意モーダル (X402検知時) */}
       {showConsentModal && paymentData && (
-        <div style={{
+        <div
+          onClick={(e) => {
+            // 背景クリックでデバッグ用アラート
+            if (e.target === e.currentTarget) {
+              alert('同意モーダルが表示されています。内容が見えない場合は画面をスクロールしてください。');
+            }
+          }}
+          style={{
           position: 'fixed',
           inset: 0,
-          background: 'rgba(0,0,0,0.9)',
+          background: 'rgba(0,0,0,0.95)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          zIndex: 10000,
+          zIndex: 999999,
           padding: isMobile ? 16 : 20,
+          overflow: 'auto',
         }}>
           <div style={{
-            background: 'linear-gradient(135deg, #1e3a8a 0%, #1e293b 100%)',
+            background: '#ffffff',
             borderRadius: 20,
             padding: isMobile ? 24 : 32,
             maxWidth: 600,
             width: '100%',
-            maxHeight: '90vh',
+            maxHeight: '85vh',
             overflowY: 'auto',
             boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
+            border: '3px solid #22c55e',
           }}>
             <h2 style={{
               fontSize: isMobile ? 20 : 24,
               marginBottom: 20,
               textAlign: 'center',
-              color: '#fff',
+              color: '#1a1a1a',
+              fontWeight: 700,
             }}>
               JPYC送受信（x402ベース／互換・独自実装）について
             </h2>
@@ -347,7 +357,7 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
               fontSize: isMobile ? 13 : 14,
               lineHeight: 1.8,
               marginBottom: 24,
-              color: '#e0e0e0',
+              color: '#2d3748',
             }}>
               <ul style={{ paddingLeft: 20, marginBottom: 20 }}>
                 <li style={{ marginBottom: 12 }}>
@@ -372,7 +382,8 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
                 gap: 12,
                 cursor: 'pointer',
                 fontSize: isMobile ? 13 : 14,
-                color: '#fff',
+                color: '#1a1a1a',
+                fontWeight: 500,
               }}>
                 <input
                   type="checkbox"
@@ -407,9 +418,9 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
                   padding: isMobile ? 12 : 14,
                   fontSize: isMobile ? 14 : 15,
                   fontWeight: '600',
-                  background: 'rgba(255,255,255,0.1)',
-                  color: '#fff',
-                  border: '1px solid rgba(255,255,255,0.2)',
+                  background: '#e5e7eb',
+                  color: '#374151',
+                  border: '2px solid #d1d5db',
                   borderRadius: 10,
                   cursor: 'pointer',
                 }}
@@ -430,8 +441,8 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
                   fontWeight: '600',
                   background: consentAccepted
                     ? 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)'
-                    : 'rgba(255,255,255,0.05)',
-                  color: consentAccepted ? '#fff' : 'rgba(255,255,255,0.3)',
+                    : '#e5e7eb',
+                  color: consentAccepted ? '#fff' : '#9ca3af',
                   border: 'none',
                   borderRadius: 10,
                   cursor: consentAccepted ? 'pointer' : 'not-allowed',
@@ -450,46 +461,52 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
         <div style={{
           position: 'fixed',
           inset: 0,
-          background: 'rgba(0,0,0,0.9)',
+          background: 'rgba(0,0,0,0.95)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          zIndex: 10000,
+          zIndex: 999999,
           padding: isMobile ? 16 : 20,
+          overflow: 'auto',
         }}>
           <div style={{
-            background: 'linear-gradient(135deg, #1e3a8a 0%, #1e293b 100%)',
+            background: '#ffffff',
             borderRadius: 20,
             padding: isMobile ? 24 : 32,
             maxWidth: 500,
             width: '100%',
+            maxHeight: '85vh',
+            overflowY: 'auto',
             boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
+            border: '3px solid #3b82f6',
           }}>
             <h2 style={{
               fontSize: isMobile ? 18 : 22,
               marginBottom: 16,
               textAlign: 'center',
-              color: '#fff',
+              color: '#1a1a1a',
+              fontWeight: 700,
             }}>
               送信内容の確認
             </h2>
 
             {/* 金額表示 */}
             <div style={{
-              background: 'rgba(255,255,255,0.1)',
+              background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)',
+              border: '2px solid #86efac',
               borderRadius: 12,
               padding: isMobile ? 16 : 20,
               marginBottom: 16,
               textAlign: 'center',
             }}>
-              <div style={{ fontSize: 12, opacity: 0.9, marginBottom: 6, color: '#fff' }}>
+              <div style={{ fontSize: 12, marginBottom: 6, color: '#166534', fontWeight: 600 }}>
                 お支払い金額
               </div>
-              <div style={{ fontSize: isMobile ? 36 : 42, fontWeight: 'bold', color: '#22c55e' }}>
+              <div style={{ fontSize: isMobile ? 36 : 42, fontWeight: 'bold', color: '#16a34a' }}>
                 ¥{formatPaymentAmount(paymentData.amount, jpycConfig.decimals)}
               </div>
               {paymentData.message && (
-                <div style={{ marginTop: 8, fontSize: 13, opacity: 0.9, color: '#fff' }}>
+                <div style={{ marginTop: 8, fontSize: 13, color: '#166534' }}>
                   {paymentData.message}
                 </div>
               )}
@@ -497,15 +514,16 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
 
             {/* 支払先 */}
             <div style={{ marginBottom: 12 }}>
-              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', marginBottom: 6 }}>支払先</div>
+              <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 6, fontWeight: 600 }}>支払先</div>
               <div style={{
                 fontSize: 11,
                 fontFamily: 'monospace',
-                background: 'rgba(0,0,0,0.3)',
+                background: '#f3f4f6',
                 padding: 10,
                 borderRadius: 8,
                 wordBreak: 'break-all',
-                color: '#fff',
+                color: '#374151',
+                border: '1px solid #e5e7eb',
               }}>
                 {paymentData.to}
               </div>
@@ -513,15 +531,15 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
 
             {/* 残高表示 */}
             <div style={{ marginBottom: 16 }}>
-              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', marginBottom: 6 }}>
+              <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 6, fontWeight: 600 }}>
                 あなたの残高
               </div>
-              <div style={{ fontSize: 16, fontWeight: '600', color: '#fff' }}>¥{balance} JPYC</div>
+              <div style={{ fontSize: 16, fontWeight: '600', color: '#1a1a1a' }}>¥{balance} JPYC</div>
             </div>
 
             {/* 有効期限 */}
             {paymentData.expires && (
-              <div style={{ marginBottom: 16, fontSize: 12, opacity: 0.9, color: '#fff' }}>
+              <div style={{ marginBottom: 16, fontSize: 12, color: '#6b7280' }}>
                 有効期限: 残り {Math.floor(getTimeUntilExpiry(paymentData.expires) / 60)} 分
               </div>
             )}
@@ -558,9 +576,9 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
                   padding: isMobile ? 12 : 14,
                   fontSize: isMobile ? 14 : 15,
                   fontWeight: '600',
-                  background: 'rgba(255,255,255,0.1)',
-                  color: '#fff',
-                  border: '1px solid rgba(255,255,255,0.2)',
+                  background: '#e5e7eb',
+                  color: '#374151',
+                  border: '2px solid #d1d5db',
                   borderRadius: 10,
                   cursor: isProcessing ? 'not-allowed' : 'pointer',
                   opacity: isProcessing ? 0.5 : 1,
@@ -577,7 +595,7 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
                   fontSize: isMobile ? 14 : 15,
                   fontWeight: '600',
                   background: isProcessing
-                    ? 'rgba(100,100,100,0.5)'
+                    ? '#d1d5db'
                     : 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
                   color: '#fff',
                   border: 'none',
