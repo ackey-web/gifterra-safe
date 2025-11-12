@@ -39,7 +39,7 @@ const X402_CONSENT_KEY = 'gifterra_x402_consent_accepted';
 export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps) {
   const thirdwebAddress = useAddress();
   const thirdwebSigner = useSigner();
-  const { user, getEthersProvider, wallets } = usePrivy();
+  const { user, getEthersProvider, wallets, sendTransaction } = usePrivy();
 
   // Privyの埋め込みウォレットアドレスを正しく取得
   // Privyの新しいバージョンでは user.wallet に直接格納されている
@@ -77,6 +77,24 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
         hasGetEthersProvider: !!getEthersProvider,
         walletsCount: wallets?.length || 0,
       });
+
+      // Privy埋め込みウォレットアドレスがあるが、wallets配列が空の場合
+      // → read-only providerを使用して残高取得は可能にする
+      if (privyEmbeddedWalletAddress && (!wallets || wallets.length === 0)) {
+        console.warn('⚠️ Privy wallets配列が空です。Read-only providerを作成します。');
+
+        // Polygon mainnet read-only provider
+        try {
+          const readOnlyProvider = new ethers.providers.JsonRpcProvider('https://polygon-rpc.com');
+          console.log('✅ Read-only provider作成成功');
+
+          // signerは作成できないが、balanceOf呼び出しには使える
+          // トランザクション署名時に別の方法を使う必要がある
+          console.log('⚠️ Read-only providerのため、トランザクション署名には使えません');
+        } catch (e: any) {
+          console.error('❌ Read-only provider作成エラー:', e.message);
+        }
+      }
 
       // Privy walletsから直接signerを取得（推奨方法）
       if (wallets && wallets.length > 0 && privyEmbeddedWalletAddress) {
@@ -392,7 +410,7 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
 
   // 支払い実行
   const handlePayment = async () => {
-    if (!paymentData || !signer || !walletAddress) {
+    if (!paymentData || !walletAddress) {
       setMessage({ type: 'error', text: 'ウォレットを接続してください' });
       return;
     }
@@ -401,24 +419,71 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
     setMessage(null);
 
     try {
-      // トークンコントラクトに接続
-      const tokenContract = new ethers.Contract(paymentData.token, ERC20_ABI, signer);
+      console.log('🚀 handlePayment開始');
+      console.log('  walletAddress:', walletAddress.substring(0, 10) + '...');
+      console.log('  hasSigner:', !!signer);
+      console.log('  hasSendTransaction:', !!sendTransaction);
+      console.log('  isPrivyWallet:', !!privyEmbeddedWalletAddress);
+
+      // 残高確認用のread-only provider
+      const readOnlyProvider = new ethers.providers.JsonRpcProvider('https://polygon-rpc.com');
+      const tokenContract = new ethers.Contract(paymentData.token, ERC20_ABI, readOnlyProvider);
 
       // 残高確認
+      console.log('💰 残高確認中...');
       const userBalance = await tokenContract.balanceOf(walletAddress);
+      console.log('  残高:', ethers.utils.formatUnits(userBalance, 18), 'JPYC');
+
       if (userBalance.lt(paymentData.amount)) {
         setMessage({ type: 'error', text: '残高不足です' });
         setIsProcessing(false);
         return;
       }
 
-      // トランザクション送信
-      const tx = await tokenContract.transfer(paymentData.to, paymentData.amount);
+      // トランザクションデータを構築
+      const transferData = tokenContract.interface.encodeFunctionData('transfer', [
+        paymentData.to,
+        paymentData.amount
+      ]);
 
-      setMessage({ type: 'info', text: 'トランザクション送信中...' });
+      console.log('📝 トランザクションデータ:', {
+        to: paymentData.token,
+        data: transferData.substring(0, 20) + '...',
+        value: '0',
+      });
 
-      // トランザクション確認待ち
-      await tx.wait();
+      let txHash: string;
+
+      // Privy埋め込みウォレットの場合はPrivy sendTransactionを使用
+      if (privyEmbeddedWalletAddress && sendTransaction) {
+        console.log('🔐 Privy sendTransaction使用');
+
+        const txRequest = {
+          to: paymentData.token,
+          data: transferData,
+          value: '0x0',
+          chainId: 137, // Polygon Mainnet
+        };
+
+        console.log('📤 トランザクション送信中...');
+        const result = await sendTransaction(txRequest);
+        txHash = result.transactionHash;
+        console.log('✅ トランザクションハッシュ:', txHash);
+      } else if (signer) {
+        // 通常のsigner (MetaMask等)
+        console.log('🔐 通常のsigner使用');
+        const tokenContractWithSigner = new ethers.Contract(paymentData.token, ERC20_ABI, signer);
+        const tx = await tokenContractWithSigner.transfer(paymentData.to, paymentData.amount);
+        txHash = tx.hash;
+        console.log('✅ トランザクションハッシュ:', txHash);
+
+        setMessage({ type: 'info', text: 'トランザクション送信中...' });
+        await tx.wait();
+      } else {
+        throw new Error('署名方法が利用できません');
+      }
+
+      console.log('⏳ トランザクション確認待ち...');
 
       // Supabaseの支払いリクエストを更新
       if (paymentData.requestId) {
