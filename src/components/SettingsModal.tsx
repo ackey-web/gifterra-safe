@@ -133,6 +133,7 @@ export function SettingsModal({ onClose, isMobile, onLogout }: SettingsModalProp
           {/* プロフィール編集 */}
           {connectedAddress && (
             <button
+              type="button"
               onClick={() => setShowProfileEdit(true)}
               style={{
                 width: '100%',
@@ -296,6 +297,7 @@ export function SettingsModal({ onClose, isMobile, onLogout }: SettingsModalProp
           {/* 通知設定 */}
           {connectedAddress && (
             <button
+              type="button"
               onClick={() => setShowNotificationSettings(true)}
               style={{
                 width: '100%',
@@ -350,6 +352,7 @@ export function SettingsModal({ onClose, isMobile, onLogout }: SettingsModalProp
 
           {/* お問い合わせ・サポート */}
           <button
+            type="button"
             onClick={() => setShowContactForm(true)}
             style={{
               width: '100%',
@@ -404,7 +407,11 @@ export function SettingsModal({ onClose, isMobile, onLogout }: SettingsModalProp
           {/* ログアウト */}
           {onLogout && (
             <button
-              onClick={onLogout}
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onLogout();
+              }}
               style={{
                 width: '100%',
                 display: 'flex',
