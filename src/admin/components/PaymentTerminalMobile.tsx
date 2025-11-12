@@ -40,6 +40,7 @@ export function PaymentTerminalMobile() {
 
   // 接続中のウォレット情報を状態管理
   const [showWalletSelection, setShowWalletSelection] = useState(false);
+  const [walletConfirmed, setWalletConfirmed] = useState(false);
 
   // JPYC設定を取得
   const jpycConfig = getTokenConfig('JPYC');
@@ -296,7 +297,7 @@ export function PaymentTerminalMobile() {
         </p>
       </header>
 
-      {!walletAddress ? (
+      {!walletAddress || !walletConfirmed ? (
         <div style={{
           textAlign: 'center',
           padding: '30px 20px',
@@ -395,7 +396,8 @@ export function PaymentTerminalMobile() {
               <div style={{ marginBottom: '12px' }}>
                 <button
                   onClick={() => {
-                    window.location.reload();
+                    // 接続中のウォレットで続行
+                    setWalletConfirmed(true);
                   }}
                   style={{
                     width: '100%',
