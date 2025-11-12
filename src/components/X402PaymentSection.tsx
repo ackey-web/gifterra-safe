@@ -31,12 +31,15 @@ const X402_CONSENT_KEY = 'gifterra_x402_consent_accepted';
 
 export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps) {
   const thirdwebAddress = useAddress();
-  const signer = useSigner();
+  const thirdwebSigner = useSigner();
   const { user } = usePrivy();
 
   // Privyの埋め込みウォレットアドレスとThirdwebのアドレスを統合
   const privyEmbeddedWalletAddress = user?.wallet?.address;
   const walletAddress = privyEmbeddedWalletAddress || thirdwebAddress || '';
+
+  // signerの取得: Thirdwebのsignerを優先（Privyの場合もThirdwebのラッパーを使用）
+  const signer = thirdwebSigner;
 
   const [showScanner, setShowScanner] = useState(false);
   const [paymentData, setPaymentData] = useState<X402PaymentData | null>(null);
@@ -52,7 +55,9 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
   // QRコードスキャン処理
   const handleScan = async (data: string) => {
     try {
+      console.log('🔍 QRコードスキャン開始:', data);
       const decoded = decodeX402(data);
+      console.log('✅ デコード成功:', decoded);
 
       // 有効期限チェック
       if (isPaymentExpired(decoded.expires)) {
@@ -64,15 +69,26 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
       setShowScanner(false);
 
       // 残高確認
+      console.log('💰 残高確認開始 - signer:', !!signer, 'walletAddress:', walletAddress);
       if (signer) {
-        const tokenContract = new ethers.Contract(decoded.token, ERC20_ABI, signer);
-        const userBalance = await tokenContract.balanceOf(walletAddress);
-        const decimals = await tokenContract.decimals();
-        setBalance(ethers.utils.formatUnits(userBalance, decimals));
+        try {
+          const tokenContract = new ethers.Contract(decoded.token, ERC20_ABI, signer);
+          const userBalance = await tokenContract.balanceOf(walletAddress);
+          const decimals = await tokenContract.decimals();
+          setBalance(ethers.utils.formatUnits(userBalance, decimals));
+          console.log('✅ 残高取得成功:', ethers.utils.formatUnits(userBalance, decimals));
+        } catch (balanceError) {
+          console.error('❌ 残高取得エラー:', balanceError);
+          setBalance('0');
+        }
+      } else {
+        console.warn('⚠️ signerが見つかりません');
+        setBalance('0');
       }
 
       // X402形式のQRコードを検知 - 初回同意チェック
       const hasConsented = localStorage.getItem(X402_CONSENT_KEY) === 'true';
+      console.log('📋 同意状態:', hasConsented);
       if (!hasConsented) {
         setShowConsentModal(true);
       } else {
@@ -81,7 +97,9 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
 
       setMessage({ type: 'info', text: '決済内容を確認してください' });
     } catch (error) {
+      console.error('❌ QRコードスキャンエラー:', error);
       setMessage({ type: 'error', text: 'QRコードの読み取りに失敗しました' });
+      setShowScanner(false);
     }
   };
 
