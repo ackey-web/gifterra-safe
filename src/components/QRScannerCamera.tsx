@@ -76,38 +76,33 @@ export function QRScannerCamera({ onScan, onClose, placeholder = 'X402決済コ�
               return;
             }
 
-            if (isMounted.current && scannerRef.current) {
+            if (isMounted.current) {
               isStoppingRef.current = true; // 停止処理開始
 
-              // スキャナー停止とバリデーション処理
-              const stopScanner = async () => {
-                try {
-                  if (scannerRef.current) {
-                    await scannerRef.current.stop();
-                    console.log('📷 カメラ停止完了');
-                  }
-                } catch (err) {
-                  console.warn('⚠️ カメラ停止時の警告:', err);
-                  // 停止エラーは無視して続行
+              // バリデーション処理（まず先に実行）
+              console.log('📷 バリデーション開始');
+              const validation = validateAndProcessScan(decodedText);
+
+              if (validation.isValid) {
+                console.log('✅ バリデーション成功 - onScan呼び出し');
+
+                // カメラ停止を試みるが、エラーは完全に無視
+                if (scannerRef.current) {
+                  scannerRef.current.stop().catch(() => {
+                    console.log('⚠️ カメラ停止エラー（無視）');
+                  });
                 }
 
-                // バリデーション処理（エラーが発生しても必ず実行）
-                console.log('📷 バリデーション開始');
-                const validation = validateAndProcessScan(decodedText);
-                if (validation.isValid) {
-                  console.log('✅ バリデーション成功 - onScan呼び出し');
-                  onScan(decodedText);
-                  onClose();
-                } else {
-                  console.log('❌ バリデーション失敗:', validation.error);
-                  setCameraError(validation.error || '無効なQRコードです');
-                  setIsScanning(false);
-                  setShowManualInput(true);
-                  isStoppingRef.current = false; // 失敗時はフラグをリセット
-                }
-              };
-
-              stopScanner();
+                // エラーに関係なく、必ずコールバックを実行
+                onScan(decodedText);
+                onClose();
+              } else {
+                console.log('❌ バリデーション失敗:', validation.error);
+                setCameraError(validation.error || '無効なQRコードです');
+                setIsScanning(false);
+                setShowManualInput(true);
+                isStoppingRef.current = false; // 失敗時はフラグをリセット
+              }
             }
           },
           (errorMessage) => {
