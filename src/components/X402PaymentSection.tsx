@@ -89,10 +89,16 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
       // X402形式のQRコードを検知 - 初回同意チェック
       const hasConsented = localStorage.getItem(X402_CONSENT_KEY) === 'true';
       console.log('📋 同意状態:', hasConsented);
+
+      // デバッグ: モーダル表示をアラートで通知
       if (!hasConsented) {
+        alert('同意モーダルを表示します');
         setShowConsentModal(true);
+        console.log('✅ showConsentModal = true に設定');
       } else {
+        alert('確認モーダルを表示します');
         setShowConfirmation(true);
+        console.log('✅ showConfirmation = true に設定');
       }
 
       setMessage({ type: 'info', text: '決済内容を確認してください' });
@@ -310,6 +316,24 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
           onClose={() => setShowScanner(false)}
           placeholder="X402決済QRコードをスキャン"
         />
+      )}
+
+      {/* デバッグ表示 */}
+      {showConsentModal && !paymentData && (
+        <div style={{
+          position: 'fixed',
+          top: 20,
+          left: 20,
+          right: 20,
+          background: 'red',
+          color: 'white',
+          padding: 20,
+          zIndex: 9999999,
+          fontSize: 16,
+          fontWeight: 'bold',
+        }}>
+          エラー: paymentDataがnullです
+        </div>
       )}
 
       {/* 初回同意モーダル (X402検知時) */}
