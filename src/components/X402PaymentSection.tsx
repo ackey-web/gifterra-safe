@@ -39,7 +39,7 @@ const X402_CONSENT_KEY = 'gifterra_x402_consent_accepted';
 export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps) {
   const thirdwebAddress = useAddress();
   const thirdwebSigner = useSigner();
-  const { user, getEthersProvider, wallets, sendTransaction } = usePrivy();
+  const { user, getEthersProvider, wallets, sendTransaction, ready } = usePrivy();
 
   // Privyの埋め込みウォレットアドレスを正しく取得
   // Privyの新しいバージョンでは user.wallet に直接格納されている
@@ -71,11 +71,13 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
   useEffect(() => {
     const getSigner = async () => {
       console.log('🔍 Signer取得開始:', {
+        ready,
         user: !!user,
         privyWallet: !!user?.wallet,
         privyAddress: privyEmbeddedWalletAddress,
         hasGetEthersProvider: !!getEthersProvider,
         walletsCount: wallets?.length || 0,
+        hasSendTransaction: !!sendTransaction,
       });
 
       // Privy埋め込みウォレットアドレスがあるが、wallets配列が空の場合
@@ -293,79 +295,32 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
         return;
       }
 
-      // 残高確認
+      // 残高確認（read-only providerを使用）
       log('💰 残高確認開始');
-      log('  signer:' + !!signer);
-      log('  privySigner:' + !!privySigner);
-      log('  thirdwebSigner:' + !!thirdwebSigner);
-      log('  fallbackSigner:' + !!fallbackSigner);
       log('  wallet:' + walletAddress.substring(0, 10) + '...');
+      log('  hasSendTransaction:' + !!sendTransaction);
 
       let userBalance = '0';
-      let currentSigner = signer;
 
-      // signerがない場合、Privyから取得を試みる
-      if (!currentSigner && privyEmbeddedWalletAddress) {
-        log('🔄 signer再取得を試みます...');
-        log('  privyAddress:' + privyEmbeddedWalletAddress.substring(0, 10) + '...');
+      // Read-only providerで残高取得（signerなしで可能）
+      try {
+        log('🔄 Read-only providerで残高取得');
+        const readOnlyProvider = new ethers.providers.JsonRpcProvider('https://polygon-rpc.com');
+        const tokenContract = new ethers.Contract(decoded.token, ERC20_ABI, readOnlyProvider);
 
-        if (getEthersProvider) {
-          try {
-            log('🔄 getEthersProvider経由でsigner作成を試みます...');
-            const provider = await getEthersProvider();
-            log('  provider取得:' + !!provider);
+        log('📞 balanceOf呼び出し');
+        const balance = await tokenContract.balanceOf(walletAddress);
+        log('✅ balance取得:' + balance.toString());
 
-            if (provider) {
-              const web3Provider = new ethers.providers.Web3Provider(provider as any);
-              currentSigner = web3Provider.getSigner();
-              log('✅ Web3Provider経由でsigner作成成功:' + !!currentSigner);
+        log('📞 decimals呼び出し');
+        const decimals = await tokenContract.decimals();
+        log('✅ decimals取得:' + decimals);
 
-              // アドレス確認
-              try {
-                const addr = await currentSigner.getAddress();
-                log('  signer address:' + addr.substring(0, 10) + '...');
-              } catch (e: any) {
-                log('⚠️ アドレス取得失敗:' + e.message);
-              }
-            } else {
-              log('❌ provider is null');
-            }
-          } catch (e: any) {
-            log('❌ getEthersProvider失敗:' + e.message);
-            log('  エラー詳細:' + JSON.stringify(e).substring(0, 50));
-          }
-        } else {
-          log('❌ getEthersProvider is not available');
-        }
-
-        if (!currentSigner) {
-          log('❌ signer取得失敗');
-        }
-      } else if (!currentSigner) {
-        log('⚠️ signerなし & privyAddressなし');
-      }
-
-      if (currentSigner) {
-        try {
-          log('📄 Contract作成:' + decoded.token.substring(0, 10) + '...');
-          const tokenContract = new ethers.Contract(decoded.token, ERC20_ABI, currentSigner);
-
-          log('📞 balanceOf呼び出し');
-          const balance = await tokenContract.balanceOf(walletAddress);
-          log('✅ balance取得:' + balance.toString());
-
-          log('📞 decimals呼び出し');
-          const decimals = await tokenContract.decimals();
-          log('✅ decimals取得:' + decimals);
-
-          userBalance = ethers.utils.formatUnits(balance, decimals);
-          log('✅ 残高計算完了:' + userBalance);
-        } catch (balanceError: any) {
-          log('❌ 残高取得エラー:' + balanceError.message);
-          log('❌ エラー詳細:' + JSON.stringify(balanceError).substring(0, 100));
-        }
-      } else {
-        log('⚠️ signerなし - 残高取得スキップ');
+        userBalance = ethers.utils.formatUnits(balance, decimals);
+        log('✅ 残高計算完了:' + userBalance + ' JPYC');
+      } catch (balanceError: any) {
+        log('❌ 残高取得エラー:' + balanceError.message);
+        userBalance = '0';
       }
 
       // X402形式のQRコードを検知 - 初回同意チェック
