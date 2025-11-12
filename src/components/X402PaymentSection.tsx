@@ -16,6 +16,13 @@ import {
   type X402PaymentData
 } from '../utils/x402';
 
+// window.ethereum型定義
+declare global {
+  interface Window {
+    ethereum?: any;
+  }
+}
+
 // ERC20 ABI (最小限)
 const ERC20_ABI = [
   'function transfer(address to, uint256 amount) returns (bool)',
@@ -65,13 +72,19 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
     const getSigner = async () => {
       console.log('🔍 Signer取得開始:', {
         user: !!user,
-        linkedAccounts: user?.linkedAccounts?.length,
-        privyWallet: privyEmbeddedWallet,
+        privyWallet: !!user?.wallet,
         privyAddress: privyEmbeddedWalletAddress,
         hasGetEthersProvider: !!getEthersProvider,
       });
 
-      if (privyEmbeddedWalletAddress && getEthersProvider) {
+      // getEthersProviderが利用できない場合は、thirdwebSignerを使用
+      if (!getEthersProvider) {
+        console.warn('⚠️ getEthersProvider is not available');
+        console.log('💡 thirdwebSignerを使用します');
+        return;
+      }
+
+      if (privyEmbeddedWalletAddress) {
         try {
           console.log('🔄 getEthersProvider呼び出し中...');
           const provider = await getEthersProvider();
@@ -92,18 +105,37 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
         } catch (e: any) {
           console.error('❌ Privy signer取得エラー:', e.message, e);
         }
-      } else {
-        console.warn('⚠️ Privy signer取得条件不足:', {
-          hasAddress: !!privyEmbeddedWalletAddress,
-          hasProvider: !!getEthersProvider,
-        });
       }
     };
     getSigner();
   }, [privyEmbeddedWalletAddress, getEthersProvider, user]);
 
-  // signerの優先順位: Privy signer > Thirdweb signer
-  const signer = privySigner || thirdwebSigner;
+  // signerの優先順位: Privy signer > Thirdweb signer > window.ethereum
+  const [fallbackSigner, setFallbackSigner] = useState<ethers.Signer | null>(null);
+
+  // フォールバック: window.ethereumから直接signerを取得
+  useEffect(() => {
+    const getFallbackSigner = async () => {
+      if (privySigner || thirdwebSigner) {
+        return; // 既にsignerがある場合はスキップ
+      }
+
+      if (typeof window !== 'undefined' && window.ethereum) {
+        try {
+          console.log('🔄 window.ethereumからsigner取得を試みます...');
+          const provider = new ethers.providers.Web3Provider(window.ethereum as any);
+          const s = provider.getSigner();
+          setFallbackSigner(s);
+          console.log('✅ window.ethereum signer作成成功');
+        } catch (e: any) {
+          console.error('❌ window.ethereum signer取得エラー:', e.message);
+        }
+      }
+    };
+    getFallbackSigner();
+  }, [privySigner, thirdwebSigner]);
+
+  const signer = privySigner || thirdwebSigner || fallbackSigner;
 
   const [showScanner, setShowScanner] = useState(false);
   const [paymentData, setPaymentData] = useState<X402PaymentData | null>(null);
