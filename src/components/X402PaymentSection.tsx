@@ -35,11 +35,28 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
   const { user, getEthersProvider } = usePrivy();
 
   // Privyの埋め込みウォレットアドレスを正しく取得
-  const privyEmbeddedWallet = user?.linkedAccounts?.find(
-    (account: any) => account.type === 'wallet' && account.walletClient === 'privy'
-  );
-  const privyEmbeddedWalletAddress = privyEmbeddedWallet?.address;
+  // Privyの新しいバージョンでは user.wallet に直接格納されている
+  const privyEmbeddedWalletAddress = user?.wallet?.address;
   const walletAddress = privyEmbeddedWalletAddress || thirdwebAddress || '';
+
+  // デバッグログ: ウォレット接続状態を確認
+  useEffect(() => {
+    console.log('🔍 X402PaymentSection - ウォレット接続状態チェック:', {
+      hasUser: !!user,
+      hasPrivyWallet: !!user?.wallet,
+      privyWalletAddress: user?.wallet?.address ? user.wallet.address.substring(0, 10) + '...' : 'なし',
+      privyEmbeddedWalletAddress: privyEmbeddedWalletAddress ? privyEmbeddedWalletAddress.substring(0, 10) + '...' : 'なし',
+      thirdwebAddress: thirdwebAddress ? thirdwebAddress.substring(0, 10) + '...' : 'なし',
+      finalWalletAddress: walletAddress ? walletAddress.substring(0, 10) + '...' : 'なし',
+
+      // 修正案の表示
+      recommendation: !walletAddress && thirdwebAddress
+        ? 'Thirdwebアドレスが利用可能ですが、walletAddressに設定されていません'
+        : walletAddress
+        ? 'ウォレット接続OK'
+        : 'ウォレット未接続',
+    });
+  }, [user, privyEmbeddedWalletAddress, thirdwebAddress, walletAddress]);
 
   // signerの取得: Privyの埋め込みウォレットを使用している場合はPrivyのsignerを使用
   const [privySigner, setPrivySigner] = useState<ethers.Signer | null>(null);

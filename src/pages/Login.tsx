@@ -202,8 +202,24 @@ export const LoginPage: React.FC = () => {
         <div style={{ marginBottom: 16 }}>
           <button
             onClick={() => {
+              console.log('🔍 Privyログインボタンクリック:', {
+                loginFunction: typeof login,
+                authenticated,
+                user: !!user,
+              });
+
               if (typeof login === 'function') {
-                login();
+                try {
+                  console.log('📞 login()呼び出し中...');
+                  login();
+                  console.log('✅ login()呼び出し完了');
+                } catch (e: any) {
+                  console.error('❌ login()エラー:', e);
+                  alert(`Privyログインエラー: ${e.message}`);
+                }
+              } else {
+                console.error('❌ login is not a function:', login);
+                alert('Privyログイン機能が利用できません。ページをリロードしてください。');
               }
             }}
             style={{
