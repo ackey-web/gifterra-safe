@@ -3,6 +3,7 @@
 
 import { useState } from 'react';
 import { useSigner, useAddress } from '@thirdweb-dev/react';
+import { usePrivy } from '@privy-io/react-auth';
 import { ethers } from 'ethers';
 import { QRScannerCamera } from './QRScannerCamera';
 import { supabase } from '../lib/supabase';
@@ -29,8 +30,13 @@ interface X402PaymentSectionProps {
 const X402_CONSENT_KEY = 'gifterra_x402_consent_accepted';
 
 export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps) {
-  const walletAddress = useAddress();
+  const thirdwebAddress = useAddress();
   const signer = useSigner();
+  const { user } = usePrivy();
+
+  // Privyの埋め込みウォレットアドレスとThirdwebのアドレスを統合
+  const privyEmbeddedWalletAddress = user?.wallet?.address;
+  const walletAddress = privyEmbeddedWalletAddress || thirdwebAddress || '';
 
   const [showScanner, setShowScanner] = useState(false);
   const [paymentData, setPaymentData] = useState<X402PaymentData | null>(null);
