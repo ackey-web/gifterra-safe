@@ -13,6 +13,9 @@ import {
   formatPaymentAmount,
   isPaymentExpired,
   getTimeUntilExpiry,
+  validateAddress,
+  validateChainId,
+  getCurrentChainId,
   type X402PaymentData
 } from '../utils/x402';
 
@@ -35,6 +38,60 @@ interface X402PaymentSectionProps {
 }
 
 const X402_CONSENT_KEY = 'gifterra_x402_consent_accepted';
+const X402_CONSENT_VERSION = 'v1.0.0'; // 同意条件バージョン
+
+// 同意記録の型定義
+interface ConsentRecord {
+  version: string;        // 同意したバージョン (例: 'v1.0.0')
+  timestamp: number;      // 同意した日時 (Unix timestamp)
+  walletAddress: string;  // 同意時のウォレットアドレス
+}
+
+/**
+ * 同意記録をlocalStorageから取得
+ */
+function getConsentRecord(): ConsentRecord | null {
+  try {
+    const stored = localStorage.getItem(X402_CONSENT_KEY);
+    if (!stored) return null;
+
+    // 旧形式の互換性チェック (stored === 'true')
+    if (stored === 'true') {
+      console.log('⚠️ 旧形式の同意記録を検出 - 再同意が必要です');
+      return null;
+    }
+
+    const record = JSON.parse(stored) as ConsentRecord;
+
+    // バージョンチェック
+    if (record.version !== X402_CONSENT_VERSION) {
+      console.log(`⚠️ 同意バージョンが古い (${record.version} → ${X402_CONSENT_VERSION}) - 再同意が必要です`);
+      return null;
+    }
+
+    console.log('✅ 有効な同意記録を確認:', record);
+    return record;
+  } catch (error) {
+    console.error('❌ 同意記録の読み取りエラー:', error);
+    return null;
+  }
+}
+
+/**
+ * 同意記録をlocalStorageに保存
+ */
+function saveConsentRecord(walletAddress: string): ConsentRecord {
+  const record: ConsentRecord = {
+    version: X402_CONSENT_VERSION,
+    timestamp: Date.now(),
+    walletAddress: walletAddress.toLowerCase(),
+  };
+
+  localStorage.setItem(X402_CONSENT_KEY, JSON.stringify(record));
+  console.log('✅ 同意記録を保存:', record);
+
+  return record;
+}
 
 export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps) {
   const thirdwebAddress = useAddress();
@@ -125,6 +182,39 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
     try {
       const decoded = decodeX402(data);
 
+      // EIP-55アドレス検証
+      const recipientValidation = validateAddress(decoded.to);
+      if (!recipientValidation.valid) {
+        setMessage({ type: 'error', text: '無効な受取アドレスです' });
+        console.error('🔴 受取アドレス検証失敗:', recipientValidation.error);
+        return;
+      }
+
+      const tokenValidation = validateAddress(decoded.token);
+      if (!tokenValidation.valid) {
+        setMessage({ type: 'error', text: '無効なトークンアドレスです' });
+        console.error('🔴 トークンアドレス検証失敗:', tokenValidation.error);
+        return;
+      }
+
+      console.log('✅ QRコード内アドレス検証成功:', {
+        recipient: recipientValidation.checksumAddress,
+        token: tokenValidation.checksumAddress,
+      });
+
+      // ChainID検証
+      const chainValidation = validateChainId(decoded.chainId, 137);
+      if (!chainValidation.valid) {
+        setMessage({ type: 'error', text: chainValidation.error || 'チェーンIDが一致しません' });
+        console.error('🔴 ChainID検証失敗:', chainValidation.error);
+        return;
+      }
+
+      console.log('✅ ChainID検証成功:', {
+        chainId: decoded.chainId,
+        chainName: chainValidation.chainName,
+      });
+
       // 有効期限チェック
       if (isPaymentExpired(decoded.expires)) {
         setMessage({ type: 'error', text: 'このQRコードは有効期限切れです' });
@@ -147,8 +237,19 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
         userBalance = '0';
       }
 
-      // X402形式のQRコードを検知 - 初回同意チェック
-      const hasConsented = localStorage.getItem(X402_CONSENT_KEY) === 'true';
+      // X402形式のQRコードを検知 - バージョン付き同意チェック
+      const consentRecord = getConsentRecord();
+      const hasValidConsent = consentRecord !== null;
+
+      if (consentRecord) {
+        console.log('✅ 有効な同意記録あり:', {
+          version: consentRecord.version,
+          timestamp: new Date(consentRecord.timestamp).toISOString(),
+          walletAddress: consentRecord.walletAddress,
+        });
+      } else {
+        console.log('⚠️ 同意記録なし、または無効 - 同意モーダルを表示');
+      }
 
       // paymentDataとbalanceを設定
       setPaymentData(decoded);
@@ -158,7 +259,7 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
 
       // 次のレンダリングサイクルでモーダルを表示
       setTimeout(() => {
-        if (!hasConsented) {
+        if (!hasValidConsent) {
           setShowConsentModal(true);
         } else {
           setShowConfirmation(true);
@@ -183,6 +284,57 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
     setMessage(null);
 
     try {
+      // 接続中のChainIDを確認（signerから）
+      if (signer) {
+        try {
+          const provider = signer.provider;
+          if (provider) {
+            const currentChainId = await getCurrentChainId(provider as ethers.providers.Provider);
+            const chainValidation = validateChainId(currentChainId, 137);
+
+            if (!chainValidation.valid) {
+              setMessage({
+                type: 'error',
+                text: `ネットワークをPolygon Mainnetに切り替えてください。現在: ${chainValidation.chainName}`
+              });
+              console.error('🔴 接続中のChainID検証失敗:', chainValidation.error);
+              setIsProcessing(false);
+              return;
+            }
+
+            console.log('✅ 接続中のChainID検証成功:', {
+              chainId: currentChainId,
+              chainName: chainValidation.chainName,
+            });
+          }
+        } catch (chainError: any) {
+          console.warn('ChainID確認エラー（続行）:', chainError.message);
+        }
+      }
+
+      // RequestID重複チェック（リプレイアタック防止 - Phase 1）
+      if (paymentData.requestId) {
+        const { data: existing, error: checkError } = await supabase
+          .from('payment_requests')
+          .select('status')
+          .eq('request_id', paymentData.requestId)
+          .single();
+
+        if (checkError && checkError.code !== 'PGRST116') {
+          // PGRST116 = not found (OK), その他はエラー
+          console.warn('RequestID確認エラー（続行）:', checkError.message);
+        }
+
+        if (existing && existing.status === 'completed') {
+          setMessage({ type: 'error', text: 'この支払いは既に完了しています' });
+          console.error('🔴 重複支払い検出:', paymentData.requestId);
+          setIsProcessing(false);
+          return;
+        }
+
+        console.log('✅ RequestID重複チェック成功:', paymentData.requestId);
+      }
+
       // 残高確認用のread-only provider
       const readOnlyProvider = new ethers.providers.JsonRpcProvider('https://polygon-rpc.com');
       const tokenContract = new ethers.Contract(paymentData.token, ERC20_ABI, readOnlyProvider);
@@ -309,7 +461,7 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
             opacity: 0.8,
           }}
         >
-          このセクションはJPYC送信（x402ベース／互換・独自実装）です。現在のGIFTERRA FLOWプランでは特典配布とは連動しません。取消不可。返金は当事者間の合意により受領者が別送金で対応する場合があります。GIFTERRAは返金の当事者ではありません。
+          このセクションはJPYC送信機能です（GIFTERRA Transfer Protocol - X402互換プロトコル使用）。現在のGIFTERRA FLOWプランでは特典配布とは連動しません。送金は取消不可。返金は当事者間の合意により受領者が別送金で対応する場合があります。GIFTERRAは送金・返金の当事者ではありません。
         </p>
       </div>
 
@@ -438,10 +590,6 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
           overflow: 'auto',
         }}>
           <div
-            onClick={(e) => {
-              e.stopPropagation();
-              alert('モーダル本体がクリックされました');
-            }}
             style={{
             position: 'relative',
             background: '#ffffff',
@@ -454,15 +602,25 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
             boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
             border: '5px solid #22c55e',
           }}>
-            <h2 style={{
-              fontSize: isMobile ? 20 : 24,
-              marginBottom: 20,
-              textAlign: 'center',
-              color: '#1a1a1a',
-              fontWeight: 700,
-            }}>
-              JPYC送受信（x402ベース／互換・独自実装）について
-            </h2>
+            <div style={{ marginBottom: 20 }}>
+              <h2 style={{
+                fontSize: isMobile ? 20 : 24,
+                marginBottom: 8,
+                textAlign: 'center',
+                color: '#1a1a1a',
+                fontWeight: 700,
+              }}>
+                JPYC送受信（x402ベース／互換・独自実装）について
+              </h2>
+              <p style={{
+                fontSize: 12,
+                textAlign: 'center',
+                color: '#6b7280',
+                margin: 0,
+              }}>
+                利用規約バージョン: {X402_CONSENT_VERSION}
+              </p>
+            </div>
 
             <div style={{
               fontSize: isMobile ? 13 : 14,
@@ -540,7 +698,12 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
               </button>
               <button
                 onClick={() => {
-                  localStorage.setItem(X402_CONSENT_KEY, 'true');
+                  // バージョン付き同意記録を保存
+                  if (walletAddress) {
+                    saveConsentRecord(walletAddress);
+                  } else {
+                    console.error('❌ ウォレットアドレスが未設定のため同意記録を保存できません');
+                  }
                   setShowConsentModal(false);
                   setShowConfirmation(true);
                 }}

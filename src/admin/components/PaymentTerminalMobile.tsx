@@ -11,6 +11,7 @@ import {
   encodeX402,
   parsePaymentAmount,
   generateRequestId,
+  validateAddress,
 } from '../../utils/x402';
 import {
   generateCSV,
@@ -207,6 +208,26 @@ export function PaymentTerminalMobile() {
         return;
       }
 
+      // EIP-55アドレス検証
+      const walletValidation = validateAddress(walletAddress);
+      if (!walletValidation.valid) {
+        setMessage({ type: 'error', text: walletValidation.error || '受取アドレスが無効です' });
+        console.error('🔴 受取アドレス検証失敗:', walletValidation.error);
+        return;
+      }
+
+      const tokenValidation = validateAddress(jpycConfig.currentAddress);
+      if (!tokenValidation.valid) {
+        setMessage({ type: 'error', text: 'トークンアドレスが無効です' });
+        console.error('🔴 トークンアドレス検証失敗:', tokenValidation.error);
+        return;
+      }
+
+      console.log('✅ EIP-55検証成功:', {
+        wallet: walletValidation.checksumAddress,
+        token: tokenValidation.checksumAddress,
+      });
+
       const amountValue = parseInt(displayAmount);
       if (isNaN(amountValue) || amountValue <= 0) {
         setMessage({ type: 'error', text: '金額を入力してください' });
@@ -217,10 +238,12 @@ export function PaymentTerminalMobile() {
       const expires = Math.floor(Date.now() / 1000) + expiryMinutes * 60;
       const requestId = generateRequestId();
 
+      // チェックサムアドレスを使用
       const paymentData = encodeX402({
-        to: walletAddress,
-        token: jpycConfig.currentAddress,
+        to: walletValidation.checksumAddress!,
+        token: tokenValidation.checksumAddress!,
         amount: amountWei,
+        chainId: 137, // Polygon Mainnet
         message: `${displayAmount}円のお支払い`,
         expires,
         requestId,

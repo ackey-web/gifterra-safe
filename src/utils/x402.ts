@@ -7,6 +7,7 @@ export interface X402PaymentData {
   to: string;           // 受取アドレス
   token: string;        // トークンアドレス (JPYC)
   amount: string;       // Wei単位の金額
+  chainId: number;      // チェーンID (Polygon = 137)
   message?: string;     // メモ/説明
   expires?: number;     // 有効期限 (Unix timestamp)
   requestId?: string;   // リクエストID (重複防止)
@@ -27,6 +28,7 @@ export function encodeX402(data: X402PaymentData): string {
     to: data.to.toLowerCase(),
     token: data.token.toLowerCase(),
     amount: data.amount,
+    chainId: data.chainId,
     message: data.message || '',
     expires: data.expires || 0,
     requestId: data.requestId || '',
@@ -58,10 +60,15 @@ export function decodeX402(qrData: string): X402PaymentData {
       throw new Error('Invalid token address');
     }
 
+    if (!payload.chainId || typeof payload.chainId !== 'number') {
+      throw new Error('Invalid or missing chainId');
+    }
+
     return {
       to: payload.to.toLowerCase(),
       token: payload.token.toLowerCase(),
       amount: payload.amount,
+      chainId: payload.chainId,
       message: payload.message,
       expires: payload.expires,
       requestId: payload.requestId,
@@ -133,4 +140,98 @@ export function generateRequestId(): string {
   const timestamp = Date.now();
   const random = Math.random().toString(36).substring(2, 15);
   return `req_${timestamp}_${random}`;
+}
+
+/**
+ * EIP-55チェックサムアドレス検証
+ * ethers.jsのgetAddress()を使用してアドレスの妥当性を検証
+ *
+ * @param address 検証するアドレス
+ * @returns { valid: boolean; checksumAddress?: string; error?: string }
+ */
+export function validateAddress(address: string): {
+  valid: boolean;
+  checksumAddress?: string;
+  error?: string;
+} {
+  try {
+    // ethers.jsのgetAddress()はEIP-55チェックサム検証を行う
+    // 無効なアドレスの場合は例外がスローされる
+    const checksumAddress = ethers.utils.getAddress(address);
+    return {
+      valid: true,
+      checksumAddress
+    };
+  } catch (e: any) {
+    return {
+      valid: false,
+      error: `無効なアドレス形式です: ${e.message}`
+    };
+  }
+}
+
+/**
+ * アドレスをEIP-55チェックサム形式に変換
+ *
+ * @param address 変換するアドレス
+ * @returns EIP-55チェックサム形式のアドレス (失敗時はnull)
+ */
+export function toChecksumAddress(address: string): string | null {
+  try {
+    return ethers.utils.getAddress(address);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * ChainID検証
+ * Polygon Mainnet (137) が期待値
+ *
+ * @param chainId 検証するチェーンID
+ * @param expectedChainId 期待するチェーンID (デフォルト: 137 = Polygon)
+ * @returns { valid: boolean; chainName?: string; error?: string }
+ */
+export function validateChainId(
+  chainId: number,
+  expectedChainId: number = 137
+): {
+  valid: boolean;
+  chainName?: string;
+  error?: string;
+} {
+  // チェーン名マッピング
+  const chainNames: Record<number, string> = {
+    1: 'Ethereum Mainnet',
+    137: 'Polygon Mainnet',
+    80001: 'Polygon Mumbai Testnet',
+    80002: 'Polygon Amoy Testnet',
+  };
+
+  const chainName = chainNames[chainId] || `Unknown Chain (${chainId})`;
+
+  if (chainId === expectedChainId) {
+    return {
+      valid: true,
+      chainName,
+    };
+  }
+
+  const expectedChainName = chainNames[expectedChainId] || `Chain ${expectedChainId}`;
+  return {
+    valid: false,
+    chainName,
+    error: `チェーンIDが一致しません。期待: ${expectedChainName} (${expectedChainId}), 実際: ${chainName} (${chainId})`,
+  };
+}
+
+/**
+ * 現在接続中のチェーンIDを取得
+ *
+ * @param provider ethers Provider
+ * @returns チェーンID
+ */
+export async function getCurrentChainId(provider: ethers.providers.Provider): Promise<number> {
+  const network = await provider.getNetwork();
+  return network.chainId;
 }
