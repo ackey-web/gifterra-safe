@@ -708,7 +708,7 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
               textAlign: 'center',
             }}>
               <div style={{ fontSize: 12, marginBottom: 6, color: '#166534', fontWeight: 600 }}>
-                お支払い金額
+                送信量
               </div>
               <div style={{ fontSize: isMobile ? 36 : 42, fontWeight: 'bold', color: '#16a34a' }}>
                 {formatPaymentAmount(paymentData.amount, jpycConfig.decimals)} JPYC
@@ -720,9 +720,9 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
               )}
             </div>
 
-            {/* 支払先 */}
+            {/* 送信先 */}
             <div style={{ marginBottom: 12 }}>
-              <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 6, fontWeight: 600 }}>支払先</div>
+              <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 6, fontWeight: 600 }}>送信先</div>
               <div style={{
                 fontSize: 11,
                 fontFamily: 'monospace',
