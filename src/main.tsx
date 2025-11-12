@@ -25,6 +25,99 @@ import { ProfilePage } from "./pages/ProfilePage";
 // Polyfill Buffer for browser environment (required for Web3 libraries)
 window.Buffer = window.Buffer || Buffer;
 
+// =============================
+// グローバルエラーハンドラー（X402デバッグ用）
+// =============================
+const ERROR_LOG_KEY = 'x402_error_log';
+const RELOAD_LOG_KEY = 'x402_reload_log';
+
+// 既存のエラーログを表示（前回のクラッシュ情報）
+const previousErrors = localStorage.getItem(ERROR_LOG_KEY);
+if (previousErrors) {
+  console.error('🚨 前回のセッションでエラーが発生していました:', JSON.parse(previousErrors));
+  // アラートで表示（モバイルでも確認できる）
+  alert(`🚨 前回エラー検出:\n${JSON.parse(previousErrors).message}\n\n詳細はコンソール参照`);
+  // 表示後は削除
+  localStorage.removeItem(ERROR_LOG_KEY);
+}
+
+// 既存のリロードログを表示
+const previousReload = localStorage.getItem(RELOAD_LOG_KEY);
+if (previousReload) {
+  console.warn('⚠️ 前回のセッションでページリロードが発生していました:', JSON.parse(previousReload));
+
+  // X402スキャンの進行状況もチェック
+  const scanStart = localStorage.getItem('x402_scan_start');
+  const scanResult = localStorage.getItem('x402_scan_result');
+
+  let reloadMessage = `⚠️ ページリロード検出:\n${JSON.parse(previousReload).timestamp}\n場所: ${JSON.parse(previousReload).location}`;
+
+  if (scanStart) {
+    reloadMessage += `\n\n📷 QRスキャン開始: ${scanStart}`;
+  }
+
+  if (scanResult) {
+    reloadMessage += `\n最終状態: ${scanResult}`;
+  }
+
+  alert(reloadMessage);
+
+  localStorage.removeItem(RELOAD_LOG_KEY);
+  localStorage.removeItem('x402_scan_start');
+  localStorage.removeItem('x402_scan_result');
+}
+
+// グローバルエラーハンドラー（同期エラー）
+window.onerror = (message, source, lineno, colno, error) => {
+  const errorInfo = {
+    type: 'window.onerror',
+    message: String(message),
+    source,
+    lineno,
+    colno,
+    stack: error?.stack,
+    timestamp: new Date().toISOString(),
+    location: window.location.href,
+  };
+
+  console.error('🚨 グローバルエラー捕捉:', errorInfo);
+  localStorage.setItem(ERROR_LOG_KEY, JSON.stringify(errorInfo));
+
+  // エラーを即座に表示
+  alert(`🚨 JavaScriptエラー:\n${message}\n\n${source}:${lineno}:${colno}`);
+
+  return false; // デフォルトのエラーハンドリングも実行
+};
+
+// グローバルエラーハンドラー（非同期エラー・Promise rejection）
+window.addEventListener('unhandledrejection', (event) => {
+  const errorInfo = {
+    type: 'unhandledrejection',
+    reason: event.reason?.message || String(event.reason),
+    stack: event.reason?.stack,
+    timestamp: new Date().toISOString(),
+    location: window.location.href,
+  };
+
+  console.error('🚨 未処理のPromise rejection:', errorInfo);
+  localStorage.setItem(ERROR_LOG_KEY, JSON.stringify(errorInfo));
+
+  // エラーを即座に表示
+  alert(`🚨 Promise エラー:\n${errorInfo.reason}`);
+});
+
+// ページリロード検出
+window.addEventListener('beforeunload', (event) => {
+  const reloadInfo = {
+    timestamp: new Date().toISOString(),
+    location: window.location.href,
+    pathname: window.location.pathname,
+  };
+
+  console.warn('⚠️ ページアンロード検出:', reloadInfo);
+  localStorage.setItem(RELOAD_LOG_KEY, JSON.stringify(reloadInfo));
+});
+
 // Polygon Mainnet configuration for ThirdwebProvider
 const polygonChain = {
   chainId: 137,
