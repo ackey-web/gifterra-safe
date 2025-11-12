@@ -43,14 +43,27 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
 
   useEffect(() => {
     const getSigner = async () => {
+      console.log('🔍 Signer取得開始:', {
+        hasPrivyAddress: !!privyEmbeddedWalletAddress,
+        hasGetEthersSigner: !!getEthersSigner,
+      });
+
       if (privyEmbeddedWalletAddress && getEthersSigner) {
         try {
           const s = await getEthersSigner();
           setPrivySigner(s);
-          console.log('✅ Privy signerを取得:', !!s);
-        } catch (e) {
-          console.error('❌ Privy signer取得エラー:', e);
+          console.log('✅ Privy signer取得成功:', !!s);
+
+          // signerのアドレスも確認
+          if (s) {
+            const addr = await s.getAddress();
+            console.log('📧 Signer address:', addr);
+          }
+        } catch (e: any) {
+          console.error('❌ Privy signer取得エラー:', e.message, e);
         }
+      } else {
+        console.warn('⚠️ Privy signer取得条件不足');
       }
     };
     getSigner();
@@ -123,11 +136,15 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
       // DOM要素に反映（React非依存）
       const debugDiv = document.getElementById('qr-scan-persistent-debug');
       if (debugDiv) {
-        debugDiv.innerHTML = (existingLogs + '\n' + logEntry)
+        const allLogs = (existingLogs + '\n' + logEntry)
           .split('\n')
-          .filter(l => l.trim())
-          .slice(-10) // 最新10行のみ表示
-          .join('<br/>');
+          .filter(l => l.trim());
+
+        // 最新30行を表示（増やした）
+        debugDiv.innerHTML = allLogs.slice(-30).join('<br/>');
+
+        // 自動スクロール（最下部へ）
+        debugDiv.scrollTop = debugDiv.scrollHeight;
       }
 
       console.log(logEntry);
@@ -152,20 +169,34 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
       }
 
       // 残高確認
-      log('💰 残高確認開始 signer:' + !!signer);
+      log('💰 残高確認開始');
+      log('  signer:' + !!signer);
+      log('  privySigner:' + !!privySigner);
+      log('  thirdwebSigner:' + !!thirdwebSigner);
+      log('  wallet:' + walletAddress.substring(0, 10) + '...');
+
       let userBalance = '0';
       if (signer) {
         try {
+          log('📄 Contract作成:' + decoded.token.substring(0, 10) + '...');
           const tokenContract = new ethers.Contract(decoded.token, ERC20_ABI, signer);
+
+          log('📞 balanceOf呼び出し');
           const balance = await tokenContract.balanceOf(walletAddress);
+          log('✅ balance取得:' + balance.toString());
+
+          log('📞 decimals呼び出し');
           const decimals = await tokenContract.decimals();
+          log('✅ decimals取得:' + decimals);
+
           userBalance = ethers.utils.formatUnits(balance, decimals);
-          log('✅ 残高取得成功:' + userBalance);
+          log('✅ 残高計算完了:' + userBalance);
         } catch (balanceError: any) {
           log('❌ 残高取得エラー:' + balanceError.message);
+          log('❌ エラー詳細:' + JSON.stringify(balanceError).substring(0, 100));
         }
       } else {
-        log('⚠️ signerなし');
+        log('⚠️ signerなし - 残高取得スキップ');
       }
 
       // X402形式のQRコードを検知 - 初回同意チェック

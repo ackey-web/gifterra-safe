@@ -47,13 +47,15 @@ window.addEventListener('load', () => {
     z-index: 999999999;
     font-size: 10px;
     font-family: monospace;
-    max-height: 150px;
-    overflow-y: auto;
+    max-height: 200px;
+    overflow-y: scroll;
+    -webkit-overflow-scrolling: touch;
     border: 3px solid yellow;
     border-radius: 8px;
-    pointer-events: none;
+    pointer-events: auto;
     word-break: break-all;
     line-height: 1.4;
+    cursor: pointer;
   `;
   document.body.appendChild(debugPanel);
 

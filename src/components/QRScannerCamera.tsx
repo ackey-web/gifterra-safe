@@ -79,11 +79,15 @@ export function QRScannerCamera({ onScan, onClose, placeholder = 'X402決済コ�
               // DOM要素に反映（React非依存）
               const debugDiv = document.getElementById('qr-scan-persistent-debug');
               if (debugDiv) {
-                debugDiv.innerHTML = (existingLogs + '\n' + logEntry)
+                const allLogs = (existingLogs + '\n' + logEntry)
                   .split('\n')
-                  .filter(l => l.trim())
-                  .slice(-10) // 最新10行のみ表示
-                  .join('<br/>');
+                  .filter(l => l.trim());
+
+                // 最新30行を表示（増やした）
+                debugDiv.innerHTML = allLogs.slice(-30).join('<br/>');
+
+                // 自動スクロール（最下部へ）
+                debugDiv.scrollTop = debugDiv.scrollHeight;
               }
 
               console.log(logEntry);
