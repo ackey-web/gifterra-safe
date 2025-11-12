@@ -52,6 +52,45 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
 
   const jpycConfig = getTokenConfig('JPYC');
 
+  // デバッグボックスをbodyに直接追加（Reactとは独立）
+  useEffect(() => {
+    const debugBox = document.createElement('div');
+    debugBox.id = 'x402-debug-box';
+    debugBox.style.cssText = `
+      position: fixed;
+      top: 10px;
+      left: 10px;
+      background: orange;
+      color: black;
+      padding: 10px;
+      z-index: 999999999;
+      font-size: 12px;
+      font-weight: bold;
+      max-width: 200px;
+      word-break: break-all;
+      pointer-events: none;
+    `;
+    document.body.appendChild(debugBox);
+
+    return () => {
+      const box = document.getElementById('x402-debug-box');
+      if (box) box.remove();
+    };
+  }, []);
+
+  // デバッグボックスの内容を更新
+  useEffect(() => {
+    const debugBox = document.getElementById('x402-debug-box');
+    if (debugBox) {
+      debugBox.innerHTML = `
+        showScanner: ${showScanner}<br/>
+        showConsent: ${showConsentModal}<br/>
+        showConfirm: ${showConfirmation}<br/>
+        hasData: ${!!paymentData}
+      `;
+    }
+  }, [showScanner, showConsentModal, showConfirmation, paymentData]);
+
   // QRコードスキャン処理
   const handleScan = async (data: string) => {
     try {
@@ -319,27 +358,6 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
           placeholder="X402決済QRコードをスキャン"
         />
       )}
-
-      {/* デバッグ表示 - 状態確認 */}
-      <div style={{
-        position: 'fixed',
-        top: 10,
-        left: 10,
-        background: 'orange',
-        color: 'black',
-        padding: 10,
-        zIndex: 999999999,
-        fontSize: 12,
-        fontWeight: 'bold',
-        maxWidth: 200,
-        wordBreak: 'break-all',
-        pointerEvents: 'none', // クリックを貫通させる
-      }}>
-        showScanner: {String(showScanner)}<br/>
-        showConsent: {String(showConsentModal)}<br/>
-        showConfirm: {String(showConfirmation)}<br/>
-        hasData: {String(!!paymentData)}
-      </div>
 
       {/* デバッグ表示 */}
       {showConsentModal && !paymentData && (
