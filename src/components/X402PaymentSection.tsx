@@ -93,23 +93,48 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
 
   // QRコードスキャン処理
   const handleScan = async (data: string) => {
+    // 永続的なデバッグログ（localStorage + DOM）
+    const log = (message: string) => {
+      const timestamp = new Date().toISOString().split('T')[1].slice(0, 8);
+      const logEntry = `[${timestamp}] ${message}`;
+
+      // localStorageに追記
+      const existingLogs = localStorage.getItem('qr_scan_debug_log') || '';
+      localStorage.setItem('qr_scan_debug_log', existingLogs + '\n' + logEntry);
+
+      // DOM要素に反映（React非依存）
+      const debugDiv = document.getElementById('qr-scan-persistent-debug');
+      if (debugDiv) {
+        debugDiv.innerHTML = (existingLogs + '\n' + logEntry)
+          .split('\n')
+          .filter(l => l.trim())
+          .slice(-10) // 最新10行のみ表示
+          .join('<br/>');
+      }
+
+      console.log(logEntry);
+    };
+
     try {
+      log('🚀 handleScan開始');
+
       // ページリロード防止：早期に記録
       localStorage.setItem('x402_scan_start', new Date().toISOString());
 
-      console.log('🔍 QRコードスキャン開始:', data);
+      log('🔍 デコード開始');
       const decoded = decodeX402(data);
-      console.log('✅ デコード成功:', decoded);
+      log('✅ デコード成功');
 
       // 有効期限チェック
       if (isPaymentExpired(decoded.expires)) {
+        log('⚠️ 有効期限切れ');
         setMessage({ type: 'error', text: 'このQRコードは有効期限切れです' });
         localStorage.setItem('x402_scan_result', 'expired');
         return;
       }
 
       // 残高確認
-      console.log('💰 残高確認開始 - signer:', !!signer, 'walletAddress:', walletAddress);
+      log('💰 残高確認開始 signer:' + !!signer);
       let userBalance = '0';
       if (signer) {
         try {
@@ -117,43 +142,48 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
           const balance = await tokenContract.balanceOf(walletAddress);
           const decimals = await tokenContract.decimals();
           userBalance = ethers.utils.formatUnits(balance, decimals);
-          console.log('✅ 残高取得成功:', userBalance);
-        } catch (balanceError) {
-          console.error('❌ 残高取得エラー:', balanceError);
+          log('✅ 残高取得成功:' + userBalance);
+        } catch (balanceError: any) {
+          log('❌ 残高取得エラー:' + balanceError.message);
         }
       } else {
-        console.warn('⚠️ signerが見つかりません');
+        log('⚠️ signerなし');
       }
 
       // X402形式のQRコードを検知 - 初回同意チェック
       const hasConsented = localStorage.getItem(X402_CONSENT_KEY) === 'true';
-      console.log('📋 同意状態:', hasConsented);
+      log('📋 同意状態:' + hasConsented);
 
       // まずpaymentDataとbalanceを設定
+      log('📝 状態設定開始');
       localStorage.setItem('x402_scan_result', 'setting_state');
       setPaymentData(decoded);
       setBalance(userBalance);
       setShowScanner(false);
       setMessage({ type: 'info', text: '決済内容を確認してください' });
+      log('✅ 状態設定完了');
 
       localStorage.setItem('x402_scan_result', 'state_set_complete');
 
       // 次のレンダリングサイクルでモーダルを表示
       // setTimeoutを使ってReactの状態更新を確実に完了させる
+      log('⏰ モーダル表示待機中...');
       setTimeout(() => {
+        log('📺 モーダル表示開始');
         localStorage.setItem('x402_scan_result', 'showing_modal');
         if (!hasConsented) {
-          console.log('✅ showConsentModal = true に設定');
+          log('✅ 同意モーダル表示');
           setShowConsentModal(true);
         } else {
-          console.log('✅ showConfirmation = true に設定');
+          log('✅ 確認モーダル表示');
           setShowConfirmation(true);
         }
         localStorage.setItem('x402_scan_result', 'modal_triggered');
+        log('🎉 handleScan完了');
       }, 50);
 
-    } catch (error) {
-      console.error('❌ QRコードスキャンエラー:', error);
+    } catch (error: any) {
+      log('❌ エラー発生:' + error.message);
       localStorage.setItem('x402_scan_result', `error: ${error}`);
       setMessage({ type: 'error', text: 'QRコードの読み取りに失敗しました' });
       setShowScanner(false);

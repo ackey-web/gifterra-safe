@@ -31,8 +31,44 @@ window.Buffer = window.Buffer || Buffer;
 const ERROR_LOG_KEY = 'x402_error_log';
 const RELOAD_LOG_KEY = 'x402_reload_log';
 
-// ページロード完了後にエラー/リロード情報を表示
+// 永続的なデバッグパネルを作成（ページクラッシュ後も確認可能）
 window.addEventListener('load', () => {
+  // デバッグパネル作成
+  const debugPanel = document.createElement('div');
+  debugPanel.id = 'qr-scan-persistent-debug';
+  debugPanel.style.cssText = `
+    position: fixed;
+    bottom: 10px;
+    left: 10px;
+    right: 10px;
+    background: rgba(255, 0, 0, 0.95);
+    color: white;
+    padding: 12px;
+    z-index: 999999999;
+    font-size: 10px;
+    font-family: monospace;
+    max-height: 150px;
+    overflow-y: auto;
+    border: 3px solid yellow;
+    border-radius: 8px;
+    pointer-events: none;
+    word-break: break-all;
+    line-height: 1.4;
+  `;
+  document.body.appendChild(debugPanel);
+
+  // 前回のログを表示
+  const previousLogs = localStorage.getItem('qr_scan_debug_log');
+  if (previousLogs) {
+    debugPanel.innerHTML = '<strong>前回のログ:</strong><br/>' +
+      previousLogs.split('\n')
+        .filter(l => l.trim())
+        .slice(-10)
+        .join('<br/>');
+  } else {
+    debugPanel.innerHTML = 'QRスキャンデバッグパネル起動中...';
+  }
+
   setTimeout(() => {
     // 既存のエラーログを表示（前回のクラッシュ情報）
     const previousErrors = localStorage.getItem(ERROR_LOG_KEY);
@@ -69,6 +105,12 @@ window.addEventListener('load', () => {
       localStorage.removeItem('x402_scan_start');
       localStorage.removeItem('x402_scan_result');
     }
+
+    // 前回のログをクリア（新しいセッション開始）
+    setTimeout(() => {
+      localStorage.removeItem('qr_scan_debug_log');
+      debugPanel.innerHTML = 'デバッグパネル準備完了';
+    }, 3000);
   }, 1000); // 1秒待ってから表示
 });
 

@@ -67,41 +67,74 @@ export function QRScannerCamera({ onScan, onClose, placeholder = 'X402決済コ�
             qrbox: { width: 250, height: 250 },
           },
           (decodedText) => {
-            // QRコード読み取り成功
-            console.log('📷 QRコード読み取り成功:', decodedText);
+            // 永続的なデバッグログ（localStorage + DOM）
+            const log = (message: string) => {
+              const timestamp = new Date().toISOString().split('T')[1].slice(0, 8);
+              const logEntry = `[${timestamp}] ${message}`;
+
+              // localStorageに追記
+              const existingLogs = localStorage.getItem('qr_scan_debug_log') || '';
+              localStorage.setItem('qr_scan_debug_log', existingLogs + '\n' + logEntry);
+
+              // DOM要素に反映（React非依存）
+              const debugDiv = document.getElementById('qr-scan-persistent-debug');
+              if (debugDiv) {
+                debugDiv.innerHTML = (existingLogs + '\n' + logEntry)
+                  .split('\n')
+                  .filter(l => l.trim())
+                  .slice(-10) // 最新10行のみ表示
+                  .join('<br/>');
+              }
+
+              console.log(logEntry);
+            };
+
+            log('📷 QR読取成功: ' + decodedText.substring(0, 30) + '...');
 
             // 二重呼び出し防止
             if (isStoppingRef.current) {
-              console.log('⚠️ 既に停止処理中のため、スキップします');
+              log('⚠️ 停止処理中のためスキップ');
               return;
             }
 
             if (isMounted.current) {
-              isStoppingRef.current = true; // 停止処理開始
+              isStoppingRef.current = true;
+              log('🔒 停止フラグON');
 
-              // バリデーション処理（まず先に実行）
-              console.log('📷 バリデーション開始');
+              // バリデーション処理
+              log('🔎 バリデーション開始');
               const validation = validateAndProcessScan(decodedText);
 
               if (validation.isValid) {
-                console.log('✅ バリデーション成功 - onScan呼び出し');
+                log('✅ バリデーションOK');
 
-                // カメラ停止を試みるが、エラーは完全に無視
-                if (scannerRef.current) {
-                  scannerRef.current.stop().catch(() => {
-                    console.log('⚠️ カメラ停止エラー（無視）');
-                  });
+                // scanner.stop()を完全にスキップ！
+                log('⚠️ scanner.stop()をスキップ（呼び出さない）');
+
+                // コールバック実行
+                log('📞 onScan()呼び出し前');
+                try {
+                  onScan(decodedText);
+                  log('✅ onScan()完了');
+                } catch (e: any) {
+                  log('❌ onScan()エラー: ' + e.message);
                 }
 
-                // エラーに関係なく、必ずコールバックを実行
-                onScan(decodedText);
-                onClose();
+                log('📞 onClose()呼び出し前');
+                try {
+                  onClose();
+                  log('✅ onClose()完了');
+                } catch (e: any) {
+                  log('❌ onClose()エラー: ' + e.message);
+                }
+
+                log('🎉 スキャン処理完了');
               } else {
-                console.log('❌ バリデーション失敗:', validation.error);
+                log('❌ バリデーション失敗: ' + (validation.error || 'unknown'));
                 setCameraError(validation.error || '無効なQRコードです');
                 setIsScanning(false);
                 setShowManualInput(true);
-                isStoppingRef.current = false; // 失敗時はフラグをリセット
+                isStoppingRef.current = false;
               }
             }
           },
