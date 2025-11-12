@@ -675,7 +675,7 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
                 お支払い金額
               </div>
               <div style={{ fontSize: isMobile ? 36 : 42, fontWeight: 'bold', color: '#16a34a' }}>
-                ¥{formatPaymentAmount(paymentData.amount, jpycConfig.decimals)}
+                {formatPaymentAmount(paymentData.amount, jpycConfig.decimals)} JPYC
               </div>
               {paymentData.message && (
                 <div style={{ marginTop: 8, fontSize: 13, color: '#166534' }}>
@@ -706,7 +706,7 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
               <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 6, fontWeight: 600 }}>
                 あなたの残高
               </div>
-              <div style={{ fontSize: 16, fontWeight: '600', color: '#1a1a1a' }}>¥{balance} JPYC</div>
+              <div style={{ fontSize: 16, fontWeight: '600', color: '#1a1a1a' }}>{balance} JPYC</div>
             </div>
 
             {/* 有効期限 */}
