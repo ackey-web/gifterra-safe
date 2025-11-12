@@ -65,8 +65,11 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
         return;
       }
 
+      // まず paymentData をセット
       setPaymentData(decoded);
       setShowScanner(false);
+
+      alert(`✅ paymentData設定完了: to=${decoded.to.substring(0, 10)}..., amount=${decoded.amount}`);
 
       // 残高確認
       console.log('💰 残高確認開始 - signer:', !!signer, 'walletAddress:', walletAddress);
@@ -75,28 +78,35 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
           const tokenContract = new ethers.Contract(decoded.token, ERC20_ABI, signer);
           const userBalance = await tokenContract.balanceOf(walletAddress);
           const decimals = await tokenContract.decimals();
-          setBalance(ethers.utils.formatUnits(userBalance, decimals));
-          console.log('✅ 残高取得成功:', ethers.utils.formatUnits(userBalance, decimals));
+          const formattedBalance = ethers.utils.formatUnits(userBalance, decimals);
+          setBalance(formattedBalance);
+          console.log('✅ 残高取得成功:', formattedBalance);
+          alert(`💰 残高取得完了: ${formattedBalance} JPYC`);
         } catch (balanceError) {
           console.error('❌ 残高取得エラー:', balanceError);
           setBalance('0');
+          alert('⚠️ 残高取得エラー - 0に設定');
         }
       } else {
         console.warn('⚠️ signerが見つかりません');
         setBalance('0');
+        alert('⚠️ signer未検出 - 残高0に設定');
       }
 
       // X402形式のQRコードを検知 - 初回同意チェック
       const hasConsented = localStorage.getItem(X402_CONSENT_KEY) === 'true';
       console.log('📋 同意状態:', hasConsented);
 
+      // 少し待ってから状態更新を確実に反映
+      await new Promise(resolve => setTimeout(resolve, 100));
+
       // デバッグ: モーダル表示をアラートで通知
       if (!hasConsented) {
-        alert('同意モーダルを表示します');
+        alert('🔵 同意モーダルを表示します');
         setShowConsentModal(true);
         console.log('✅ showConsentModal = true に設定');
       } else {
-        alert('確認モーダルを表示します');
+        alert('🔵 確認モーダルを表示します');
         setShowConfirmation(true);
         console.log('✅ showConfirmation = true に設定');
       }
@@ -104,6 +114,7 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
       setMessage({ type: 'info', text: '決済内容を確認してください' });
     } catch (error) {
       console.error('❌ QRコードスキャンエラー:', error);
+      alert(`❌ エラー: ${error instanceof Error ? error.message : 'Unknown error'}`);
       setMessage({ type: 'error', text: 'QRコードの読み取りに失敗しました' });
       setShowScanner(false);
     }
@@ -347,25 +358,34 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
           }}
           style={{
           position: 'fixed',
-          inset: 0,
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
           background: 'rgba(0,0,0,0.95)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          zIndex: 999999,
+          zIndex: 9999999,
           padding: isMobile ? 16 : 20,
           overflow: 'auto',
         }}>
-          <div style={{
+          <div
+            onClick={(e) => {
+              e.stopPropagation();
+              alert('モーダル本体がクリックされました');
+            }}
+            style={{
+            position: 'relative',
             background: '#ffffff',
             borderRadius: 20,
             padding: isMobile ? 24 : 32,
             maxWidth: 600,
-            width: '100%',
+            width: '90%',
             maxHeight: '85vh',
             overflowY: 'auto',
             boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
-            border: '3px solid #22c55e',
+            border: '5px solid #22c55e',
           }}>
             <h2 style={{
               fontSize: isMobile ? 20 : 24,
@@ -484,25 +504,34 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
       {showConfirmation && paymentData && (
         <div style={{
           position: 'fixed',
-          inset: 0,
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
           background: 'rgba(0,0,0,0.95)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          zIndex: 999999,
+          zIndex: 9999999,
           padding: isMobile ? 16 : 20,
           overflow: 'auto',
         }}>
-          <div style={{
+          <div
+            onClick={(e) => {
+              e.stopPropagation();
+              alert('確認モーダル本体がクリックされました');
+            }}
+            style={{
+            position: 'relative',
             background: '#ffffff',
             borderRadius: 20,
             padding: isMobile ? 24 : 32,
             maxWidth: 500,
-            width: '100%',
+            width: '90%',
             maxHeight: '85vh',
             overflowY: 'auto',
             boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
-            border: '3px solid #3b82f6',
+            border: '5px solid #3b82f6',
           }}>
             <h2 style={{
               fontSize: isMobile ? 18 : 22,
