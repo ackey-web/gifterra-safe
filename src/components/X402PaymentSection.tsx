@@ -179,13 +179,36 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
       let currentSigner = signer;
 
       // signerがない場合、Privyから取得を試みる
-      if (!currentSigner && privyEmbeddedWalletAddress && getEthersSigner) {
+      if (!currentSigner && privyEmbeddedWalletAddress) {
         log('🔄 signer再取得を試みます...');
-        try {
-          currentSigner = await getEthersSigner();
-          log('✅ signer再取得成功:' + !!currentSigner);
-        } catch (e: any) {
-          log('❌ signer再取得失敗:' + e.message);
+
+        // 方法1: getEthersSignerを試す
+        if (getEthersSigner) {
+          try {
+            currentSigner = await getEthersSigner();
+            log('✅ getEthersSigner成功:' + !!currentSigner);
+          } catch (e: any) {
+            log('❌ getEthersSigner失敗:' + e.message);
+          }
+        }
+
+        // 方法2: getEthereumProviderを試す（方法1が失敗した場合）
+        if (!currentSigner && getEthersProvider) {
+          try {
+            log('🔄 getEthersProvider経由でsigner作成を試みます...');
+            const provider = await getEthersProvider();
+            if (provider) {
+              const web3Provider = new ethers.providers.Web3Provider(provider as any);
+              currentSigner = web3Provider.getSigner();
+              log('✅ Web3Provider経由でsigner作成成功:' + !!currentSigner);
+            }
+          } catch (e: any) {
+            log('❌ Web3Provider経由失敗:' + e.message);
+          }
+        }
+
+        if (!currentSigner) {
+          log('❌ 全ての方法でsigner取得失敗');
         }
       }
 
