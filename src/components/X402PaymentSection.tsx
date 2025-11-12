@@ -116,7 +116,15 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
   // フォールバック: window.ethereumから直接signerを取得
   useEffect(() => {
     const getFallbackSigner = async () => {
+      console.log('🔍 Fallback signer取得チェック:', {
+        hasPrivySigner: !!privySigner,
+        hasThirdwebSigner: !!thirdwebSigner,
+        hasWindowEthereum: typeof window !== 'undefined' && !!window.ethereum,
+        windowType: typeof window,
+      });
+
       if (privySigner || thirdwebSigner) {
+        console.log('⏭️ 既存signerあり、フォールバックスキップ');
         return; // 既にsignerがある場合はスキップ
       }
 
@@ -124,12 +132,24 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
         try {
           console.log('🔄 window.ethereumからsigner取得を試みます...');
           const provider = new ethers.providers.Web3Provider(window.ethereum as any);
+          console.log('✅ Web3Provider作成成功');
           const s = provider.getSigner();
+          console.log('✅ getSigner()成功');
           setFallbackSigner(s);
           console.log('✅ window.ethereum signer作成成功');
+
+          // アドレス確認
+          try {
+            const addr = await s.getAddress();
+            console.log('📧 Fallback signer address:', addr);
+          } catch (addrErr: any) {
+            console.error('❌ アドレス取得エラー:', addrErr.message);
+          }
         } catch (e: any) {
-          console.error('❌ window.ethereum signer取得エラー:', e.message);
+          console.error('❌ window.ethereum signer取得エラー:', e.message, e);
         }
+      } else {
+        console.warn('⚠️ window.ethereumが利用できません');
       }
     };
     getFallbackSigner();
@@ -238,6 +258,7 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
       log('  signer:' + !!signer);
       log('  privySigner:' + !!privySigner);
       log('  thirdwebSigner:' + !!thirdwebSigner);
+      log('  fallbackSigner:' + !!fallbackSigner);
       log('  wallet:' + walletAddress.substring(0, 10) + '...');
 
       let userBalance = '0';
