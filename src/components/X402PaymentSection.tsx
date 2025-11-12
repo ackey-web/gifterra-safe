@@ -1,7 +1,7 @@
 // src/components/X402PaymentSection.tsx
 // マイページ用X402決済セクション
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useSigner, useAddress } from '@thirdweb-dev/react';
 import { usePrivy } from '@privy-io/react-auth';
 import { ethers } from 'ethers';
@@ -65,31 +65,25 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
         return;
       }
 
-      // まず paymentData をセット
-      setPaymentData(decoded);
-      setShowScanner(false);
-
       alert(`✅ paymentData設定完了: to=${decoded.to.substring(0, 10)}..., amount=${decoded.amount}`);
 
       // 残高確認
       console.log('💰 残高確認開始 - signer:', !!signer, 'walletAddress:', walletAddress);
+      let userBalance = '0';
       if (signer) {
         try {
           const tokenContract = new ethers.Contract(decoded.token, ERC20_ABI, signer);
-          const userBalance = await tokenContract.balanceOf(walletAddress);
+          const balance = await tokenContract.balanceOf(walletAddress);
           const decimals = await tokenContract.decimals();
-          const formattedBalance = ethers.utils.formatUnits(userBalance, decimals);
-          setBalance(formattedBalance);
-          console.log('✅ 残高取得成功:', formattedBalance);
-          alert(`💰 残高取得完了: ${formattedBalance} JPYC`);
+          userBalance = ethers.utils.formatUnits(balance, decimals);
+          console.log('✅ 残高取得成功:', userBalance);
+          alert(`💰 残高取得完了: ${userBalance} JPYC`);
         } catch (balanceError) {
           console.error('❌ 残高取得エラー:', balanceError);
-          setBalance('0');
           alert('⚠️ 残高取得エラー - 0に設定');
         }
       } else {
         console.warn('⚠️ signerが見つかりません');
-        setBalance('0');
         alert('⚠️ signer未検出 - 残高0に設定');
       }
 
@@ -97,21 +91,22 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
       const hasConsented = localStorage.getItem(X402_CONSENT_KEY) === 'true';
       console.log('📋 同意状態:', hasConsented);
 
-      // 少し待ってから状態更新を確実に反映
-      await new Promise(resolve => setTimeout(resolve, 100));
+      // 状態を一度に更新（React 18の自動バッチング）
+      setPaymentData(decoded);
+      setBalance(userBalance);
+      setShowScanner(false);
+      setMessage({ type: 'info', text: '決済内容を確認してください' });
 
-      // デバッグ: モーダル表示をアラートで通知
       if (!hasConsented) {
-        alert('🔵 同意モーダルを表示します');
         setShowConsentModal(true);
+        alert('🔵 同意モーダルを表示します');
         console.log('✅ showConsentModal = true に設定');
       } else {
-        alert('🔵 確認モーダルを表示します');
         setShowConfirmation(true);
+        alert('🔵 確認モーダルを表示します');
         console.log('✅ showConfirmation = true に設定');
       }
 
-      setMessage({ type: 'info', text: '決済内容を確認してください' });
     } catch (error) {
       console.error('❌ QRコードスキャンエラー:', error);
       alert(`❌ エラー: ${error instanceof Error ? error.message : 'Unknown error'}`);
