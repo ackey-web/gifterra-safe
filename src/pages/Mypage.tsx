@@ -580,28 +580,31 @@ function Header({ viewMode, setViewMode, isMobile, tenantRank, showSettingsModal
         >
           ⚙️
         </button>
-        <button
-          onClick={handleLogout}
-          style={{
-            padding: isMobile ? '6px 12px' : '8px 16px',
-            background: 'rgba(220, 38, 38, 0.15)',
-            border: '1px solid rgba(220, 38, 38, 0.3)',
-            borderRadius: 8,
-            color: '#FCA5A5',
-            fontSize: isMobile ? 11 : 13,
-            fontWeight: 600,
-            cursor: 'pointer',
-            transition: 'all 0.2s',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = 'rgba(220, 38, 38, 0.25)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = 'rgba(220, 38, 38, 0.15)';
-          }}
-        >
-          ログアウト
-        </button>
+        {/* ログアウトボタン - PC表示のみ */}
+        {!isMobile && (
+          <button
+            onClick={handleLogout}
+            style={{
+              padding: '8px 16px',
+              background: 'rgba(220, 38, 38, 0.15)',
+              border: '1px solid rgba(220, 38, 38, 0.3)',
+              borderRadius: 8,
+              color: '#FCA5A5',
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'rgba(220, 38, 38, 0.25)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'rgba(220, 38, 38, 0.15)';
+            }}
+          >
+            ログアウト
+          </button>
+        )}
       </div>
 
       {/* 設定モーダル */}
@@ -609,6 +612,7 @@ function Header({ viewMode, setViewMode, isMobile, tenantRank, showSettingsModal
         <SettingsModal
           onClose={() => setShowSettingsModal(false)}
           isMobile={isMobile}
+          onLogout={handleLogout}
         />
       )}
     </div>

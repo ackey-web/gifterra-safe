@@ -13,9 +13,10 @@ import { supabase } from '../lib/supabase';
 interface SettingsModalProps {
   onClose: () => void;
   isMobile: boolean;
+  onLogout?: () => void;
 }
 
-export function SettingsModal({ onClose, isMobile }: SettingsModalProps) {
+export function SettingsModal({ onClose, isMobile, onLogout }: SettingsModalProps) {
   const [showContactForm, setShowContactForm] = useState(false);
   const [showNotificationSettings, setShowNotificationSettings] = useState(false);
   const [showProfileEdit, setShowProfileEdit] = useState(false);
@@ -399,6 +400,61 @@ export function SettingsModal({ onClose, isMobile }: SettingsModalProps) {
               →
             </span>
           </button>
+
+          {/* ログアウト */}
+          {onLogout && (
+            <button
+              onClick={onLogout}
+              style={{
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
+                padding: isMobile ? 14 : 16,
+                background: 'rgba(220, 38, 38, 0.1)',
+                border: '1px solid rgba(220, 38, 38, 0.3)',
+                borderRadius: 12,
+                marginBottom: 12,
+                textDecoration: 'none',
+                color: '#FCA5A5',
+                transition: 'all 0.2s',
+                cursor: 'pointer',
+                textAlign: 'left',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(220, 38, 38, 0.2)';
+                e.currentTarget.style.borderColor = 'rgba(220, 38, 38, 0.5)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'rgba(220, 38, 38, 0.1)';
+                e.currentTarget.style.borderColor = 'rgba(220, 38, 38, 0.3)';
+              }}
+            >
+              <span style={{ fontSize: 20 }}>🚪</span>
+              <div style={{ flex: 1 }}>
+                <div
+                  style={{
+                    fontSize: isMobile ? 14 : 15,
+                    fontWeight: 600,
+                    marginBottom: 4,
+                  }}
+                >
+                  ログアウト
+                </div>
+                <div
+                  style={{
+                    fontSize: isMobile ? 11 : 12,
+                    color: 'rgba(252, 165, 165, 0.7)',
+                  }}
+                >
+                  アプリからログアウトする
+                </div>
+              </div>
+              <span style={{ fontSize: 14, color: 'rgba(252, 165, 165, 0.5)' }}>
+                →
+              </span>
+            </button>
+          )}
 
           {/* アプリ情報 */}
           <div
