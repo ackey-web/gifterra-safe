@@ -530,7 +530,7 @@ export function PaymentTerminal() {
                     onMouseDown={(e) => (e.currentTarget.style.transform = 'scale(0.95)')}
                     onMouseUp={(e) => (e.currentTarget.style.transform = 'scale(1)')}
                   >
-                    ¥{preset}
+                    {preset} JPYC
                   </button>
                 ))}
               </div>
@@ -555,7 +555,7 @@ export function PaymentTerminal() {
                   textShadow: '0 2px 10px rgba(34, 197, 94, 0.3)',
                 }}
               >
-                ¥{displayAmount.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                {displayAmount.replace(/\B(?=(\d{3})+(?!\d))/g, ',')} JPYC
               </div>
             </div>
 
@@ -675,7 +675,7 @@ export function PaymentTerminal() {
                     <QRCodeSVG value={qrData} size={280} level="H" includeMargin={true} />
                   </div>
                   <div style={{ marginTop: '20px', fontSize: '32px', fontWeight: 'bold', color: '#22c55e' }}>
-                    ¥{amount.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                    {amount.replace(/\B(?=(\d{3})+(?!\d))/g, ',')} JPYC
                   </div>
                   <div style={{ marginTop: '8px', fontSize: '14px', opacity: 0.7 }}>
                     有効期限: {expiryMinutes}分
@@ -757,7 +757,7 @@ export function PaymentTerminal() {
                     >
                       <div>
                         <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#22c55e' }}>
-                          ¥{parseInt(payment.amount).toLocaleString()}
+                          {parseInt(payment.amount).toLocaleString()} JPYC
                         </div>
                         <div style={{ fontSize: '11px', opacity: 0.7, marginTop: '2px' }}>
                           {new Date(payment.completed_at).toLocaleString('ja-JP')}
@@ -899,12 +899,12 @@ export function PaymentTerminal() {
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', color: '#fff' }}>
                       <span style={{ fontSize: '13px', opacity: 0.8 }}>合計売上</span>
                       <span style={{ fontSize: '18px', fontWeight: '700', color: '#22c55e' }}>
-                        ¥{summary.total.toLocaleString()}
+                        {summary.total.toLocaleString()} JPYC
                       </span>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', color: '#fff' }}>
                       <span style={{ fontSize: '13px', opacity: 0.8 }}>平均単価</span>
-                      <span style={{ fontSize: '14px', fontWeight: '600' }}>¥{summary.average.toLocaleString()}</span>
+                      <span style={{ fontSize: '14px', fontWeight: '600' }}>{summary.average.toLocaleString()} JPYC</span>
                     </div>
                   </>
                 );

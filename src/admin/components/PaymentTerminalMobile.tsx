@@ -459,7 +459,7 @@ export function PaymentTerminalMobile() {
                     color: '#22c55e',
                   }}
                 >
-                  ¥{displayAmount.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                  {displayAmount.replace(/\B(?=(\d{3})+(?!\d))/g, ',')} JPYC
                 </div>
               </div>
 
@@ -540,7 +540,7 @@ export function PaymentTerminalMobile() {
                         }}
                       >
                         <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#22c55e' }}>
-                          ¥{payment.amount.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                          {payment.amount.replace(/\B(?=(\d{3})+(?!\d))/g, ',')} JPYC
                         </div>
                         <div style={{ fontSize: '11px', opacity: 0.7 }}>
                           {new Date(payment.completed_at).toLocaleTimeString('ja-JP', {
@@ -620,7 +620,7 @@ export function PaymentTerminalMobile() {
               </div>
 
               <div style={{ fontSize: '36px', fontWeight: 'bold', color: '#22c55e', marginBottom: '8px' }}>
-                ¥{amount.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                {amount.replace(/\B(?=(\d{3})+(?!\d))/g, ',')} JPYC
               </div>
 
               <div style={{ fontSize: '13px', opacity: 0.7, marginBottom: '20px' }}>
@@ -794,7 +794,7 @@ export function PaymentTerminalMobile() {
                         <div>
                           <div style={{ fontSize: '11px', opacity: 0.7 }}>総売上</div>
                           <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#22c55e' }}>
-                            ¥{summary.total.toLocaleString()}
+                            {summary.total.toLocaleString()} JPYC
                           </div>
                         </div>
                         <div>
@@ -806,7 +806,7 @@ export function PaymentTerminalMobile() {
                         <div style={{ gridColumn: 'span 2' }}>
                           <div style={{ fontSize: '11px', opacity: 0.7 }}>平均単価</div>
                           <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#22c55e' }}>
-                            ¥{summary.average.toLocaleString()}
+                            {summary.average.toLocaleString()} JPYC
                           </div>
                         </div>
                       </div>
