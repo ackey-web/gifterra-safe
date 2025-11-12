@@ -176,10 +176,23 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
       log('  wallet:' + walletAddress.substring(0, 10) + '...');
 
       let userBalance = '0';
-      if (signer) {
+      let currentSigner = signer;
+
+      // signerがない場合、Privyから取得を試みる
+      if (!currentSigner && privyEmbeddedWalletAddress && getEthersSigner) {
+        log('🔄 signer再取得を試みます...');
+        try {
+          currentSigner = await getEthersSigner();
+          log('✅ signer再取得成功:' + !!currentSigner);
+        } catch (e: any) {
+          log('❌ signer再取得失敗:' + e.message);
+        }
+      }
+
+      if (currentSigner) {
         try {
           log('📄 Contract作成:' + decoded.token.substring(0, 10) + '...');
-          const tokenContract = new ethers.Contract(decoded.token, ERC20_ABI, signer);
+          const tokenContract = new ethers.Contract(decoded.token, ERC20_ABI, currentSigner);
 
           log('📞 balanceOf呼び出し');
           const balance = await tokenContract.balanceOf(walletAddress);
