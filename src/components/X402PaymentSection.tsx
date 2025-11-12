@@ -332,12 +332,14 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
         background: 'orange',
         color: 'black',
         padding: 10,
-        zIndex: 99999999,
+        zIndex: 999999999,
         fontSize: 12,
         fontWeight: 'bold',
         maxWidth: 200,
         wordBreak: 'break-all',
+        pointerEvents: 'none', // クリックを貫通させる
       }}>
+        showScanner: {String(showScanner)}<br/>
         showConsent: {String(showConsentModal)}<br/>
         showConfirm: {String(showConfirmation)}<br/>
         hasData: {String(!!paymentData)}

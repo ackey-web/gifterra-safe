@@ -86,8 +86,14 @@ export function QRScannerCamera({ onScan, onClose, placeholder = 'X402決済コ�
                   // デバッグ: onScan呼び出しをアラート
                   alert('onScan呼び出し - X402PaymentSectionへ');
 
-                  onScan(decodedText);
-                  onClose();
+                  try {
+                    onScan(decodedText);
+                    alert('✅ onScan完了 - onClose呼び出し');
+                    onClose();
+                    alert('✅ onClose完了 - スキャナー閉じます');
+                  } catch (err) {
+                    alert(`❌ onScan/onCloseエラー: ${err}`);
+                  }
                 } else {
                   console.log('❌ バリデーション失敗:', validation.error);
                   alert(`バリデーション失敗: ${validation.error}`);
