@@ -86,6 +86,13 @@ window.onerror = (message, source, lineno, colno, error) => {
   };
 
   console.error('🚨 グローバルエラー捕捉:', errorInfo);
+
+  // QRスキャナーのstopエラーは無視
+  if (message && message.includes('Cannot stop, scanner is not running')) {
+    console.log('⚠️ QRスキャナー停止エラー（無視）');
+    return true; // エラーを抑制
+  }
+
   localStorage.setItem(ERROR_LOG_KEY, JSON.stringify(errorInfo));
 
   // エラーを即座に表示
