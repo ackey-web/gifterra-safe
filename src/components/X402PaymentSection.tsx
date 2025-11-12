@@ -65,8 +65,6 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
         return;
       }
 
-      alert(`✅ paymentData設定完了: to=${decoded.to.substring(0, 10)}..., amount=${decoded.amount}`);
-
       // 残高確認
       console.log('💰 残高確認開始 - signer:', !!signer, 'walletAddress:', walletAddress);
       let userBalance = '0';
@@ -77,39 +75,37 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
           const decimals = await tokenContract.decimals();
           userBalance = ethers.utils.formatUnits(balance, decimals);
           console.log('✅ 残高取得成功:', userBalance);
-          alert(`💰 残高取得完了: ${userBalance} JPYC`);
         } catch (balanceError) {
           console.error('❌ 残高取得エラー:', balanceError);
-          alert('⚠️ 残高取得エラー - 0に設定');
         }
       } else {
         console.warn('⚠️ signerが見つかりません');
-        alert('⚠️ signer未検出 - 残高0に設定');
       }
 
       // X402形式のQRコードを検知 - 初回同意チェック
       const hasConsented = localStorage.getItem(X402_CONSENT_KEY) === 'true';
       console.log('📋 同意状態:', hasConsented);
 
-      // 状態を一度に更新（React 18の自動バッチング）
+      // まずpaymentDataとbalanceを設定
       setPaymentData(decoded);
       setBalance(userBalance);
       setShowScanner(false);
       setMessage({ type: 'info', text: '決済内容を確認してください' });
 
-      if (!hasConsented) {
-        setShowConsentModal(true);
-        alert('🔵 同意モーダルを表示します');
-        console.log('✅ showConsentModal = true に設定');
-      } else {
-        setShowConfirmation(true);
-        alert('🔵 確認モーダルを表示します');
-        console.log('✅ showConfirmation = true に設定');
-      }
+      // 次のレンダリングサイクルでモーダルを表示
+      // setTimeoutを使ってReactの状態更新を確実に完了させる
+      setTimeout(() => {
+        if (!hasConsented) {
+          console.log('✅ showConsentModal = true に設定');
+          setShowConsentModal(true);
+        } else {
+          console.log('✅ showConfirmation = true に設定');
+          setShowConfirmation(true);
+        }
+      }, 50);
 
     } catch (error) {
       console.error('❌ QRコードスキャンエラー:', error);
-      alert(`❌ エラー: ${error instanceof Error ? error.message : 'Unknown error'}`);
       setMessage({ type: 'error', text: 'QRコードの読み取りに失敗しました' });
       setShowScanner(false);
     }

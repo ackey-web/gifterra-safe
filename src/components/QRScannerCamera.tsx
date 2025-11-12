@@ -69,41 +69,23 @@ export function QRScannerCamera({ onScan, onClose, placeholder = 'X402決済コ�
             // QRコード読み取り成功
             console.log('📷 QRコード読み取り成功:', decodedText);
 
-            // デバッグ: 読み取り成功をアラート表示
-            alert(`QRコード読み取り成功: ${decodedText.substring(0, 50)}...`);
-
             if (isMounted.current) {
               scanner.stop().then(() => {
                 console.log('📷 カメラ停止完了 - バリデーション開始');
 
-                // デバッグ: バリデーション開始をアラート
-                alert('バリデーション開始');
-
                 const validation = validateAndProcessScan(decodedText);
                 if (validation.isValid) {
                   console.log('✅ バリデーション成功 - onScan呼び出し');
-
-                  // デバッグ: onScan呼び出しをアラート
-                  alert('onScan呼び出し - X402PaymentSectionへ');
-
-                  try {
-                    onScan(decodedText);
-                    alert('✅ onScan完了 - onClose呼び出し');
-                    onClose();
-                    alert('✅ onClose完了 - スキャナー閉じます');
-                  } catch (err) {
-                    alert(`❌ onScan/onCloseエラー: ${err}`);
-                  }
+                  onScan(decodedText);
+                  onClose();
                 } else {
                   console.log('❌ バリデーション失敗:', validation.error);
-                  alert(`バリデーション失敗: ${validation.error}`);
                   setCameraError(validation.error || '無効なQRコードです');
                   setIsScanning(false);
                   setShowManualInput(true);
                 }
               }).catch((err) => {
                 console.error('❌ カメラ停止エラー:', err);
-                alert(`カメラ停止エラー: ${err}`);
               });
             }
           },
