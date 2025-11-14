@@ -54,7 +54,18 @@ export default defineConfig(({ mode }) => {
   },
   server: {
     watch: {
-      ignored: ['**/*.log', '**/build-output.log'],
+      ignored: [
+        '**/*.log',
+        '**/build-output.log',
+        '**/node_modules/**',
+        '**/dist/**',
+        '**/.git/**',
+        '**/ios/**',
+        '**/android/**',
+        '**/tsconfig.app.json',
+        '**/tsconfig.node.json',
+        '**/tsconfig.json',
+      ],
     },
     headers: {
       // Privy Google OAuth iframeに必要な COOP 設定

@@ -264,7 +264,7 @@ export function generateReceiptHTML(payment: PaymentRecord, storeName?: string):
       <div class="footer-note">
         ※ この記録は、ブロックチェーン上で実行されたJPYCトランザクションの存在を証明するものです。<br>
         ※ トランザクションの詳細はPolygonScan等で上記アドレスを検索して確認できます。<br>
-        ※ GIFTERRAは返金の当事者ではありません。返金は当事者間の合意により受領者が別送金で対応する場合があります。
+        ※ 返金については当事者間の合意により受領者が別送金で対応する場合があります。
       </div>
       <div class="footer-brand">
         GIFTERRA - JPYC Transfer System<br>

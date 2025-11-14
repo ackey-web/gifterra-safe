@@ -347,7 +347,7 @@ export function ProfilePage() {
               color: '#fff',
             }}
           >
-            📱 JPYC受信リクエストUI
+            📱 JPYC受信UI
           </h3>
           <p
             style={{
@@ -357,7 +357,7 @@ export function ProfilePage() {
               color: 'rgba(255, 255, 255, 0.9)',
             }}
           >
-            JPYC送信リクエスト用のQRコードを生成・表示できます
+            店舗向けのJPYC受信用QRコードを生成・表示できます
           </p>
           <button
             onClick={() => (window.location.href = '/terminal')}

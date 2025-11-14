@@ -1,0 +1,31 @@
+{
+  "files.watcherExclude": {
+    "**/.git/objects/**": true,
+    "**/.git/subtree-cache/**": true,
+    "**/node_modules/**": true,
+    "**/dist/**": true,
+    "**/ios/**": true,
+    "**/android/**": true,
+    "**/.vscode/**": true,
+    "**/build/**": true,
+    "**/.cache/**": true
+  },
+  "typescript.tsserver.watchOptions": {
+    "watchFile": "useFsEvents",
+    "watchDirectory": "useFsEvents",
+    "excludeDirectories": [
+      "**/node_modules",
+      "**/dist",
+      "**/ios",
+      "**/android",
+      "**/.git"
+    ]
+  },
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/dist": true,
+    "**/ios": true,
+    "**/android": true,
+    "**/.git": true
+  }
+}
