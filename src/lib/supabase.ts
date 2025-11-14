@@ -453,3 +453,106 @@ export async function deleteAvatarImage(walletAddress: string): Promise<boolean>
     return false;
   }
 }
+
+/**
+ * カバー画像をアップロード（リサイズ付き）
+ * Edge Function経由でCORS対応
+ *
+ * @param file - アップロードする画像ファイル
+ * @param walletAddress - ユーザーのウォレットアドレス
+ * @returns アップロードされた画像の公開URL
+ */
+export async function uploadCoverImage(file: File, walletAddress: string): Promise<string> {
+  try {
+    // 画像サイズチェック（10MB以下）
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    if (file.size > maxSize) {
+      throw new Error('画像サイズは10MB以下にしてください');
+    }
+
+    // MIME typeチェック
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+    if (!validTypes.includes(file.type)) {
+      throw new Error('JPG、PNG、GIF、WebP形式の画像のみアップロード可能です');
+    }
+
+    // 画像をリサイズ（1920x1080以内、16:9推奨）
+    const resizedFile = await resizeImage(file, 1920, 1080, 0.85);
+
+    // Edge Function経由でアップロード
+    const formData = new FormData();
+    formData.append('file', resizedFile);
+    formData.append('bucket', 'gh-covers');
+    formData.append('path', `${walletAddress.toLowerCase()}/cover_${Date.now()}.jpg`);
+
+    const response = await fetch(`${supabaseUrl}/functions/v1/upload-image`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${supabaseAnonKey}`,
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ カバー画像アップロードエラー:', {
+        status: response.status,
+        statusText: response.statusText,
+        body: errorText,
+      });
+      throw new Error(`アップロードに失敗しました: ${response.statusText}`);
+    }
+
+    const responseText = await response.text();
+
+    let data;
+    try {
+      data = JSON.parse(responseText);
+    } catch (e) {
+      console.error('❌ レスポンスのJSONパースに失敗:', {
+        status: response.status,
+        body: responseText,
+        error: e
+      });
+      throw new Error('サーバーからのレスポンスが不正です');
+    }
+
+    return data.url;
+  } catch (error) {
+    console.error('❌ uploadCoverImage エラー:', error);
+    throw error;
+  }
+}
+
+/**
+ * カバー画像を削除
+ *
+ * @param walletAddress - ユーザーのウォレットアドレス
+ * @returns 削除成功時 true
+ */
+export async function deleteCoverImage(walletAddress: string): Promise<boolean> {
+  try {
+    const { data: existingFiles } = await supabase.storage
+      .from('gh-covers')
+      .list(walletAddress.toLowerCase());
+
+    if (!existingFiles || existingFiles.length === 0) {
+      return true; // 削除するファイルがない場合も成功とする
+    }
+
+    const filesToDelete = existingFiles.map(f => `${walletAddress.toLowerCase()}/${f.name}`);
+    const { error } = await supabase.storage
+      .from('gh-covers')
+      .remove(filesToDelete);
+
+    if (error) {
+      console.error('❌ カバー画像削除エラー:', error);
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.error('❌ deleteCoverImage エラー:', error);
+    return false;
+  }
+}

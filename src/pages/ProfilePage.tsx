@@ -7,12 +7,18 @@ import { useAddress } from '@thirdweb-dev/react';
 import { supabase } from '../lib/supabase';
 import { ProfileEditModal } from '../components/ProfileEditModal';
 import { useIsMobile } from '../hooks/useIsMobile';
+import { UserRole, ROLE_LABELS, CustomLink } from '../types/profile';
 
 interface UserProfile {
   display_name: string;
   bio: string;
   avatar_url?: string;
   receive_message?: string;
+  cover_image_url?: string;
+  website_url?: string;
+  custom_links?: CustomLink[];
+  roles?: UserRole[];
+  location?: string;
   wallet_address: string;
   created_at: string;
   updated_at: string;
@@ -157,7 +163,7 @@ export function ProfilePage() {
             background: 'rgba(255, 255, 255, 0.1)',
             border: '1px solid rgba(255, 255, 255, 0.2)',
             borderRadius: isMobile ? 16 : 20,
-            padding: isMobile ? 20 : 32,
+            overflow: 'hidden',
             backdropFilter: 'blur(10px)',
           }}
         >
@@ -169,161 +175,303 @@ export function ProfilePage() {
             </div>
           ) : (
             <>
-              {/* アイコン */}
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'center',
-                  marginBottom: 24,
-                }}
-              >
+              {/* カバー画像 */}
+              {profile?.cover_image_url && (
                 <div
                   style={{
-                    width: isMobile ? 80 : 100,
-                    height: isMobile ? 80 : 100,
-                    background: profile?.avatar_url
-                      ? 'transparent'
-                      : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                    borderRadius: '50%',
+                    width: '100%',
+                    aspectRatio: '16 / 9',
                     overflow: 'hidden',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: isMobile ? 40 : 50,
+                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                   }}
                 >
-                  {profile?.avatar_url ? (
-                    <img
-                      src={profile.avatar_url}
-                      alt="プロフィール画像"
-                      style={{
-                        width: '100%',
-                        height: '100%',
-                        objectFit: 'cover',
-                      }}
-                      onError={(e) => {
-                        // 画像読み込み失敗時はデフォルトアイコンを表示
-                        e.currentTarget.style.display = 'none';
-                        e.currentTarget.parentElement!.innerHTML = '👤';
-                      }}
-                    />
-                  ) : (
-                    '👤'
-                  )}
+                  <img
+                    src={profile.cover_image_url}
+                    alt="カバー画像"
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover',
+                    }}
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                    }}
+                  />
                 </div>
-              </div>
+              )}
 
-              {/* 表示名 */}
-              <div style={{ marginBottom: 20 }}>
-                <label
-                  style={{
-                    display: 'block',
-                    marginBottom: 8,
-                    fontSize: isMobile ? 12 : 13,
-                    fontWeight: 600,
-                    color: 'rgba(255, 255, 255, 0.7)',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.05em',
-                  }}
-                >
-                  表示名
-                </label>
-                <p
-                  style={{
-                    margin: 0,
-                    fontSize: isMobile ? 18 : 20,
-                    fontWeight: 600,
-                    color: '#EAF2FF',
-                  }}
-                >
-                  {profile?.display_name || '未設定'}
-                </p>
-              </div>
-
-              {/* 自己紹介 */}
-              <div style={{ marginBottom: 20 }}>
-                <label
-                  style={{
-                    display: 'block',
-                    marginBottom: 8,
-                    fontSize: isMobile ? 12 : 13,
-                    fontWeight: 600,
-                    color: 'rgba(255, 255, 255, 0.7)',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.05em',
-                  }}
-                >
-                  自己紹介
-                </label>
-                <p
-                  style={{
-                    margin: 0,
-                    fontSize: isMobile ? 14 : 15,
-                    lineHeight: 1.6,
-                    color: '#EAF2FF',
-                    whiteSpace: 'pre-wrap',
-                  }}
-                >
-                  {profile?.bio || '未設定'}
-                </p>
-              </div>
-
-              {/* ウォレットアドレス */}
-              <div
-                style={{
-                  paddingTop: 20,
-                  borderTop: '1px solid rgba(255, 255, 255, 0.1)',
-                }}
-              >
-                <label
-                  style={{
-                    display: 'block',
-                    marginBottom: 8,
-                    fontSize: isMobile ? 12 : 13,
-                    fontWeight: 600,
-                    color: 'rgba(255, 255, 255, 0.7)',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.05em',
-                  }}
-                >
-                  ウォレットアドレス
-                </label>
-                <p
-                  style={{
-                    margin: 0,
-                    fontSize: isMobile ? 12 : 13,
-                    fontFamily: 'monospace',
-                    color: 'rgba(255, 255, 255, 0.8)',
-                    wordBreak: 'break-all',
-                  }}
-                >
-                  {walletAddress || '未接続'}
-                </p>
-              </div>
-
-              {/* プロフィール未設定の場合のメッセージ */}
-              {!profile && (
+              <div style={{ padding: isMobile ? 20 : 32 }}>
+                {/* アイコンと基本情報 */}
                 <div
                   style={{
-                    marginTop: 24,
-                    padding: 16,
-                    background: 'rgba(255, 255, 255, 0.1)',
-                    border: '1px solid rgba(255, 255, 255, 0.2)',
-                    borderRadius: 8,
-                    textAlign: 'center',
+                    display: 'flex',
+                    flexDirection: isMobile ? 'column' : 'row',
+                    gap: 20,
+                    alignItems: isMobile ? 'center' : 'flex-start',
+                    marginBottom: 24,
                   }}
                 >
+                  {/* アイコン */}
+                  <div
+                    style={{
+                      width: isMobile ? 80 : 100,
+                      height: isMobile ? 80 : 100,
+                      background: profile?.avatar_url
+                        ? 'transparent'
+                        : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                      borderRadius: '50%',
+                      overflow: 'hidden',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: isMobile ? 40 : 50,
+                      flexShrink: 0,
+                    }}
+                  >
+                    {profile?.avatar_url ? (
+                      <img
+                        src={profile.avatar_url}
+                        alt="プロフィール画像"
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'cover',
+                        }}
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                          e.currentTarget.parentElement!.innerHTML = '👤';
+                        }}
+                      />
+                    ) : (
+                      '👤'
+                    )}
+                  </div>
+
+                  {/* 表示名とロール */}
+                  <div style={{ flex: 1, textAlign: isMobile ? 'center' : 'left' }}>
+                    <h2
+                      style={{
+                        margin: '0 0 8px 0',
+                        fontSize: isMobile ? 20 : 24,
+                        fontWeight: 700,
+                        color: '#EAF2FF',
+                      }}
+                    >
+                      {profile?.display_name || '未設定'}
+                    </h2>
+
+                    {/* 所在地 */}
+                    {profile?.location && (
+                      <p
+                        style={{
+                          margin: '0 0 12px 0',
+                          fontSize: isMobile ? 13 : 14,
+                          color: 'rgba(255, 255, 255, 0.7)',
+                        }}
+                      >
+                        📍 {profile.location}
+                      </p>
+                    )}
+
+                    {/* ロール */}
+                    {profile?.roles && profile.roles.length > 0 && (
+                      <div
+                        style={{
+                          display: 'flex',
+                          flexWrap: 'wrap',
+                          gap: 8,
+                          justifyContent: isMobile ? 'center' : 'flex-start',
+                        }}
+                      >
+                        {profile.roles.map((role) => (
+                          <span
+                            key={role}
+                            style={{
+                              display: 'inline-block',
+                              padding: '6px 12px',
+                              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                              borderRadius: 20,
+                              fontSize: isMobile ? 11 : 12,
+                              fontWeight: 600,
+                              color: '#fff',
+                            }}
+                          >
+                            {ROLE_LABELS[role]}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* 自己紹介 */}
+                {profile?.bio && (
+                  <div style={{ marginBottom: 20 }}>
+                    <label
+                      style={{
+                        display: 'block',
+                        marginBottom: 8,
+                        fontSize: isMobile ? 12 : 13,
+                        fontWeight: 600,
+                        color: 'rgba(255, 255, 255, 0.7)',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.05em',
+                      }}
+                    >
+                      自己紹介
+                    </label>
+                    <p
+                      style={{
+                        margin: 0,
+                        fontSize: isMobile ? 14 : 15,
+                        lineHeight: 1.6,
+                        color: '#EAF2FF',
+                        whiteSpace: 'pre-wrap',
+                      }}
+                    >
+                      {profile.bio}
+                    </p>
+                  </div>
+                )}
+
+                {/* リンク */}
+                {(profile?.website_url || (profile?.custom_links && profile.custom_links.length > 0)) && (
+                  <div style={{ marginBottom: 20 }}>
+                    <label
+                      style={{
+                        display: 'block',
+                        marginBottom: 12,
+                        fontSize: isMobile ? 12 : 13,
+                        fontWeight: 600,
+                        color: 'rgba(255, 255, 255, 0.7)',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.05em',
+                      }}
+                    >
+                      リンク
+                    </label>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {/* Webサイト */}
+                      {profile?.website_url && (
+                        <a
+                          href={profile.website_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 8,
+                            padding: isMobile ? '10px 14px' : '12px 16px',
+                            background: 'rgba(255, 255, 255, 0.05)',
+                            border: '1px solid rgba(255, 255, 255, 0.1)',
+                            borderRadius: 8,
+                            color: '#93c5fd',
+                            fontSize: isMobile ? 13 : 14,
+                            textDecoration: 'none',
+                            transition: 'all 0.2s',
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+                          }}
+                        >
+                          🌐 Webサイト
+                        </a>
+                      )}
+
+                      {/* カスタムリンク */}
+                      {profile?.custom_links && profile.custom_links.map((link, index) => (
+                        <a
+                          key={index}
+                          href={link.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 8,
+                            padding: isMobile ? '10px 14px' : '12px 16px',
+                            background: 'rgba(255, 255, 255, 0.05)',
+                            border: '1px solid rgba(255, 255, 255, 0.1)',
+                            borderRadius: 8,
+                            color: '#93c5fd',
+                            fontSize: isMobile ? 13 : 14,
+                            textDecoration: 'none',
+                            transition: 'all 0.2s',
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+                          }}
+                        >
+                          🔗 {link.label}
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* ウォレットアドレス */}
+                <div
+                  style={{
+                    paddingTop: 20,
+                    borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+                  }}
+                >
+                  <label
+                    style={{
+                      display: 'block',
+                      marginBottom: 8,
+                      fontSize: isMobile ? 12 : 13,
+                      fontWeight: 600,
+                      color: 'rgba(255, 255, 255, 0.7)',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.05em',
+                    }}
+                  >
+                    ウォレットアドレス
+                  </label>
                   <p
                     style={{
                       margin: 0,
-                      fontSize: isMobile ? 13 : 14,
-                      color: '#EAF2FF',
+                      fontSize: isMobile ? 12 : 13,
+                      fontFamily: 'monospace',
+                      color: 'rgba(255, 255, 255, 0.8)',
+                      wordBreak: 'break-all',
                     }}
                   >
-                    プロフィールを設定して、GIFTERRAでの活動を始めましょう
+                    {walletAddress || '未接続'}
                   </p>
                 </div>
-              )}
+
+                {/* プロフィール未設定の場合のメッセージ */}
+                {!profile && (
+                  <div
+                    style={{
+                      marginTop: 24,
+                      padding: 16,
+                      background: 'rgba(255, 255, 255, 0.1)',
+                      border: '1px solid rgba(255, 255, 255, 0.2)',
+                      borderRadius: 8,
+                      textAlign: 'center',
+                    }}
+                  >
+                    <p
+                      style={{
+                        margin: 0,
+                        fontSize: isMobile ? 13 : 14,
+                        color: '#EAF2FF',
+                      }}
+                    >
+                      プロフィールを設定して、GIFTERRAでの活動を始めましょう
+                    </p>
+                  </div>
+                )}
+              </div>
             </>
           )}
         </div>
@@ -404,6 +552,11 @@ export function ProfilePage() {
             bio: profile?.bio || '',
             avatar_url: profile?.avatar_url || '',
             receive_message: profile?.receive_message || 'ありがとうございました。',
+            cover_image_url: profile?.cover_image_url || '',
+            website_url: profile?.website_url || '',
+            custom_links: profile?.custom_links || [],
+            roles: profile?.roles || [],
+            location: profile?.location || '',
           }}
           walletAddress={walletAddress}
         />

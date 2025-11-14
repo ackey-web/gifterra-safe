@@ -3,7 +3,8 @@
 
 import { useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { supabase, uploadAvatarImage, deleteAvatarImage } from '../lib/supabase';
+import { supabase, uploadAvatarImage, deleteAvatarImage, uploadCoverImage, deleteCoverImage } from '../lib/supabase';
+import { UserRole, ROLE_LABELS, CustomLink } from '../types/profile';
 
 interface ProfileEditModalProps {
   onClose: () => void;
@@ -14,6 +15,11 @@ interface ProfileEditModalProps {
     bio: string;
     avatar_url?: string;
     receive_message?: string;
+    cover_image_url?: string;
+    website_url?: string;
+    custom_links?: CustomLink[];
+    roles?: UserRole[];
+    location?: string;
   };
   walletAddress: string;
 }
@@ -30,11 +36,23 @@ export function ProfileEditModal({
   const [receiveMessage, setReceiveMessage] = useState(currentProfile.receive_message || 'ありがとうございました。');
   const [avatarUrl, setAvatarUrl] = useState(currentProfile.avatar_url || '');
   const [avatarPreview, setAvatarPreview] = useState(currentProfile.avatar_url || '');
+
+  // 新規フィールド
+  const [coverImageUrl, setCoverImageUrl] = useState(currentProfile.cover_image_url || '');
+  const [coverImagePreview, setCoverImagePreview] = useState(currentProfile.cover_image_url || '');
+  const [websiteUrl, setWebsiteUrl] = useState(currentProfile.website_url || '');
+  const [customLinks, setCustomLinks] = useState<CustomLink[]>(currentProfile.custom_links || []);
+  const [roles, setRoles] = useState<UserRole[]>(currentProfile.roles || []);
+  const [location, setLocation] = useState(currentProfile.location || '');
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [isCoverUploading, setIsCoverUploading] = useState(false);
   const [error, setError] = useState('');
   const [showOverlay, setShowOverlay] = useState(false);
+  const [showCoverOverlay, setShowCoverOverlay] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const coverInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -79,6 +97,75 @@ export function ProfileEditModal({
     }
   };
 
+  const handleCoverSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setError('');
+    setIsCoverUploading(true);
+
+    try {
+      // プレビューを表示
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setCoverImagePreview(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+
+      // アップロード
+      const url = await uploadCoverImage(file, walletAddress);
+      setCoverImageUrl(url);
+    } catch (err: any) {
+      console.error('カバー画像アップロードエラー:', err);
+      setError(err.message || 'カバー画像のアップロードに失敗しました');
+      setCoverImagePreview(currentProfile.cover_image_url || '');
+    } finally {
+      setIsCoverUploading(false);
+    }
+  };
+
+  const handleRemoveCover = async () => {
+    setError('');
+    setIsCoverUploading(true);
+
+    try {
+      await deleteCoverImage(walletAddress);
+      setCoverImageUrl('');
+      setCoverImagePreview('');
+    } catch (err) {
+      console.error('カバー画像削除エラー:', err);
+      setError('カバー画像の削除に失敗しました');
+    } finally {
+      setIsCoverUploading(false);
+    }
+  };
+
+  const handleAddCustomLink = () => {
+    if (customLinks.length >= 3) {
+      setError('カスタムリンクは最大3件までです');
+      return;
+    }
+    setCustomLinks([...customLinks, { label: '', url: '' }]);
+  };
+
+  const handleRemoveCustomLink = (index: number) => {
+    setCustomLinks(customLinks.filter((_, i) => i !== index));
+  };
+
+  const handleCustomLinkChange = (index: number, field: 'label' | 'url', value: string) => {
+    const newLinks = [...customLinks];
+    newLinks[index][field] = value;
+    setCustomLinks(newLinks);
+  };
+
+  const handleRoleToggle = (role: UserRole) => {
+    if (roles.includes(role)) {
+      setRoles(roles.filter(r => r !== role));
+    } else {
+      setRoles([...roles, role]);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -97,10 +184,36 @@ export function ProfileEditModal({
       return;
     }
 
+    if (location.length > 20) {
+      setError('所在地は20文字以内で入力してください');
+      return;
+    }
+
+    // Website URL validation
+    if (websiteUrl && !websiteUrl.match(/^https?:\/\/.+/)) {
+      setError('WebサイトURLは https:// または http:// で始まる必要があります');
+      return;
+    }
+
+    // Custom links validation
+    for (const link of customLinks) {
+      if (link.label && !link.url) {
+        setError('カスタムリンクのURLを入力してください');
+        return;
+      }
+      if (link.url && !link.url.match(/^https?:\/\/.+/)) {
+        setError('カスタムリンクのURLは https:// または http:// で始まる必要があります');
+        return;
+      }
+    }
+
     setIsSubmitting(true);
     setError('');
 
     try {
+      // Filter out empty custom links
+      const validCustomLinks = customLinks.filter(link => link.label && link.url);
+
       // upsert: 存在すれば更新、存在しなければ作成
       // Supabaseの.upsert()を使用（onConflictでユニーク制約を指定）
       const { error: upsertError } = await supabase
@@ -112,6 +225,11 @@ export function ProfileEditModal({
           bio: bio.trim(),
           receive_message: receiveMessage.trim(),
           avatar_url: avatarUrl || null,
+          cover_image_url: coverImageUrl || null,
+          website_url: websiteUrl.trim() || null,
+          custom_links: validCustomLinks.length > 0 ? validCustomLinks : [],
+          roles: roles.length > 0 ? roles : [],
+          location: location.trim() || null,
           updated_at: new Date().toISOString(),
         }, {
           onConflict: 'wallet_address', // wallet_addressのユニーク制約に基づいてupsert
@@ -342,6 +460,137 @@ export function ProfileEditModal({
               </div>
             </div>
 
+            {/* カバー画像 */}
+            <div style={{ marginBottom: 20 }}>
+              <label
+                style={{
+                  display: 'block',
+                  marginBottom: 12,
+                  fontSize: isMobile ? 13 : 14,
+                  fontWeight: 600,
+                  color: '#EAF2FF',
+                }}
+              >
+                カバー画像（任意）
+              </label>
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 12,
+                }}
+              >
+                {/* クリック可能なプレビュー */}
+                <input
+                  ref={coverInputRef}
+                  type="file"
+                  accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                  onChange={handleCoverSelect}
+                  style={{ display: 'none' }}
+                />
+                <div
+                  onClick={() => !isCoverUploading && coverInputRef.current?.click()}
+                  onMouseEnter={() => setShowCoverOverlay(true)}
+                  onMouseLeave={() => setShowCoverOverlay(false)}
+                  style={{
+                    width: '100%',
+                    aspectRatio: '16 / 9',
+                    borderRadius: 12,
+                    overflow: 'hidden',
+                    background: coverImagePreview
+                      ? 'transparent'
+                      : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: isMobile ? 40 : 50,
+                    cursor: isCoverUploading ? 'not-allowed' : 'pointer',
+                    transition: 'all 0.2s',
+                    position: 'relative',
+                    border: `2px solid ${showCoverOverlay && !isCoverUploading ? 'rgba(102, 126, 234, 0.6)' : 'rgba(255, 255, 255, 0.2)'}`,
+                    transform: showCoverOverlay && !isCoverUploading ? 'scale(1.02)' : 'scale(1)',
+                  }}
+                >
+                  {coverImagePreview ? (
+                    <img
+                      src={coverImagePreview}
+                      alt="カバー画像"
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover',
+                      }}
+                    />
+                  ) : (
+                    '🖼️'
+                  )}
+                  {/* ホバー時のオーバーレイ */}
+                  <div
+                    style={{
+                      position: 'absolute',
+                      inset: 0,
+                      background: 'rgba(0, 0, 0, 0.6)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      opacity: showCoverOverlay && !isCoverUploading ? 1 : 0,
+                      transition: 'opacity 0.2s',
+                      fontSize: isMobile ? 14 : 13,
+                      color: '#fff',
+                      fontWeight: 600,
+                      pointerEvents: 'none',
+                    }}
+                  >
+                    {isCoverUploading ? 'アップロード中...' : 'カバー画像を変更'}
+                  </div>
+                </div>
+
+                {/* 削除ボタン（画像がある場合のみ） */}
+                {coverImagePreview && (
+                  <button
+                    type="button"
+                    onClick={handleRemoveCover}
+                    disabled={isCoverUploading}
+                    style={{
+                      padding: isMobile ? '10px 16px' : '8px 12px',
+                      background: 'rgba(239, 68, 68, 0.1)',
+                      border: '1px solid rgba(239, 68, 68, 0.3)',
+                      borderRadius: 8,
+                      color: '#fca5a5',
+                      fontSize: isMobile ? 14 : 13,
+                      fontWeight: 600,
+                      cursor: isCoverUploading ? 'not-allowed' : 'pointer',
+                      transition: 'all 0.2s',
+                      opacity: isCoverUploading ? 0.6 : 1,
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!isCoverUploading) {
+                        e.currentTarget.style.background = 'rgba(239, 68, 68, 0.15)';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)';
+                    }}
+                  >
+                    カバー画像を削除
+                  </button>
+                )}
+
+                {/* ヘルプテキスト */}
+                <p
+                  style={{
+                    margin: 0,
+                    fontSize: isMobile ? 12 : 11,
+                    color: 'rgba(255, 255, 255, 0.6)',
+                    lineHeight: 1.5,
+                  }}
+                >
+                  16:9の比率推奨（最大10MB）<br />
+                  JPG、PNG、GIF、WebP形式
+                </p>
+              </div>
+            </div>
+
             {/* 表示名 */}
             <div style={{ marginBottom: 16 }}>
               <label
@@ -502,6 +751,290 @@ export function ProfileEditModal({
                 }}
               >
                 💡 送金完了時に送信者へ表示されるメッセージです。お礼の言葉やメッセージを設定できます。
+              </div>
+            </div>
+
+            {/* ロール選択 */}
+            <div style={{ marginBottom: 20 }}>
+              <label
+                style={{
+                  display: 'block',
+                  marginBottom: 12,
+                  fontSize: isMobile ? 13 : 14,
+                  fontWeight: 600,
+                  color: '#EAF2FF',
+                }}
+              >
+                ロール（複数選択可）
+              </label>
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: isMobile ? '1fr 1fr' : '1fr 1fr 1fr',
+                  gap: 8,
+                }}
+              >
+                {(Object.keys(ROLE_LABELS) as UserRole[]).map((role) => (
+                  <button
+                    key={role}
+                    type="button"
+                    onClick={() => handleRoleToggle(role)}
+                    style={{
+                      padding: isMobile ? '10px 12px' : '8px 12px',
+                      background: roles.includes(role)
+                        ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+                        : 'rgba(255, 255, 255, 0.05)',
+                      border: `1px solid ${roles.includes(role) ? 'rgba(102, 126, 234, 0.5)' : 'rgba(255, 255, 255, 0.1)'}`,
+                      borderRadius: 8,
+                      color: '#EAF2FF',
+                      fontSize: isMobile ? 12 : 13,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                      textAlign: 'center',
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!roles.includes(role)) {
+                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!roles.includes(role)) {
+                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+                      }
+                    }}
+                  >
+                    {ROLE_LABELS[role]}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* WebサイトURL */}
+            <div style={{ marginBottom: 16 }}>
+              <label
+                style={{
+                  display: 'block',
+                  marginBottom: 8,
+                  fontSize: isMobile ? 13 : 14,
+                  fontWeight: 600,
+                  color: '#EAF2FF',
+                }}
+              >
+                WebサイトURL（任意）
+              </label>
+              <input
+                type="url"
+                value={websiteUrl}
+                onChange={(e) => setWebsiteUrl(e.target.value)}
+                placeholder="https://example.com"
+                style={{
+                  width: '100%',
+                  padding: isMobile ? '10px 12px' : '12px 16px',
+                  background: 'rgba(255, 255, 255, 0.05)',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  borderRadius: 8,
+                  color: '#EAF2FF',
+                  fontSize: isMobile ? 14 : 15,
+                  outline: 'none',
+                  transition: 'all 0.2s',
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.5)';
+                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)';
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+                }}
+              />
+            </div>
+
+            {/* カスタムリンク */}
+            <div style={{ marginBottom: 20 }}>
+              <label
+                style={{
+                  display: 'block',
+                  marginBottom: 12,
+                  fontSize: isMobile ? 13 : 14,
+                  fontWeight: 600,
+                  color: '#EAF2FF',
+                }}
+              >
+                カスタムリンク（最大3件）
+              </label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {customLinks.map((link, index) => (
+                  <div
+                    key={index}
+                    style={{
+                      display: 'flex',
+                      gap: 8,
+                      alignItems: 'flex-start',
+                    }}
+                  >
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      <input
+                        type="text"
+                        value={link.label}
+                        onChange={(e) => handleCustomLinkChange(index, 'label', e.target.value)}
+                        placeholder="ラベル（例: X, Instagram）"
+                        maxLength={20}
+                        style={{
+                          width: '100%',
+                          padding: isMobile ? '8px 10px' : '10px 12px',
+                          background: 'rgba(255, 255, 255, 0.05)',
+                          border: '1px solid rgba(255, 255, 255, 0.1)',
+                          borderRadius: 8,
+                          color: '#EAF2FF',
+                          fontSize: isMobile ? 13 : 14,
+                          outline: 'none',
+                          transition: 'all 0.2s',
+                        }}
+                        onFocus={(e) => {
+                          e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.5)';
+                          e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)';
+                        }}
+                        onBlur={(e) => {
+                          e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+                          e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+                        }}
+                      />
+                      <input
+                        type="url"
+                        value={link.url}
+                        onChange={(e) => handleCustomLinkChange(index, 'url', e.target.value)}
+                        placeholder="https://..."
+                        style={{
+                          width: '100%',
+                          padding: isMobile ? '8px 10px' : '10px 12px',
+                          background: 'rgba(255, 255, 255, 0.05)',
+                          border: '1px solid rgba(255, 255, 255, 0.1)',
+                          borderRadius: 8,
+                          color: '#EAF2FF',
+                          fontSize: isMobile ? 13 : 14,
+                          outline: 'none',
+                          transition: 'all 0.2s',
+                        }}
+                        onFocus={(e) => {
+                          e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.5)';
+                          e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)';
+                        }}
+                        onBlur={(e) => {
+                          e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+                          e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+                        }}
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveCustomLink(index)}
+                      style={{
+                        width: 36,
+                        height: 36,
+                        background: 'rgba(239, 68, 68, 0.1)',
+                        border: '1px solid rgba(239, 68, 68, 0.3)',
+                        borderRadius: 8,
+                        color: '#fca5a5',
+                        fontSize: 18,
+                        cursor: 'pointer',
+                        transition: 'all 0.2s',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0,
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = 'rgba(239, 68, 68, 0.15)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)';
+                      }}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+                {customLinks.length < 3 && (
+                  <button
+                    type="button"
+                    onClick={handleAddCustomLink}
+                    style={{
+                      padding: isMobile ? '10px 16px' : '12px 16px',
+                      background: 'rgba(59, 130, 246, 0.1)',
+                      border: '1px solid rgba(59, 130, 246, 0.3)',
+                      borderRadius: 8,
+                      color: '#93c5fd',
+                      fontSize: isMobile ? 13 : 14,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 8,
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = 'rgba(59, 130, 246, 0.15)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'rgba(59, 130, 246, 0.1)';
+                    }}
+                  >
+                    + リンクを追加
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* 所在地 */}
+            <div style={{ marginBottom: 20 }}>
+              <label
+                style={{
+                  display: 'block',
+                  marginBottom: 8,
+                  fontSize: isMobile ? 13 : 14,
+                  fontWeight: 600,
+                  color: '#EAF2FF',
+                }}
+              >
+                所在地（20文字以内）
+              </label>
+              <input
+                type="text"
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
+                placeholder="東京都渋谷区"
+                maxLength={20}
+                style={{
+                  width: '100%',
+                  padding: isMobile ? '10px 12px' : '12px 16px',
+                  background: 'rgba(255, 255, 255, 0.05)',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  borderRadius: 8,
+                  color: '#EAF2FF',
+                  fontSize: isMobile ? 14 : 15,
+                  outline: 'none',
+                  transition: 'all 0.2s',
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.5)';
+                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)';
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+                }}
+              />
+              <div
+                style={{
+                  marginTop: 4,
+                  fontSize: isMobile ? 11 : 12,
+                  color: location.length > 20 ? '#f87171' : 'rgba(255, 255, 255, 0.5)',
+                  textAlign: 'right',
+                }}
+              >
+                {location.length}/20
               </div>
             </div>
 
