@@ -461,7 +461,7 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
             opacity: 0.8,
           }}
         >
-          このセクションはJPYC送信機能です（GIFTERRA Transfer Protocol - X402互換プロトコル使用）。現在のGIFTERRA FLOWプランでは特典配布とは連動しません。送金は取消不可。返金は当事者間の合意により受領者が別送金で対応する場合があります。GIFTERRAは送金・返金の当事者ではありません。
+          このセクションはJPYC送信機能です（GIFTERRA Payment Protocol - X402互換プロトコル使用）。現在のGIFTERRA FLOWプランでは特典配布とは連動しません。送金は取消不可。返金は当事者間の合意により受領者が別送金で対応する場合があります。
         </p>
       </div>
 
@@ -630,16 +630,13 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
             }}>
               <ul style={{ paddingLeft: 20, marginBottom: 20 }}>
                 <li style={{ marginBottom: 12 }}>
-                  GIFTERRAは決済事業者ではありません。
-                </li>
-                <li style={{ marginBottom: 12 }}>
                   この送受信はGIFTERRAの独自実装で、JPYCがx402を公式提供・連携していることを示すものではありません。
                 </li>
                 <li style={{ marginBottom: 12 }}>
-                  FLOWでは特典配布と連動しません。STUDIO有効時は送金完了後に別イベントとして任意のギフティングが行われる場合があります（支払いの対価ではありません）。
+                  FLOWでは特典配布と連動しません。STUDIO有効時は送金完了後に別イベントとして任意のギフティングが行われる場合があります。
                 </li>
                 <li style={{ marginBottom: 12 }}>
-                  送受信は取消できません。返金は当事者間の合意により受領者が別送金で対応することがあります。GIFTERRAは返金の当事者ではありません。
+                  送受信は取消できません。返金は当事者間の合意により受領者が別送金で対応することがあります。
                 </li>
               </ul>
             </div>
@@ -841,8 +838,6 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
               textAlign: 'center',
             }}>
               <strong>取消不可／返金は当事者間の別送金。</strong>
-              <br />
-              GIFTERRAは返金の当事者ではありません。
               <br />
               （x402ベース／互換・独自実装）
             </div>
