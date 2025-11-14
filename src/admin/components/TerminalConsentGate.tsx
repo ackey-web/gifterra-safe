@@ -1,38 +1,24 @@
 // src/admin/components/TerminalConsentGate.tsx
 // Terminal UI利用前の同意確認ゲート
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 
 interface TerminalConsentGateProps {
   children: React.ReactNode;
 }
 
-const CONSENT_STORAGE_KEY = 'gifterra_terminal_consent_agreed';
-
 export function TerminalConsentGate({ children }: TerminalConsentGateProps) {
   const [hasAgreed, setHasAgreed] = useState(false);
-  const [showModal, setShowModal] = useState(true);
-
-  useEffect(() => {
-    // LocalStorageから同意状態を確認
-    const agreed = localStorage.getItem(CONSENT_STORAGE_KEY);
-    if (agreed === 'true') {
-      setHasAgreed(true);
-      setShowModal(false);
-    }
-  }, []);
 
   const handleAgree = () => {
-    localStorage.setItem(CONSENT_STORAGE_KEY, 'true');
     setHasAgreed(true);
-    setShowModal(false);
   };
 
   const handleGoBack = () => {
     window.location.href = '/';
   };
 
-  if (hasAgreed && !showModal) {
+  if (hasAgreed) {
     return <>{children}</>;
   }
 
@@ -307,9 +293,7 @@ export function TerminalConsentGate({ children }: TerminalConsentGateProps) {
             lineHeight: '1.6',
           }}
         >
-          ※ この同意は、ブラウザのローカルストレージに保存されます。
-          <br />
-          ブラウザのデータを消去すると、再度表示されます。
+          ※ この確認は、Terminal UI利用時に毎回表示されます。
         </p>
       </div>
     </div>
