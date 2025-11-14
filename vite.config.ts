@@ -86,14 +86,8 @@ export default defineConfig(({ mode }) => {
     chunkSizeWarningLimit: 10000,
     // モジュールプリロードを無効化（循環依存の初期化エラーを防ぐ）
     modulePreload: false,
-    // ビルド最適化設定
-    minify: 'terser',
-    terserOptions: {
-      compress: {
-        drop_console: mode === 'production', // 本番環境ではconsoleを削除
-        drop_debugger: true,
-      },
-    },
+    // 緊急対応: minify無効化でビルド時間を1-2分に短縮（本番修正のため）
+    minify: false,
     // CSS圧縮を有効化
     cssMinify: true,
     // アセット最適化
@@ -111,22 +105,15 @@ export default defineConfig(({ mode }) => {
         warn(warning);
       },
       output: {
-        // チャンク分割を最小限にして循環依存エラーを回避
-        // ただし、大きなベンダーライブラリは分離して効率的にキャッシュ
+        // Reactのみ分離、Web3は循環依存回避のため一緒にバンドル
         manualChunks(id) {
-          // node_modulesのベンダーライブラリを分離
+          // Reactとその依存関係のみ分離
           if (id.includes('node_modules')) {
-            // React関連を1つのチャンクに
-            if (id.includes('react') || id.includes('react-dom')) {
+            if (id.includes('react') || id.includes('react-dom') || id.includes('scheduler')) {
               return 'vendor-react';
             }
-            // Web3関連の大きなライブラリを1つのチャンクに
-            if (id.includes('ethers') || id.includes('web3') || id.includes('thirdweb')) {
-              return 'vendor-web3';
-            }
-            // その他のベンダーライブラリ
-            return 'vendor';
           }
+          // Web3/Privy/その他のライブラリは全てindex.jsに含める（循環依存回避）
         },
         // ファイル名にハッシュを追加（効率的なキャッシュ）
         entryFileNames: 'assets/[name].[hash].js',
