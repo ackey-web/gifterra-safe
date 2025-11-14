@@ -20,6 +20,24 @@ const config: CapacitorConfig = {
       splashFullScreen: true,
       splashImmersive: true,
     },
+    Camera: {
+      // カメラ・写真ライブラリアクセス
+      // Androidパーミッション: CAMERA, READ_EXTERNAL_STORAGE, WRITE_EXTERNAL_STORAGE
+      // iOSパーミッション: NSCameraUsageDescription, NSPhotoLibraryUsageDescription
+    },
+    Keyboard: {
+      resize: "body", // キーボード表示時に画面全体をリサイズ
+      style: "dark",  // ダークスタイル
+      resizeOnFullScreen: true,
+    },
+    StatusBar: {
+      style: "dark",
+      backgroundColor: "#018a9a", // GIFTERRAブランドカラー
+    },
+    Haptics: {
+      // ハプティックフィードバック（バイブレーション）
+      // Androidパーミッション: VIBRATE
+    },
   },
 };
 

@@ -67,7 +67,16 @@ export function PrivacyPolicyPage() {
             <li>AI感情解析データ（メッセージ内容に基づく感情スコア「kodomi値」など）</li>
             <li>アクセスログ、端末情報、クッキー、IPアドレス等の通信情報</li>
             <li>エラー情報、利用履歴、その他サービス運営上必要な技術情報</li>
+            <li><strong>ネイティブアプリ機能（モバイルアプリ版のみ）:</strong>
+              <ol style={{ paddingLeft: 24, marginTop: 8 }}>
+                <li><strong>カメラ・写真ライブラリ:</strong> QRコードスキャン、プロフィール画像の設定、NFT画像のアップロード等の機能提供に利用します。撮影・選択された画像は端末内で処理され、必要に応じてサーバーにアップロードされます。</li>
+                <li><strong>バイブレーション（ハプティックフィードバック）:</strong> ボタンタップ時の触覚フィードバック、決済完了時の通知等、ユーザー体験向上のために利用します。</li>
+              </ol>
+            </li>
           </ol>
+          <p style={{ fontSize: 13, opacity: 0.8, marginTop: 16, paddingLeft: 24 }}>
+            ※ カメラ・写真ライブラリへのアクセスは、ユーザーが機能を利用する際に端末のパーミッションダイアログで許可を求めます。許可しない場合でも、他の機能は引き続きご利用いただけます。
+          </p>
 
           <h2 style={{ fontSize: 20, fontWeight: 600, marginTop: 40, marginBottom: 16 }}>
             第3条（利用目的）
