@@ -266,7 +266,7 @@ export function generateReceiptHTML(payment: PaymentRecord, storeName?: string):
         ※ 返金については当事者間の合意により受領者が別送金で対応する場合があります。
       </div>
       <div class="footer-brand">
-        GIFTERRA - JPYC Transfer System<br>
+        GIFTERRA - JPYC Payment System<br>
         Patent Pending (特願2025-120883)
       </div>
     </div>
