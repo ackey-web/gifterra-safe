@@ -855,7 +855,7 @@ export function PaymentTerminalMobile() {
           ) : (
             // QRコード表示画面
             <div style={{ textAlign: 'center' }}>
-              <h2 style={{ fontSize: '20px', marginBottom: '24px' }}>お相手の方にご提示ください</h2>
+              <h2 style={{ fontSize: '20px', marginBottom: '24px' }}>お客様にご提示ください</h2>
               <div
                 style={{
                   background: 'white',
