@@ -126,6 +126,39 @@ TO public
 USING (bucket_id = 'gh-avatars');
 
 -- ==========================================
+-- gh-covers バケット（公開カバー画像用）
+-- ==========================================
+
+-- 誰でもアップロード可能
+CREATE POLICY "gh-covers: Public Upload Access"
+ON storage.objects
+FOR INSERT
+TO public
+WITH CHECK (bucket_id = 'gh-covers');
+
+-- 誰でも読み取り可能
+CREATE POLICY "gh-covers: Public Read Access"
+ON storage.objects
+FOR SELECT
+TO public
+USING (bucket_id = 'gh-covers');
+
+-- 誰でも更新可能
+CREATE POLICY "gh-covers: Public Update Access"
+ON storage.objects
+FOR UPDATE
+TO public
+USING (bucket_id = 'gh-covers')
+WITH CHECK (bucket_id = 'gh-covers');
+
+-- 誰でも削除可能
+CREATE POLICY "gh-covers: Public Delete Access"
+ON storage.objects
+FOR DELETE
+TO public
+USING (bucket_id = 'gh-covers');
+
+-- ==========================================
 -- gh-temp バケット（一時ファイル用）
 -- ==========================================
 

@@ -482,10 +482,10 @@ export async function uploadCoverImage(file: File, walletAddress: string): Promi
     // Edge Function経由でアップロード
     const formData = new FormData();
     formData.append('file', resizedFile);
-    formData.append('bucket', 'gh-covers');
-    formData.append('path', `${walletAddress.toLowerCase()}/cover_${Date.now()}.jpg`);
+    formData.append('bucketName', 'gh-covers');
+    formData.append('filePath', `${walletAddress.toLowerCase()}/cover_${Date.now()}.jpg`);
 
-    const response = await fetch(`${supabaseUrl}/functions/v1/upload-image`, {
+    const response = await fetch(`${supabaseUrl}/functions/v1/upload-file`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${supabaseAnonKey}`,
