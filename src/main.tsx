@@ -15,6 +15,7 @@ import { SuperAdminPage } from "./pages/SuperAdmin";
 import { TenantProvider } from "./admin/contexts/TenantContext";
 import { PaymentTerminal } from "./admin/components/PaymentTerminal";
 import { PaymentTerminalMobile } from "./admin/components/PaymentTerminalMobile";
+import { TerminalConsentGate } from "./admin/components/TerminalConsentGate";
 import { ThirdwebProvider } from "@thirdweb-dev/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AppWrapper } from "./components/AppWrapper";
@@ -219,7 +220,9 @@ if (wantsTerms) {
               },
             }}
           >
-            {isMobileDevice ? <PaymentTerminalMobile /> : <PaymentTerminal />}
+            <TerminalConsentGate>
+              {isMobileDevice ? <PaymentTerminalMobile /> : <PaymentTerminal />}
+            </TerminalConsentGate>
           </PrivyProvider>
         </ThirdwebProvider>
       </QueryClientProvider>
