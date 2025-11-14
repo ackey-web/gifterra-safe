@@ -63,6 +63,9 @@ export function PaymentTerminalMobile() {
   const [showExportModal, setShowExportModal] = useState(false);
   const [exportPeriod, setExportPeriod] = useState<'today' | 'week' | 'month'>('today');
 
+  // 店舗名（プロフィールから取得）
+  const [storeName, setStoreName] = useState<string | undefined>(undefined);
+
   // メッセージ
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
@@ -89,6 +92,26 @@ export function PaymentTerminalMobile() {
   const handleClear = () => {
     setDisplayAmount('0');
   };
+
+  // 店舗プロフィールの取得
+  useEffect(() => {
+    if (!walletAddress) return;
+
+    const fetchStoreProfile = async () => {
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .select('display_name')
+        .eq('wallet_address', walletAddress.toLowerCase())
+        .eq('tenant_id', 'default')
+        .single();
+
+      if (data && data.display_name) {
+        setStoreName(data.display_name);
+      }
+    };
+
+    fetchStoreProfile();
+  }, [walletAddress]);
 
   // 決済履歴を取得
   useEffect(() => {
@@ -326,7 +349,7 @@ export function PaymentTerminalMobile() {
     }
 
     try {
-      const result = await shareReceipt(lastCompletedPayment);
+      const result = await shareReceipt(lastCompletedPayment, storeName);
 
       if (result.success) {
         if (result.fallback) {

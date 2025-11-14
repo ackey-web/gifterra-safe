@@ -86,7 +86,7 @@ export function generateReceiptHTML(payment: PaymentRecord, storeName?: string):
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>JPYC決済 領収書</title>
+  <title>JPYC送付明細</title>
   <style>
     * {
       margin: 0;
@@ -115,6 +115,11 @@ export function generateReceiptHTML(payment: PaymentRecord, storeName?: string):
       color: white;
       padding: 32px 24px;
       text-align: center;
+    }
+    .header-logo {
+      width: 120px;
+      height: auto;
+      margin-bottom: 16px;
     }
     .header h1 {
       font-size: 24px;
@@ -210,19 +215,20 @@ export function generateReceiptHTML(payment: PaymentRecord, storeName?: string):
 <body>
   <div class="receipt">
     <div class="header">
-      <h1>💳 JPYC決済 領収書</h1>
-      <p>Digital Receipt</p>
+      <img src="/gifterra-logo.png" alt="GIFTERRA" class="header-logo">
+      <h1>JPYC送付明細</h1>
+      <p>JPYC Transfer Details</p>
     </div>
 
     <div class="content">
       <div class="amount-section">
-        <div class="amount-label">お支払い金額</div>
-        <div class="amount-value">¥${parseInt(payment.amount).toLocaleString()}</div>
+        <div class="amount-label">送信金額</div>
+        <div class="amount-value">${parseInt(payment.amount).toLocaleString()} JPYC</div>
         <div class="blockchain-badge">🔐 Blockchain Verified</div>
       </div>
 
       <div class="detail-row">
-        <div class="detail-label">決済日時</div>
+        <div class="detail-label">送信日時</div>
         <div class="detail-value">${date}</div>
       </div>
 
@@ -237,7 +243,7 @@ export function generateReceiptHTML(payment: PaymentRecord, storeName?: string):
       </div>
 
       <div class="detail-row">
-        <div class="detail-label">支払者アドレス</div>
+        <div class="detail-label">送信者アドレス</div>
         <div class="detail-value">${payment.completed_by}</div>
       </div>
 
@@ -256,12 +262,12 @@ export function generateReceiptHTML(payment: PaymentRecord, storeName?: string):
 
     <div class="footer">
       <div class="footer-note">
-        ※ この領収書はブロックチェーン上に記録されたJPYC決済の証明です。<br>
+        ※ この記録は、ブロックチェーン上で実行されたJPYCトランザクションの存在を証明するものです。<br>
         ※ トランザクションの詳細はPolygonScan等で上記アドレスを検索して確認できます。<br>
         ※ GIFTERRAは返金の当事者ではありません。返金は当事者間の合意により受領者が別送金で対応する場合があります。
       </div>
       <div class="footer-brand">
-        GIFTERRA - JPYC Payment System<br>
+        GIFTERRA - JPYC Transfer System<br>
         Patent Pending (特願2025-120883)
       </div>
     </div>
@@ -283,8 +289,8 @@ export async function shareReceipt(payment: PaymentRecord, storeName?: string) {
   if (navigator.share && navigator.canShare({ files: [file] })) {
     try {
       await navigator.share({
-        title: 'JPYC決済 領収書',
-        text: `決済金額: ¥${parseInt(payment.amount).toLocaleString()}`,
+        title: 'JPYC送付明細',
+        text: `送信金額: ${parseInt(payment.amount).toLocaleString()} JPYC`,
         files: [file],
       });
       return { success: true };

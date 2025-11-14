@@ -63,6 +63,9 @@ export function PaymentTerminal() {
   const [exportPeriod, setExportPeriod] = useState<'today' | 'week' | 'month'>('today');
   const [lastCompletedPayment, setLastCompletedPayment] = useState<PaymentHistory | null>(null);
 
+  // 店舗名（プロフィールから取得）
+  const [storeName, setStoreName] = useState<string | undefined>(undefined);
+
   // エラー・成功メッセージ
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
@@ -76,6 +79,26 @@ export function PaymentTerminal() {
   const [historyPrivacy, setHistoryPrivacy] = useState(false);
   const [historyPage, setHistoryPage] = useState(0);
   const itemsPerPage = 5;
+
+  // 店舗プロフィールの取得
+  useEffect(() => {
+    if (!walletAddress) return;
+
+    const fetchStoreProfile = async () => {
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .select('display_name')
+        .eq('wallet_address', walletAddress.toLowerCase())
+        .eq('tenant_id', 'default')
+        .single();
+
+      if (data && data.display_name) {
+        setStoreName(data.display_name);
+      }
+    };
+
+    fetchStoreProfile();
+  }, [walletAddress]);
 
   // 決済履歴の自動更新
   useEffect(() => {
@@ -324,7 +347,7 @@ export function PaymentTerminal() {
     }
 
     try {
-      const result = await shareReceipt(lastCompletedPayment);
+      const result = await shareReceipt(lastCompletedPayment, storeName);
 
       if (result.success) {
         if (result.fallback) {
