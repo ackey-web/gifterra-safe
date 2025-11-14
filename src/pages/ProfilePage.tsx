@@ -6,6 +6,7 @@ import { usePrivy, useWallets } from '@privy-io/react-auth';
 import { useAddress } from '@thirdweb-dev/react';
 import { supabase } from '../lib/supabase';
 import { ProfileEditModal } from '../components/ProfileEditModal';
+import { useIsMobile } from '../hooks/useIsMobile';
 
 interface UserProfile {
   display_name: string;
@@ -18,7 +19,7 @@ interface UserProfile {
 }
 
 export function ProfilePage() {
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const isMobile = useIsMobile(); // Capacitorネイティブ & レスポンシブWeb対応
   const [showEditModal, setShowEditModal] = useState(false);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -29,14 +30,6 @@ export function ProfilePage() {
   // Mypageと同じロジックで、メタマスクアカウント切り替えに対応
   const privyEmbeddedWalletAddress = user?.wallet?.address;
   const walletAddress = privyEmbeddedWalletAddress || thirdwebAddress || '';
-
-  useEffect(() => {
-    const handleResize = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
 
   // プロフィールデータ取得
   const fetchProfile = async () => {
@@ -335,7 +328,7 @@ export function ProfilePage() {
           )}
         </div>
 
-        {/* 店舗向け機能セクション */}
+        {/* JPYC受信UI */}
         <div
           style={{
             marginTop: 24,
@@ -354,7 +347,7 @@ export function ProfilePage() {
               color: '#fff',
             }}
           >
-            🏪 店舗向け機能
+            📱 JPYC受信リクエストUI
           </h3>
           <p
             style={{
@@ -364,7 +357,7 @@ export function ProfilePage() {
               color: 'rgba(255, 255, 255, 0.9)',
             }}
           >
-            加盟店としてGIFTERRA JPYCの受取用QRコードを表示できます
+            JPYC送信リクエスト用のQRコードを生成・表示できます
           </p>
           <button
             onClick={() => (window.location.href = '/terminal')}
