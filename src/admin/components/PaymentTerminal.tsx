@@ -935,9 +935,10 @@ export function PaymentTerminal() {
                           display: 'flex',
                           justifyContent: 'space-between',
                           alignItems: 'center',
+                          gap: '12px',
                         }}
                       >
-                        <div>
+                        <div style={{ flex: 1 }}>
                           <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#22c55e' }}>
                             {historyPrivacy ? '****' : `${parseInt(payment.amount).toLocaleString()} JPYC`}
                           </div>
@@ -954,6 +955,45 @@ export function PaymentTerminal() {
                         >
                           {payment.completed_by.slice(0, 8)}...
                         </div>
+                        <button
+                          onClick={async () => {
+                            try {
+                              const result = await shareReceipt(payment, storeName);
+                              if (result.success) {
+                                if (result.fallback) {
+                                  setMessage({ type: 'success', text: '領収書をダウンロードしました' });
+                                } else if (!result.cancelled) {
+                                  setMessage({ type: 'success', text: '領収書を共有しました' });
+                                }
+                                setTimeout(() => setMessage(null), 2000);
+                              }
+                            } catch (error) {
+                              console.error('領収書発行エラー:', error);
+                              setMessage({ type: 'error', text: 'レシート発行に失敗しました' });
+                              setTimeout(() => setMessage(null), 2000);
+                            }
+                          }}
+                          style={{
+                            padding: '6px 12px',
+                            fontSize: '11px',
+                            fontWeight: '600',
+                            background: 'rgba(34, 197, 94, 0.2)',
+                            color: '#22c55e',
+                            border: '1px solid rgba(34, 197, 94, 0.4)',
+                            borderRadius: '6px',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s',
+                            whiteSpace: 'nowrap',
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.background = 'rgba(34, 197, 94, 0.3)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = 'rgba(34, 197, 94, 0.2)';
+                          }}
+                        >
+                          📄 レシート
+                        </button>
                       </div>
                     ))}
                   </div>

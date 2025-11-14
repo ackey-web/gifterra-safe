@@ -700,20 +700,52 @@ export function PaymentTerminalMobile() {
                           background: 'rgba(34, 197, 94, 0.1)',
                           borderRadius: '8px',
                           padding: '10px 12px',
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'center',
                         }}
                       >
-                        <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#22c55e' }}>
-                          {historyPrivacy ? '****' : `${payment.amount.replace(/\B(?=(\d{3})+(?!\d))/g, ',')} JPYC`}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                          <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#22c55e' }}>
+                            {historyPrivacy ? '****' : `${payment.amount.replace(/\B(?=(\d{3})+(?!\d))/g, ',')} JPYC`}
+                          </div>
+                          <div style={{ fontSize: '11px', opacity: 0.7 }}>
+                            {new Date(payment.completed_at).toLocaleTimeString('ja-JP', {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}
+                          </div>
                         </div>
-                        <div style={{ fontSize: '11px', opacity: 0.7 }}>
-                          {new Date(payment.completed_at).toLocaleTimeString('ja-JP', {
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          })}
-                        </div>
+                        <button
+                          onClick={async () => {
+                            try {
+                              const result = await shareReceipt(payment, storeName);
+                              if (result.success) {
+                                if (result.fallback) {
+                                  setMessage({ type: 'success', text: '領収書をダウンロードしました' });
+                                } else if (!result.cancelled) {
+                                  setMessage({ type: 'success', text: '領収書を共有しました' });
+                                }
+                                setTimeout(() => setMessage(null), 2000);
+                              }
+                            } catch (error) {
+                              console.error('領収書発行エラー:', error);
+                              setMessage({ type: 'error', text: 'レシート発行に失敗しました' });
+                              setTimeout(() => setMessage(null), 2000);
+                            }
+                          }}
+                          style={{
+                            width: '100%',
+                            padding: '8px',
+                            fontSize: '12px',
+                            fontWeight: '600',
+                            background: 'rgba(34, 197, 94, 0.2)',
+                            color: '#22c55e',
+                            border: '1px solid rgba(34, 197, 94, 0.4)',
+                            borderRadius: '6px',
+                            cursor: 'pointer',
+                            touchAction: 'manipulation',
+                          }}
+                        >
+                          📄 レシート発行
+                        </button>
                       </div>
                     ))}
                   </div>
