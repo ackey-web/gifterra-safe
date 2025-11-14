@@ -52,8 +52,6 @@ window.Buffer = window.Buffer || Buffer;
 // Capacitor ネイティブアプリ初期化
 // =============================
 if (Capacitor.isNativePlatform()) {
-  console.log('📱 Capacitor Native Platform detected:', Capacitor.getPlatform());
-
   // ステータスバー初期化（GIFTERRAテーマカラー適用）
   initGifterraStatusBar().catch(err => {
     console.warn('StatusBar initialization failed:', err);
@@ -63,8 +61,6 @@ if (Capacitor.isNativePlatform()) {
   initGifterraKeyboard().catch(err => {
     console.warn('Keyboard initialization failed:', err);
   });
-} else {
-  console.log('🌐 Running in Web Browser mode');
 }
 
 // =============================
@@ -75,7 +71,6 @@ if (Capacitor.isNativePlatform()) {
 window.onerror = (message, source, lineno, colno, error) => {
   // QRスキャナーのstopエラーは無視
   if (message && message.includes('Cannot stop, scanner is not running')) {
-    console.log('⚠️ QRスキャナー停止エラー（無視）');
     return true; // エラーを抑制
   }
 
@@ -120,32 +115,9 @@ const queryClient = new QueryClient({
   },
 });
 
-// デバッグログ
-console.log('🚀 main.tsx loading...', {
-  pathname: location.pathname,
-  search: location.search,
-  isMobileDevice: window.innerWidth < 768 || /iPhone|iPod|Android/i.test(navigator.userAgent),
-  screenWidth: window.innerWidth,
-  userAgent: navigator.userAgent,
-});
-
 // URL判定
 const path = location.pathname;
 const uiParam = new URLSearchParams(location.search).get("ui");
-
-console.log('🔍 Route detection:', {
-  path,
-  uiParam,
-  wantsReceive: path.includes("/receive"),
-  wantsReward: path.includes("/reward") || uiParam === "reward",
-  wantsTip: path.includes("/tip") || uiParam === "tip",
-  wantsVending: path.includes("/vending") || path.includes("/content") || uiParam === "vending" || uiParam === "content",
-  wantsAdmin: path.includes("/admin") || uiParam === "admin",
-  wantsSuperAdmin: path.includes("/super-admin") || uiParam === "super-admin",
-  wantsLegacy: path.includes("/legacy"),
-  wantsLogin: path.includes("/login") || uiParam === "login",
-  wantsMypage: path.includes("/mypage") || uiParam === "mypage",
-});
 
 const wantsReceive = path.includes("/receive");
 const wantsReward = path.includes("/reward") || uiParam === "reward";

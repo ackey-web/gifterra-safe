@@ -27,7 +27,6 @@ export async function takePictureNative(quality: number = 90): Promise<Photo | n
   } catch (error: any) {
     // ユーザーがキャンセルした場合
     if (error.message && error.message.includes('User cancelled')) {
-      console.log('Camera cancelled by user');
       return null;
     }
 
@@ -59,7 +58,6 @@ export async function pickPhotoFromGallery(quality: number = 90): Promise<Photo 
   } catch (error: any) {
     // ユーザーがキャンセルした場合
     if (error.message && error.message.includes('User cancelled')) {
-      console.log('Photo picker cancelled by user');
       return null;
     }
 
@@ -91,7 +89,6 @@ export async function pickPhotoWithPrompt(quality: number = 90): Promise<Photo |
   } catch (error: any) {
     // ユーザーがキャンセルした場合
     if (error.message && error.message.includes('User cancelled')) {
-      console.log('Photo selection cancelled by user');
       return null;
     }
 
@@ -127,7 +124,6 @@ export async function getPhotoBase64(
   } catch (error: any) {
     // ユーザーがキャンセルした場合
     if (error.message && error.message.includes('User cancelled')) {
-      console.log('Photo selection cancelled by user');
       return null;
     }
 
