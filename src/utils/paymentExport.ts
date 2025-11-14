@@ -215,20 +215,19 @@ export function generateReceiptHTML(payment: PaymentRecord, storeName?: string):
 <body>
   <div class="receipt">
     <div class="header">
-      <img src="/gifterra-logo.png" alt="GIFTERRA" class="header-logo">
       <h1>JPYC送付明細</h1>
       <p>JPYC Transfer Details</p>
     </div>
 
     <div class="content">
       <div class="amount-section">
-        <div class="amount-label">送信金額</div>
+        <div class="amount-label">お支払い金額</div>
         <div class="amount-value">${parseInt(payment.amount).toLocaleString()} JPYC</div>
         <div class="blockchain-badge">🔐 Blockchain Verified</div>
       </div>
 
       <div class="detail-row">
-        <div class="detail-label">送信日時</div>
+        <div class="detail-label">決済日時</div>
         <div class="detail-value">${date}</div>
       </div>
 

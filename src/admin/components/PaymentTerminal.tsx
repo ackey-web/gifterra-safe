@@ -884,7 +884,7 @@ export function PaymentTerminal() {
               }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                <h3 style={{ margin: 0, fontSize: '18px' }}>📊 最近の受信履歴</h3>
+                <h3 style={{ margin: 0, fontSize: '18px' }}>📊 最近の売上履歴</h3>
                 <button
                   onClick={toggleHistoryPrivacy}
                   style={{
@@ -1028,7 +1028,7 @@ export function PaymentTerminal() {
                   transition: 'all 0.2s',
                 }}
               >
-                📥 受信履歴エクスポート
+                📥 売上履歴エクスポート
               </button>
               <button
                 onClick={handleShareReceipt}
@@ -1218,7 +1218,7 @@ export function PaymentTerminal() {
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 style={{ margin: '0 0 24px 0', fontSize: '24px', color: '#fff' }}>📥 受信履歴エクスポート</h2>
+            <h2 style={{ margin: '0 0 24px 0', fontSize: '24px', color: '#fff' }}>📥 売上履歴エクスポート</h2>
 
             {/* 期間選択 */}
             <div style={{ marginBottom: '24px' }}>
@@ -1266,13 +1266,13 @@ export function PaymentTerminal() {
                       <span style={{ fontSize: '16px', fontWeight: '600' }}>{summary.count}件</span>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', color: '#fff' }}>
-                      <span style={{ fontSize: '13px', opacity: 0.8 }}>合計受信額</span>
+                      <span style={{ fontSize: '13px', opacity: 0.8 }}>合計売上</span>
                       <span style={{ fontSize: '18px', fontWeight: '700', color: '#22c55e' }}>
                         {summary.total.toLocaleString()} JPYC
                       </span>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', color: '#fff' }}>
-                      <span style={{ fontSize: '13px', opacity: 0.8 }}>平均受信額</span>
+                      <span style={{ fontSize: '13px', opacity: 0.8 }}>平均単価</span>
                       <span style={{ fontSize: '14px', fontWeight: '600' }}>{summary.average.toLocaleString()} JPYC</span>
                     </div>
                   </>

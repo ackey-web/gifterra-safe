@@ -663,7 +663,7 @@ export function PaymentTerminalMobile() {
                   }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                    <h3 style={{ margin: 0, fontSize: '16px' }}>📊 最近の受信履歴</h3>
+                    <h3 style={{ margin: 0, fontSize: '16px' }}>📊 最近の売上履歴</h3>
                     <button
                       onClick={toggleHistoryPrivacy}
                       style={{
@@ -798,7 +798,7 @@ export function PaymentTerminalMobile() {
                     touchAction: 'manipulation',
                   }}
                 >
-                  📥 受信履歴エクスポート
+                  📥 売上履歴エクスポート
                 </button>
                 <button
                   onClick={handleShareReceipt}
@@ -1084,7 +1084,7 @@ export function PaymentTerminalMobile() {
                 onClick={(e) => e.stopPropagation()}
               >
                 <h2 style={{ fontSize: '20px', marginBottom: '20px', textAlign: 'center' }}>
-                  📥 受信履歴エクスポート
+                  📥 売上履歴エクスポート
                 </h2>
 
                 {/* 期間選択 */}
@@ -1147,7 +1147,7 @@ export function PaymentTerminalMobile() {
                         }}
                       >
                         <div>
-                          <div style={{ fontSize: '11px', opacity: 0.7 }}>合計受信額</div>
+                          <div style={{ fontSize: '11px', opacity: 0.7 }}>合計売上</div>
                           <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#22c55e' }}>
                             {summary.total.toLocaleString()} JPYC
                           </div>
@@ -1159,7 +1159,7 @@ export function PaymentTerminalMobile() {
                           </div>
                         </div>
                         <div style={{ gridColumn: 'span 2' }}>
-                          <div style={{ fontSize: '11px', opacity: 0.7 }}>平均受信額</div>
+                          <div style={{ fontSize: '11px', opacity: 0.7 }}>平均単価</div>
                           <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#22c55e' }}>
                             {summary.average.toLocaleString()} JPYC
                           </div>
