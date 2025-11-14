@@ -808,7 +808,7 @@ export function PaymentTerminal() {
             >
               {qrData ? (
                 <>
-                  <h3 style={{ margin: '0 0 20px 0', fontSize: '24px' }}>お客様にご提示ください</h3>
+                  <h3 style={{ margin: '0 0 20px 0', fontSize: '24px' }}>お相手の方にご提示ください</h3>
                   <div
                     style={{
                       background: 'white',
