@@ -10,6 +10,7 @@ import { JPYC_TOKEN, TNHT_TOKEN, NHT_TOKEN, SBT_CONTRACT, CONTRACT_ABI, ERC20_MI
 import { useTokenBalances } from '../hooks/useTokenBalances';
 import { useUserNFTs } from '../hooks/useUserNFTs';
 import { useTransactionHistory, type Transaction } from '../hooks/useTransactionHistory';
+import { useIsMobile } from '../hooks/useIsMobile';
 import { useMyTenantApplication, useSubmitTenantApplication } from '../hooks/useTenantApplications';
 import { useRankPlanPricing, getPlanPrice } from '../hooks/useRankPlanPricing';
 import { useTenantRankPlan } from '../hooks/useTenantRankPlan';
@@ -129,7 +130,7 @@ async function getPrivyEthersSigner(privyWallet: any): Promise<ethers.Signer | n
 }
 
 export function MypagePage() {
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const isMobile = useIsMobile(); // Capacitorネイティブ & レスポンシブWeb対応
   const [viewMode, setViewMode] = useState<ViewMode>('flow');
   const [tenantRank, setTenantRank] = useState<TenantRank>('R0'); // TODO: 実データから取得
   const [showWalletSetupModal, setShowWalletSetupModal] = useState(false);
@@ -147,14 +148,6 @@ export function MypagePage() {
 
   // 表示するアドレス（Privy埋め込みウォレット優先、なければThirdweb）
   const displayAddress = privyEmbeddedWalletAddress || thirdwebAddress;
-
-  useEffect(() => {
-    const handleResize = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
 
   // URLパラメータから view を取得
   useEffect(() => {

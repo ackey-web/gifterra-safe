@@ -86,6 +86,18 @@ export default defineConfig(({ mode }) => {
     chunkSizeWarningLimit: 10000,
     // モジュールプリロードを無効化（循環依存の初期化エラーを防ぐ）
     modulePreload: false,
+    // ビルド最適化設定
+    minify: 'terser',
+    terserOptions: {
+      compress: {
+        drop_console: mode === 'production', // 本番環境ではconsoleを削除
+        drop_debugger: true,
+      },
+    },
+    // CSS圧縮を有効化
+    cssMinify: true,
+    // アセット最適化
+    assetsInlineLimit: 4096, // 4KB以下の画像はBase64インライン化
     commonjsOptions: {
       transformMixedEsModules: true
     },
@@ -100,7 +112,26 @@ export default defineConfig(({ mode }) => {
       },
       output: {
         // チャンク分割を最小限にして循環依存エラーを回避
-        manualChunks: undefined
+        // ただし、大きなベンダーライブラリは分離して効率的にキャッシュ
+        manualChunks(id) {
+          // node_modulesのベンダーライブラリを分離
+          if (id.includes('node_modules')) {
+            // React関連を1つのチャンクに
+            if (id.includes('react') || id.includes('react-dom')) {
+              return 'vendor-react';
+            }
+            // Web3関連の大きなライブラリを1つのチャンクに
+            if (id.includes('ethers') || id.includes('web3') || id.includes('thirdweb')) {
+              return 'vendor-web3';
+            }
+            // その他のベンダーライブラリ
+            return 'vendor';
+          }
+        },
+        // ファイル名にハッシュを追加（効率的なキャッシュ）
+        entryFileNames: 'assets/[name].[hash].js',
+        chunkFileNames: 'assets/[name].[hash].js',
+        assetFileNames: 'assets/[name].[hash].[ext]',
       }
     }
   },

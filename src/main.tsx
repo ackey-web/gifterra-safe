@@ -1,29 +1,49 @@
 // src/main.tsx
-import React from "react";
+import React, { lazy, Suspense } from "react";
 import ReactDOM from "react-dom/client";
 import "./index.css";
 import { Buffer } from "buffer";
 import { PrivyProvider } from "@privy-io/react-auth";
-import { ReceivePage } from "./pages/ReceivePage";
-import { MypagePage } from "./pages/Mypage";
-import { LoginPage } from "./pages/Login";
-import RewardApp from "./reward-ui/App";
-import TipApp from "./tip-ui/App";
-import VendingApp from "./vending-ui/App";
-import AdminDashboard from "./admin/Dashboard";
-import { SuperAdminPage } from "./pages/SuperAdmin";
-import { TenantProvider } from "./admin/contexts/TenantContext";
-import { PaymentTerminal } from "./admin/components/PaymentTerminal";
-import { PaymentTerminalMobile } from "./admin/components/PaymentTerminalMobile";
 import { ThirdwebProvider } from "@thirdweb-dev/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { AppWrapper } from "./components/AppWrapper";
-import { TermsOfServicePage } from "./pages/TermsOfService";
-import { PrivacyPolicyPage } from "./pages/PrivacyPolicy";
-import { ProfilePage } from "./pages/ProfilePage";
 import { Capacitor } from "@capacitor/core";
 import { initGifterraStatusBar } from "./utils/statusBar";
 import { initGifterraKeyboard } from "./utils/keyboard";
+
+// =============================
+// コード分割: React.lazy によるルートベース遅延読み込み
+// =============================
+const ReceivePage = lazy(() => import("./pages/ReceivePage").then(m => ({ default: m.ReceivePage })));
+const MypagePage = lazy(() => import("./pages/Mypage").then(m => ({ default: m.MypagePage })));
+const LoginPage = lazy(() => import("./pages/Login").then(m => ({ default: m.LoginPage })));
+const RewardApp = lazy(() => import("./reward-ui/App"));
+const TipApp = lazy(() => import("./tip-ui/App"));
+const VendingApp = lazy(() => import("./vending-ui/App"));
+const AdminDashboard = lazy(() => import("./admin/Dashboard"));
+const SuperAdminPage = lazy(() => import("./pages/SuperAdmin").then(m => ({ default: m.SuperAdminPage })));
+const TenantProvider = lazy(() => import("./admin/contexts/TenantContext").then(m => ({ default: m.TenantProvider })));
+const PaymentTerminal = lazy(() => import("./admin/components/PaymentTerminal").then(m => ({ default: m.PaymentTerminal })));
+const PaymentTerminalMobile = lazy(() => import("./admin/components/PaymentTerminalMobile").then(m => ({ default: m.PaymentTerminalMobile })));
+const AppWrapper = lazy(() => import("./components/AppWrapper").then(m => ({ default: m.AppWrapper })));
+const TermsOfServicePage = lazy(() => import("./pages/TermsOfService").then(m => ({ default: m.TermsOfServicePage })));
+const PrivacyPolicyPage = lazy(() => import("./pages/PrivacyPolicy").then(m => ({ default: m.PrivacyPolicyPage })));
+const ProfilePage = lazy(() => import("./pages/ProfilePage").then(m => ({ default: m.ProfilePage })));
+
+// ローディングコンポーネント
+const LoadingFallback = () => (
+  <div style={{
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: '100vh',
+    background: 'linear-gradient(135deg, #018a9a 0%, #01525e 100%)',
+    color: 'white',
+    fontSize: '18px',
+    fontWeight: 600,
+  }}>
+    読み込み中...
+  </div>
+);
 
 // Polyfill Buffer for browser environment (required for Web3 libraries)
 window.Buffer = window.Buffer || Buffer;
@@ -161,199 +181,212 @@ const root = ReactDOM.createRoot(
 if (wantsTerms) {
   root.render(
     <React.StrictMode>
-      <TermsOfServicePage />
+      <Suspense fallback={<LoadingFallback />}>
+        <TermsOfServicePage />
+      </Suspense>
     </React.StrictMode>
   );
 } else if (wantsPrivacy) {
   // プライバシーポリシーページ（認証不要）
   root.render(
     <React.StrictMode>
-      <PrivacyPolicyPage />
+      <Suspense fallback={<LoadingFallback />}>
+        <PrivacyPolicyPage />
+      </Suspense>
     </React.StrictMode>
   );
 } else if (wantsReceive) {
   // 受け取りページ（認証不要）
   root.render(
     <React.StrictMode>
-      <ReceivePage />
+      <Suspense fallback={<LoadingFallback />}>
+        <ReceivePage />
+      </Suspense>
     </React.StrictMode>
   );
 } else if (wantsSuperAdmin) {
 // Super Admin用の独立したレンダリング（Thirdwebのみ使用）
   root.render(
     <React.StrictMode>
-      <QueryClientProvider client={queryClient}>
-        <ThirdwebProvider
-          activeChain={polygonChain}
-          clientId={import.meta.env.VITE_THIRDWEB_CLIENT_ID}
-        >
-          <SuperAdminPage />
-        </ThirdwebProvider>
-      </QueryClientProvider>
+      <Suspense fallback={<LoadingFallback />}>
+        <QueryClientProvider client={queryClient}>
+          <ThirdwebProvider
+            activeChain={polygonChain}
+            clientId={import.meta.env.VITE_THIRDWEB_CLIENT_ID}
+          >
+            <SuperAdminPage />
+          </ThirdwebProvider>
+        </QueryClientProvider>
+      </Suspense>
     </React.StrictMode>
   );
 } else if (wantsTerminal) {
   // 受取ターミナルUI（デバイス判別：モバイル/タブレット）
   root.render(
     <React.StrictMode>
-      <QueryClientProvider client={queryClient}>
-        <ThirdwebProvider
-          activeChain={polygonChain}
-          clientId={import.meta.env.VITE_THIRDWEB_CLIENT_ID}
-        >
-          <PrivyProvider
-            appId={import.meta.env.VITE_PRIVY_APP_ID || ""}
-            config={{
-              loginMethods: ["email", "google", "twitter", "discord", "wallet"],
-              appearance: {
-                theme: "dark",
-                accentColor: "#02bbd1",
-                logo: "/gifterra-logo.png",
-              },
-              embeddedWallets: {
-                createOnLogin: 'all-users',
-                noPromptOnSignature: false,
-              },
-              defaultChain: {
-                id: 137,
-                name: "Polygon Mainnet",
-                network: "polygon",
-                nativeCurrency: {
-                  name: "MATIC",
-                  symbol: "MATIC",
-                  decimals: 18,
-                },
-                rpcUrls: {
-                  default: {
-                    http: ["https://polygon-rpc.com"],
-                  },
-                  public: {
-                    http: ["https://polygon-rpc.com"],
-                  },
-                },
-                blockExplorers: {
-                  default: {
-                    name: "PolygonScan",
-                    url: "https://polygonscan.com",
-                  },
-                },
-                testnet: false,
-              },
-            }}
+      <Suspense fallback={<LoadingFallback />}>
+        <QueryClientProvider client={queryClient}>
+          <ThirdwebProvider
+            activeChain={polygonChain}
+            clientId={import.meta.env.VITE_THIRDWEB_CLIENT_ID}
           >
-            {isMobileDevice ? <PaymentTerminalMobile /> : <PaymentTerminal />}
-          </PrivyProvider>
-        </ThirdwebProvider>
-      </QueryClientProvider>
+            <PrivyProvider
+              appId={import.meta.env.VITE_PRIVY_APP_ID || ""}
+              config={{
+                loginMethods: ["email", "google", "twitter", "discord", "wallet"],
+                appearance: {
+                  theme: "dark",
+                  accentColor: "#02bbd1",
+                  logo: "/gifterra-logo.png",
+                },
+                embeddedWallets: {
+                  createOnLogin: 'all-users',
+                  noPromptOnSignature: false,
+                },
+                defaultChain: {
+                  id: 137,
+                  name: "Polygon Mainnet",
+                  network: "polygon",
+                  nativeCurrency: {
+                    name: "MATIC",
+                    symbol: "MATIC",
+                    decimals: 18,
+                  },
+                  rpcUrls: {
+                    default: {
+                      http: ["https://polygon-rpc.com"],
+                    },
+                    public: {
+                      http: ["https://polygon-rpc.com"],
+                    },
+                  },
+                  blockExplorers: {
+                    default: {
+                      name: "PolygonScan",
+                      url: "https://polygonscan.com",
+                    },
+                  },
+                  testnet: false,
+                },
+              }}
+            >
+              {isMobileDevice ? <PaymentTerminalMobile /> : <PaymentTerminal />}
+            </PrivyProvider>
+          </ThirdwebProvider>
+        </QueryClientProvider>
+      </Suspense>
     </React.StrictMode>
   );
 } else if (wantsAdmin) {
   // Admin用の独立したレンダリング（Privy + Thirdweb）
   root.render(
     <React.StrictMode>
-      <QueryClientProvider client={queryClient}>
-        <ThirdwebProvider
-          activeChain={polygonChain}
-          clientId={import.meta.env.VITE_THIRDWEB_CLIENT_ID}
-        >
-          <PrivyProvider
-            appId={import.meta.env.VITE_PRIVY_APP_ID || ""}
-            config={{
-              loginMethods: ["email", "google", "twitter", "discord", "wallet"],
-              appearance: {
-                theme: "dark",
-                accentColor: "#02bbd1",
-                logo: "/gifterra-logo.png",
-              },
-              embeddedWallets: {
-                createOnLogin: 'all-users',
-                noPromptOnSignature: false,
-              },
-              defaultChain: {
-                id: 137,
-                name: "Polygon Mainnet",
-                network: "polygon",
-                nativeCurrency: {
-                  name: "MATIC",
-                  symbol: "MATIC",
-                  decimals: 18,
-                },
-                rpcUrls: {
-                  default: {
-                    http: ["https://polygon-rpc.com"],
-                  },
-                  public: {
-                    http: ["https://polygon-rpc.com"],
-                  },
-                },
-                blockExplorers: {
-                  default: {
-                    name: "PolygonScan",
-                    url: "https://polygonscan.com",
-                  },
-                },
-                testnet: false,
-              },
-            }}
+      <Suspense fallback={<LoadingFallback />}>
+        <QueryClientProvider client={queryClient}>
+          <ThirdwebProvider
+            activeChain={polygonChain}
+            clientId={import.meta.env.VITE_THIRDWEB_CLIENT_ID}
           >
-            <TenantProvider>
-              <AdminDashboard />
-            </TenantProvider>
-          </PrivyProvider>
-        </ThirdwebProvider>
-      </QueryClientProvider>
+            <PrivyProvider
+              appId={import.meta.env.VITE_PRIVY_APP_ID || ""}
+              config={{
+                loginMethods: ["email", "google", "twitter", "discord", "wallet"],
+                appearance: {
+                  theme: "dark",
+                  accentColor: "#02bbd1",
+                  logo: "/gifterra-logo.png",
+                },
+                embeddedWallets: {
+                  createOnLogin: 'all-users',
+                  noPromptOnSignature: false,
+                },
+                defaultChain: {
+                  id: 137,
+                  name: "Polygon Mainnet",
+                  network: "polygon",
+                  nativeCurrency: {
+                    name: "MATIC",
+                    symbol: "MATIC",
+                    decimals: 18,
+                  },
+                  rpcUrls: {
+                    default: {
+                      http: ["https://polygon-rpc.com"],
+                    },
+                    public: {
+                      http: ["https://polygon-rpc.com"],
+                    },
+                  },
+                  blockExplorers: {
+                    default: {
+                      name: "PolygonScan",
+                      url: "https://polygonscan.com",
+                    },
+                  },
+                  testnet: false,
+                },
+              }}
+            >
+              <TenantProvider>
+                <AdminDashboard />
+              </TenantProvider>
+            </PrivyProvider>
+          </ThirdwebProvider>
+        </QueryClientProvider>
+      </Suspense>
     </React.StrictMode>
   );
 } else {
   // その他のページはPrivy + Thirdweb経由
   root.render(
     <React.StrictMode>
-      <QueryClientProvider client={queryClient}>
-        <ThirdwebProvider
-          activeChain={polygonChain}
-          clientId={import.meta.env.VITE_THIRDWEB_CLIENT_ID}
-        >
-          <PrivyProvider
-            appId={import.meta.env.VITE_PRIVY_APP_ID || ""}
-            config={{
-              loginMethods: ["email", "google", "twitter", "discord", "wallet"],
-              appearance: {
-                theme: "dark",
-                accentColor: "#02bbd1",
-                logo: "/gifterra-logo.png",
-              },
-              embeddedWallets: {
-                createOnLogin: 'all-users',
-                noPromptOnSignature: false,
-              },
-              defaultChain: {
-                id: 137,
-                name: "Polygon Mainnet",
-                network: "polygon",
-                nativeCurrency: {
-                  name: "MATIC",
-                  symbol: "MATIC",
-                  decimals: 18,
-                },
-                rpcUrls: {
-                  default: {
-                    http: ["https://polygon-rpc.com"],
-                  },
-                  public: {
-                    http: ["https://polygon-rpc.com"],
-                  },
-                },
-                blockExplorers: {
-                  default: {
-                    name: "PolygonScan",
-                    url: "https://polygonscan.com",
-                  },
-                },
-                testnet: false,
-              },
-            }}
+      <Suspense fallback={<LoadingFallback />}>
+        <QueryClientProvider client={queryClient}>
+          <ThirdwebProvider
+            activeChain={polygonChain}
+            clientId={import.meta.env.VITE_THIRDWEB_CLIENT_ID}
           >
-            <AppWrapper>
+            <PrivyProvider
+              appId={import.meta.env.VITE_PRIVY_APP_ID || ""}
+              config={{
+                loginMethods: ["email", "google", "twitter", "discord", "wallet"],
+                appearance: {
+                  theme: "dark",
+                  accentColor: "#02bbd1",
+                  logo: "/gifterra-logo.png",
+                },
+                embeddedWallets: {
+                  createOnLogin: 'all-users',
+                  noPromptOnSignature: false,
+                },
+                defaultChain: {
+                  id: 137,
+                  name: "Polygon Mainnet",
+                  network: "polygon",
+                  nativeCurrency: {
+                    name: "MATIC",
+                    symbol: "MATIC",
+                    decimals: 18,
+                  },
+                  rpcUrls: {
+                    default: {
+                      http: ["https://polygon-rpc.com"],
+                    },
+                    public: {
+                      http: ["https://polygon-rpc.com"],
+                    },
+                  },
+                  blockExplorers: {
+                    default: {
+                      name: "PolygonScan",
+                      url: "https://polygonscan.com",
+                    },
+                  },
+                  testnet: false,
+                },
+              }}
+            >
+              <AppWrapper>
               {wantsLogin ? (
                 <LoginPage />
               ) : wantsMypage ? (
@@ -410,6 +443,7 @@ if (wantsTerms) {
           </PrivyProvider>
         </ThirdwebProvider>
       </QueryClientProvider>
+      </Suspense>
     </React.StrictMode>
   );
 }

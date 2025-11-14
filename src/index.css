@@ -5,14 +5,28 @@
 @tailwind utilities;
 
 /* ====== Base ====== */
-:root { color-scheme: dark; }
+:root {
+  color-scheme: dark;
+  /* Safe area insets for iOS notch & Android navigation bar */
+  --safe-area-inset-top: env(safe-area-inset-top, 0px);
+  --safe-area-inset-right: env(safe-area-inset-right, 0px);
+  --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-area-inset-left: env(safe-area-inset-left, 0px);
+}
+
 html, body, #root { height: 100%; }
+
 body {
   margin: 0;
   background: #0b1620;        /* 全体の背景 */
   color: #fff;                /* 全体の文字色を白に */
   font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial,
                "Noto Sans JP", "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
+  /* Apply safe area insets to body */
+  padding-top: var(--safe-area-inset-top);
+  padding-right: var(--safe-area-inset-right);
+  padding-bottom: var(--safe-area-inset-bottom);
+  padding-left: var(--safe-area-inset-left);
 }
 
 /* ====== 便利コンポーネント（Tailwindの上に薄く） ====== */
@@ -58,6 +72,62 @@ body {
   #root {
     min-height: 100vh;
     min-height: -webkit-fill-available;
+  }
+}
+
+/* ====== Safe area insets utility classes ====== */
+@layer utilities {
+  /* Padding utilities for safe areas */
+  .safe-top {
+    padding-top: var(--safe-area-inset-top);
+  }
+  .safe-right {
+    padding-right: var(--safe-area-inset-right);
+  }
+  .safe-bottom {
+    padding-bottom: var(--safe-area-inset-bottom);
+  }
+  .safe-left {
+    padding-left: var(--safe-area-inset-left);
+  }
+  .safe-x {
+    padding-left: var(--safe-area-inset-left);
+    padding-right: var(--safe-area-inset-right);
+  }
+  .safe-y {
+    padding-top: var(--safe-area-inset-top);
+    padding-bottom: var(--safe-area-inset-bottom);
+  }
+  .safe-all {
+    padding-top: var(--safe-area-inset-top);
+    padding-right: var(--safe-area-inset-right);
+    padding-bottom: var(--safe-area-inset-bottom);
+    padding-left: var(--safe-area-inset-left);
+  }
+
+  /* Fixed header/footer with safe areas */
+  .fixed-header-safe {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    padding-top: var(--safe-area-inset-top);
+    z-index: 50;
+  }
+  .fixed-footer-safe {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding-bottom: var(--safe-area-inset-bottom);
+    z-index: 50;
+  }
+
+  /* Full screen with safe areas */
+  .full-screen-safe {
+    min-height: 100vh;
+    padding-top: var(--safe-area-inset-top);
+    padding-bottom: var(--safe-area-inset-bottom);
   }
 }
 
