@@ -22,9 +22,31 @@ import { AppWrapper } from "./components/AppWrapper";
 import { TermsOfServicePage } from "./pages/TermsOfService";
 import { PrivacyPolicyPage } from "./pages/PrivacyPolicy";
 import { ProfilePage } from "./pages/ProfilePage";
+import { Capacitor } from "@capacitor/core";
+import { initGifterraStatusBar } from "./utils/statusBar";
+import { initGifterraKeyboard } from "./utils/keyboard";
 
 // Polyfill Buffer for browser environment (required for Web3 libraries)
 window.Buffer = window.Buffer || Buffer;
+
+// =============================
+// Capacitor ネイティブアプリ初期化
+// =============================
+if (Capacitor.isNativePlatform()) {
+  console.log('📱 Capacitor Native Platform detected:', Capacitor.getPlatform());
+
+  // ステータスバー初期化（GIFTERRAテーマカラー適用）
+  initGifterraStatusBar().catch(err => {
+    console.warn('StatusBar initialization failed:', err);
+  });
+
+  // キーボード初期化（リサイズモード、スクロールアシスト）
+  initGifterraKeyboard().catch(err => {
+    console.warn('Keyboard initialization failed:', err);
+  });
+} else {
+  console.log('🌐 Running in Web Browser mode');
+}
 
 // =============================
 // グローバルエラーハンドラー（本番環境用 - デバッグUI無効化）
