@@ -478,9 +478,12 @@ export function TransferMessageHistory({
                     marginBottom: 20,
                   }}
                 >
-                  {/* プロフィール画像（クリック可能） */}
+                  {/* プロフィール画像（クリック可能 - プロフィールページに遷移） */}
                   <div
-                    onClick={() => setShowProfileBio(!showProfileBio)}
+                    onClick={() => {
+                      // 送信者のプロフィールページに遷移
+                      window.location.href = `/profile/${selectedMessage.from_address}`;
+                    }}
                     style={{
                       width: isMobile ? 60 : 70,
                       height: isMobile ? 60 : 70,
@@ -493,20 +496,19 @@ export function TransferMessageHistory({
                       alignItems: 'center',
                       justifyContent: 'center',
                       fontSize: isMobile ? 28 : 32,
-                      cursor: selectedMessage.sender_profile?.bio ? 'pointer' : 'default',
+                      cursor: 'pointer',
                       border: '3px solid rgba(255, 255, 255, 0.2)',
                       transition: 'all 0.2s',
                     }}
                     onMouseEnter={(e) => {
-                      if (selectedMessage.sender_profile?.bio) {
-                        e.currentTarget.style.transform = 'scale(1.05)';
-                        e.currentTarget.style.borderColor = 'rgba(102, 126, 234, 0.6)';
-                      }
+                      e.currentTarget.style.transform = 'scale(1.05)';
+                      e.currentTarget.style.borderColor = 'rgba(102, 126, 234, 0.6)';
                     }}
                     onMouseLeave={(e) => {
                       e.currentTarget.style.transform = 'scale(1)';
                       e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)';
                     }}
+                    title="プロフィールを見る"
                   >
                     {selectedMessage.sender_profile?.icon_url ? (
                       <img

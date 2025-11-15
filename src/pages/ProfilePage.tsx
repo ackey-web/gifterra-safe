@@ -20,6 +20,7 @@ interface UserProfile {
   roles?: UserRole[];
   location?: string;
   wallet_address: string;
+  show_wallet_address?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -32,10 +33,18 @@ export function ProfilePage() {
   const { user } = usePrivy();
   const thirdwebAddress = useAddress(); // Thirdwebウォレット（MetaMaskなど）
 
+  // URLパラメータからアドレスを取得（他のユーザーのプロフィール表示用）
+  const path = location.pathname;
+  const pathAddress = path.split('/profile/')[1] || '';
+  const isViewingOtherProfile = pathAddress && pathAddress.length > 0;
+
   // ウォレットアドレスを取得（Privy埋め込みウォレット優先、なければThirdweb）
   // Mypageと同じロジックで、メタマスクアカウント切り替えに対応
   const privyEmbeddedWalletAddress = user?.wallet?.address;
-  const walletAddress = privyEmbeddedWalletAddress || thirdwebAddress || '';
+  const currentUserWalletAddress = privyEmbeddedWalletAddress || thirdwebAddress || '';
+
+  // 表示するウォレットアドレス（URLパラメータがあればそれ、なければ自分のアドレス）
+  const walletAddress = isViewingOtherProfile ? pathAddress : currentUserWalletAddress;
 
   // プロフィールデータ取得
   const fetchProfile = async () => {
@@ -133,28 +142,31 @@ export function ProfilePage() {
           >
             プロフィール
           </h1>
-          <button
-            onClick={() => setShowEditModal(true)}
-            style={{
-              padding: isMobile ? '8px 12px' : '10px 16px',
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-              border: 'none',
-              borderRadius: 8,
-              color: '#fff',
-              fontSize: isMobile ? 14 : 15,
-              fontWeight: 600,
-              cursor: 'pointer',
-              transition: 'all 0.2s',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = 'scale(1.05)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = 'scale(1)';
-            }}
-          >
-            編集
-          </button>
+          {/* 自分のプロフィールの場合のみ編集ボタンを表示 */}
+          {!isViewingOtherProfile && (
+            <button
+              onClick={() => setShowEditModal(true)}
+              style={{
+                padding: isMobile ? '8px 12px' : '10px 16px',
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                border: 'none',
+                borderRadius: 8,
+                color: '#fff',
+                fontSize: isMobile ? 14 : 15,
+                fontWeight: 600,
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'scale(1.05)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'scale(1)';
+              }}
+            >
+              編集
+            </button>
+          )}
         </div>
 
         {/* プロフィールカード */}
@@ -543,8 +555,8 @@ export function ProfilePage() {
         </div>
       </div>
 
-      {/* 編集モーダル */}
-      {showEditModal && (
+      {/* 編集モーダル（自分のプロフィールの場合のみ） */}
+      {showEditModal && !isViewingOtherProfile && (
         <ProfileEditModal
           onClose={() => setShowEditModal(false)}
           onSave={() => {
@@ -561,8 +573,9 @@ export function ProfilePage() {
             custom_links: profile?.custom_links || [],
             roles: profile?.roles || [],
             location: profile?.location || '',
+            show_wallet_address: profile?.show_wallet_address,
           }}
-          walletAddress={walletAddress}
+          walletAddress={currentUserWalletAddress}
         />
       )}
     </div>
