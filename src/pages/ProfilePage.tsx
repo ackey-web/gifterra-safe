@@ -702,12 +702,10 @@ export function ProfilePage() {
       <FollowListModal
         isOpen={showFollowListModal}
         onClose={() => setShowFollowListModal(false)}
-        activeTab={followListTab}
-        followers={followers}
-        following={following}
+        type={followListTab}
+        users={followListTab === 'followers' ? followers : following}
         isLoading={isFollowListsLoading}
         isMobile={isMobile}
-        onTabChange={setFollowListTab}
       />
     </div>
   );

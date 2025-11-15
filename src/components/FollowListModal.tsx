@@ -8,12 +8,10 @@ import type { FollowUser } from '../hooks/useFollowLists';
 interface FollowListModalProps {
   isOpen: boolean;
   onClose: () => void;
-  activeTab: 'followers' | 'following';
-  followers: FollowUser[];
-  following: FollowUser[];
+  type: 'followers' | 'following';
+  users: FollowUser[];
   isLoading: boolean;
   isMobile: boolean;
-  onTabChange: (tab: 'followers' | 'following') => void;
 }
 
 const ITEMS_PER_PAGE = 10;
@@ -21,23 +19,23 @@ const ITEMS_PER_PAGE = 10;
 export function FollowListModal({
   isOpen,
   onClose,
-  activeTab,
-  followers,
-  following,
+  type,
+  users,
   isLoading,
   isMobile,
-  onTabChange,
 }: FollowListModalProps) {
   const [currentPage, setCurrentPage] = useState(1);
 
-  // タブが変更されたらページをリセット
+  // モーダルが開かれたらページをリセット
   useEffect(() => {
-    setCurrentPage(1);
-  }, [activeTab]);
+    if (isOpen) {
+      setCurrentPage(1);
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
-  const displayList = activeTab === 'followers' ? followers : following;
+  const displayList = users;
   const totalPages = Math.ceil(displayList.length / ITEMS_PER_PAGE);
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
   const endIndex = startIndex + ITEMS_PER_PAGE;
@@ -106,7 +104,7 @@ export function FollowListModal({
               color: '#EAF2FF',
             }}
           >
-            {activeTab === 'followers' ? 'フォロワー' : 'フォロー中'}
+            {type === 'followers' ? 'フォロワー' : 'フォロー中'} ({users.length})
           </h3>
           <button
             onClick={onClose}
@@ -135,51 +133,6 @@ export function FollowListModal({
             }}
           >
             ×
-          </button>
-        </div>
-
-        {/* タブ */}
-        <div
-          style={{
-            display: 'flex',
-            borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
-            background: 'rgba(0, 0, 0, 0.2)',
-            flexShrink: 0,
-          }}
-        >
-          <button
-            onClick={() => onTabChange('followers')}
-            style={{
-              flex: 1,
-              padding: '10px 16px',
-              background: 'transparent',
-              border: 'none',
-              borderBottom: activeTab === 'followers' ? '2px solid #667eea' : '2px solid transparent',
-              color: activeTab === 'followers' ? '#667eea' : 'rgba(255, 255, 255, 0.6)',
-              fontSize: isMobile ? '13px' : '14px',
-              fontWeight: 600,
-              cursor: 'pointer',
-              transition: 'all 0.2s',
-            }}
-          >
-            フォロワー ({followers.length})
-          </button>
-          <button
-            onClick={() => onTabChange('following')}
-            style={{
-              flex: 1,
-              padding: '10px 16px',
-              background: 'transparent',
-              border: 'none',
-              borderBottom: activeTab === 'following' ? '2px solid #667eea' : '2px solid transparent',
-              color: activeTab === 'following' ? '#667eea' : 'rgba(255, 255, 255, 0.6)',
-              fontSize: isMobile ? '13px' : '14px',
-              fontWeight: 600,
-              cursor: 'pointer',
-              transition: 'all 0.2s',
-            }}
-          >
-            フォロー中 ({following.length})
           </button>
         </div>
 
@@ -216,7 +169,7 @@ export function FollowListModal({
                 textAlign: 'center',
               }}
             >
-              {activeTab === 'followers' ? 'フォロワーはいません' : 'フォロー中のユーザーはいません'}
+              {type === 'followers' ? 'フォロワーはいません' : 'フォロー中のユーザーはいません'}
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
