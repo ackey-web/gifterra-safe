@@ -2,12 +2,14 @@
 // プロフィールページ
 
 import { useState, useEffect } from 'react';
-import { usePrivy, useWallets } from '@privy-io/react-auth';
+import { usePrivy } from '@privy-io/react-auth';
 import { useAddress } from '@thirdweb-dev/react';
 import { supabase } from '../lib/supabase';
 import { ProfileEditModal } from '../components/ProfileEditModal';
 import { useIsMobile } from '../hooks/useIsMobile';
-import { UserRole, ROLE_LABELS, CustomLink } from '../types/profile';
+import { ROLE_LABELS } from '../types/profile';
+import type { UserRole, CustomLink } from '../types/profile';
+import { useFollow } from '../hooks/useFollow';
 
 interface UserProfile {
   display_name: string;
@@ -45,6 +47,18 @@ export function ProfilePage() {
 
   // 表示するウォレットアドレス（URLパラメータがあればそれ、なければ自分のアドレス）
   const walletAddress = isViewingOtherProfile ? pathAddress : currentUserWalletAddress;
+
+  // フォロー機能（他のユーザーのプロフィールを見ている場合のみ）
+  const {
+    isFollowing,
+    followerCount,
+    followingCount,
+    isLoading: isFollowLoading,
+    toggleFollow,
+  } = useFollow(
+    isViewingOtherProfile ? walletAddress : null,
+    isViewingOtherProfile ? currentUserWalletAddress : null
+  );
 
   // プロフィールデータ取得
   const fetchProfile = async () => {
@@ -167,6 +181,39 @@ export function ProfilePage() {
               編集
             </button>
           )}
+          {/* 他のユーザーのプロフィールの場合はフォローボタンを表示 */}
+          {isViewingOtherProfile && currentUserWalletAddress && (
+            <button
+              onClick={toggleFollow}
+              disabled={isFollowLoading}
+              style={{
+                padding: isMobile ? '8px 12px' : '10px 16px',
+                background: isFollowing
+                  ? 'rgba(239, 68, 68, 0.8)'
+                  : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                border: 'none',
+                borderRadius: 8,
+                color: '#fff',
+                fontSize: isMobile ? 14 : 15,
+                fontWeight: 600,
+                cursor: isFollowLoading ? 'not-allowed' : 'pointer',
+                transition: 'all 0.2s',
+                opacity: isFollowLoading ? 0.6 : 1,
+              }}
+              onMouseEnter={(e) => {
+                if (!isFollowLoading) {
+                  e.currentTarget.style.transform = 'scale(1.05)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!isFollowLoading) {
+                  e.currentTarget.style.transform = 'scale(1)';
+                }
+              }}
+            >
+              {isFollowLoading ? '処理中...' : isFollowing ? 'フォロー解除' : 'フォロー'}
+            </button>
+          )}
         </div>
 
         {/* プロフィールカード */}
@@ -271,6 +318,39 @@ export function ProfilePage() {
                     >
                       {profile?.display_name || '未設定'}
                     </h2>
+
+                    {/* フォロワー数・フォロー中の数 */}
+                    <div
+                      style={{
+                        display: 'flex',
+                        gap: 16,
+                        marginBottom: 12,
+                        justifyContent: isMobile ? 'center' : 'flex-start',
+                      }}
+                    >
+                      <div
+                        style={{
+                          fontSize: isMobile ? 13 : 14,
+                          color: 'rgba(255, 255, 255, 0.8)',
+                        }}
+                      >
+                        <span style={{ fontWeight: 700, color: '#EAF2FF' }}>
+                          {followerCount}
+                        </span>{' '}
+                        フォロワー
+                      </div>
+                      <div
+                        style={{
+                          fontSize: isMobile ? 13 : 14,
+                          color: 'rgba(255, 255, 255, 0.8)',
+                        }}
+                      >
+                        <span style={{ fontWeight: 700, color: '#EAF2FF' }}>
+                          {followingCount}
+                        </span>{' '}
+                        フォロー中
+                      </div>
+                    </div>
 
                     {/* 所在地 */}
                     {profile?.location && (
