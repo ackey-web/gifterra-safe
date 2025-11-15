@@ -296,6 +296,8 @@ export function MypagePage() {
           tenantRank={tenantRank}
           showSettingsModal={showSettingsModal}
           setShowSettingsModal={setShowSettingsModal}
+          showUserSearchModal={showUserSearchModal}
+          setShowUserSearchModal={setShowUserSearchModal}
         />
       </div>
 
@@ -384,13 +386,15 @@ export function MypagePage() {
 // ========================================
 // [A] ヘッダー
 // ========================================
-function Header({ viewMode, setViewMode, isMobile, tenantRank, showSettingsModal, setShowSettingsModal }: {
+function Header({ viewMode, setViewMode, isMobile, tenantRank, showSettingsModal, setShowSettingsModal, showUserSearchModal, setShowUserSearchModal }: {
   viewMode: ViewMode;
   setViewMode: (mode: ViewMode) => void;
   isMobile: boolean;
   tenantRank: TenantRank;
   showSettingsModal: boolean;
   setShowSettingsModal: (show: boolean) => void;
+  showUserSearchModal: boolean;
+  setShowUserSearchModal: (show: boolean) => void;
 }) {
   const disconnect = useDisconnect();
   const { logout: privyLogout, authenticated } = usePrivy();
