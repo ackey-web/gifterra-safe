@@ -45,13 +45,11 @@ export function useFollow(
         .maybeSingle();
 
       if (error) {
-        console.error('Error checking follow status:', error);
         setIsFollowing(false);
       } else {
         setIsFollowing(!!data);
       }
     } catch (err) {
-      console.error('Error checking follow status:', err);
       setIsFollowing(false);
     }
   };
@@ -72,7 +70,7 @@ export function useFollow(
         .eq('following_address', targetAddress.toLowerCase());
 
       if (followerError) {
-        console.error('Error fetching follower count:', followerError);
+        // エラー時は何もしない
       } else {
         setFollowerCount(followers || 0);
       }
@@ -85,12 +83,12 @@ export function useFollow(
         .eq('follower_address', targetAddress.toLowerCase());
 
       if (followingError) {
-        console.error('Error fetching following count:', followingError);
+        // エラー時は何もしない
       } else {
         setFollowingCount(following || 0);
       }
     } catch (err) {
-      console.error('Error fetching counts:', err);
+      // エラー時は何もしない
     } finally {
       setIsLoading(false);
     }
@@ -99,13 +97,11 @@ export function useFollow(
   // フォロー/フォロー解除を切り替え
   const toggleFollow = async () => {
     if (!targetAddress || !currentUserAddress) {
-      console.error('Missing addresses');
       return;
     }
 
     // 自分自身をフォローしようとした場合
     if (targetAddress.toLowerCase() === currentUserAddress.toLowerCase()) {
-      console.error('Cannot follow yourself');
       return;
     }
 
@@ -122,7 +118,6 @@ export function useFollow(
           .eq('following_address', targetAddress.toLowerCase());
 
         if (error) {
-          console.error('Error unfollowing:', error);
           throw error;
         }
 
@@ -137,7 +132,6 @@ export function useFollow(
         });
 
         if (error) {
-          console.error('Error following:', error);
           throw error;
         }
 
@@ -145,7 +139,6 @@ export function useFollow(
         setFollowerCount((prev) => prev + 1);
       }
     } catch (err) {
-      console.error('Error toggling follow:', err);
       // エラー時は状態を再取得
       await checkFollowStatus();
       await fetchCounts();

@@ -12,6 +12,7 @@ import type { UserRole, CustomLink } from '../types/profile';
 import { useFollow } from '../hooks/useFollow';
 import { useFollowLists } from '../hooks/useFollowLists';
 import { FollowListModal } from '../components/FollowListModal';
+import { TipModal } from '../components/TipModal';
 
 interface UserProfile {
   display_name: string;
@@ -36,6 +37,7 @@ export function ProfilePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [showFollowListModal, setShowFollowListModal] = useState(false);
   const [followListTab, setFollowListTab] = useState<'followers' | 'following'>('followers');
+  const [showTipModal, setShowTipModal] = useState(false);
   const { user } = usePrivy();
   const thirdwebAddress = useAddress(); // Thirdwebウォレット（MetaMaskなど）
 
@@ -92,13 +94,11 @@ export function ProfilePage() {
         .maybeSingle(); // single() の代わりに maybeSingle() を使用
 
       if (error) {
-        console.error('❌ ProfilePage - Profile fetch error:', error);
         setProfile(null);
       } else {
         setProfile(data || null);
       }
     } catch (err) {
-      console.error('❌ ProfilePage - Profile fetch exception:', err);
       setProfile(null);
     } finally {
       setIsLoading(false);
@@ -117,7 +117,6 @@ export function ProfilePage() {
   // フォローバック用のコールバック関数
   const handleFollowUser = async (targetAddress: string) => {
     if (!currentUserWalletAddress) {
-      console.error('ウォレットアドレスが取得できません');
       return;
     }
 
@@ -130,13 +129,26 @@ export function ProfilePage() {
       });
 
       if (error) {
-        console.error('フォローエラー:', error);
         throw error;
       }
     } catch (err) {
-      console.error('フォロー処理エラー:', err);
       throw err;
     }
+  };
+
+  // チップ送信処理
+  const handleSendTip = async (amount: number) => {
+    if (!walletAddress) {
+      throw new Error('送信先のアドレスが取得できません');
+    }
+
+    // 送金ページに遷移（金額とアドレスを含む）
+    const params = new URLSearchParams({
+      to: walletAddress,
+      amount: amount.toString(),
+      isTip: 'true',
+    });
+    window.location.href = `/mypage?${params.toString()}`;
   };
 
   return (
@@ -268,16 +280,48 @@ export function ProfilePage() {
                 </div>
               )}
 
-              {/* フォローボタン（カバー画像の下） */}
+              {/* チップボタンとフォローボタン（カバー画像の下） */}
               {isViewingOtherProfile && currentUserWalletAddress && (
                 <div
                   style={{
                     display: 'flex',
                     justifyContent: 'flex-end',
+                    gap: isMobile ? '8px' : '12px',
                     padding: isMobile ? '12px 16px' : '16px 20px',
                     borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
                   }}
                 >
+                  {/* チップボタン */}
+                  <button
+                    onClick={() => setShowTipModal(true)}
+                    style={{
+                      padding: isMobile ? '8px 16px' : '10px 20px',
+                      background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                      border: 'none',
+                      borderRadius: 8,
+                      color: '#fff',
+                      fontSize: isMobile ? 14 : 15,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = 'scale(1.05)';
+                      e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.3)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'scale(1)';
+                      e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.2)';
+                    }}
+                  >
+                    💰 チップを送る
+                  </button>
+
+                  {/* フォローボタン */}
                   <button
                     onClick={toggleFollow}
                     disabled={isFollowLoading}
@@ -748,6 +792,16 @@ export function ProfilePage() {
         isMobile={isMobile}
         onFollowUser={handleFollowUser}
         onRefresh={refetchFollowLists}
+      />
+
+      {/* チップ送信モーダル */}
+      <TipModal
+        isOpen={showTipModal}
+        onClose={() => setShowTipModal(false)}
+        recipientAddress={walletAddress}
+        recipientName={profile?.display_name || `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`}
+        onSendTip={handleSendTip}
+        isMobile={isMobile}
       />
     </div>
   );

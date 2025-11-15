@@ -290,7 +290,7 @@ export function FollowListModal({
                             await onRefresh();
                           }
                         } catch (error) {
-                          console.error('フォローバックエラー:', error);
+                          // エラー時は何もしない
                         } finally {
                           setFollowingInProgress(prev => {
                             const next = new Set(prev);

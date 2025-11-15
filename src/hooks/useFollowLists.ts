@@ -58,7 +58,6 @@ export function useFollowLists(
         .order('created_at', { ascending: false });
 
       if (followersError) {
-        console.error('Error fetching followers:', followersError);
         throw followersError;
       }
 
@@ -71,7 +70,6 @@ export function useFollowLists(
         .order('created_at', { ascending: false });
 
       if (followingError) {
-        console.error('Error fetching following:', followingError);
         throw followingError;
       }
 
@@ -162,7 +160,6 @@ export function useFollowLists(
       setFollowers(followersWithProfiles);
       setFollowing(followingWithProfiles);
     } catch (err) {
-      console.error('Error fetching follow lists:', err);
       setError(err as Error);
     } finally {
       setIsLoading(false);

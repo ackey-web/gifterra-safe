@@ -105,7 +105,6 @@ export async function saveTransferMessage(params: {
     .single();
 
   if (error) {
-    console.error('❌ 送金メッセージ保存エラー:', error);
     throw error;
   }
 
@@ -155,7 +154,6 @@ export function useReceivedTransferMessages(
           .limit(50);
 
         if (fetchError) {
-          console.error('❌ Supabase query error:', fetchError);
           throw fetchError;
         }
 
@@ -208,15 +206,6 @@ export function useReceivedTransferMessages(
                   icon_url: profileData.avatar_url || profileData.icon_url || null,
                 };
 
-                // デバッグログ: プロフィール取得状況を確認
-                if (!updatedProfile.name && message.from_address.toLowerCase() === '0xdf77a8d2bf87c817f61d1786497b6446cde4c563') {
-                  console.log('🔍 プロフィール取得デバッグ:', {
-                    from_address: message.from_address,
-                    profileData,
-                    updatedProfile,
-                  });
-                }
-
                 return {
                   ...message,
                   sender_profile: updatedProfile,
@@ -226,7 +215,6 @@ export function useReceivedTransferMessages(
               // プロフィールが見つからない場合は元のメッセージをそのまま返す
               return message;
             } catch (profileError) {
-              console.error('プロフィール取得エラー:', profileError);
               return message; // エラー時は元のメッセージをそのまま返す
             }
           })
@@ -235,7 +223,6 @@ export function useReceivedTransferMessages(
         setMessages(messagesWithProfiles);
         setUnreadCount(messagesWithProfiles.filter((m: TransferMessage) => !m.is_read).length);
       } catch (err) {
-        console.error('❌ 送金メッセージ取得エラー:', err);
         setError(err as Error);
       } finally {
         setIsLoading(false);
@@ -279,7 +266,6 @@ export async function markMessageAsRead(messageId: string) {
     .eq('id', messageId);
 
   if (error) {
-    console.error('既読更新エラー:', error);
     throw error;
   }
 }
@@ -294,7 +280,6 @@ export async function archiveMessage(messageId: string) {
     .eq('id', messageId);
 
   if (error) {
-    console.error('アーカイブエラー:', error);
     throw error;
   }
 }

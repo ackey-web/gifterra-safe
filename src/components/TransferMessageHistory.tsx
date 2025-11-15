@@ -65,7 +65,7 @@ export function TransferMessageHistory({
       try {
         await markMessageAsRead(message.id);
       } catch (err) {
-        console.error('既読マーク失敗:', err);
+        // エラー時は何もしない
       }
     }
   };

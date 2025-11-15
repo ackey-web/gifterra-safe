@@ -44,7 +44,6 @@ export function UserSearchModal({ onClose, isMobile }: UserSearchModalProps) {
           .maybeSingle();
 
         if (error) {
-          console.error('Search error:', error);
           setNotFound(true);
           return;
         }
@@ -71,7 +70,6 @@ export function UserSearchModal({ onClose, isMobile }: UserSearchModalProps) {
           .limit(10);
 
         if (error) {
-          console.error('Search error:', error);
           setNotFound(true);
           return;
         }
@@ -87,7 +85,6 @@ export function UserSearchModal({ onClose, isMobile }: UserSearchModalProps) {
             .limit(10);
 
           if (nameError) {
-            console.error('Search error:', nameError);
             setNotFound(true);
             return;
           }
@@ -113,7 +110,6 @@ export function UserSearchModal({ onClose, isMobile }: UserSearchModalProps) {
         }
       }
     } catch (err) {
-      console.error('Search error:', err);
       setNotFound(true);
     } finally {
       setIsSearching(false);
