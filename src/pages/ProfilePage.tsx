@@ -738,8 +738,8 @@ export function ProfilePage() {
         users={followListTab === 'followers' ? followers : following}
         isLoading={isFollowListsLoading}
         isMobile={isMobile}
-        onFollowUser={handleFollowUser}
-        onRefresh={refetchFollowLists}
+        onFollowUser={!isViewingOtherProfile ? handleFollowUser : undefined}
+        onRefresh={!isViewingOtherProfile ? refetchFollowLists : undefined}
       />
     </div>
   );
