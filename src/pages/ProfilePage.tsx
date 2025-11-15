@@ -10,6 +10,8 @@ import { useIsMobile } from '../hooks/useIsMobile';
 import { ROLE_LABELS } from '../types/profile';
 import type { UserRole, CustomLink } from '../types/profile';
 import { useFollow } from '../hooks/useFollow';
+import { useFollowLists } from '../hooks/useFollowLists';
+import { FollowListModal } from '../components/FollowListModal';
 
 interface UserProfile {
   display_name: string;
@@ -32,6 +34,8 @@ export function ProfilePage() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [showFollowListModal, setShowFollowListModal] = useState(false);
+  const [followListTab, setFollowListTab] = useState<'followers' | 'following'>('followers');
   const { user } = usePrivy();
   const thirdwebAddress = useAddress(); // Thirdwebウォレット（MetaMaskなど）
 
@@ -63,6 +67,13 @@ export function ProfilePage() {
     walletAddress, // 表示中のプロフィールのアドレス（自分・他人問わず）
     isViewingOtherProfile ? currentUserWalletAddress : null // 他人の場合のみ自分のアドレスを渡す
   );
+
+  // フォロー/フォロワーリストを取得
+  const {
+    followers,
+    following,
+    isLoading: isFollowListsLoading,
+  } = useFollowLists(walletAddress);
 
   // プロフィールデータ取得
   const fetchProfile = async () => {
@@ -333,9 +344,21 @@ export function ProfilePage() {
                       }}
                     >
                       <div
+                        onClick={() => {
+                          setFollowListTab('followers');
+                          setShowFollowListModal(true);
+                        }}
                         style={{
                           fontSize: isMobile ? 13 : 14,
                           color: 'rgba(255, 255, 255, 0.8)',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s',
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.color = '#667eea';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.color = 'rgba(255, 255, 255, 0.8)';
                         }}
                       >
                         <span style={{ fontWeight: 700, color: '#EAF2FF' }}>
@@ -344,9 +367,21 @@ export function ProfilePage() {
                         フォロワー
                       </div>
                       <div
+                        onClick={() => {
+                          setFollowListTab('following');
+                          setShowFollowListModal(true);
+                        }}
                         style={{
                           fontSize: isMobile ? 13 : 14,
                           color: 'rgba(255, 255, 255, 0.8)',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s',
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.color = '#667eea';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.color = 'rgba(255, 255, 255, 0.8)';
                         }}
                       >
                         <span style={{ fontWeight: 700, color: '#EAF2FF' }}>
@@ -662,6 +697,18 @@ export function ProfilePage() {
           walletAddress={currentUserWalletAddress}
         />
       )}
+
+      {/* フォロー/フォロワーリストモーダル */}
+      <FollowListModal
+        isOpen={showFollowListModal}
+        onClose={() => setShowFollowListModal(false)}
+        activeTab={followListTab}
+        followers={followers}
+        following={following}
+        isLoading={isFollowListsLoading}
+        isMobile={isMobile}
+        onTabChange={setFollowListTab}
+      />
     </div>
   );
 }

@@ -444,8 +444,8 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
               src="/ギフテラロゴのみ.png"
               alt="GIFTERRA"
               style={{
-                width: isMobile ? '20px' : '24px',
-                height: isMobile ? '20px' : '24px',
+                width: isMobile ? '28px' : '32px',
+                height: isMobile ? '28px' : '32px',
               objectFit: 'contain',
             }}
           />
