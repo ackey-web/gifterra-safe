@@ -1150,19 +1150,24 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
 
   // チップ送信情報を sessionStorage から読み込んで自動入力
   useEffect(() => {
-    const tipTo = sessionStorage.getItem('gifterra_tip_to');
-    const tipAmount = sessionStorage.getItem('gifterra_tip_amount');
+    // sessionStorageの読み込みを少し遅延させる（親コンポーネントのuseEffectが先に実行されるため）
+    const timer = setTimeout(() => {
+      const tipTo = sessionStorage.getItem('gifterra_tip_to');
+      const tipAmount = sessionStorage.getItem('gifterra_tip_amount');
 
-    if (tipTo && tipAmount) {
-      // フォームに自動入力
-      setAddress(tipTo);
-      setAmount(tipAmount);
-      setSendMode('simple'); // シンプル送金モードに設定
+      if (tipTo && tipAmount) {
+        // フォームに自動入力
+        setAddress(tipTo);
+        setAmount(tipAmount);
+        setSendMode('simple'); // シンプル送金モードに設定
 
-      // sessionStorage をクリア（1回のみ実行）
-      sessionStorage.removeItem('gifterra_tip_to');
-      sessionStorage.removeItem('gifterra_tip_amount');
-    }
+        // sessionStorage をクリア（1回のみ実行）
+        sessionStorage.removeItem('gifterra_tip_to');
+        sessionStorage.removeItem('gifterra_tip_amount');
+      }
+    }, 200); // 200ms遅延
+
+    return () => clearTimeout(timer);
   }, []);
 
   // トークン残高を取得
