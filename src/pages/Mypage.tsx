@@ -493,12 +493,23 @@ function Header({ viewMode, setViewMode, isMobile, tenantRank, showSettingsModal
       <img
         src={getHeaderLogo()}
         alt="Logo"
+        onClick={() => {
+          window.location.href = '/mypage';
+        }}
         style={{
           height: isMobile ? 40 : 60,
           width: 'auto',
           maxWidth: isMobile ? '200px' : '300px',
           objectFit: 'contain',
           opacity: 1,
+          cursor: 'pointer',
+          transition: 'opacity 0.2s',
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.opacity = '0.7';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.opacity = '1';
         }}
       />
 
