@@ -38,7 +38,6 @@ export function ProfilePage() {
   // URLパラメータからアドレスを取得（他のユーザーのプロフィール表示用）
   const path = location.pathname;
   const pathAddress = path.split('/profile/')[1] || '';
-  const isViewingOtherProfile = pathAddress && pathAddress.length > 0;
 
   // ウォレットアドレスを取得（Privy埋め込みウォレット優先、なければThirdweb）
   // Mypageと同じロジックで、メタマスクアカウント切り替えに対応
@@ -46,7 +45,12 @@ export function ProfilePage() {
   const currentUserWalletAddress = privyEmbeddedWalletAddress || thirdwebAddress || '';
 
   // 表示するウォレットアドレス（URLパラメータがあればそれ、なければ自分のアドレス）
-  const walletAddress = isViewingOtherProfile ? pathAddress : currentUserWalletAddress;
+  const walletAddress = pathAddress || currentUserWalletAddress;
+
+  // 他のユーザーのプロフィールを見ているかどうか（自分のアドレスと異なる場合）
+  const isViewingOtherProfile = pathAddress &&
+    pathAddress.length > 0 &&
+    pathAddress.toLowerCase() !== currentUserWalletAddress.toLowerCase();
 
   // フォロー機能（他のユーザーのプロフィールを見ている場合のみ）
   const {
