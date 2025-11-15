@@ -20,6 +20,7 @@ interface ProfileEditModalProps {
     custom_links?: CustomLink[];
     roles?: UserRole[];
     location?: string;
+    show_wallet_address?: boolean;
   };
   walletAddress: string;
 }
@@ -44,6 +45,7 @@ export function ProfileEditModal({
   const [customLinks, setCustomLinks] = useState<CustomLink[]>(currentProfile.custom_links || []);
   const [roles, setRoles] = useState<UserRole[]>(currentProfile.roles || []);
   const [location, setLocation] = useState(currentProfile.location || '');
+  const [showWalletAddress, setShowWalletAddress] = useState(currentProfile.show_wallet_address !== false);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -230,6 +232,7 @@ export function ProfileEditModal({
           custom_links: validCustomLinks.length > 0 ? validCustomLinks : [],
           roles: roles.length > 0 ? roles : [],
           location: location.trim() || null,
+          show_wallet_address: showWalletAddress,
           updated_at: new Date().toISOString(),
         }, {
           onConflict: 'wallet_address', // wallet_addressのユニーク制約に基づいてupsert
@@ -774,39 +777,47 @@ export function ProfileEditModal({
                   gap: 8,
                 }}
               >
-                {(Object.keys(ROLE_LABELS) as UserRole[]).map((role) => (
-                  <button
-                    key={role}
-                    type="button"
-                    onClick={() => handleRoleToggle(role)}
-                    style={{
-                      padding: isMobile ? '10px 12px' : '8px 12px',
-                      background: roles.includes(role)
-                        ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
-                        : 'rgba(255, 255, 255, 0.05)',
-                      border: `1px solid ${roles.includes(role) ? 'rgba(102, 126, 234, 0.5)' : 'rgba(255, 255, 255, 0.1)'}`,
-                      borderRadius: 8,
-                      color: '#EAF2FF',
-                      fontSize: isMobile ? 12 : 13,
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      transition: 'all 0.2s',
-                      textAlign: 'center',
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!roles.includes(role)) {
-                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)';
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!roles.includes(role)) {
-                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
-                      }
-                    }}
-                  >
-                    {ROLE_LABELS[role]}
-                  </button>
-                ))}
+                {(Object.keys(ROLE_LABELS) as UserRole[])
+                  .filter((role) => {
+                    // 開発者ロールは特定のウォレットアドレスのみ表示
+                    if (role === 'DEVELOPER') {
+                      return walletAddress.toLowerCase() === '0x66F1274aD5d042b7571C2EfA943370dbcd3459aB'.toLowerCase();
+                    }
+                    return true;
+                  })
+                  .map((role) => (
+                    <button
+                      key={role}
+                      type="button"
+                      onClick={() => handleRoleToggle(role)}
+                      style={{
+                        padding: isMobile ? '10px 12px' : '8px 12px',
+                        background: roles.includes(role)
+                          ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+                          : 'rgba(255, 255, 255, 0.05)',
+                        border: `1px solid ${roles.includes(role) ? 'rgba(102, 126, 234, 0.5)' : 'rgba(255, 255, 255, 0.1)'}`,
+                        borderRadius: 8,
+                        color: '#EAF2FF',
+                        fontSize: isMobile ? 12 : 13,
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        transition: 'all 0.2s',
+                        textAlign: 'center',
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!roles.includes(role)) {
+                          e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!roles.includes(role)) {
+                          e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+                        }
+                      }}
+                    >
+                      {ROLE_LABELS[role]}
+                    </button>
+                  ))}
               </div>
             </div>
 
@@ -1036,6 +1047,66 @@ export function ProfileEditModal({
               >
                 {location.length}/20
               </div>
+            </div>
+
+            {/* ウォレットアドレス公開/非公開 */}
+            <div style={{ marginBottom: 20 }}>
+              <label
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  cursor: 'pointer',
+                  padding: isMobile ? '12px' : '14px 16px',
+                  background: 'rgba(255, 255, 255, 0.05)',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  borderRadius: 8,
+                  transition: 'all 0.2s',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)';
+                  e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.3)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+                  e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={showWalletAddress}
+                  onChange={(e) => setShowWalletAddress(e.target.checked)}
+                  style={{
+                    width: 20,
+                    height: 20,
+                    cursor: 'pointer',
+                    accentColor: '#3b82f6',
+                  }}
+                />
+                <div style={{ flex: 1 }}>
+                  <div
+                    style={{
+                      fontSize: isMobile ? 13 : 14,
+                      fontWeight: 600,
+                      color: '#EAF2FF',
+                      marginBottom: 4,
+                    }}
+                  >
+                    ウォレットアドレスを公開
+                  </div>
+                  <div
+                    style={{
+                      fontSize: isMobile ? 11 : 12,
+                      color: 'rgba(255, 255, 255, 0.6)',
+                      lineHeight: 1.4,
+                    }}
+                  >
+                    {showWalletAddress
+                      ? 'プロフィールページでウォレットアドレスが表示されます'
+                      : 'ウォレットアドレスは非表示になります'}
+                  </div>
+                </div>
+              </label>
             </div>
 
             {/* エラーメッセージ */}

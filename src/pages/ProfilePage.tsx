@@ -289,7 +289,9 @@ export function ProfilePage() {
                             style={{
                               display: 'inline-block',
                               padding: '6px 12px',
-                              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                              background: role === 'DEVELOPER'
+                                ? 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)'
+                                : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                               borderRadius: 20,
                               fontSize: isMobile ? 11 : 12,
                               fontWeight: 600,
@@ -415,38 +417,40 @@ export function ProfilePage() {
                   </div>
                 )}
 
-                {/* ウォレットアドレス */}
-                <div
-                  style={{
-                    paddingTop: 20,
-                    borderTop: '1px solid rgba(255, 255, 255, 0.1)',
-                  }}
-                >
-                  <label
+                {/* ウォレットアドレス（公開設定がtrueの場合のみ表示） */}
+                {profile?.show_wallet_address !== false && (
+                  <div
                     style={{
-                      display: 'block',
-                      marginBottom: 8,
-                      fontSize: isMobile ? 12 : 13,
-                      fontWeight: 600,
-                      color: 'rgba(255, 255, 255, 0.7)',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.05em',
+                      paddingTop: 20,
+                      borderTop: '1px solid rgba(255, 255, 255, 0.1)',
                     }}
                   >
-                    ウォレットアドレス
-                  </label>
-                  <p
-                    style={{
-                      margin: 0,
-                      fontSize: isMobile ? 12 : 13,
-                      fontFamily: 'monospace',
-                      color: 'rgba(255, 255, 255, 0.8)',
-                      wordBreak: 'break-all',
-                    }}
-                  >
-                    {walletAddress || '未接続'}
-                  </p>
-                </div>
+                    <label
+                      style={{
+                        display: 'block',
+                        marginBottom: 8,
+                        fontSize: isMobile ? 12 : 13,
+                        fontWeight: 600,
+                        color: 'rgba(255, 255, 255, 0.7)',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.05em',
+                      }}
+                    >
+                      ウォレットアドレス
+                    </label>
+                    <p
+                      style={{
+                        margin: 0,
+                        fontSize: isMobile ? 12 : 13,
+                        fontFamily: 'monospace',
+                        color: 'rgba(255, 255, 255, 0.8)',
+                        wordBreak: 'break-all',
+                      }}
+                    >
+                      {walletAddress || '未接続'}
+                    </p>
+                  </div>
+                )}
 
                 {/* プロフィール未設定の場合のメッセージ */}
                 {!profile && (
