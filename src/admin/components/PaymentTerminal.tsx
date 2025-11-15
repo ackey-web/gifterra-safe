@@ -1,7 +1,7 @@
 // src/admin/components/PaymentTerminal.tsx
 // タブレット専用レジUI - 実店舗向けに最適化
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { usePrivy } from '@privy-io/react-auth';
 import { ConnectWallet, useAddress, useDisconnect } from '@thirdweb-dev/react';
@@ -53,6 +53,13 @@ export function PaymentTerminal() {
   // QRコード
   const [qrData, setQrData] = useState<string | null>(null);
   const [expiryMinutes, setExpiryMinutes] = useState(5);
+  const qrRef = useRef<HTMLDivElement>(null);
+
+  // WEB決済確認モーダル
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [pendingGenerateData, setPendingGenerateData] = useState<{
+    amount: string;
+  } | null>(null);
 
   // 決済履歴
   const [recentPayments, setRecentPayments] = useState<PaymentHistory[]>([]);
@@ -217,8 +224,37 @@ export function PaymentTerminal() {
     setDisplayAmount(presetAmount.toString());
   };
 
-  // QR生成
+  // QR生成（WEB決済チェック付き）
   const handleGenerateQR = async () => {
+    try {
+      if (!walletAddress) {
+        setMessage({ type: 'error', text: 'ウォレット未接続' });
+        return;
+      }
+
+      const amountValue = parseInt(displayAmount);
+      if (isNaN(amountValue) || amountValue <= 0) {
+        setMessage({ type: 'error', text: '金額を入力してください' });
+        return;
+      }
+
+      // WEB決済（60分以上）の場合は確認モーダルを表示
+      if (expiryMinutes >= 60) {
+        setPendingGenerateData({ amount: displayAmount });
+        setShowConfirmModal(true);
+        return;
+      }
+
+      // 対面決済の場合はそのまま生成
+      await executeGenerateQR(displayAmount);
+    } catch (error) {
+      console.error('QR生成エラー:', error);
+      setMessage({ type: 'error', text: '生成に失敗しました' });
+    }
+  };
+
+  // QR生成実行
+  const executeGenerateQR = async (amountToGenerate: string) => {
     try {
       if (!walletAddress) {
         setMessage({ type: 'error', text: 'ウォレット未接続' });
@@ -245,13 +281,7 @@ export function PaymentTerminal() {
         token: tokenValidation.checksumAddress,
       });
 
-      const amountValue = parseInt(displayAmount);
-      if (isNaN(amountValue) || amountValue <= 0) {
-        setMessage({ type: 'error', text: '金額を入力してください' });
-        return;
-      }
-
-      const amountWei = parsePaymentAmount(displayAmount, jpycConfig.decimals);
+      const amountWei = parsePaymentAmount(amountToGenerate, jpycConfig.decimals);
       const expires = Math.floor(Date.now() / 1000) + expiryMinutes * 60;
       const requestId = generateRequestId();
 
@@ -261,7 +291,7 @@ export function PaymentTerminal() {
         token: tokenValidation.checksumAddress!,
         amount: amountWei,
         chainId: 137, // Polygon Mainnet
-        message: `${displayAmount}円のお支払い`,
+        message: `${amountToGenerate}円のお支払い`,
         expires,
         requestId,
       });
@@ -270,8 +300,8 @@ export function PaymentTerminal() {
       const { error } = await supabase.from('payment_requests').insert({
         request_id: requestId,
         tenant_address: walletAddress.toLowerCase(),
-        amount: displayAmount,
-        message: `${displayAmount}円のお支払い`,
+        amount: amountToGenerate,
+        message: `${amountToGenerate}円のお支払い`,
         expires_at: new Date(expires * 1000).toISOString(),
         status: 'pending',
       });
@@ -279,7 +309,7 @@ export function PaymentTerminal() {
       if (error) throw error;
 
       setQrData(paymentData);
-      setAmount(displayAmount);
+      setAmount(amountToGenerate);
       setMessage({ type: 'success', text: 'QRコード生成完了' });
 
       // 3秒後にメッセージを消す
@@ -287,6 +317,56 @@ export function PaymentTerminal() {
     } catch (error) {
       console.error('QR生成エラー:', error);
       setMessage({ type: 'error', text: '生成に失敗しました' });
+    }
+  };
+
+  // QRコードダウンロード
+  const handleDownloadQR = () => {
+    if (!qrRef.current) return;
+
+    const svg = qrRef.current.querySelector('svg');
+    if (!svg) return;
+
+    try {
+      // SVGをシリアライズ
+      const svgData = new XMLSerializer().serializeToString(svg);
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      const img = new Image();
+
+      img.onload = () => {
+        // Canvasのサイズを設定
+        canvas.width = img.width;
+        canvas.height = img.height;
+
+        // 背景を白に設定
+        if (ctx) {
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(img, 0, 0);
+        }
+
+        // PNGとしてダウンロード
+        canvas.toBlob((blob) => {
+          if (!blob) return;
+
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.download = `jpyc-payment-${amount}JPY-${Date.now()}.png`;
+          link.href = url;
+          link.click();
+
+          URL.revokeObjectURL(url);
+
+          setMessage({ type: 'success', text: 'QRコードをダウンロードしました' });
+          setTimeout(() => setMessage(null), 2000);
+        });
+      };
+
+      img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)));
+    } catch (error) {
+      console.error('QRダウンロードエラー:', error);
+      setMessage({ type: 'error', text: 'ダウンロードに失敗しました' });
     }
   };
 
@@ -810,6 +890,7 @@ export function PaymentTerminal() {
                 <>
                   <h3 style={{ margin: '0 0 20px 0', fontSize: '24px' }}>お客様にご提示ください</h3>
                   <div
+                    ref={qrRef}
                     style={{
                       background: 'white',
                       padding: '24px',
@@ -831,6 +912,34 @@ export function PaymentTerminal() {
                           : `${expiryMinutes}分`
                     }
                   </div>
+
+                  {/* QRコードダウンロードボタン */}
+                  <button
+                    onClick={handleDownloadQR}
+                    style={{
+                      marginTop: '16px',
+                      padding: '12px 24px',
+                      background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
+                      border: 'none',
+                      borderRadius: '8px',
+                      color: '#fff',
+                      fontSize: '14px',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                      boxShadow: '0 4px 12px rgba(34, 197, 94, 0.3)',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = 'translateY(-2px)';
+                      e.currentTarget.style.boxShadow = '0 6px 16px rgba(34, 197, 94, 0.4)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'translateY(0)';
+                      e.currentTarget.style.boxShadow = '0 4px 12px rgba(34, 197, 94, 0.3)';
+                    }}
+                  >
+                    📥 QRコードをダウンロード
+                  </button>
 
                   {/* 支払先アドレス表示（タップで共有） */}
                   {walletAddress && (
@@ -1273,6 +1382,200 @@ export function PaymentTerminal() {
                 }}
               >
                 💾 保存
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* WEB決済確認モーダル */}
+      {showConfirmModal && pendingGenerateData && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0, 0, 0, 0.9)',
+            zIndex: 999999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 20,
+          }}
+          onClick={() => {
+            setShowConfirmModal(false);
+            setPendingGenerateData(null);
+          }}
+        >
+          <div
+            style={{
+              background: '#ffffff',
+              borderRadius: 20,
+              maxWidth: 600,
+              width: '100%',
+              padding: 32,
+              boxShadow: '0 20px 60px rgba(0, 0, 0, 0.5)',
+              border: '3px solid #f59e0b',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2
+              style={{
+                margin: '0 0 20px 0',
+                fontSize: 24,
+                fontWeight: 700,
+                color: '#1a1a1a',
+                textAlign: 'center',
+              }}
+            >
+              ⚠️ WEB決済用QRコード生成確認
+            </h2>
+
+            <div
+              style={{
+                background: 'rgba(249, 115, 22, 0.1)',
+                border: '2px solid rgba(249, 115, 22, 0.3)',
+                borderRadius: 12,
+                padding: 20,
+                marginBottom: 24,
+              }}
+            >
+              <p
+                style={{
+                  margin: '0 0 12px 0',
+                  fontSize: 16,
+                  fontWeight: 600,
+                  color: '#f59e0b',
+                  lineHeight: 1.6,
+                }}
+              >
+                このコードはJPYC送受信リンクです。
+              </p>
+              <p
+                style={{
+                  margin: 0,
+                  fontSize: 15,
+                  color: '#1a1a1a',
+                  lineHeight: 1.6,
+                }}
+              >
+                取引内容や請求情報にはGIFTERRAは関与しません。
+              </p>
+            </div>
+
+            <div
+              style={{
+                background: '#f3f4f6',
+                borderRadius: 12,
+                padding: 20,
+                marginBottom: 24,
+              }}
+            >
+              <div style={{ marginBottom: 16 }}>
+                <div
+                  style={{
+                    fontSize: 13,
+                    color: '#6b7280',
+                    marginBottom: 4,
+                    fontWeight: 600,
+                  }}
+                >
+                  受信金額
+                </div>
+                <div
+                  style={{
+                    fontSize: 28,
+                    fontWeight: 700,
+                    color: '#22c55e',
+                  }}
+                >
+                  {parseInt(pendingGenerateData.amount).toLocaleString()} JPYC
+                </div>
+              </div>
+
+              <div>
+                <div
+                  style={{
+                    fontSize: 13,
+                    color: '#6b7280',
+                    marginBottom: 4,
+                    fontWeight: 600,
+                  }}
+                >
+                  有効期限
+                </div>
+                <div
+                  style={{
+                    fontSize: 16,
+                    fontWeight: 600,
+                    color: '#1a1a1a',
+                  }}
+                >
+                  {expiryMinutes >= 1440
+                    ? `${Math.floor(expiryMinutes / 1440)}日`
+                    : expiryMinutes >= 60
+                      ? `${Math.floor(expiryMinutes / 60)}時間`
+                      : `${expiryMinutes}分`}
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 12 }}>
+              <button
+                onClick={() => {
+                  setShowConfirmModal(false);
+                  setPendingGenerateData(null);
+                }}
+                style={{
+                  flex: 1,
+                  padding: '14px 20px',
+                  fontSize: 16,
+                  fontWeight: 600,
+                  background: '#f3f4f6',
+                  color: '#1a1a1a',
+                  border: 'none',
+                  borderRadius: 12,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = '#e5e7eb';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = '#f3f4f6';
+                }}
+              >
+                キャンセル
+              </button>
+              <button
+                onClick={async () => {
+                  setShowConfirmModal(false);
+                  const dataToGenerate = pendingGenerateData;
+                  setPendingGenerateData(null);
+                  await executeGenerateQR(dataToGenerate.amount);
+                }}
+                style={{
+                  flex: 2,
+                  padding: '14px 20px',
+                  fontSize: 16,
+                  fontWeight: 700,
+                  background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 12,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  boxShadow: '0 4px 16px rgba(245, 158, 11, 0.4)',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 6px 20px rgba(245, 158, 11, 0.5)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 4px 16px rgba(245, 158, 11, 0.4)';
+                }}
+              >
+                確認して生成
               </button>
             </div>
           </div>
