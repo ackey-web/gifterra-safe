@@ -441,7 +441,17 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
         >
           <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <img
-              src="/JPYC-logo.png"
+              src="/gifterra-logo.png"
+              alt="GIFTERRA"
+              style={{
+                width: isMobile ? '20px' : '24px',
+                height: isMobile ? '20px' : '24px',
+              objectFit: 'contain',
+            }}
+          />
+          GIFTERRA Pay -
+          <img
+              src="/JPYC.png"
               alt="JPYC"
               style={{
                 width: isMobile ? '20px' : '24px',
@@ -449,7 +459,7 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
               objectFit: 'contain',
             }}
           />
-          GIFTERRA Pay - JPYC -
+          JPYC -
           </span>
         </h3>
         <p
