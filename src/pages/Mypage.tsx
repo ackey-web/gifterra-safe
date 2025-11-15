@@ -1332,7 +1332,7 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
           console.log('📤 Transfer message save - thirdwebAddress:', thirdwebAddress);
 
           await saveTransferMessage({
-            tenantId: selectedTenant?.id || 'default', // テナント申請していない場合は'default'を使用
+            tenantId: 'default', // 送金メッセージは常にdefaultテナントに保存（グローバル機能のため）
             fromAddress: walletAddress || '',
             toAddress: trimmedAddress,
             tokenSymbol: selectedToken,
