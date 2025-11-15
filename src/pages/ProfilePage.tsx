@@ -110,13 +110,8 @@ export function ProfilePage() {
   }, [walletAddress]);
 
   const handleBack = () => {
-    // 他のユーザーのプロフィールを見ている場合は自分のプロフィールページへ
-    // 自分のプロフィールを見ている場合はマイページトップへ
-    if (isViewingOtherProfile && currentUserWalletAddress) {
-      window.location.href = `/profile/${currentUserWalletAddress}`;
-    } else {
-      window.location.href = '/';
-    }
+    // ブラウザ履歴で一つ前の画面に戻る
+    window.history.back();
   };
 
   // フォローバック用のコールバック関数
