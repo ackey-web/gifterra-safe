@@ -823,7 +823,13 @@ export function PaymentTerminal() {
                     {amount.replace(/\B(?=(\d{3})+(?!\d))/g, ',')} JPYC
                   </div>
                   <div style={{ marginTop: '8px', fontSize: '14px', opacity: 0.7 }}>
-                    有効期限: {expiryMinutes}分
+                    有効期限: {
+                      expiryMinutes >= 1440
+                        ? `${Math.floor(expiryMinutes / 1440)}日`
+                        : expiryMinutes >= 60
+                          ? `${Math.floor(expiryMinutes / 60)}時間`
+                          : `${expiryMinutes}分`
+                    }
                   </div>
 
                   {/* 支払先アドレス表示（タップで共有） */}
@@ -1165,28 +1171,71 @@ export function PaymentTerminal() {
               <div style={{ fontSize: '16px', marginBottom: '12px', fontWeight: '600', color: '#fff' }}>
                 QRコード有効時間
               </div>
-              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                {[3, 5, 10, 15, 30].map((minutes) => (
-                  <button
-                    key={minutes}
-                    onClick={() => setTempExpiryMinutes(minutes)}
-                    style={{
-                      flex: '1 1 calc(33.333% - 8px)',
-                      minWidth: '90px',
-                      padding: '12px',
-                      fontSize: '14px',
-                      fontWeight: '600',
-                      background: tempExpiryMinutes === minutes ? 'rgba(34, 197, 94, 0.3)' : 'rgba(255,255,255,0.1)',
-                      color: '#fff',
-                      border: `2px solid ${tempExpiryMinutes === minutes ? '#22c55e' : 'transparent'}`,
-                      borderRadius: '8px',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s',
-                    }}
-                  >
-                    {minutes}分
-                  </button>
-                ))}
+
+              {/* 対面決済 */}
+              <div style={{ marginBottom: '16px' }}>
+                <div style={{ fontSize: '13px', marginBottom: '8px', color: 'rgba(255,255,255,0.6)' }}>
+                  対面決済
+                </div>
+                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                  {[3, 5, 10, 15, 30].map((minutes) => (
+                    <button
+                      key={minutes}
+                      onClick={() => setTempExpiryMinutes(minutes)}
+                      style={{
+                        flex: '1 1 calc(20% - 8px)',
+                        minWidth: '70px',
+                        padding: '12px',
+                        fontSize: '14px',
+                        fontWeight: '600',
+                        background: tempExpiryMinutes === minutes ? 'rgba(34, 197, 94, 0.3)' : 'rgba(255,255,255,0.1)',
+                        color: '#fff',
+                        border: `2px solid ${tempExpiryMinutes === minutes ? '#22c55e' : 'transparent'}`,
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s',
+                      }}
+                    >
+                      {minutes}分
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* WEB決済 */}
+              <div>
+                <div style={{ fontSize: '13px', marginBottom: '8px', color: 'rgba(255,255,255,0.6)' }}>
+                  WEB決済
+                </div>
+                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                  {[
+                    { value: 60, label: '1時間' },
+                    { value: 360, label: '6時間' },
+                    { value: 1440, label: '24時間' },
+                    { value: 4320, label: '72時間' },
+                    { value: 10080, label: '7日' },
+                  ].map((option) => (
+                    <button
+                      key={option.value}
+                      onClick={() => setTempExpiryMinutes(option.value)}
+                      style={{
+                        flex: '1 1 calc(20% - 8px)',
+                        minWidth: '90px',
+                        padding: '12px',
+                        fontSize: '14px',
+                        fontWeight: '600',
+                        background: tempExpiryMinutes === option.value ? 'rgba(34, 197, 94, 0.3)' : 'rgba(255,255,255,0.1)',
+                        color: '#fff',
+                        border: `2px solid ${tempExpiryMinutes === option.value ? '#22c55e' : 'transparent'}`,
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s',
+                      }}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
 

@@ -204,10 +204,20 @@ export function PaymentQRGenerator() {
                 outline: 'none',
               }}
             >
-              <option value={3}>3分</option>
-              <option value={5}>5分（推奨）</option>
-              <option value={10}>10分</option>
-              <option value={30}>30分</option>
+              <optgroup label="対面決済">
+                <option value={3}>3分</option>
+                <option value={5}>5分（デフォルト）</option>
+                <option value={10}>10分</option>
+                <option value={15}>15分</option>
+                <option value={30}>30分</option>
+              </optgroup>
+              <optgroup label="WEB決済">
+                <option value={60}>1時間</option>
+                <option value={360}>6時間</option>
+                <option value={1440}>24時間</option>
+                <option value={4320}>72時間</option>
+                <option value={10080}>7日</option>
+              </optgroup>
             </select>
           </div>
 
@@ -308,7 +318,13 @@ export function PaymentQRGenerator() {
                 color: 'rgba(255, 255, 255, 0.5)',
               }}
             >
-              有効期限: {expiryMinutes}分
+              有効期限: {
+                expiryMinutes >= 1440
+                  ? `${Math.floor(expiryMinutes / 1440)}日`
+                  : expiryMinutes >= 60
+                    ? `${Math.floor(expiryMinutes / 60)}時間`
+                    : `${expiryMinutes}分`
+              }
             </div>
           </div>
 
