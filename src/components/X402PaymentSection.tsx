@@ -471,7 +471,7 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
             opacity: 0.8,
           }}
         >
-          このセクションはJPYC送信機能です（GIFTERRA Payment Protocol - X402互換プロトコル使用）。現在のGIFTERRA FLOWプランでは特典配布とは連動しません。送金は取消不可。返金は当事者間の合意により受領者が別送金で対応する場合があります。
+          このセクションでFLOW Terminalで提示されたQRコードを読み取ってください。（GIFTERRA Payment Protocol - X402互換プロトコル使用）現在のGIFTERRA FLOWプランでは特典配布とは連動しません。送金は取消不可。返金は当事者間の合意により受領者が別送金で対応する場合があります。
         </p>
       </div>
 
