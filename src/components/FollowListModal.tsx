@@ -2,7 +2,8 @@
 // フォロー/フォロワーリストを表示するモーダル
 
 import { createPortal } from 'react-dom';
-import { FollowUser } from '../hooks/useFollowLists';
+import { useState, useEffect } from 'react';
+import type { FollowUser } from '../hooks/useFollowLists';
 
 interface FollowListModalProps {
   isOpen: boolean;
@@ -15,6 +16,8 @@ interface FollowListModalProps {
   onTabChange: (tab: 'followers' | 'following') => void;
 }
 
+const ITEMS_PER_PAGE = 10;
+
 export function FollowListModal({
   isOpen,
   onClose,
@@ -25,9 +28,32 @@ export function FollowListModal({
   isMobile,
   onTabChange,
 }: FollowListModalProps) {
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // タブが変更されたらページをリセット
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeTab]);
+
   if (!isOpen) return null;
 
   const displayList = activeTab === 'followers' ? followers : following;
+  const totalPages = Math.ceil(displayList.length / ITEMS_PER_PAGE);
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const endIndex = startIndex + ITEMS_PER_PAGE;
+  const currentItems = displayList.slice(startIndex, endIndex);
+
+  const handlePrevPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
+
+  const handleNextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
 
   return createPortal(
     <div
@@ -50,10 +76,10 @@ export function FollowListModal({
         style={{
           background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)',
           borderRadius: isMobile ? '0' : '16px',
-          width: isMobile ? '100%' : '500px',
+          width: isMobile ? '100%' : '480px',
           maxWidth: '100%',
           height: isMobile ? '100%' : 'auto',
-          maxHeight: isMobile ? '100%' : '80vh',
+          maxHeight: isMobile ? '100%' : '85vh',
           display: 'flex',
           flexDirection: 'column',
           border: isMobile ? 'none' : '1px solid rgba(255, 255, 255, 0.1)',
@@ -64,17 +90,18 @@ export function FollowListModal({
         {/* ヘッダー */}
         <div
           style={{
-            padding: isMobile ? '16px' : '20px',
+            padding: isMobile ? '14px 16px' : '16px 20px',
             borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
+            flexShrink: 0,
           }}
         >
           <h3
             style={{
               margin: 0,
-              fontSize: isMobile ? '18px' : '20px',
+              fontSize: isMobile ? '16px' : '18px',
               fontWeight: 700,
               color: '#EAF2FF',
             }}
@@ -117,18 +144,19 @@ export function FollowListModal({
             display: 'flex',
             borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
             background: 'rgba(0, 0, 0, 0.2)',
+            flexShrink: 0,
           }}
         >
           <button
             onClick={() => onTabChange('followers')}
             style={{
               flex: 1,
-              padding: '12px 16px',
+              padding: '10px 16px',
               background: 'transparent',
               border: 'none',
               borderBottom: activeTab === 'followers' ? '2px solid #667eea' : '2px solid transparent',
               color: activeTab === 'followers' ? '#667eea' : 'rgba(255, 255, 255, 0.6)',
-              fontSize: isMobile ? '14px' : '15px',
+              fontSize: isMobile ? '13px' : '14px',
               fontWeight: 600,
               cursor: 'pointer',
               transition: 'all 0.2s',
@@ -140,12 +168,12 @@ export function FollowListModal({
             onClick={() => onTabChange('following')}
             style={{
               flex: 1,
-              padding: '12px 16px',
+              padding: '10px 16px',
               background: 'transparent',
               border: 'none',
               borderBottom: activeTab === 'following' ? '2px solid #667eea' : '2px solid transparent',
               color: activeTab === 'following' ? '#667eea' : 'rgba(255, 255, 255, 0.6)',
-              fontSize: isMobile ? '14px' : '15px',
+              fontSize: isMobile ? '13px' : '14px',
               fontWeight: 600,
               cursor: 'pointer',
               transition: 'all 0.2s',
@@ -160,7 +188,7 @@ export function FollowListModal({
           style={{
             flex: 1,
             overflowY: 'auto',
-            padding: isMobile ? '12px' : '16px',
+            padding: isMobile ? '8px' : '12px',
           }}
         >
           {isLoading ? (
@@ -191,8 +219,8 @@ export function FollowListModal({
               {activeTab === 'followers' ? 'フォロワーはいません' : 'フォロー中のユーザーはいません'}
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {displayList.map((user) => (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              {currentItems.map((user) => (
                 <div
                   key={user.wallet_address}
                   onClick={() => {
@@ -201,10 +229,10 @@ export function FollowListModal({
                   style={{
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '12px',
-                    padding: isMobile ? '12px' : '14px',
+                    gap: '10px',
+                    padding: isMobile ? '8px 10px' : '10px 12px',
                     background: 'rgba(255, 255, 255, 0.03)',
-                    borderRadius: '12px',
+                    borderRadius: '10px',
                     border: '1px solid rgba(255, 255, 255, 0.05)',
                     cursor: 'pointer',
                     transition: 'all 0.2s',
@@ -221,8 +249,8 @@ export function FollowListModal({
                   {/* アバター */}
                   <div
                     style={{
-                      width: isMobile ? '48px' : '52px',
-                      height: isMobile ? '48px' : '52px',
+                      width: isMobile ? '36px' : '40px',
+                      height: isMobile ? '36px' : '40px',
                       borderRadius: '50%',
                       overflow: 'hidden',
                       background: user.avatar_url
@@ -231,7 +259,7 @@ export function FollowListModal({
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      fontSize: isMobile ? '20px' : '24px',
+                      fontSize: isMobile ? '16px' : '18px',
                       flexShrink: 0,
                       border: '2px solid rgba(255, 255, 255, 0.1)',
                     }}
@@ -255,36 +283,22 @@ export function FollowListModal({
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div
                       style={{
-                        fontSize: isMobile ? '14px' : '15px',
+                        fontSize: isMobile ? '13px' : '14px',
                         fontWeight: 600,
                         color: '#EAF2FF',
-                        marginBottom: '4px',
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',
                         whiteSpace: 'nowrap',
+                        marginBottom: '2px',
                       }}
                     >
                       {user.display_name || `${user.wallet_address.slice(0, 6)}...${user.wallet_address.slice(-4)}`}
                     </div>
-                    {user.bio && (
-                      <div
-                        style={{
-                          fontSize: isMobile ? '12px' : '13px',
-                          color: 'rgba(255, 255, 255, 0.6)',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
-                        {user.bio}
-                      </div>
-                    )}
                     <div
                       style={{
-                        fontSize: '11px',
+                        fontSize: '10px',
                         color: 'rgba(255, 255, 255, 0.4)',
                         fontFamily: 'monospace',
-                        marginTop: '2px',
                       }}
                     >
                       {user.wallet_address.slice(0, 6)}...{user.wallet_address.slice(-4)}
@@ -295,6 +309,67 @@ export function FollowListModal({
             </div>
           )}
         </div>
+
+        {/* ページネーション */}
+        {!isLoading && displayList.length > ITEMS_PER_PAGE && (
+          <div
+            style={{
+              padding: isMobile ? '10px 16px' : '12px 20px',
+              borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexShrink: 0,
+              background: 'rgba(0, 0, 0, 0.2)',
+            }}
+          >
+            <button
+              onClick={handlePrevPage}
+              disabled={currentPage === 1}
+              style={{
+                padding: '6px 14px',
+                background: currentPage === 1 ? 'rgba(255, 255, 255, 0.05)' : 'rgba(59, 130, 246, 0.2)',
+                border: `1px solid ${currentPage === 1 ? 'rgba(255, 255, 255, 0.1)' : 'rgba(59, 130, 246, 0.4)'}`,
+                borderRadius: '6px',
+                color: currentPage === 1 ? 'rgba(255, 255, 255, 0.3)' : '#3b82f6',
+                fontSize: isMobile ? '12px' : '13px',
+                fontWeight: 600,
+                cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+                transition: 'all 0.2s',
+              }}
+            >
+              ← 前へ
+            </button>
+
+            <div
+              style={{
+                fontSize: isMobile ? '12px' : '13px',
+                color: 'rgba(255, 255, 255, 0.7)',
+                fontWeight: 600,
+              }}
+            >
+              {currentPage} / {totalPages}
+            </div>
+
+            <button
+              onClick={handleNextPage}
+              disabled={currentPage === totalPages}
+              style={{
+                padding: '6px 14px',
+                background: currentPage === totalPages ? 'rgba(255, 255, 255, 0.05)' : 'rgba(59, 130, 246, 0.2)',
+                border: `1px solid ${currentPage === totalPages ? 'rgba(255, 255, 255, 0.1)' : 'rgba(59, 130, 246, 0.4)'}`,
+                borderRadius: '6px',
+                color: currentPage === totalPages ? 'rgba(255, 255, 255, 0.3)' : '#3b82f6',
+                fontSize: isMobile ? '12px' : '13px',
+                fontWeight: 600,
+                cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
+                transition: 'all 0.2s',
+              }}
+            >
+              次へ →
+            </button>
+          </div>
+        )}
       </div>
     </div>,
     document.body
