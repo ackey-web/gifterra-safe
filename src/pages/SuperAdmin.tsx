@@ -15,6 +15,7 @@ import { RANK_PLANS } from '../types/tenantApplication';
 import type { TenantApplication, ApplicationStatus } from '../types/tenantApplication';
 import { useAllTenantRankPlans, useSetTenantRankPlan, type TenantRankPlanForm } from '../hooks/useTenantRankPlan';
 import { useRankPlanPricing, useUpdateRankPlanPrice, getPlanPrice, type RankPlanPricing } from '../hooks/useRankPlanPricing';
+import { supabase } from '../lib/supabase';
 
 // ユーザープロフィールプレビュー用のインポート
 import { UserProfilePage } from './UserProfile';
@@ -757,6 +758,13 @@ function UsersTab() {
   const fetchUsers = async () => {
     setIsLoading(true);
     try {
+      console.log('🔍 Fetching users from Supabase...');
+      console.log('📋 Query params:', {
+        tenant_id: 'default',
+        currentPage,
+        searchQuery
+      });
+
       let query = supabase
         .from('user_profiles')
         .select('*', { count: 'exact' })
@@ -781,11 +789,22 @@ function UsersTab() {
 
       const { data, error, count } = await query;
 
-      if (error) throw error;
+      console.log('📊 Supabase response:', {
+        dataLength: data?.length || 0,
+        count,
+        error: error ? error.message : null
+      });
+
+      if (error) {
+        console.error('❌ Supabase error:', error);
+        throw error;
+      }
 
       setUsers(data || []);
       setTotalCount(count || 0);
+      console.log('✅ Users fetched successfully:', { users: data?.length || 0, total: count || 0 });
     } catch (error) {
+      console.error('❌ fetchUsers error:', error);
       setUsers([]);
       setTotalCount(0);
     } finally {
