@@ -251,7 +251,6 @@ export function ProfilePage() {
                     aspectRatio: '16 / 9',
                     overflow: 'hidden',
                     background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                    position: 'relative',
                   }}
                 >
                   <img
@@ -266,46 +265,52 @@ export function ProfilePage() {
                       e.currentTarget.style.display = 'none';
                     }}
                   />
-                  {/* フォローボタン（カバー画像の右下） */}
-                  {isViewingOtherProfile && currentUserWalletAddress && (
-                    <button
-                      onClick={toggleFollow}
-                      disabled={isFollowLoading}
-                      style={{
-                        position: 'absolute',
-                        bottom: isMobile ? 12 : 16,
-                        right: isMobile ? 12 : 16,
-                        padding: isMobile ? '8px 16px' : '10px 20px',
-                        background: isFollowing
-                          ? 'rgba(239, 68, 68, 0.9)'
-                          : 'rgba(102, 126, 234, 0.9)',
-                        backdropFilter: 'blur(10px)',
-                        border: '1px solid rgba(255, 255, 255, 0.3)',
-                        borderRadius: 8,
-                        color: '#fff',
-                        fontSize: isMobile ? 14 : 15,
-                        fontWeight: 600,
-                        cursor: isFollowLoading ? 'not-allowed' : 'pointer',
-                        transition: 'all 0.2s',
-                        opacity: isFollowLoading ? 0.6 : 1,
-                        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
-                      }}
-                      onMouseEnter={(e) => {
-                        if (!isFollowLoading) {
-                          e.currentTarget.style.transform = 'scale(1.05)';
-                          e.currentTarget.style.boxShadow = '0 6px 16px rgba(0, 0, 0, 0.4)';
-                        }
-                      }}
-                      onMouseLeave={(e) => {
-                        if (!isFollowLoading) {
-                          e.currentTarget.style.transform = 'scale(1)';
-                          e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.3)';
-                        }
-                      }}
-                    >
-                      {isFollowLoading ? '処理中...' : isFollowing ? 'フォロー解除' : 'フォロー'}
-                    </button>
-                  )}
+                </div>
+              )}
+
+              {/* フォローボタン（カバー画像の下） */}
+              {isViewingOtherProfile && currentUserWalletAddress && (
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'flex-end',
+                    padding: isMobile ? '12px 16px' : '16px 20px',
+                    borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+                  }}
+                >
+                  <button
+                    onClick={toggleFollow}
+                    disabled={isFollowLoading}
+                    style={{
+                      padding: isMobile ? '8px 16px' : '10px 20px',
+                      background: isFollowing
+                        ? 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)'
+                        : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                      border: 'none',
+                      borderRadius: 8,
+                      color: '#fff',
+                      fontSize: isMobile ? 14 : 15,
+                      fontWeight: 600,
+                      cursor: isFollowLoading ? 'not-allowed' : 'pointer',
+                      transition: 'all 0.2s',
+                      opacity: isFollowLoading ? 0.6 : 1,
+                      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!isFollowLoading) {
+                        e.currentTarget.style.transform = 'scale(1.05)';
+                        e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.3)';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!isFollowLoading) {
+                        e.currentTarget.style.transform = 'scale(1)';
+                        e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.2)';
+                      }
+                    }}
+                  >
+                    {isFollowLoading ? '処理中...' : isFollowing ? 'フォロー解除' : 'フォロー'}
+                  </button>
                 </div>
               )}
 
