@@ -10,6 +10,7 @@ export interface FollowUser {
   bio?: string;
   avatar_url?: string;
   created_at?: string;
+  is_following_back?: boolean; // 相手が自分をフォローしているか
 }
 
 interface UseFollowListsReturn {
@@ -23,9 +24,13 @@ interface UseFollowListsReturn {
 /**
  * フォロー/フォロワーリストを取得するカスタムフック
  * @param walletAddress 対象のウォレットアドレス
+ * @param currentUserAddress 現在のユーザーのウォレットアドレス（相互フォロー判定用）
  * @returns フォロワーとフォロー中のユーザーリスト
  */
-export function useFollowLists(walletAddress: string | null): UseFollowListsReturn {
+export function useFollowLists(
+  walletAddress: string | null,
+  currentUserAddress?: string | null
+): UseFollowListsReturn {
   const [followers, setFollowers] = useState<FollowUser[]>([]);
   const [following, setFollowing] = useState<FollowUser[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -69,7 +74,7 @@ export function useFollowLists(walletAddress: string | null): UseFollowListsRetu
         throw followingError;
       }
 
-      // フォロワーのプロフィール情報を取得
+      // フォロワーのプロフィール情報を取得 + 相互フォロー判定
       const followersWithProfiles = await Promise.all(
         (followersData || []).map(async (follow) => {
           const { data: profileData } = await supabase
@@ -79,17 +84,32 @@ export function useFollowLists(walletAddress: string | null): UseFollowListsRetu
             .limit(1)
             .maybeSingle();
 
+          // 相互フォロー判定: 現在のユーザーがこのフォロワーをフォローしているか
+          let isFollowingBack = false;
+          if (currentUserAddress && currentUserAddress.toLowerCase() === walletAddress.toLowerCase()) {
+            // 自分のフォロワーリストを見ている場合、このフォロワーを自分がフォローしているか確認
+            const { data: followBackData } = await supabase
+              .from('user_follows')
+              .select('id')
+              .eq('tenant_id', 'default')
+              .eq('follower_address', currentUserAddress.toLowerCase())
+              .eq('following_address', follow.follower_address.toLowerCase())
+              .maybeSingle();
+            isFollowingBack = !!followBackData;
+          }
+
           return {
             wallet_address: follow.follower_address,
             display_name: profileData?.display_name || profileData?.name || null,
             bio: profileData?.bio || null,
             avatar_url: profileData?.avatar_url || profileData?.icon_url || null,
             created_at: follow.created_at,
+            is_following_back: isFollowingBack,
           };
         })
       );
 
-      // フォロー中のプロフィール情報を取得
+      // フォロー中のプロフィール情報を取得 + 相互フォロー判定
       const followingWithProfiles = await Promise.all(
         (followingData || []).map(async (follow) => {
           const { data: profileData } = await supabase
@@ -99,12 +119,27 @@ export function useFollowLists(walletAddress: string | null): UseFollowListsRetu
             .limit(1)
             .maybeSingle();
 
+          // 相互フォロー判定: このフォロー先が自分をフォローバックしているか
+          let isFollowingBack = false;
+          if (currentUserAddress && currentUserAddress.toLowerCase() === walletAddress.toLowerCase()) {
+            // 自分のフォローリストを見ている場合、このユーザーが自分をフォローバックしているか確認
+            const { data: followBackData } = await supabase
+              .from('user_follows')
+              .select('id')
+              .eq('tenant_id', 'default')
+              .eq('follower_address', follow.following_address.toLowerCase())
+              .eq('following_address', currentUserAddress.toLowerCase())
+              .maybeSingle();
+            isFollowingBack = !!followBackData;
+          }
+
           return {
             wallet_address: follow.following_address,
             display_name: profileData?.display_name || profileData?.name || null,
             bio: profileData?.bio || null,
             avatar_url: profileData?.avatar_url || profileData?.icon_url || null,
             created_at: follow.created_at,
+            is_following_back: isFollowingBack,
           };
         })
       );
@@ -121,7 +156,7 @@ export function useFollowLists(walletAddress: string | null): UseFollowListsRetu
 
   useEffect(() => {
     fetchFollowLists();
-  }, [walletAddress]);
+  }, [walletAddress, currentUserAddress]);
 
   return {
     followers,

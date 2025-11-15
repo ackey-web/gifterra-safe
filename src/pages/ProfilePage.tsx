@@ -68,12 +68,13 @@ export function ProfilePage() {
     isViewingOtherProfile ? currentUserWalletAddress : null // 他人の場合のみ自分のアドレスを渡す
   );
 
-  // フォロー/フォロワーリストを取得
+  // フォロー/フォロワーリストを取得（相互フォロー判定のためcurrentUserAddressも渡す）
   const {
     followers,
     following,
     isLoading: isFollowListsLoading,
-  } = useFollowLists(walletAddress);
+    refetch: refetchFollowLists,
+  } = useFollowLists(walletAddress, currentUserWalletAddress);
 
   // プロフィールデータ取得
   const fetchProfile = async () => {
@@ -115,6 +116,31 @@ export function ProfilePage() {
       window.location.href = `/profile/${currentUserWalletAddress}`;
     } else {
       window.location.href = '/';
+    }
+  };
+
+  // フォローバック用のコールバック関数
+  const handleFollowUser = async (targetAddress: string) => {
+    if (!currentUserWalletAddress) {
+      console.error('ウォレットアドレスが取得できません');
+      return;
+    }
+
+    try {
+      // フォロー処理
+      const { error } = await supabase.from('user_follows').insert({
+        tenant_id: 'default',
+        follower_address: currentUserWalletAddress.toLowerCase(),
+        following_address: targetAddress.toLowerCase(),
+      });
+
+      if (error) {
+        console.error('フォローエラー:', error);
+        throw error;
+      }
+    } catch (err) {
+      console.error('フォロー処理エラー:', err);
+      throw err;
     }
   };
 
@@ -712,6 +738,8 @@ export function ProfilePage() {
         users={followListTab === 'followers' ? followers : following}
         isLoading={isFollowListsLoading}
         isMobile={isMobile}
+        onFollowUser={handleFollowUser}
+        onRefresh={refetchFollowLists}
       />
     </div>
   );

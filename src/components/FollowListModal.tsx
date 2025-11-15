@@ -12,6 +12,8 @@ interface FollowListModalProps {
   users: FollowUser[];
   isLoading: boolean;
   isMobile: boolean;
+  onFollowUser?: (walletAddress: string) => Promise<void>; // フォローバック用コールバック
+  onRefresh?: () => Promise<void>; // リスト再取得用コールバック
 }
 
 const ITEMS_PER_PAGE = 10;
@@ -23,8 +25,11 @@ export function FollowListModal({
   users,
   isLoading,
   isMobile,
+  onFollowUser,
+  onRefresh,
 }: FollowListModalProps) {
   const [currentPage, setCurrentPage] = useState(1);
+  const [followingInProgress, setFollowingInProgress] = useState<Set<string>>(new Set());
 
   // モーダルが開かれたらページをリセット
   useEffect(() => {
@@ -256,7 +261,73 @@ export function FollowListModal({
                     >
                       {user.wallet_address.slice(0, 6)}...{user.wallet_address.slice(-4)}
                     </div>
+                    {/* フォローリストで相互フォローの場合「フォローされています」を表示 */}
+                    {type === 'following' && user.is_following_back && (
+                      <div
+                        style={{
+                          fontSize: '10px',
+                          color: 'rgba(255, 255, 255, 0.5)',
+                          marginTop: '4px',
+                        }}
+                      >
+                        フォローされています
+                      </div>
+                    )}
                   </div>
+
+                  {/* フォロワーリストで未フォローの場合「フォローバック」ボタンを表示 */}
+                  {type === 'followers' && !user.is_following_back && onFollowUser && (
+                    <button
+                      onClick={async (e) => {
+                        e.stopPropagation(); // プロフィール遷移を防ぐ
+                        const isFollowing = followingInProgress.has(user.wallet_address);
+                        if (isFollowing) return;
+
+                        setFollowingInProgress(prev => new Set(prev).add(user.wallet_address));
+                        try {
+                          await onFollowUser(user.wallet_address);
+                          if (onRefresh) {
+                            await onRefresh();
+                          }
+                        } catch (error) {
+                          console.error('フォローバックエラー:', error);
+                        } finally {
+                          setFollowingInProgress(prev => {
+                            const next = new Set(prev);
+                            next.delete(user.wallet_address);
+                            return next;
+                          });
+                        }
+                      }}
+                      disabled={followingInProgress.has(user.wallet_address)}
+                      style={{
+                        padding: isMobile ? '6px 12px' : '8px 16px',
+                        background: followingInProgress.has(user.wallet_address)
+                          ? 'rgba(59, 130, 246, 0.3)'
+                          : 'rgba(59, 130, 246, 0.8)',
+                        border: 'none',
+                        borderRadius: '6px',
+                        color: '#EAF2FF',
+                        fontSize: isMobile ? '11px' : '12px',
+                        fontWeight: 600,
+                        cursor: followingInProgress.has(user.wallet_address) ? 'not-allowed' : 'pointer',
+                        transition: 'all 0.2s',
+                        whiteSpace: 'nowrap',
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!followingInProgress.has(user.wallet_address)) {
+                          e.currentTarget.style.background = 'rgba(59, 130, 246, 1)';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!followingInProgress.has(user.wallet_address)) {
+                          e.currentTarget.style.background = 'rgba(59, 130, 246, 0.8)';
+                        }
+                      }}
+                    >
+                      {followingInProgress.has(user.wallet_address) ? 'フォロー中...' : 'フォローバック'}
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
