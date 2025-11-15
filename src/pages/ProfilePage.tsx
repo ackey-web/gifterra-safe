@@ -109,7 +109,13 @@ export function ProfilePage() {
   }, [walletAddress]);
 
   const handleBack = () => {
-    window.location.href = '/';
+    // 他のユーザーのプロフィールを見ている場合は自分のプロフィールページへ
+    // 自分のプロフィールを見ている場合はマイページトップへ
+    if (isViewingOtherProfile && currentUserWalletAddress) {
+      window.location.href = `/profile/${currentUserWalletAddress}`;
+    } else {
+      window.location.href = '/';
+    }
   };
 
   return (
