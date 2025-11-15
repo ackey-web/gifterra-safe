@@ -42,7 +42,7 @@ export async function saveTransferMessage(params: {
   const effectiveTenantId = tenantId || 'default';
 
   // 送信者のプロフィール情報を取得
-  // まずテナントIDでフィルタリングして検索し、なければウォレットアドレスのみで検索
+  // まずテナントIDでフィルタリングして検索し、なければdefaultテナントで検索
   let profileData = null;
 
   // テナントIDが指定されている場合は、そのテナントのプロフィールを優先
@@ -56,13 +56,13 @@ export async function saveTransferMessage(params: {
     profileData = data;
   }
 
-  // テナント固有のプロフィールがない場合は、ウォレットアドレスで検索（最初の1件）
+  // テナント固有のプロフィールがない場合は、defaultテナントで検索
   if (!profileData) {
     const { data } = await supabase
       .from('user_profiles')
       .select('display_name, name, bio, avatar_url, icon_url')
       .eq('wallet_address', fromAddress.toLowerCase())
-      .limit(1)
+      .eq('tenant_id', 'default')
       .maybeSingle();
     profileData = data;
   }
