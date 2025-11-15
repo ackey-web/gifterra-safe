@@ -147,8 +147,41 @@ export function useReceivedTransferMessages(
           throw fetchError;
         }
 
-        setMessages(data || []);
-        setUnreadCount((data || []).filter((m: TransferMessage) => !m.is_read).length);
+        // 各メッセージに対して、送信者の最新プロフィール情報を取得してマージ
+        const messagesWithProfiles = await Promise.all(
+          (data || []).map(async (message) => {
+            try {
+              // 送信者の最新プロフィールを取得
+              const { data: profileData } = await supabase
+                .from('user_profiles')
+                .select('display_name, name, bio, avatar_url, icon_url')
+                .eq('wallet_address', message.from_address.toLowerCase())
+                .limit(1)
+                .maybeSingle();
+
+              // プロフィールデータが取得できた場合は、メッセージのsender_profileを更新
+              if (profileData) {
+                return {
+                  ...message,
+                  sender_profile: {
+                    name: profileData.display_name || profileData.name || null,
+                    bio: profileData.bio || null,
+                    icon_url: profileData.avatar_url || profileData.icon_url || null,
+                  },
+                };
+              }
+
+              // プロフィールが見つからない場合は元のメッセージをそのまま返す
+              return message;
+            } catch (profileError) {
+              console.error('プロフィール取得エラー:', profileError);
+              return message; // エラー時は元のメッセージをそのまま返す
+            }
+          })
+        );
+
+        setMessages(messagesWithProfiles);
+        setUnreadCount(messagesWithProfiles.filter((m: TransferMessage) => !m.is_read).length);
       } catch (err) {
         console.error('❌ 送金メッセージ取得エラー:', err);
         setError(err as Error);
