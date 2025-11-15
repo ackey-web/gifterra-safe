@@ -161,6 +161,35 @@ export function MypagePage() {
     }
   }, [tenantRank]);
 
+  // URLパラメータからチップ送信情報を取得してスクロール
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const isTip = params.get('isTip');
+
+    if (isTip === 'true') {
+      // チップ送信パラメータを sessionStorage に保存
+      const to = params.get('to');
+      const amount = params.get('amount');
+
+      if (to && amount) {
+        sessionStorage.setItem('gifterra_tip_to', to);
+        sessionStorage.setItem('gifterra_tip_amount', amount);
+
+        // URLパラメータをクリア（リロード時に再実行されないように）
+        const newUrl = window.location.pathname;
+        window.history.replaceState({}, '', newUrl);
+
+        // SendFormまでスクロール（100ms遅延で確実にDOMが描画されてから）
+        setTimeout(() => {
+          const sendFormElement = document.getElementById('send-form-section');
+          if (sendFormElement) {
+            sendFormElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }, 100);
+      }
+    }
+  }, []);
+
   // TODO: 実際のテナントランク取得ロジック
   useEffect(() => {
     // const fetchTenantRank = async () => {
@@ -1119,6 +1148,23 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
     // ウォレットアドレス変更時の処理（必要に応じて追加）
   }, [walletAddress, privyEmbeddedAddress, actualAddress, privyWallet, thirdwebAddress, signer]);
 
+  // チップ送信情報を sessionStorage から読み込んで自動入力
+  useEffect(() => {
+    const tipTo = sessionStorage.getItem('gifterra_tip_to');
+    const tipAmount = sessionStorage.getItem('gifterra_tip_amount');
+
+    if (tipTo && tipAmount) {
+      // フォームに自動入力
+      setAddress(tipTo);
+      setAmount(tipAmount);
+      setSendMode('simple'); // シンプル送金モードに設定
+
+      // sessionStorage をクリア（1回のみ実行）
+      sessionStorage.removeItem('gifterra_tip_to');
+      sessionStorage.removeItem('gifterra_tip_amount');
+    }
+  }, []);
+
   // トークン残高を取得
   const { balances } = useTokenBalances(walletAddress, signer);
 
@@ -1393,14 +1439,17 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
   }
 
   return (
-    <div style={{
-      background: 'linear-gradient(135deg, #f0f7ff 0%, #e0f0ff 100%)',
-      border: '2px solid rgba(59, 130, 246, 0.2)',
-      borderRadius: isMobile ? 16 : 24,
-      padding: isMobile ? 20 : 28,
-      boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
-      position: 'relative',
-    }}>
+    <div
+      id="send-form-section"
+      style={{
+        background: 'linear-gradient(135deg, #f0f7ff 0%, #e0f0ff 100%)',
+        border: '2px solid rgba(59, 130, 246, 0.2)',
+        borderRadius: isMobile ? 16 : 24,
+        padding: isMobile ? 20 : 28,
+        boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
+        position: 'relative',
+      }}
+    >
       <h2 style={{ margin: '0 0 20px 0', fontSize: isMobile ? 18 : 22, fontWeight: 700, color: '#1a1a1a' }}>
         送金
       </h2>
