@@ -1402,7 +1402,7 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
       position: 'relative',
     }}>
       <h2 style={{ margin: '0 0 20px 0', fontSize: isMobile ? 18 : 22, fontWeight: 700, color: '#1a1a1a' }}>
-        送金
+        GIFTERRA Pay - JPYC-
       </h2>
 
       {/* コンパクトな残高表示 */}
@@ -1908,7 +1908,7 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
             boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)',
           }}
         >
-          送金タイプを選択
+          スキャンして支払う
         </button>
       ) : (
         <button

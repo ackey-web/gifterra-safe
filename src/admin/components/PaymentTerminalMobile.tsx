@@ -420,30 +420,6 @@ export function PaymentTerminalMobile() {
     }
   };
 
-  // 領収書発行
-  const handleShareReceipt = async () => {
-    if (!lastCompletedPayment) {
-      setMessage({ type: 'error', text: '発行可能な領収書がありません' });
-      setTimeout(() => setMessage(null), 2000);
-      return;
-    }
-
-    try {
-      const result = await shareReceipt(lastCompletedPayment, storeName);
-
-      if (result.success) {
-        if (result.fallback) {
-          setMessage({ type: 'success', text: '領収書をダウンロードしました' });
-        } else if (!result.cancelled) {
-          setMessage({ type: 'success', text: '領収書を共有しました' });
-        }
-        setTimeout(() => setMessage(null), 2000);
-      }
-    } catch (error) {
-      console.error('領収書発行エラー:', error);
-      setMessage({ type: 'error', text: 'トランザクションレシート発行に失敗しました' });
-    }
-  };
 
   return (
     <div
@@ -457,34 +433,62 @@ export function PaymentTerminalMobile() {
     >
       {/* ヘッダー */}
       <header style={{ textAlign: 'center', marginBottom: '24px', position: 'relative' }}>
-        {/* 設定ボタン */}
         {walletAddress && walletConfirmed && (
-          <button
-            onClick={() => {
-              setTempPresetAmounts([...presetAmounts]);
-              setTempExpiryMinutes(expiryMinutes);
-              setShowSettingsModal(true);
-            }}
-            style={{
-              position: 'absolute',
-              right: 0,
-              top: 0,
-              width: '36px',
-              height: '36px',
-              background: 'rgba(255, 255, 255, 0.1)',
-              border: '1px solid rgba(255, 255, 255, 0.2)',
-              borderRadius: '8px',
-              color: '#fff',
-              fontSize: '18px',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              touchAction: 'manipulation',
-            }}
-          >
-            ⚙️
-          </button>
+          <>
+            {/* 売上履歴エクスポートボタン */}
+            <button
+              onClick={() => setShowExportModal(true)}
+              disabled={allPayments.length === 0}
+              style={{
+                position: 'absolute',
+                left: 0,
+                top: 0,
+                width: '36px',
+                height: '36px',
+                background: allPayments.length > 0 ? 'rgba(59, 130, 246, 0.2)' : 'rgba(255, 255, 255, 0.05)',
+                border: `1px solid ${allPayments.length > 0 ? 'rgba(59, 130, 246, 0.4)' : 'rgba(255, 255, 255, 0.1)'}`,
+                borderRadius: '8px',
+                color: allPayments.length > 0 ? '#3b82f6' : 'rgba(255, 255, 255, 0.3)',
+                fontSize: '18px',
+                cursor: allPayments.length > 0 ? 'pointer' : 'not-allowed',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                touchAction: 'manipulation',
+              }}
+              title="売上履歴エクスポート"
+            >
+              📥
+            </button>
+
+            {/* 設定ボタン */}
+            <button
+              onClick={() => {
+                setTempPresetAmounts([...presetAmounts]);
+                setTempExpiryMinutes(expiryMinutes);
+                setShowSettingsModal(true);
+              }}
+              style={{
+                position: 'absolute',
+                right: 0,
+                top: 0,
+                width: '36px',
+                height: '36px',
+                background: 'rgba(255, 255, 255, 0.1)',
+                border: '1px solid rgba(255, 255, 255, 0.2)',
+                borderRadius: '8px',
+                color: '#fff',
+                fontSize: '18px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                touchAction: 'manipulation',
+              }}
+            >
+              ⚙️
+            </button>
+          </>
         )}
 
         <h1 style={{
@@ -883,54 +887,6 @@ export function PaymentTerminalMobile() {
                 </div>
               )}
 
-              {/* エクスポート・領収書ボタン */}
-              <div
-                style={{
-                  background: 'rgba(255,255,255,0.1)',
-                  borderRadius: '16px',
-                  padding: '16px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '10px',
-                }}
-              >
-                <button
-                  onClick={() => setShowExportModal(true)}
-                  disabled={allPayments.length === 0}
-                  style={{
-                    width: '100%',
-                    padding: '14px',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    background: allPayments.length > 0 ? 'rgba(59, 130, 246, 0.2)' : 'rgba(255,255,255,0.05)',
-                    color: allPayments.length > 0 ? '#3b82f6' : 'rgba(255,255,255,0.3)',
-                    border: `1px solid ${allPayments.length > 0 ? 'rgba(59, 130, 246, 0.4)' : 'rgba(255,255,255,0.1)'}`,
-                    borderRadius: '10px',
-                    cursor: allPayments.length > 0 ? 'pointer' : 'not-allowed',
-                    touchAction: 'manipulation',
-                  }}
-                >
-                  📥 売上履歴エクスポート
-                </button>
-                <button
-                  onClick={handleShareReceipt}
-                  disabled={!lastCompletedPayment}
-                  style={{
-                    width: '100%',
-                    padding: '14px',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    background: lastCompletedPayment ? 'rgba(34, 197, 94, 0.2)' : 'rgba(255,255,255,0.05)',
-                    color: lastCompletedPayment ? '#22c55e' : 'rgba(255,255,255,0.3)',
-                    border: `1px solid ${lastCompletedPayment ? 'rgba(34, 197, 94, 0.4)' : 'rgba(255,255,255,0.1)'}`,
-                    borderRadius: '10px',
-                    cursor: lastCompletedPayment ? 'pointer' : 'not-allowed',
-                    touchAction: 'manipulation',
-                  }}
-                >
-                  📄 トランザクションレシート
-                </button>
-              </div>
             </>
           ) : (
             // QRコード表示画面
@@ -942,11 +898,26 @@ export function PaymentTerminalMobile() {
                   background: 'white',
                   padding: '20px',
                   borderRadius: '16px',
-                  marginBottom: '20px',
+                  marginBottom: '12px',
                   display: 'inline-block',
                 }}
               >
                 <QRCodeSVG value={qrData} size={240} level="H" includeMargin={true} />
+              </div>
+
+              {/* QRコード説明テキスト */}
+              <div style={{
+                fontSize: '12px',
+                color: 'rgba(255, 255, 255, 0.8)',
+                marginBottom: '16px',
+                lineHeight: '1.5',
+                padding: '8px 16px',
+                background: 'rgba(59, 130, 246, 0.1)',
+                borderRadius: '8px',
+                border: '1px solid rgba(59, 130, 246, 0.2)',
+              }}>
+                このQRは、GIFTERRA Pay で読み取り・お支払いできます。<br />
+                GIFTERRAマイページの「スキャンして支払う」からご利用ください。
               </div>
 
               <div style={{ fontSize: '36px', fontWeight: 'bold', color: '#22c55e', marginBottom: '8px' }}>
@@ -963,17 +934,17 @@ export function PaymentTerminalMobile() {
                 }
               </div>
 
-              {/* QRコードダウンロードボタン */}
+              {/* QRコードダウンロード・共有ボタン（1つにまとめる） */}
               <button
                 onClick={handleDownloadQR}
                 style={{
                   width: '100%',
-                  padding: '14px 16px',
+                  padding: '12px 16px',
                   background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
                   border: 'none',
-                  borderRadius: '12px',
+                  borderRadius: '10px',
                   color: '#fff',
-                  fontSize: '15px',
+                  fontSize: '14px',
                   fontWeight: 600,
                   marginBottom: '16px',
                   cursor: 'pointer',
@@ -981,39 +952,8 @@ export function PaymentTerminalMobile() {
                   boxShadow: '0 4px 12px rgba(34, 197, 94, 0.3)',
                 }}
               >
-                📥 QRコードをダウンロード
+                📥 QRコードを保存・共有
               </button>
-
-              {/* 支払先アドレス共有ボタン */}
-              {walletAddress && (
-                <button
-                  onClick={handleShareAddress}
-                  style={{
-                    width: '100%',
-                    padding: '12px 16px',
-                    background: 'rgba(59, 130, 246, 0.1)',
-                    border: '1px solid rgba(59, 130, 246, 0.3)',
-                    borderRadius: '12px',
-                    marginBottom: '16px',
-                    cursor: 'pointer',
-                    touchAction: 'manipulation',
-                  }}
-                >
-                  <div style={{ fontSize: '11px', opacity: 0.7, marginBottom: '4px' }}>
-                    📤 タップして共有 (AirDrop/Nearby Share対応)
-                  </div>
-                  <div
-                    style={{
-                      fontSize: '13px',
-                      fontFamily: 'monospace',
-                      fontWeight: '600',
-                      color: '#3b82f6',
-                    }}
-                  >
-                    {walletAddress.slice(0, 10)}...{walletAddress.slice(-8)}
-                  </div>
-                </button>
-              )}
 
               <button
                 onClick={() => {
