@@ -22,6 +22,7 @@ import { SettingsModal } from '../components/SettingsModal';
 import { TransferMessageHistory } from '../components/TransferMessageHistory';
 import { NotificationBell } from '../components/NotificationBell';
 import { X402PaymentSection } from '../components/X402PaymentSection';
+import { UserSearchModal } from '../components/UserSearchModal';
 import flowImage from '../assets/flow.png';
 import studioImage from '../assets/studio.png';
 import studioProImage from '../assets/studio-pro.png';
@@ -135,6 +136,7 @@ export function MypagePage() {
   const [tenantRank, setTenantRank] = useState<TenantRank>('R0'); // TODO: 実データから取得
   const [showWalletSetupModal, setShowWalletSetupModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showUserSearchModal, setShowUserSearchModal] = useState(false);
   const [actualChainId, setActualChainId] = useState<number | undefined>(undefined);
   const { user, authenticated } = usePrivy();
   const thirdwebAddress = useAddress(); // Thirdwebウォレット
@@ -555,6 +557,33 @@ function Header({ viewMode, setViewMode, isMobile, tenantRank, showSettingsModal
         >
           👤
         </button>
+        {/* 検索ボタン */}
+        <button
+          onClick={() => setShowUserSearchModal(true)}
+          style={{
+            width: isMobile ? 32 : 36,
+            height: isMobile ? 32 : 36,
+            background: 'rgba(255,255,255,0.05)',
+            border: '1px solid rgba(255,255,255,0.1)',
+            borderRadius: 8,
+            color: '#EAF2FF',
+            fontSize: isMobile ? 16 : 18,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            transition: 'all 0.2s',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+          }}
+        >
+          🔍
+        </button>
+        {/* 設定ボタン */}
         <button
           onClick={() => setShowSettingsModal(true)}
           style={{
@@ -569,35 +598,17 @@ function Header({ viewMode, setViewMode, isMobile, tenantRank, showSettingsModal
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
+            transition: 'all 0.2s',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
           }}
         >
           ⚙️
         </button>
-        {/* ログアウトボタン - PC表示のみ */}
-        {!isMobile && (
-          <button
-            onClick={handleLogout}
-            style={{
-              padding: '8px 16px',
-              background: 'rgba(220, 38, 38, 0.15)',
-              border: '1px solid rgba(220, 38, 38, 0.3)',
-              borderRadius: 8,
-              color: '#FCA5A5',
-              fontSize: 13,
-              fontWeight: 600,
-              cursor: 'pointer',
-              transition: 'all 0.2s',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = 'rgba(220, 38, 38, 0.25)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'rgba(220, 38, 38, 0.15)';
-            }}
-          >
-            ログアウト
-          </button>
-        )}
       </div>
 
       {/* 設定モーダル */}
@@ -606,6 +617,14 @@ function Header({ viewMode, setViewMode, isMobile, tenantRank, showSettingsModal
           onClose={() => setShowSettingsModal(false)}
           isMobile={isMobile}
           onLogout={handleLogout}
+        />
+      )}
+
+      {/* ユーザー検索モーダル */}
+      {showUserSearchModal && (
+        <UserSearchModal
+          onClose={() => setShowUserSearchModal(false)}
+          isMobile={isMobile}
         />
       )}
     </div>
