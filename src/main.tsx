@@ -80,11 +80,19 @@ window.onerror = (message, source, lineno, colno, error) => {
 };
 
 // Polygon Mainnet configuration for ThirdwebProvider
+// 複数のRPCエンドポイントでフォールバック対応（Android/モバイル接続の安定性向上）
 const polygonChain = {
   chainId: 137,
   name: "Polygon",
   chain: "MATIC",
-  rpc: ["https://polygon-rpc.com"],
+  rpc: [
+    "https://polygon-mainnet.infura.io/v3/4458cf4d1689497b9a38b1d6bbf05e78", // Infura (高速・安定)
+    "https://polygon-rpc.com", // 公式RPC
+    "https://rpc-mainnet.matic.network", // Polygon公式
+    "https://rpc-mainnet.maticvigil.com", // MaticVigil
+    "https://polygon-bor-rpc.publicnode.com", // PublicNode (無料・高速)
+    "https://1rpc.io/matic", // 1RPC (プライバシー保護)
+  ],
   nativeCurrency: {
     name: "MATIC",
     symbol: "MATIC",
@@ -226,10 +234,20 @@ if (wantsTerms) {
                   },
                   rpcUrls: {
                     default: {
-                      http: ["https://polygon-rpc.com"],
+                      http: [
+                        "https://polygon-mainnet.infura.io/v3/4458cf4d1689497b9a38b1d6bbf05e78",
+                        "https://polygon-rpc.com",
+                        "https://rpc-mainnet.matic.network",
+                        "https://polygon-bor-rpc.publicnode.com",
+                      ],
                     },
                     public: {
-                      http: ["https://polygon-rpc.com"],
+                      http: [
+                        "https://polygon-mainnet.infura.io/v3/4458cf4d1689497b9a38b1d6bbf05e78",
+                        "https://polygon-rpc.com",
+                        "https://rpc-mainnet.matic.network",
+                        "https://polygon-bor-rpc.publicnode.com",
+                      ],
                     },
                   },
                   blockExplorers: {
@@ -283,10 +301,20 @@ if (wantsTerms) {
                   },
                   rpcUrls: {
                     default: {
-                      http: ["https://polygon-rpc.com"],
+                      http: [
+                        "https://polygon-mainnet.infura.io/v3/4458cf4d1689497b9a38b1d6bbf05e78",
+                        "https://polygon-rpc.com",
+                        "https://rpc-mainnet.matic.network",
+                        "https://polygon-bor-rpc.publicnode.com",
+                      ],
                     },
                     public: {
-                      http: ["https://polygon-rpc.com"],
+                      http: [
+                        "https://polygon-mainnet.infura.io/v3/4458cf4d1689497b9a38b1d6bbf05e78",
+                        "https://polygon-rpc.com",
+                        "https://rpc-mainnet.matic.network",
+                        "https://polygon-bor-rpc.publicnode.com",
+                      ],
                     },
                   },
                   blockExplorers: {
@@ -342,10 +370,20 @@ if (wantsTerms) {
                   },
                   rpcUrls: {
                     default: {
-                      http: ["https://polygon-rpc.com"],
+                      http: [
+                        "https://polygon-mainnet.infura.io/v3/4458cf4d1689497b9a38b1d6bbf05e78",
+                        "https://polygon-rpc.com",
+                        "https://rpc-mainnet.matic.network",
+                        "https://polygon-bor-rpc.publicnode.com",
+                      ],
                     },
                     public: {
-                      http: ["https://polygon-rpc.com"],
+                      http: [
+                        "https://polygon-mainnet.infura.io/v3/4458cf4d1689497b9a38b1d6bbf05e78",
+                        "https://polygon-rpc.com",
+                        "https://rpc-mainnet.matic.network",
+                        "https://polygon-bor-rpc.publicnode.com",
+                      ],
                     },
                   },
                   blockExplorers: {
