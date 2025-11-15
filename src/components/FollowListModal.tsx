@@ -2,7 +2,7 @@
 // フォロー/フォロワーリストを表示するモーダル
 
 import { createPortal } from 'react-dom';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import type { FollowUser } from '../hooks/useFollowLists';
 
 interface FollowListModalProps {
@@ -134,7 +134,7 @@ export function FollowListModal({
             >
               読み込み中...
             </div>
-          ) : displayList.length === 0 ? (
+          ) : users.length === 0 ? (
             <div
               style={{
                 display: 'flex',
