@@ -52,7 +52,7 @@ export function ProfilePage() {
     pathAddress.length > 0 &&
     pathAddress.toLowerCase() !== currentUserWalletAddress.toLowerCase();
 
-  // フォロー機能（他のユーザーのプロフィールを見ている場合のみ）
+  // フォロー機能（常にフォロワー数・フォロー中の数を取得、フォローボタンは他人のみ）
   const {
     isFollowing,
     followerCount,
@@ -60,8 +60,8 @@ export function ProfilePage() {
     isLoading: isFollowLoading,
     toggleFollow,
   } = useFollow(
-    isViewingOtherProfile ? walletAddress : null,
-    isViewingOtherProfile ? currentUserWalletAddress : null
+    walletAddress, // 表示中のプロフィールのアドレス（自分・他人問わず）
+    isViewingOtherProfile ? currentUserWalletAddress : null // 他人の場合のみ自分のアドレスを渡す
   );
 
   // プロフィールデータ取得
