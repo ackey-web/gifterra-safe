@@ -276,7 +276,7 @@ export function FollowListModal({
                   </div>
 
                   {/* フォロワーリストで未フォローの場合「フォローバック」ボタンを表示 */}
-                  {type === 'followers' && !user.is_following_back && onFollowUser && (
+                  {type === 'followers' && user.is_following_me && !user.is_following_back && onFollowUser && (
                     <button
                       onClick={async (e) => {
                         e.stopPropagation(); // プロフィール遷移を防ぐ

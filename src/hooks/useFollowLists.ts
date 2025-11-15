@@ -10,7 +10,8 @@ export interface FollowUser {
   bio?: string;
   avatar_url?: string;
   created_at?: string;
-  is_following_back?: boolean; // 相手が自分をフォローしているか
+  is_following_back?: boolean; // 現在のログインユーザーがこのユーザーをフォローしているか(フォロワーリスト用)、またはこのユーザーが現在のログインユーザーをフォローバックしているか(フォローリスト用)
+  is_following_me?: boolean; // このユーザーが現在のログインユーザーをフォローしているか(フォロワーリスト用)
 }
 
 interface UseFollowListsReturn {
@@ -84,18 +85,30 @@ export function useFollowLists(
             .limit(1)
             .maybeSingle();
 
-          // 相互フォロー判定: 現在のユーザーがこのフォロワーをフォローしているか
-          let isFollowingBack = false;
-          if (currentUserAddress && currentUserAddress.toLowerCase() === walletAddress.toLowerCase()) {
-            // 自分のフォロワーリストを見ている場合、このフォロワーを自分がフォローしているか確認
-            const { data: followBackData } = await supabase
+          // フォロワーリスト用の判定（誰のリストを見ていても、現在のログインユーザー視点で判定）
+          let isFollowingBack = false; // 現在のログインユーザーがこのフォロワーをフォローしているか
+          let isFollowingMe = false; // このフォロワーが現在のログインユーザーをフォローしているか
+
+          if (currentUserAddress) {
+            // このフォロワーを現在のログインユーザーがフォローしているか確認
+            const { data: iFollowThem } = await supabase
               .from('user_follows')
               .select('id')
               .eq('tenant_id', 'default')
               .eq('follower_address', currentUserAddress.toLowerCase())
               .eq('following_address', follow.follower_address.toLowerCase())
               .maybeSingle();
-            isFollowingBack = !!followBackData;
+            isFollowingBack = !!iFollowThem;
+
+            // このフォロワーが現在のログインユーザーをフォローしているか確認
+            const { data: theyFollowMe } = await supabase
+              .from('user_follows')
+              .select('id')
+              .eq('tenant_id', 'default')
+              .eq('follower_address', follow.follower_address.toLowerCase())
+              .eq('following_address', currentUserAddress.toLowerCase())
+              .maybeSingle();
+            isFollowingMe = !!theyFollowMe;
           }
 
           return {
@@ -105,6 +118,7 @@ export function useFollowLists(
             avatar_url: profileData?.avatar_url || profileData?.icon_url || null,
             created_at: follow.created_at,
             is_following_back: isFollowingBack,
+            is_following_me: isFollowingMe,
           };
         })
       );
@@ -119,10 +133,11 @@ export function useFollowLists(
             .limit(1)
             .maybeSingle();
 
-          // 相互フォロー判定: このフォロー先が自分をフォローバックしているか
+          // 相互フォロー判定: このユーザーが現在のログインユーザーをフォローバックしているか
+          // 誰のリストを見ていても、現在のログインユーザー視点で判定
           let isFollowingBack = false;
-          if (currentUserAddress && currentUserAddress.toLowerCase() === walletAddress.toLowerCase()) {
-            // 自分のフォローリストを見ている場合、このユーザーが自分をフォローバックしているか確認
+          if (currentUserAddress) {
+            // このユーザーが現在のログインユーザーをフォローバックしているか確認
             const { data: followBackData } = await supabase
               .from('user_follows')
               .select('id')
