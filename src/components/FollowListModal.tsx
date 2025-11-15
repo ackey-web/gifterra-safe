@@ -16,8 +16,6 @@ interface FollowListModalProps {
   onRefresh?: () => Promise<void>; // リスト再取得用コールバック
 }
 
-const ITEMS_PER_PAGE = 10;
-
 export function FollowListModal({
   isOpen,
   onClose,
@@ -28,35 +26,9 @@ export function FollowListModal({
   onFollowUser,
   onRefresh,
 }: FollowListModalProps) {
-  const [currentPage, setCurrentPage] = useState(1);
   const [followingInProgress, setFollowingInProgress] = useState<Set<string>>(new Set());
 
-  // モーダルが開かれたらページをリセット
-  useEffect(() => {
-    if (isOpen) {
-      setCurrentPage(1);
-    }
-  }, [isOpen]);
-
   if (!isOpen) return null;
-
-  const displayList = users;
-  const totalPages = Math.ceil(displayList.length / ITEMS_PER_PAGE);
-  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-  const endIndex = startIndex + ITEMS_PER_PAGE;
-  const currentItems = displayList.slice(startIndex, endIndex);
-
-  const handlePrevPage = () => {
-    if (currentPage > 1) {
-      setCurrentPage(currentPage - 1);
-    }
-  };
-
-  const handleNextPage = () => {
-    if (currentPage < totalPages) {
-      setCurrentPage(currentPage + 1);
-    }
-  };
 
   return createPortal(
     <div
@@ -178,7 +150,7 @@ export function FollowListModal({
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              {currentItems.map((user) => (
+              {users.map((user) => (
                 <div
                   key={user.wallet_address}
                   onClick={() => {
@@ -333,67 +305,6 @@ export function FollowListModal({
             </div>
           )}
         </div>
-
-        {/* ページネーション */}
-        {!isLoading && displayList.length > ITEMS_PER_PAGE && (
-          <div
-            style={{
-              padding: isMobile ? '10px 16px' : '12px 20px',
-              borderTop: '1px solid rgba(255, 255, 255, 0.1)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              flexShrink: 0,
-              background: 'rgba(0, 0, 0, 0.2)',
-            }}
-          >
-            <button
-              onClick={handlePrevPage}
-              disabled={currentPage === 1}
-              style={{
-                padding: '6px 14px',
-                background: currentPage === 1 ? 'rgba(255, 255, 255, 0.05)' : 'rgba(59, 130, 246, 0.2)',
-                border: `1px solid ${currentPage === 1 ? 'rgba(255, 255, 255, 0.1)' : 'rgba(59, 130, 246, 0.4)'}`,
-                borderRadius: '6px',
-                color: currentPage === 1 ? 'rgba(255, 255, 255, 0.3)' : '#3b82f6',
-                fontSize: isMobile ? '12px' : '13px',
-                fontWeight: 600,
-                cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
-                transition: 'all 0.2s',
-              }}
-            >
-              ← 前へ
-            </button>
-
-            <div
-              style={{
-                fontSize: isMobile ? '12px' : '13px',
-                color: 'rgba(255, 255, 255, 0.7)',
-                fontWeight: 600,
-              }}
-            >
-              {currentPage} / {totalPages}
-            </div>
-
-            <button
-              onClick={handleNextPage}
-              disabled={currentPage === totalPages}
-              style={{
-                padding: '6px 14px',
-                background: currentPage === totalPages ? 'rgba(255, 255, 255, 0.05)' : 'rgba(59, 130, 246, 0.2)',
-                border: `1px solid ${currentPage === totalPages ? 'rgba(255, 255, 255, 0.1)' : 'rgba(59, 130, 246, 0.4)'}`,
-                borderRadius: '6px',
-                color: currentPage === totalPages ? 'rgba(255, 255, 255, 0.3)' : '#3b82f6',
-                fontSize: isMobile ? '12px' : '13px',
-                fontWeight: 600,
-                cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
-                transition: 'all 0.2s',
-              }}
-            >
-              次へ →
-            </button>
-          </div>
-        )}
       </div>
     </div>,
     document.body

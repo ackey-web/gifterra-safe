@@ -24,7 +24,7 @@ import { generateMockUserProfile } from '../utils/mockUserProfile';
 import { ScoreParametersPage, TokenAxisPage, SystemMonitoringPage } from '../admin/score';
 import CreateTenantForm from './CreateTenantForm';
 
-type TabType = 'dashboard' | 'user-preview' | 'tenants' | 'applications' | 'revenue' | 'rank-plans' | 'score-parameters' | 'token-axis' | 'system-monitoring';
+type TabType = 'dashboard' | 'user-preview' | 'users' | 'tenants' | 'applications' | 'revenue' | 'rank-plans' | 'score-parameters' | 'token-axis' | 'system-monitoring';
 
 export function SuperAdminPage() {
   const connectedAddress = useAddress();
@@ -214,6 +214,12 @@ export function SuperAdminPage() {
             label="ユーザーマイページ"
           />
           <TabButton
+            active={activeTab === 'users'}
+            onClick={() => setActiveTab('users')}
+            icon="👥"
+            label="ユーザー一覧"
+          />
+          <TabButton
             active={activeTab === 'tenants'}
             onClick={() => setActiveTab('tenants')}
             icon="🏢"
@@ -260,6 +266,7 @@ export function SuperAdminPage() {
         {/* タブコンテンツ */}
         {activeTab === 'dashboard' && <DashboardTab />}
         {activeTab === 'user-preview' && <UserPreviewTabSimple />}
+        {activeTab === 'users' && <UsersTab />}
         {activeTab === 'tenants' && <TenantsTab />}
         {activeTab === 'applications' && <ApplicationsTab />}
         {activeTab === 'revenue' && <RevenueTab />}
@@ -727,6 +734,342 @@ function StatCard({ icon, label, value, subtitle, color }: {
       <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 8 }}>{icon} {label}</div>
       <div style={{ fontSize: 28, fontWeight: 800, color }}>{value}</div>
       {subtitle && <div style={{ fontSize: 11, opacity: 0.6, marginTop: 8 }}>{subtitle}</div>}
+    </div>
+  );
+}
+
+/**
+ * ユーザー一覧タブ
+ */
+function UsersTab() {
+  const [users, setUsers] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const ITEMS_PER_PAGE = 20;
+
+  // ユーザーリストを取得
+  useEffect(() => {
+    fetchUsers();
+  }, [currentPage, searchQuery]);
+
+  const fetchUsers = async () => {
+    setIsLoading(true);
+    try {
+      let query = supabase
+        .from('user_profiles')
+        .select('*', { count: 'exact' })
+        .eq('tenant_id', 'default')
+        .order('created_at', { ascending: false });
+
+      // 検索フィルター
+      if (searchQuery.trim()) {
+        if (searchQuery.toLowerCase().startsWith('0x')) {
+          // ウォレットアドレスで検索
+          query = query.eq('wallet_address', searchQuery.toLowerCase());
+        } else {
+          // ユーザー名で検索
+          query = query.ilike('display_name', `%${searchQuery.trim()}%`);
+        }
+      }
+
+      // ページネーション
+      const from = (currentPage - 1) * ITEMS_PER_PAGE;
+      const to = from + ITEMS_PER_PAGE - 1;
+      query = query.range(from, to);
+
+      const { data, error, count } = await query;
+
+      if (error) throw error;
+
+      setUsers(data || []);
+      setTotalCount(count || 0);
+    } catch (error) {
+      setUsers([]);
+      setTotalCount(0);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
+
+  if (isLoading) {
+    return (
+      <div style={{
+        padding: 60,
+        textAlign: 'center',
+        color: '#fff',
+      }}>
+        <div style={{ fontSize: 48, marginBottom: 16 }}>⏳</div>
+        <div style={{ fontSize: 18 }}>ユーザー情報を読み込み中...</div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      {/* ヘッダー */}
+      <div style={{
+        background: 'rgba(255,255,255,0.05)',
+        border: '1px solid rgba(255,255,255,0.1)',
+        borderRadius: 12,
+        padding: 20,
+        color: '#fff',
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700 }}>
+            👥 ギフテラユーザー一覧
+          </h2>
+          <div style={{ fontSize: 14, opacity: 0.7 }}>
+            総ユーザー数: {totalCount.toLocaleString()}
+          </div>
+        </div>
+
+        {/* 検索フォーム */}
+        <div style={{ display: 'flex', gap: 12 }}>
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setCurrentPage(1); // 検索時はページをリセット
+            }}
+            placeholder="ウォレットアドレス または ユーザー名で検索"
+            style={{
+              flex: 1,
+              padding: '10px 14px',
+              background: 'rgba(0, 0, 0, 0.3)',
+              border: '1px solid rgba(255, 255, 255, 0.2)',
+              borderRadius: 8,
+              color: '#fff',
+              fontSize: 14,
+              outline: 'none',
+            }}
+          />
+          <button
+            onClick={() => fetchUsers()}
+            style={{
+              padding: '10px 20px',
+              background: 'rgba(59, 130, 246, 0.8)',
+              border: 'none',
+              borderRadius: 8,
+              color: '#fff',
+              fontSize: 14,
+              fontWeight: 600,
+              cursor: 'pointer',
+            }}
+          >
+            🔍 検索
+          </button>
+        </div>
+      </div>
+
+      {/* ユーザーリスト */}
+      <div style={{
+        background: 'rgba(255,255,255,0.05)',
+        border: '1px solid rgba(255,255,255,0.1)',
+        borderRadius: 12,
+        overflow: 'hidden',
+      }}>
+        {/* テーブルヘッダー */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: '60px 1fr 200px 150px 120px 120px',
+          gap: 12,
+          padding: '12px 16px',
+          background: 'rgba(0,0,0,0.3)',
+          borderBottom: '1px solid rgba(255,255,255,0.1)',
+          color: '#fff',
+          fontSize: 12,
+          fontWeight: 700,
+          opacity: 0.8,
+        }}>
+          <div></div>
+          <div>ユーザー名</div>
+          <div>ウォレットアドレス</div>
+          <div>作成日</div>
+          <div>公開設定</div>
+          <div>操作</div>
+        </div>
+
+        {/* テーブルボディ */}
+        {users.length === 0 ? (
+          <div style={{
+            padding: 40,
+            textAlign: 'center',
+            color: 'rgba(255,255,255,0.6)',
+            fontSize: 14,
+          }}>
+            {searchQuery ? 'ユーザーが見つかりませんでした' : 'ユーザーが登録されていません'}
+          </div>
+        ) : (
+          users.map((user, index) => (
+            <div
+              key={user.wallet_address}
+              style={{
+                display: 'grid',
+                gridTemplateColumns: '60px 1fr 200px 150px 120px 120px',
+                gap: 12,
+                padding: '12px 16px',
+                borderBottom: index < users.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none',
+                color: '#fff',
+                fontSize: 13,
+                alignItems: 'center',
+              }}
+            >
+              {/* アバター */}
+              <div style={{
+                width: 40,
+                height: 40,
+                borderRadius: '50%',
+                overflow: 'hidden',
+                background: user.avatar_url || user.icon_url
+                  ? 'transparent'
+                  : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: 20,
+                border: '2px solid rgba(255,255,255,0.1)',
+              }}>
+                {user.avatar_url || user.icon_url ? (
+                  <img
+                    src={user.avatar_url || user.icon_url}
+                    alt={user.display_name || 'User'}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  />
+                ) : (
+                  '👤'
+                )}
+              </div>
+
+              {/* ユーザー名 */}
+              <div style={{
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}>
+                {user.display_name || user.name || '未設定'}
+                {user.bio && (
+                  <div style={{
+                    fontSize: 11,
+                    opacity: 0.6,
+                    marginTop: 2,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}>
+                    {user.bio}
+                  </div>
+                )}
+              </div>
+
+              {/* ウォレットアドレス */}
+              <div style={{
+                fontFamily: 'monospace',
+                fontSize: 11,
+                opacity: 0.8,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}>
+                {user.wallet_address}
+              </div>
+
+              {/* 作成日 */}
+              <div style={{ fontSize: 11, opacity: 0.7 }}>
+                {new Date(user.created_at).toLocaleDateString('ja-JP')}
+              </div>
+
+              {/* 公開設定 */}
+              <div>
+                <span style={{
+                  padding: '4px 8px',
+                  borderRadius: 4,
+                  fontSize: 11,
+                  fontWeight: 600,
+                  background: user.show_wallet_address
+                    ? 'rgba(34, 197, 94, 0.2)'
+                    : 'rgba(239, 68, 68, 0.2)',
+                  color: user.show_wallet_address ? '#86efac' : '#fca5a5',
+                }}>
+                  {user.show_wallet_address ? '公開' : '非公開'}
+                </span>
+              </div>
+
+              {/* 操作 */}
+              <div>
+                <button
+                  onClick={() => window.open(`/profile/${user.wallet_address}`, '_blank')}
+                  style={{
+                    padding: '6px 12px',
+                    background: 'rgba(59, 130, 246, 0.2)',
+                    border: '1px solid rgba(59, 130, 246, 0.4)',
+                    borderRadius: 6,
+                    color: '#3b82f6',
+                    fontSize: 11,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                  }}
+                >
+                  📄 表示
+                </button>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* ページネーション */}
+      {totalPages > 1 && (
+        <div style={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          gap: 12,
+          padding: 20,
+        }}>
+          <button
+            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+            disabled={currentPage === 1}
+            style={{
+              padding: '8px 16px',
+              background: currentPage === 1 ? 'rgba(255,255,255,0.05)' : 'rgba(59, 130, 246, 0.2)',
+              border: `1px solid ${currentPage === 1 ? 'rgba(255,255,255,0.1)' : 'rgba(59, 130, 246, 0.4)'}`,
+              borderRadius: 6,
+              color: currentPage === 1 ? 'rgba(255,255,255,0.3)' : '#3b82f6',
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+            }}
+          >
+            ← 前へ
+          </button>
+
+          <div style={{ color: '#fff', fontSize: 14, fontWeight: 600 }}>
+            {currentPage} / {totalPages}
+          </div>
+
+          <button
+            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+            disabled={currentPage === totalPages}
+            style={{
+              padding: '8px 16px',
+              background: currentPage === totalPages ? 'rgba(255,255,255,0.05)' : 'rgba(59, 130, 246, 0.2)',
+              border: `1px solid ${currentPage === totalPages ? 'rgba(255,255,255,0.1)' : 'rgba(59, 130, 246, 0.4)'}`,
+              borderRadius: 6,
+              color: currentPage === totalPages ? 'rgba(255,255,255,0.3)' : '#3b82f6',
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
+            }}
+          >
+            次へ →
+          </button>
+        </div>
+      )}
     </div>
   );
 }
