@@ -223,39 +223,6 @@ export function ProfilePage() {
               編集
             </button>
           )}
-          {/* 他のユーザーのプロフィールの場合はフォローボタンを表示 */}
-          {isViewingOtherProfile && currentUserWalletAddress && (
-            <button
-              onClick={toggleFollow}
-              disabled={isFollowLoading}
-              style={{
-                padding: isMobile ? '8px 12px' : '10px 16px',
-                background: isFollowing
-                  ? 'rgba(239, 68, 68, 0.8)'
-                  : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                border: 'none',
-                borderRadius: 8,
-                color: '#fff',
-                fontSize: isMobile ? 14 : 15,
-                fontWeight: 600,
-                cursor: isFollowLoading ? 'not-allowed' : 'pointer',
-                transition: 'all 0.2s',
-                opacity: isFollowLoading ? 0.6 : 1,
-              }}
-              onMouseEnter={(e) => {
-                if (!isFollowLoading) {
-                  e.currentTarget.style.transform = 'scale(1.05)';
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!isFollowLoading) {
-                  e.currentTarget.style.transform = 'scale(1)';
-                }
-              }}
-            >
-              {isFollowLoading ? '処理中...' : isFollowing ? 'フォロー解除' : 'フォロー'}
-            </button>
-          )}
         </div>
 
         {/* プロフィールカード */}
@@ -284,6 +251,7 @@ export function ProfilePage() {
                     aspectRatio: '16 / 9',
                     overflow: 'hidden',
                     background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    position: 'relative',
                   }}
                 >
                   <img
@@ -298,6 +266,46 @@ export function ProfilePage() {
                       e.currentTarget.style.display = 'none';
                     }}
                   />
+                  {/* フォローボタン（カバー画像の右下） */}
+                  {isViewingOtherProfile && currentUserWalletAddress && (
+                    <button
+                      onClick={toggleFollow}
+                      disabled={isFollowLoading}
+                      style={{
+                        position: 'absolute',
+                        bottom: isMobile ? 12 : 16,
+                        right: isMobile ? 12 : 16,
+                        padding: isMobile ? '8px 16px' : '10px 20px',
+                        background: isFollowing
+                          ? 'rgba(239, 68, 68, 0.9)'
+                          : 'rgba(102, 126, 234, 0.9)',
+                        backdropFilter: 'blur(10px)',
+                        border: '1px solid rgba(255, 255, 255, 0.3)',
+                        borderRadius: 8,
+                        color: '#fff',
+                        fontSize: isMobile ? 14 : 15,
+                        fontWeight: 600,
+                        cursor: isFollowLoading ? 'not-allowed' : 'pointer',
+                        transition: 'all 0.2s',
+                        opacity: isFollowLoading ? 0.6 : 1,
+                        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!isFollowLoading) {
+                          e.currentTarget.style.transform = 'scale(1.05)';
+                          e.currentTarget.style.boxShadow = '0 6px 16px rgba(0, 0, 0, 0.4)';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!isFollowLoading) {
+                          e.currentTarget.style.transform = 'scale(1)';
+                          e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.3)';
+                        }
+                      }}
+                    >
+                      {isFollowLoading ? '処理中...' : isFollowing ? 'フォロー解除' : 'フォロー'}
+                    </button>
+                  )}
                 </div>
               )}
 
