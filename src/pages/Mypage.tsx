@@ -2909,6 +2909,22 @@ function BulkSendForm({ isMobile, onChangeMode }: {
 
         const receipt = await tx.wait();
         txHashes.push(receipt.transactionHash);
+
+        // 送金メッセージを保存（各受信者に対して）
+        try {
+          await saveTransferMessage({
+            tenantId: 'default', // 送金メッセージは常にdefaultテナントに保存（グローバル機能のため）
+            fromAddress: userAddress,
+            toAddress: normalizedAddress,
+            tokenSymbol: selectedToken,
+            amount: recipient.amount,
+            message: undefined, // 一括送金ではメッセージは保存しない
+            txHash: receipt.transactionHash,
+          });
+        } catch (msgError) {
+          console.error('送金メッセージ保存エラー:', msgError);
+          // メッセージ保存失敗は送金自体には影響させない
+        }
       }
 
       // Privyウォレットの場合は送金回数をカウント
