@@ -152,12 +152,29 @@ export function useReceivedTransferMessages(
           (data || []).map(async (message) => {
             try {
               // 送信者の最新プロフィールを取得
-              const { data: profileData } = await supabase
-                .from('user_profiles')
-                .select('display_name, name, bio, avatar_url, icon_url')
-                .eq('wallet_address', message.from_address.toLowerCase())
-                .limit(1)
-                .maybeSingle();
+              // まずメッセージと同じテナントIDで検索
+              let profileData = null;
+
+              if (message.tenant_id && message.tenant_id !== 'default') {
+                const { data } = await supabase
+                  .from('user_profiles')
+                  .select('display_name, name, bio, avatar_url, icon_url')
+                  .eq('wallet_address', message.from_address.toLowerCase())
+                  .eq('tenant_id', message.tenant_id)
+                  .maybeSingle();
+                profileData = data;
+              }
+
+              // テナント固有のプロフィールがない場合は、defaultテナントで検索
+              if (!profileData) {
+                const { data } = await supabase
+                  .from('user_profiles')
+                  .select('display_name, name, bio, avatar_url, icon_url')
+                  .eq('wallet_address', message.from_address.toLowerCase())
+                  .eq('tenant_id', 'default')
+                  .maybeSingle();
+                profileData = data;
+              }
 
               // プロフィールデータが取得できた場合は、メッセージのsender_profileを更新
               if (profileData) {
