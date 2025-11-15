@@ -67,6 +67,18 @@ export async function saveTransferMessage(params: {
     profileData = data;
   }
 
+  // それでも見つからない場合は、tenant_idを問わず最新のプロフィールを取得
+  if (!profileData) {
+    const { data } = await supabase
+      .from('user_profiles')
+      .select('display_name, name, bio, avatar_url, icon_url')
+      .eq('wallet_address', fromAddress.toLowerCase())
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    profileData = data;
+  }
+
   // display_name と avatar_url を優先し、なければ古いカラム名にフォールバック
   const senderProfile = profileData ? {
     name: profileData.display_name || profileData.name || null,
@@ -176,15 +188,38 @@ export function useReceivedTransferMessages(
                 profileData = data;
               }
 
+              // それでも見つからない場合は、tenant_idを問わず検索
+              if (!profileData) {
+                const { data } = await supabase
+                  .from('user_profiles')
+                  .select('display_name, name, bio, avatar_url, icon_url')
+                  .eq('wallet_address', message.from_address.toLowerCase())
+                  .order('updated_at', { ascending: false })
+                  .limit(1)
+                  .maybeSingle();
+                profileData = data;
+              }
+
               // プロフィールデータが取得できた場合は、メッセージのsender_profileを更新
               if (profileData) {
+                const updatedProfile = {
+                  name: profileData.display_name || profileData.name || null,
+                  bio: profileData.bio || null,
+                  icon_url: profileData.avatar_url || profileData.icon_url || null,
+                };
+
+                // デバッグログ: プロフィール取得状況を確認
+                if (!updatedProfile.name && message.from_address.toLowerCase() === '0xdf77a8d2bf87c817f61d1786497b6446cde4c563') {
+                  console.log('🔍 プロフィール取得デバッグ:', {
+                    from_address: message.from_address,
+                    profileData,
+                    updatedProfile,
+                  });
+                }
+
                 return {
                   ...message,
-                  sender_profile: {
-                    name: profileData.display_name || profileData.name || null,
-                    bio: profileData.bio || null,
-                    icon_url: profileData.avatar_url || profileData.icon_url || null,
-                  },
+                  sender_profile: updatedProfile,
                 };
               }
 
