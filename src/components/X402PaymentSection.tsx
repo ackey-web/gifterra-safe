@@ -449,7 +449,7 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
               objectFit: 'contain',
             }}
           />
-          JPYC送信
+          GIFTERRA Pay - JPYC -
           </span>
         </h3>
         <p
@@ -498,7 +498,7 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
               height: isMobile ? '24px' : '28px',
             }}
           />
-          スキャンして送信する
+          スキャンして支払う
         </button>
 
         {!walletAddress && (
