@@ -187,7 +187,7 @@ export const LoginPage: React.FC = () => {
             </p>
             <p
               style={{
-                margin: 0,
+                margin: "0 0 16px 0",
                 color: "#4a5568",
                 fontSize: 14,
                 lineHeight: 1.8,
@@ -195,6 +195,37 @@ export const LoginPage: React.FC = () => {
             >
               <strong>上級者向け:</strong> MetaMaskやCoinbase Walletで接続
             </p>
+            <div
+              style={{
+                marginTop: 16,
+                paddingTop: 16,
+                borderTop: "1px solid #e2e8f0",
+              }}
+            >
+              <p
+                style={{
+                  margin: "0 0 8px 0",
+                  color: "#2d3748",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  lineHeight: 1.6,
+                }}
+              >
+                【推奨ブラウザ】
+              </p>
+              <p
+                style={{
+                  margin: 0,
+                  color: "#718096",
+                  fontSize: 12,
+                  lineHeight: 1.6,
+                }}
+              >
+                本サービスは Safari / Chrome に最適化されています。<br />
+                その他ブラウザをご利用の場合、ログイン不可・送信画面が開かない等、<br />
+                正常に操作できない事がありますのでご注意ください。
+              </p>
+            </div>
           </div>
         </div>
 
