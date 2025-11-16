@@ -256,8 +256,10 @@ export function MypageAssistant({ isMobile, walletAddress, displayName }: Mypage
   return (
     <div style={{
       position: 'fixed',
-      bottom: isMobile ? 80 : 120,
-      right: isMobile ? 16 : 24,
+      bottom: isMobile ? 20 : '50%',
+      left: isMobile ? 20 : 'auto',
+      right: isMobile ? 'auto' : 20,
+      transform: isMobile ? 'none' : 'translateY(50%)',
       zIndex: 10001,
     }}>
       {/* GIFTY フローティングボタン */}
@@ -289,10 +291,14 @@ export function MypageAssistant({ isMobile, walletAddress, displayName }: Mypage
         <div
           style={{
             position: 'fixed',
-            bottom: isMobile ? 160 : 200,
-            right: isMobile ? 16 : 24,
-            width: isMobile ? 'calc(100vw - 32px)' : 380,
-            maxHeight: isMobile ? 'calc(100vh - 180px)' : 600,
+            top: isMobile ? '50%' : '50%',
+            left: isMobile ? '50%' : 'auto',
+            right: isMobile ? 'auto' : 20,
+            transform: isMobile ? 'translate(-50%, -50%)' : 'translateY(-50%)',
+            width: isMobile ? 'calc(100vw - 40px)' : 420,
+            maxWidth: isMobile ? '90vw' : '420px',
+            height: isMobile ? 'calc(100vh - 100px)' : 'auto',
+            maxHeight: isMobile ? 'calc(100vh - 100px)' : '80vh',
             background: 'linear-gradient(135deg, #1a1a24 0%, #2d2d3a 100%)',
             borderRadius: 20,
             boxShadow: '0 10px 40px rgba(0, 0, 0, 0.3)',
