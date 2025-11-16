@@ -30,19 +30,23 @@ ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
 -- 既存のポリシーを削除（存在する場合）
 DROP POLICY IF EXISTS "Users can view their own notifications" ON notifications;
 DROP POLICY IF EXISTS "Users can mark their own notifications as read" ON notifications;
+DROP POLICY IF EXISTS "Anyone can view notifications" ON notifications;
+DROP POLICY IF EXISTS "Anyone can update notifications" ON notifications;
 
--- ユーザーは自分の通知のみ閲覧可能
-CREATE POLICY "Users can view their own notifications"
+-- 誰でも通知を閲覧可能（ウォレット認証のため、フロントエンドでフィルタリング）
+CREATE POLICY "Anyone can view notifications"
   ON notifications
   FOR SELECT
-  USING (LOWER(user_address) = LOWER(auth.jwt() ->> 'wallet_address'));
+  TO anon, authenticated
+  USING (true);
 
--- ユーザーは自分の通知を既読にできる
-CREATE POLICY "Users can mark their own notifications as read"
+-- 誰でも通知を更新可能（ウォレット認証のため、フロントエンドで検証）
+CREATE POLICY "Anyone can update notifications"
   ON notifications
   FOR UPDATE
-  USING (LOWER(user_address) = LOWER(auth.jwt() ->> 'wallet_address'))
-  WITH CHECK (LOWER(user_address) = LOWER(auth.jwt() ->> 'wallet_address'));
+  TO anon, authenticated
+  USING (true)
+  WITH CHECK (true);
 
 -- システム（Edge Function）は全ユーザーの通知を作成可能
 -- 注意: Edge FunctionはSERVICE_ROLE_KEYを使用するため、RLSを無視できる

@@ -147,14 +147,29 @@ export function useFollow(
           `${currentUserAddress.slice(0, 6)}...${currentUserAddress.slice(-4)}`;
 
         // フォロー通知を作成
-        await supabase.from('notifications').insert({
+        console.log('🔔 フォロー通知を作成中:', {
           user_address: targetAddress.toLowerCase(),
-          type: 'follow',
-          title: '新しいフォロワー',
-          message: `${followerName}さんがあなたをフォローしました`,
+          followerName,
           from_address: currentUserAddress.toLowerCase(),
-          is_read: false,
         });
+
+        const { data: notificationData, error: notificationError } = await supabase
+          .from('notifications')
+          .insert({
+            user_address: targetAddress.toLowerCase(),
+            type: 'follow',
+            title: '新しいフォロワー',
+            message: `${followerName}さんがあなたをフォローしました`,
+            from_address: currentUserAddress.toLowerCase(),
+            is_read: false,
+          })
+          .select();
+
+        if (notificationError) {
+          console.error('❌ フォロー通知の作成エラー:', notificationError);
+        } else {
+          console.log('✅ フォロー通知が作成されました:', notificationData);
+        }
 
         setIsFollowing(true);
         setFollowerCount((prev) => prev + 1);
