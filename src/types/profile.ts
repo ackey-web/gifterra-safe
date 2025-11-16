@@ -23,7 +23,7 @@ export const ROLE_LABELS: Record<UserRole, string> = {
   SHOP: '店舗',
   EVENT: 'イベント主催',
   COMMUNITY: 'コミュニティ',
-  PERFORMER: 'パフォーマー',
+  PERFORMER: 'アーティスト',
   PROJECT_OWNER: 'プロジェクトオーナー',
   METAVERSE: 'メタバーススペース',
   DEVELOPER: '開発者',
