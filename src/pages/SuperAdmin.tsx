@@ -24,8 +24,9 @@ import { generateMockUserProfile } from '../utils/mockUserProfile';
 // スコア管理ページのインポート
 import { ScoreParametersPage, TokenAxisPage, SystemMonitoringPage } from '../admin/score';
 import CreateTenantForm from './CreateTenantForm';
+import { SecurityManagement } from '../admin/components/SecurityManagement';
 
-type TabType = 'dashboard' | 'user-preview' | 'users' | 'tenants' | 'applications' | 'revenue' | 'rank-plans' | 'score-parameters' | 'token-axis' | 'system-monitoring';
+type TabType = 'dashboard' | 'user-preview' | 'users' | 'tenants' | 'applications' | 'revenue' | 'rank-plans' | 'score-parameters' | 'token-axis' | 'system-monitoring' | 'security';
 
 export function SuperAdminPage() {
   const connectedAddress = useAddress();
@@ -262,6 +263,12 @@ export function SuperAdminPage() {
             icon="🖥️"
             label="システム監視"
           />
+          <TabButton
+            active={activeTab === 'security'}
+            onClick={() => setActiveTab('security')}
+            icon="🔒"
+            label="セキュリティ管理"
+          />
         </div>
 
         {/* タブコンテンツ */}
@@ -275,6 +282,7 @@ export function SuperAdminPage() {
         {activeTab === 'score-parameters' && <ScoreParametersPage />}
         {activeTab === 'token-axis' && <TokenAxisPage />}
         {activeTab === 'system-monitoring' && <SystemMonitoringPage />}
+        {activeTab === 'security' && <SecurityManagement isMobile={false} />}
       </div>
     </div>
   );

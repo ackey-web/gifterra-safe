@@ -3,6 +3,9 @@
 
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
+import { useActiveAccount } from 'thirdweb/react';
+import { performTransactionSecurityCheck } from '../utils/transactionSecurity';
+import { TransactionSecurityModal } from './TransactionSecurityModal';
 
 interface TipModalProps {
   isOpen: boolean;
@@ -25,41 +28,109 @@ export function TipModal({
 }: TipModalProps) {
   const [selectedAmount, setSelectedAmount] = useState<number | null>(null);
   const [isSending, setIsSending] = useState(false);
+  const [showSecurityModal, setShowSecurityModal] = useState(false);
+  const [securityCheckResult, setSecurityCheckResult] = useState<any>(null);
+  const account = useActiveAccount();
 
   if (!isOpen) return null;
 
   const handleSend = async () => {
-    if (!selectedAmount || isSending) return;
+    if (!selectedAmount || isSending || !account) return;
 
+    setIsSending(true);
+    try {
+      // セキュリティチェック実行
+      const checkResult = await performTransactionSecurityCheck(
+        account.address,
+        selectedAmount
+      );
+
+      // アカウントが凍結されている場合
+      if (checkResult.isFrozen) {
+        alert(`アカウントが凍結されています\n理由: ${checkResult.freezeReason || '不明'}`);
+        setIsSending(false);
+        return;
+      }
+
+      // トランザクション制限に引っかかった場合
+      if (!checkResult.allowed) {
+        alert(`トランザクションが制限されています\n理由: ${checkResult.reason || '不明'}`);
+        setIsSending(false);
+        return;
+      }
+
+      // 確認が必要な場合（高額または疑わしい取引）
+      if (checkResult.requiresConfirmation) {
+        setSecurityCheckResult(checkResult);
+        setShowSecurityModal(true);
+        setIsSending(false);
+        return;
+      }
+
+      // 問題なければ送信
+      await onSendTip(selectedAmount);
+      setSelectedAmount(null);
+      onClose();
+    } catch (error) {
+      console.error('Security check or send failed:', error);
+      alert('送信に失敗しました');
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  const handleSecurityConfirm = async () => {
+    if (!selectedAmount) return;
+
+    setShowSecurityModal(false);
     setIsSending(true);
     try {
       await onSendTip(selectedAmount);
       setSelectedAmount(null);
       onClose();
     } catch (error) {
-      // エラー時は何もしない
+      console.error('Send failed after security confirmation:', error);
+      alert('送信に失敗しました');
     } finally {
       setIsSending(false);
     }
   };
 
-  return createPortal(
-    <div
-      style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        background: 'rgba(0, 0, 0, 0.8)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 10000,
-        padding: isMobile ? '0' : '20px',
-      }}
-      onClick={onClose}
-    >
+  return (
+    <>
+      {/* セキュリティ確認モーダル */}
+      {securityCheckResult && (
+        <TransactionSecurityModal
+          isOpen={showSecurityModal}
+          onClose={() => setShowSecurityModal(false)}
+          onConfirm={handleSecurityConfirm}
+          amount={selectedAmount || 0}
+          recipientName={recipientName}
+          isHighAmount={securityCheckResult.isHighAmount || false}
+          isSuspicious={securityCheckResult.isSuspicious || false}
+          anomalyScore={securityCheckResult.anomalyScore}
+          anomalyReasons={securityCheckResult.anomalyReasons}
+          isMobile={isMobile}
+        />
+      )}
+
+      {createPortal(
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.8)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 10000,
+            padding: isMobile ? '0' : '20px',
+          }}
+          onClick={onClose}
+        >
       <div
         style={{
           background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)',
@@ -327,6 +398,8 @@ export function TipModal({
         </div>
       </div>
     </div>,
-    document.body
+        document.body
+      )}
+    </>
   );
 }
