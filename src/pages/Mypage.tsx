@@ -429,6 +429,7 @@ function Header({ viewMode, setViewMode, isMobile, tenantRank, showSettingsModal
   const disconnect = useDisconnect();
   const { logout: privyLogout, authenticated, user } = usePrivy();
   const address = useAddress();
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
 
   // 表示するアドレス（Privy優先、なければThirdweb）
   const displayAddress = user?.wallet?.address || address;
@@ -562,102 +563,288 @@ function Header({ viewMode, setViewMode, isMobile, tenantRank, showSettingsModal
       )}
 
       {/* 右：通知・プロフィール・設定・シェア・Admin・ログアウト */}
-      <div style={{ display: 'flex', gap: isMobile ? 8 : 12, alignItems: 'center' }}>
-        {/* 通知ベル */}
-        <NotificationBell userAddress={address} isMobile={isMobile} />
-
-        {viewMode === 'tenant' && (
-          <button style={{
-            padding: isMobile ? '6px 12px' : '8px 16px',
-            background: 'rgba(255,255,255,0.05)',
-            border: '1px solid rgba(255,255,255,0.1)',
-            borderRadius: 8,
-            color: '#EAF2FF',
-            fontSize: isMobile ? 11 : 13,
-            fontWeight: 600,
-            cursor: 'pointer',
-          }}>
-            Adminで開く
+      {isMobile ? (
+        /* スマホ：ハンバーガーメニュー */
+        <div style={{ position: 'relative' }}>
+          <button
+            onClick={() => setShowMobileMenu(!showMobileMenu)}
+            style={{
+              width: 36,
+              height: 36,
+              background: 'rgba(255,255,255,0.05)',
+              border: '1px solid rgba(255,255,255,0.1)',
+              borderRadius: 8,
+              color: '#EAF2FF',
+              fontSize: 20,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            ☰
           </button>
-        )}
-        <button
-          onClick={() => window.location.href = '/profile'}
-          style={{
-            width: isMobile ? 32 : 36,
-            height: isMobile ? 32 : 36,
-            background: 'rgba(255,255,255,0.05)',
-            border: '1px solid rgba(255,255,255,0.1)',
-            borderRadius: 8,
-            color: '#EAF2FF',
-            fontSize: isMobile ? 16 : 18,
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            transition: 'all 0.2s',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
-          }}
-        >
-          👤
-        </button>
-        {/* 検索ボタン */}
-        <button
-          onClick={() => setShowUserSearchModal(true)}
-          style={{
-            width: isMobile ? 32 : 36,
-            height: isMobile ? 32 : 36,
-            background: 'rgba(255,255,255,0.05)',
-            border: '1px solid rgba(255,255,255,0.1)',
-            borderRadius: 8,
-            color: '#EAF2FF',
-            fontSize: isMobile ? 16 : 18,
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            transition: 'all 0.2s',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
-          }}
-        >
-          🔍
-        </button>
-        {/* 設定ボタン */}
-        <button
-          onClick={() => setShowSettingsModal(true)}
-          style={{
-            width: isMobile ? 32 : 36,
-            height: isMobile ? 32 : 36,
-            background: 'rgba(255,255,255,0.05)',
-            border: '1px solid rgba(255,255,255,0.1)',
-            borderRadius: 8,
-            color: '#EAF2FF',
-            fontSize: isMobile ? 16 : 18,
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            transition: 'all 0.2s',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
-          }}
-        >
-          ⚙️
-        </button>
-      </div>
+
+          {showMobileMenu && createPortal(
+            <div
+              style={{
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                background: 'rgba(0, 0, 0, 0.8)',
+                zIndex: 9999,
+                display: 'flex',
+                justifyContent: 'flex-end',
+              }}
+              onClick={() => setShowMobileMenu(false)}
+            >
+              <div
+                style={{
+                  width: '70%',
+                  maxWidth: 300,
+                  background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)',
+                  padding: 20,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 12,
+                }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginBottom: 20,
+                  paddingBottom: 16,
+                  borderBottom: '1px solid rgba(255,255,255,0.1)',
+                }}>
+                  <span style={{ color: '#EAF2FF', fontSize: 18, fontWeight: 600 }}>メニュー</span>
+                  <button
+                    onClick={() => setShowMobileMenu(false)}
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      color: '#EAF2FF',
+                      fontSize: 24,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                <button
+                  onClick={() => {
+                    window.location.href = '/profile';
+                    setShowMobileMenu(false);
+                  }}
+                  style={{
+                    padding: '12px 16px',
+                    background: 'rgba(255,255,255,0.05)',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    borderRadius: 8,
+                    color: '#EAF2FF',
+                    fontSize: 14,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 12,
+                  }}
+                >
+                  <span style={{ fontSize: 18 }}>👤</span>
+                  <span>プロフィール</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setShowUserSearchModal(true);
+                    setShowMobileMenu(false);
+                  }}
+                  style={{
+                    padding: '12px 16px',
+                    background: 'rgba(255,255,255,0.05)',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    borderRadius: 8,
+                    color: '#EAF2FF',
+                    fontSize: 14,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 12,
+                  }}
+                >
+                  <span style={{ fontSize: 18 }}>🔍</span>
+                  <span>ユーザー検索</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setShowSettingsModal(true);
+                    setShowMobileMenu(false);
+                  }}
+                  style={{
+                    padding: '12px 16px',
+                    background: 'rgba(255,255,255,0.05)',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    borderRadius: 8,
+                    color: '#EAF2FF',
+                    fontSize: 14,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 12,
+                  }}
+                >
+                  <span style={{ fontSize: 18 }}>⚙️</span>
+                  <span>設定</span>
+                </button>
+
+                {viewMode === 'tenant' && (
+                  <button style={{
+                    padding: '12px 16px',
+                    background: 'rgba(255,255,255,0.05)',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    borderRadius: 8,
+                    color: '#EAF2FF',
+                    fontSize: 14,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 12,
+                  }}>
+                    <span style={{ fontSize: 18 }}>🏢</span>
+                    <span>Adminで開く</span>
+                  </button>
+                )}
+
+                <button
+                  onClick={() => {
+                    handleLogout();
+                    setShowMobileMenu(false);
+                  }}
+                  style={{
+                    padding: '12px 16px',
+                    background: 'rgba(220, 38, 38, 0.1)',
+                    border: '1px solid rgba(220, 38, 38, 0.3)',
+                    borderRadius: 8,
+                    color: '#FCA5A5',
+                    fontSize: 14,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 12,
+                    marginTop: 20,
+                  }}
+                >
+                  <span style={{ fontSize: 18 }}>🚪</span>
+                  <span>ログアウト</span>
+                </button>
+              </div>
+            </div>,
+            document.body
+          )}
+        </div>
+      ) : (
+        /* PC：従来の横並びボタン */
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+          {/* 通知ベル */}
+          <NotificationBell userAddress={address} isMobile={isMobile} />
+
+          {viewMode === 'tenant' && (
+            <button style={{
+              padding: '8px 16px',
+              background: 'rgba(255,255,255,0.05)',
+              border: '1px solid rgba(255,255,255,0.1)',
+              borderRadius: 8,
+              color: '#EAF2FF',
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: 'pointer',
+            }}>
+              Adminで開く
+            </button>
+          )}
+          <button
+            onClick={() => window.location.href = '/profile'}
+            style={{
+              width: 36,
+              height: 36,
+              background: 'rgba(255,255,255,0.05)',
+              border: '1px solid rgba(255,255,255,0.1)',
+              borderRadius: 8,
+              color: '#EAF2FF',
+              fontSize: 18,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transition: 'all 0.2s',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+            }}
+          >
+            👤
+          </button>
+          {/* 検索ボタン */}
+          <button
+            onClick={() => setShowUserSearchModal(true)}
+            style={{
+              width: 36,
+              height: 36,
+              background: 'rgba(255,255,255,0.05)',
+              border: '1px solid rgba(255,255,255,0.1)',
+              borderRadius: 8,
+              color: '#EAF2FF',
+              fontSize: 18,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transition: 'all 0.2s',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+            }}
+          >
+            🔍
+          </button>
+          {/* 設定ボタン */}
+          <button
+            onClick={() => setShowSettingsModal(true)}
+            style={{
+              width: 36,
+              height: 36,
+              background: 'rgba(255,255,255,0.05)',
+              border: '1px solid rgba(255,255,255,0.1)',
+              borderRadius: 8,
+              color: '#EAF2FF',
+              fontSize: 18,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transition: 'all 0.2s',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+            }}
+          >
+            ⚙️
+          </button>
+        </div>
+      )}
 
       {/* 設定モーダル */}
       {showSettingsModal && (
