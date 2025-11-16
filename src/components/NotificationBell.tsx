@@ -45,6 +45,8 @@ export function NotificationBell({ userAddress, isMobile }: NotificationBellProp
         return '💰';
       case 'tenant_status_changed':
         return '🏢';
+      case 'follow':
+        return '👥';
       default:
         return '🔔';
     }
@@ -79,9 +81,28 @@ export function NotificationBell({ userAddress, isMobile }: NotificationBellProp
     if (!notification.is_read) {
       await markAsRead(notification.id);
     }
-    // TODO: 通知タイプに応じて遷移先を変更
-    if (notification.tx_hash) {
-      window.open(`https://polygonscan.com/tx/${notification.tx_hash}`, '_blank');
+
+    // 通知タイプに応じて遷移先を変更
+    switch (notification.type) {
+      case 'follow':
+        // フォロー通知の場合、フォロワーのプロフィールページに遷移
+        if (notification.from_address) {
+          window.location.href = `/profile/${notification.from_address}`;
+        }
+        break;
+      case 'jpyc_received':
+      case 'tip_received':
+        // トランザクション関連の通知の場合、PolygonScanで確認
+        if (notification.tx_hash) {
+          window.open(`https://polygonscan.com/tx/${notification.tx_hash}`, '_blank');
+        }
+        break;
+      default:
+        // その他の通知はトランザクションハッシュがあれば開く
+        if (notification.tx_hash) {
+          window.open(`https://polygonscan.com/tx/${notification.tx_hash}`, '_blank');
+        }
+        break;
     }
   };
 

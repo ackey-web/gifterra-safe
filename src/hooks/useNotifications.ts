@@ -5,7 +5,7 @@ import { supabase } from '../lib/supabase';
 export interface Notification {
   id: string;
   user_address: string;
-  type: 'jpyc_received' | 'tip_received' | 'tenant_status_changed';
+  type: 'jpyc_received' | 'tip_received' | 'tenant_status_changed' | 'follow';
   title: string;
   message: string;
   amount?: string;

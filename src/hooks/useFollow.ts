@@ -135,6 +135,28 @@ export function useFollow(
           throw error;
         }
 
+        // フォロワーのプロフィール情報を取得（通知メッセージ用）
+        const { data: followerProfile } = await supabase
+          .from('user_profiles')
+          .select('display_name')
+          .eq('tenant_id', 'default')
+          .eq('wallet_address', currentUserAddress.toLowerCase())
+          .maybeSingle();
+
+        const followerName = followerProfile?.display_name ||
+          `${currentUserAddress.slice(0, 6)}...${currentUserAddress.slice(-4)}`;
+
+        // フォロー通知を作成
+        await supabase.from('notifications').insert({
+          tenant_id: 'default',
+          user_address: targetAddress.toLowerCase(),
+          type: 'follow',
+          title: '新しいフォロワー',
+          message: `${followerName}さんがあなたをフォローしました`,
+          from_address: currentUserAddress.toLowerCase(),
+          is_read: false,
+        });
+
         setIsFollowing(true);
         setFollowerCount((prev) => prev + 1);
       }
