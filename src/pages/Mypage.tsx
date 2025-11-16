@@ -866,14 +866,12 @@ function Header({ viewMode, setViewMode, isMobile, tenantRank, showSettingsModal
         />
       )}
 
-      {/* AIアシスタント（PC時のみ固定位置表示） */}
-      {!isMobile && (
-        <MypageAssistant
-          isMobile={isMobile}
-          walletAddress={displayAddress}
-          displayName={undefined}  // TODO: プロフィールから取得
-        />
-      )}
+      {/* AIアシスタント（モバイル・PC両対応） */}
+      <MypageAssistant
+        isMobile={isMobile}
+        walletAddress={displayAddress}
+        displayName={undefined}  // TODO: プロフィールから取得
+      />
     </div>
   );
 }
