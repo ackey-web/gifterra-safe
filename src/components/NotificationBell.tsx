@@ -355,8 +355,7 @@ export function NotificationBell({ userAddress, isMobile }: NotificationBellProp
                   cursor: 'pointer',
                 }}
                 onClick={() => {
-                  // TODO: 通知一覧ページに遷移
-                  alert('通知一覧ページは準備中です');
+                  window.location.href = '/notifications';
                 }}
               >
                 すべての通知を見る →

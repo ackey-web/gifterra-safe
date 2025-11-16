@@ -28,6 +28,7 @@ const AppWrapper = lazy(() => import("./components/AppWrapper").then(m => ({ def
 const TermsOfServicePage = lazy(() => import("./pages/TermsOfService").then(m => ({ default: m.TermsOfServicePage })));
 const PrivacyPolicyPage = lazy(() => import("./pages/PrivacyPolicy").then(m => ({ default: m.PrivacyPolicyPage })));
 const ProfilePage = lazy(() => import("./pages/ProfilePage").then(m => ({ default: m.ProfilePage })));
+const NotificationsPage = lazy(() => import("./pages/NotificationsPage").then(m => ({ default: m.NotificationsPage })));
 
 // ローディングコンポーネント
 const LoadingFallback = () => (
@@ -140,6 +141,7 @@ const wantsMypage = path.includes("/mypage") || uiParam === "mypage";
 const wantsTerms = path.includes("/terms");
 const wantsPrivacy = path.includes("/privacy");
 const wantsProfile = path.includes("/profile") || uiParam === "profile";
+const wantsNotifications = path.includes("/notifications") || uiParam === "notifications";
 
 // =============================
 // デバイス判別（モバイル vs タブレット/デスクトップ）
@@ -403,6 +405,8 @@ if (wantsTerms) {
                 <MypagePage />
               ) : wantsProfile ? (
                 <ProfilePage />
+              ) : wantsNotifications ? (
+                <NotificationsPage />
               ) : wantsReward ? (
                 <RewardApp />
               ) : wantsTip ? (
