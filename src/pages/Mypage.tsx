@@ -564,8 +564,11 @@ function Header({ viewMode, setViewMode, isMobile, tenantRank, showSettingsModal
 
       {/* 右：通知・プロフィール・設定・シェア・Admin・ログアウト */}
       {isMobile ? (
-        /* スマホ：ハンバーガーメニュー */
-        <div style={{ position: 'relative' }}>
+        /* スマホ：通知ベル + ハンバーガーメニュー */
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          {/* 通知ベル */}
+          <NotificationBell userAddress={address} isMobile={isMobile} />
+
           <button
             onClick={() => setShowMobileMenu(!showMobileMenu)}
             style={{
