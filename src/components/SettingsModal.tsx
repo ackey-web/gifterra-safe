@@ -79,9 +79,11 @@ export function SettingsModal({ onClose, isMobile, onLogout }: SettingsModalProp
               borderRadius: isMobile ? 16 : 24,
               maxWidth: isMobile ? '100%' : 400,
               width: '100%',
+              maxHeight: '90vh',
+              display: 'flex',
+              flexDirection: 'column',
               border: '1px solid rgba(59, 130, 246, 0.3)',
               boxShadow: '0 20px 60px rgba(0, 0, 0, 0.5)',
-              overflow: 'hidden',
             }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -93,6 +95,7 @@ export function SettingsModal({ onClose, isMobile, onLogout }: SettingsModalProp
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
+            flexShrink: 0,
           }}
         >
           <h2
@@ -133,7 +136,11 @@ export function SettingsModal({ onClose, isMobile, onLogout }: SettingsModalProp
         </div>
 
         {/* メニューリスト */}
-        <div style={{ padding: isMobile ? 16 : 20 }}>
+        <div style={{
+          flex: 1,
+          overflowY: 'auto',
+          padding: isMobile ? 16 : 20,
+        }}>
           {/* プロフィール編集 */}
           {connectedAddress && (
             <button
@@ -464,62 +471,6 @@ export function SettingsModal({ onClose, isMobile, onLogout }: SettingsModalProp
             </button>
           )}
 
-          {/* 退会 */}
-          {connectedAddress && (
-            <button
-              type="button"
-              onClick={() => setShowAccountDeletion(true)}
-              style={{
-                width: '100%',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 12,
-                padding: isMobile ? 14 : 16,
-                background: 'rgba(220, 38, 38, 0.05)',
-                border: '1px solid rgba(220, 38, 38, 0.2)',
-                borderRadius: 12,
-                marginBottom: 12,
-                textDecoration: 'none',
-                color: 'rgba(252, 165, 165, 0.9)',
-                transition: 'all 0.2s',
-                cursor: 'pointer',
-                textAlign: 'left',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = 'rgba(220, 38, 38, 0.1)';
-                e.currentTarget.style.borderColor = 'rgba(220, 38, 38, 0.3)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'rgba(220, 38, 38, 0.05)';
-                e.currentTarget.style.borderColor = 'rgba(220, 38, 38, 0.2)';
-              }}
-            >
-              <span style={{ fontSize: 20 }}>⚠️</span>
-              <div style={{ flex: 1 }}>
-                <div
-                  style={{
-                    fontSize: isMobile ? 14 : 15,
-                    fontWeight: 600,
-                    marginBottom: 4,
-                  }}
-                >
-                  退会する
-                </div>
-                <div
-                  style={{
-                    fontSize: isMobile ? 11 : 12,
-                    color: 'rgba(252, 165, 165, 0.7)',
-                  }}
-                >
-                  アカウント情報を匿名化
-                </div>
-              </div>
-              <span style={{ fontSize: 14, color: 'rgba(252, 165, 165, 0.5)' }}>
-                →
-              </span>
-            </button>
-          )}
-
           {/* ログアウト */}
           {onLogout && (
             <button
@@ -571,6 +522,62 @@ export function SettingsModal({ onClose, isMobile, onLogout }: SettingsModalProp
                   }}
                 >
                   アプリからログアウトする
+                </div>
+              </div>
+              <span style={{ fontSize: 14, color: 'rgba(252, 165, 165, 0.5)' }}>
+                →
+              </span>
+            </button>
+          )}
+
+          {/* 退会 */}
+          {connectedAddress && (
+            <button
+              type="button"
+              onClick={() => setShowAccountDeletion(true)}
+              style={{
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
+                padding: isMobile ? 14 : 16,
+                background: 'rgba(220, 38, 38, 0.05)',
+                border: '1px solid rgba(220, 38, 38, 0.2)',
+                borderRadius: 12,
+                marginBottom: 12,
+                textDecoration: 'none',
+                color: 'rgba(252, 165, 165, 0.9)',
+                transition: 'all 0.2s',
+                cursor: 'pointer',
+                textAlign: 'left',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(220, 38, 38, 0.1)';
+                e.currentTarget.style.borderColor = 'rgba(220, 38, 38, 0.3)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'rgba(220, 38, 38, 0.05)';
+                e.currentTarget.style.borderColor = 'rgba(220, 38, 38, 0.2)';
+              }}
+            >
+              <span style={{ fontSize: 20 }}>⚠️</span>
+              <div style={{ flex: 1 }}>
+                <div
+                  style={{
+                    fontSize: isMobile ? 14 : 15,
+                    fontWeight: 600,
+                    marginBottom: 4,
+                  }}
+                >
+                  退会する
+                </div>
+                <div
+                  style={{
+                    fontSize: isMobile ? 11 : 12,
+                    color: 'rgba(252, 165, 165, 0.7)',
+                  }}
+                >
+                  アカウント情報を匿名化
                 </div>
               </div>
               <span style={{ fontSize: 14, color: 'rgba(252, 165, 165, 0.5)' }}>

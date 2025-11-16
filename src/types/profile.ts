@@ -9,7 +9,7 @@ export type UserRole =
   | 'SHOP'
   | 'EVENT'
   | 'COMMUNITY'
-  | 'PERFORMER'
+  | 'ARTIST'
   | 'PROJECT_OWNER'
   | 'METAVERSE'
   | 'DEVELOPER'
@@ -23,7 +23,7 @@ export const ROLE_LABELS: Record<UserRole, string> = {
   SHOP: '店舗',
   EVENT: 'イベント主催',
   COMMUNITY: 'コミュニティ',
-  PERFORMER: 'アーティスト',
+  ARTIST: 'アーティスト',
   PROJECT_OWNER: 'プロジェクトオーナー',
   METAVERSE: 'メタバーススペース',
   DEVELOPER: '開発者',
