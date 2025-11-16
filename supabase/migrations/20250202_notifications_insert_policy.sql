@@ -1,8 +1,11 @@
 -- 通知テーブルにINSERTポリシーを追加
 -- フォロー通知などをユーザー自身が作成できるようにする
 
+-- 既存のポリシーを削除（存在する場合）
+DROP POLICY IF EXISTS "Authenticated users can create notifications" ON notifications;
+
 -- 認証済みユーザーは通知を作成可能
-CREATE POLICY IF NOT EXISTS "Authenticated users can create notifications"
+CREATE POLICY "Authenticated users can create notifications"
   ON notifications
   FOR INSERT
   TO authenticated
