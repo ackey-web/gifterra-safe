@@ -1050,13 +1050,13 @@ function WalletConnectionInfo({ isMobile, onChainIdChange }: { isMobile: boolean
           // ウォレットアドレス表示
           <div style={{
             width: '100%',
-            height: isMobile ? 36 : 44,
+            height: isMobile ? 40 : 44,
             borderRadius: 8,
             background: 'rgba(255, 255, 255, 0.1)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            padding: isMobile ? '0 8px' : '0 12px',
+            padding: '0 12px',
             fontSize: isMobile ? 11 : 14,
             fontWeight: 600,
             color: '#ffffff',
