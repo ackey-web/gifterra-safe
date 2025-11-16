@@ -23,6 +23,7 @@ import { TransferMessageHistory } from '../components/TransferMessageHistory';
 import { NotificationBell } from '../components/NotificationBell';
 import { X402PaymentSection } from '../components/X402PaymentSection';
 import { UserSearchModal } from '../components/UserSearchModal';
+import { MypageAssistant } from '../components/MypageAssistant';
 import flowImage from '../assets/flow.png';
 import studioImage from '../assets/studio.png';
 import studioProImage from '../assets/studio-pro.png';
@@ -671,6 +672,13 @@ function Header({ viewMode, setViewMode, isMobile, tenantRank, showSettingsModal
           isMobile={isMobile}
         />
       )}
+
+      {/* AIアシスタント */}
+      <MypageAssistant
+        isMobile={isMobile}
+        walletAddress={displayAddress}
+        displayName={undefined}  // TODO: プロフィールから取得
+      />
     </div>
   );
 }
