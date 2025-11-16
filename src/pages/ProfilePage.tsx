@@ -695,67 +695,69 @@ export function ProfilePage() {
           )}
         </div>
 
-        {/* JPYC受信UI */}
-        <div
-          style={{
-            marginTop: 24,
-            background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
-            border: '1px solid rgba(255, 255, 255, 0.2)',
-            borderRadius: isMobile ? 16 : 20,
-            padding: isMobile ? 20 : 24,
-            backdropFilter: 'blur(10px)',
-          }}
-        >
-          <h3
+        {/* JPYC受信UI（自分のプロフィールの場合のみ） */}
+        {!isViewingOtherProfile && (
+          <div
             style={{
-              margin: '0 0 8px 0',
-              fontSize: isMobile ? 16 : 18,
-              fontWeight: 700,
-              color: '#fff',
+              marginTop: 24,
+              background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+              border: '1px solid rgba(255, 255, 255, 0.2)',
+              borderRadius: isMobile ? 16 : 20,
+              padding: isMobile ? 20 : 24,
+              backdropFilter: 'blur(10px)',
             }}
           >
-            📱 JPYC受信UI
-          </h3>
-          <p
-            style={{
-              margin: '0 0 16px 0',
-              fontSize: isMobile ? 12 : 13,
-              lineHeight: 1.5,
-              color: 'rgba(255, 255, 255, 0.9)',
-            }}
-          >
-            店舗向けのJPYC受信用QRコードを生成・表示できます
-          </p>
-          <button
-            onClick={() => (window.location.href = '/terminal')}
-            style={{
-              width: '100%',
-              padding: isMobile ? '12px 16px' : '14px 20px',
-              background: '#fff',
-              border: 'none',
-              borderRadius: 10,
-              color: '#d97706',
-              fontSize: isMobile ? 14 : 15,
-              fontWeight: 700,
-              cursor: 'pointer',
-              transition: 'all 0.2s',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 8,
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = 'scale(1.02)';
-              e.currentTarget.style.boxShadow = '0 4px 16px rgba(0, 0, 0, 0.2)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = 'scale(1)';
-              e.currentTarget.style.boxShadow = 'none';
-            }}
-          >
-            Terminal画面を開く →
-          </button>
-        </div>
+            <h3
+              style={{
+                margin: '0 0 8px 0',
+                fontSize: isMobile ? 16 : 18,
+                fontWeight: 700,
+                color: '#fff',
+              }}
+            >
+              📱 JPYC受信UI
+            </h3>
+            <p
+              style={{
+                margin: '0 0 16px 0',
+                fontSize: isMobile ? 12 : 13,
+                lineHeight: 1.5,
+                color: 'rgba(255, 255, 255, 0.9)',
+              }}
+            >
+              店舗向けのJPYC受信用QRコードを生成・表示できます
+            </p>
+            <button
+              onClick={() => (window.location.href = '/terminal')}
+              style={{
+                width: '100%',
+                padding: isMobile ? '12px 16px' : '14px 20px',
+                background: '#fff',
+                border: 'none',
+                borderRadius: 10,
+                color: '#d97706',
+                fontSize: isMobile ? 14 : 15,
+                fontWeight: 700,
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'scale(1.02)';
+                e.currentTarget.style.boxShadow = '0 4px 16px rgba(0, 0, 0, 0.2)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'scale(1)';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
+            >
+              Terminal画面を開く →
+            </button>
+          </div>
+        )}
       </div>
 
       {/* 編集モーダル（自分のプロフィールの場合のみ） */}
