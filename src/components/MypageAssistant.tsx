@@ -254,7 +254,12 @@ export function MypageAssistant({ isMobile, walletAddress, displayName }: Mypage
   };
 
   return (
-    <div style={{ position: 'fixed', bottom: isMobile ? 80 : 24, right: isMobile ? 16 : 24, zIndex: 1000 }}>
+    <div style={{
+      position: isMobile ? 'relative' : 'fixed',
+      bottom: isMobile ? undefined : 24,
+      right: isMobile ? undefined : 24,
+      zIndex: 1000,
+    }}>
       {/* GIFTY フローティングボタン */}
       <button
         onClick={() => setIsOpen(!isOpen)}

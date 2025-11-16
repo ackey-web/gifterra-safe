@@ -676,12 +676,14 @@ function Header({ viewMode, setViewMode, isMobile, tenantRank, showSettingsModal
         />
       )}
 
-      {/* AIアシスタント */}
-      <MypageAssistant
-        isMobile={isMobile}
-        walletAddress={displayAddress}
-        displayName={undefined}  // TODO: プロフィールから取得
-      />
+      {/* AIアシスタント（PC時のみ固定位置表示） */}
+      {!isMobile && (
+        <MypageAssistant
+          isMobile={isMobile}
+          walletAddress={displayAddress}
+          displayName={undefined}  // TODO: プロフィールから取得
+        />
+      )}
     </div>
   );
 }
@@ -820,10 +822,17 @@ function WalletConnectionInfo({ isMobile, onChainIdChange }: { isMobile: boolean
       display: 'flex',
       flexDirection: isMobile ? 'row' : 'row',
       gap: isMobile ? 6 : 12,
-      marginBottom: isMobile ? 12 : 20,
     }}>
+      {/* スマホ時：左半分にウォレット情報を縦並び */}
+      <div style={{
+        flex: 1,
+        display: isMobile ? 'flex' : 'block',
+        flexDirection: isMobile ? 'column' : undefined,
+        gap: isMobile ? 6 : undefined,
+        width: isMobile ? '50%' : 'auto',
+      }}>
       {/* ウォレット接続ボタン */}
-      <div style={{ flex: 1 }}>
+      <div style={{ flex: isMobile ? undefined : 1 }}>
         {isLoadingWallet ? (
           // ウォレット読み込み中表示
           <div style={{
@@ -943,7 +952,7 @@ function WalletConnectionInfo({ isMobile, onChainIdChange }: { isMobile: boolean
 
       {/* チェーン表示 */}
       <div style={{
-        flex: isMobile ? '0 0 auto' : 1,
+        flex: isMobile ? undefined : 1,
         padding: isMobile ? '8px 10px' : '12px 16px',
         background: 'rgba(255, 255, 255, 0.05)',
         border: '1px solid rgba(255, 255, 255, 0.1)',
@@ -968,6 +977,7 @@ function WalletConnectionInfo({ isMobile, onChainIdChange }: { isMobile: boolean
         }}>
           {isMobile ? (displayChainId === 137 ? 'Polygon' : displayChainId === 80002 ? 'Amoy' : `#${displayChainId}`) : getChainName(displayChainId)}
         </span>
+      </div>
       </div>
     </div>
   );
@@ -1006,8 +1016,35 @@ function FlowModeContent({
 
   return (
     <>
-      {/* 0. ウォレット接続情報（送金カードの上） */}
-      <WalletConnectionInfo isMobile={isMobile} onChainIdChange={onChainIdChange} />
+      {/* 0. ウォレット接続情報とGIFTY（送金カードの上） */}
+      <div style={{
+        display: 'flex',
+        flexDirection: 'row',
+        gap: isMobile ? 6 : 12,
+        marginBottom: isMobile ? 12 : 20,
+        alignItems: isMobile ? 'flex-start' : 'center',
+      }}>
+        {/* 左側：ウォレット接続情報（スマホ時は50%幅） */}
+        <div style={{ flex: isMobile ? '0 0 50%' : 1 }}>
+          <WalletConnectionInfo isMobile={isMobile} onChainIdChange={onChainIdChange} />
+        </div>
+
+        {/* 右側：GIFTY（スマホ時のみ表示） */}
+        {isMobile && (
+          <div style={{
+            flex: '0 0 50%',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+          }}>
+            <MypageAssistant
+              isMobile={isMobile}
+              walletAddress={displayAddress}
+              displayName={undefined}
+            />
+          </div>
+        )}
+      </div>
 
       {/* 1. 送金・受信（縦並び） */}
       <div style={{
