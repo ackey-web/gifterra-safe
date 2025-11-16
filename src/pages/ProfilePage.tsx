@@ -256,15 +256,21 @@ export function ProfilePage() {
           ) : (
             <>
               {/* カバー画像 */}
-              {profile?.cover_image_url && (
-                <div
-                  style={{
-                    width: '100%',
-                    aspectRatio: '16 / 9',
-                    overflow: 'hidden',
-                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                  }}
-                >
+              <div
+                style={{
+                  width: '100%',
+                  aspectRatio: '16 / 9',
+                  overflow: 'hidden',
+                  background: profile?.cover_image_url
+                    ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+                    : '#f3f4f6',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  position: 'relative',
+                }}
+              >
+                {profile?.cover_image_url ? (
                   <img
                     src={profile.cover_image_url}
                     alt="カバー画像"
@@ -277,8 +283,19 @@ export function ProfilePage() {
                       e.currentTarget.style.display = 'none';
                     }}
                   />
-                </div>
-              )}
+                ) : (
+                  <img
+                    src="/マス.png"
+                    alt="カバー画像未設定"
+                    style={{
+                      maxWidth: '30%',
+                      maxHeight: '30%',
+                      opacity: 0.3,
+                      objectFit: 'contain',
+                    }}
+                  />
+                )}
+              </div>
 
               {/* チップボタンとフォローボタン（カバー画像の下） */}
               {isViewingOtherProfile && currentUserWalletAddress && (
