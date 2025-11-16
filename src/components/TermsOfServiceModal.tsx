@@ -11,6 +11,7 @@ interface TermsOfServiceModalProps {
 
 export function TermsOfServiceModal({ onAccept, isMobile }: TermsOfServiceModalProps) {
   const [agreed, setAgreed] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   return createPortal(
     <div
@@ -72,12 +73,34 @@ export function TermsOfServiceModal({ onAccept, isMobile }: TermsOfServiceModalP
 
         {/* スクロール可能なコンテンツ */}
         <div
+          onClick={() => isMobile && setIsExpanded(!isExpanded)}
           style={{
             flex: 1,
             overflow: 'auto',
             padding: isMobile ? 20 : 32,
+            cursor: isMobile ? 'pointer' : 'default',
+            position: 'relative',
           }}
         >
+          {/* タップで拡大表示ヒント（スマホのみ） */}
+          {isMobile && !isExpanded && (
+            <div
+              style={{
+                background: 'rgba(59, 130, 246, 0.2)',
+                border: '1px solid rgba(59, 130, 246, 0.4)',
+                borderRadius: 8,
+                padding: 12,
+                marginBottom: 16,
+                textAlign: 'center',
+                fontSize: 12,
+                color: '#60a5fa',
+                fontWeight: 600,
+              }}
+            >
+              👆 タップすると文字が拡大表示されます
+            </div>
+          )}
+
           {/* 重要な注意事項 */}
           <div
             style={{
@@ -91,9 +114,10 @@ export function TermsOfServiceModal({ onAccept, isMobile }: TermsOfServiceModalP
             <h3
               style={{
                 margin: '0 0 12px 0',
-                fontSize: isMobile ? 15 : 16,
+                fontSize: isMobile ? (isExpanded ? 18 : 15) : 16,
                 fontWeight: 700,
                 color: '#ef4444',
+                transition: 'font-size 0.2s',
               }}
             >
               重要な免責事項
@@ -102,9 +126,10 @@ export function TermsOfServiceModal({ onAccept, isMobile }: TermsOfServiceModalP
               style={{
                 margin: 0,
                 padding: '0 0 0 20px',
-                fontSize: isMobile ? 12 : 13,
+                fontSize: isMobile ? (isExpanded ? 15 : 12) : 13,
                 color: 'rgba(255, 255, 255, 0.8)',
                 lineHeight: 1.6,
+                transition: 'font-size 0.2s',
               }}
             >
               <li>送金は不可逆的であり、誤送金の場合も返金できません</li>
@@ -126,9 +151,10 @@ export function TermsOfServiceModal({ onAccept, isMobile }: TermsOfServiceModalP
             <h4
               style={{
                 margin: '0 0 12px 0',
-                fontSize: isMobile ? 14 : 15,
+                fontSize: isMobile ? (isExpanded ? 17 : 14) : 15,
                 fontWeight: 600,
                 color: '#EAF2FF',
+                transition: 'font-size 0.2s',
               }}
             >
               📜 利用規約
@@ -136,9 +162,10 @@ export function TermsOfServiceModal({ onAccept, isMobile }: TermsOfServiceModalP
             <p
               style={{
                 margin: '0 0 8px 0',
-                fontSize: isMobile ? 12 : 13,
+                fontSize: isMobile ? (isExpanded ? 15 : 12) : 13,
                 color: 'rgba(255, 255, 255, 0.7)',
                 lineHeight: 1.6,
+                transition: 'font-size 0.2s',
               }}
             >
               サービスの利用条件、禁止事項、知的財産権等について定めています。
@@ -150,9 +177,11 @@ export function TermsOfServiceModal({ onAccept, isMobile }: TermsOfServiceModalP
               style={{
                 color: '#3b82f6',
                 textDecoration: 'none',
-                fontSize: isMobile ? 12 : 13,
+                fontSize: isMobile ? (isExpanded ? 15 : 12) : 13,
                 fontWeight: 600,
+                transition: 'font-size 0.2s',
               }}
+              onClick={(e) => e.stopPropagation()}
             >
               利用規約を読む →
             </a>
@@ -170,9 +199,10 @@ export function TermsOfServiceModal({ onAccept, isMobile }: TermsOfServiceModalP
             <h4
               style={{
                 margin: '0 0 12px 0',
-                fontSize: isMobile ? 14 : 15,
+                fontSize: isMobile ? (isExpanded ? 17 : 14) : 15,
                 fontWeight: 600,
                 color: '#EAF2FF',
+                transition: 'font-size 0.2s',
               }}
             >
               🔒 プライバシーポリシー
@@ -180,9 +210,10 @@ export function TermsOfServiceModal({ onAccept, isMobile }: TermsOfServiceModalP
             <p
               style={{
                 margin: '0 0 8px 0',
-                fontSize: isMobile ? 12 : 13,
+                fontSize: isMobile ? (isExpanded ? 15 : 12) : 13,
                 color: 'rgba(255, 255, 255, 0.7)',
                 lineHeight: 1.6,
+                transition: 'font-size 0.2s',
               }}
             >
               個人情報の収集・利用目的、第三者提供について定めています。
@@ -194,9 +225,11 @@ export function TermsOfServiceModal({ onAccept, isMobile }: TermsOfServiceModalP
               style={{
                 color: '#3b82f6',
                 textDecoration: 'none',
-                fontSize: isMobile ? 12 : 13,
+                fontSize: isMobile ? (isExpanded ? 15 : 12) : 13,
                 fontWeight: 600,
+                transition: 'font-size 0.2s',
               }}
+              onClick={(e) => e.stopPropagation()}
             >
               プライバシーポリシーを読む →
             </a>
@@ -214,9 +247,10 @@ export function TermsOfServiceModal({ onAccept, isMobile }: TermsOfServiceModalP
             <h4
               style={{
                 margin: '0 0 12px 0',
-                fontSize: isMobile ? 14 : 15,
+                fontSize: isMobile ? (isExpanded ? 17 : 14) : 15,
                 fontWeight: 600,
                 color: '#EAF2FF',
+                transition: 'font-size 0.2s',
               }}
             >
               💴 JPYCについて
@@ -224,9 +258,10 @@ export function TermsOfServiceModal({ onAccept, isMobile }: TermsOfServiceModalP
             <p
               style={{
                 margin: 0,
-                fontSize: isMobile ? 12 : 13,
+                fontSize: isMobile ? (isExpanded ? 15 : 12) : 13,
                 color: 'rgba(255, 255, 255, 0.7)',
                 lineHeight: 1.6,
+                transition: 'font-size 0.2s',
               }}
             >
               本サービス（コンテンツ・作品等）はJPYC株式会社による公式コンテンツではありません。「JPYC」はJPYC株式会社の提供するステーブルコインです。JPYC及びJPYCロゴは、JPYC株式会社の登録商標です。
@@ -244,9 +279,10 @@ export function TermsOfServiceModal({ onAccept, isMobile }: TermsOfServiceModalP
             <h4
               style={{
                 margin: '0 0 8px 0',
-                fontSize: isMobile ? 14 : 15,
+                fontSize: isMobile ? (isExpanded ? 17 : 14) : 15,
                 fontWeight: 600,
                 color: '#EAF2FF',
+                transition: 'font-size 0.2s',
               }}
             >
               💡 知的財産権について
@@ -254,9 +290,10 @@ export function TermsOfServiceModal({ onAccept, isMobile }: TermsOfServiceModalP
             <p
               style={{
                 margin: 0,
-                fontSize: isMobile ? 12 : 13,
+                fontSize: isMobile ? (isExpanded ? 15 : 12) : 13,
                 color: 'rgba(255, 255, 255, 0.7)',
                 lineHeight: 1.6,
+                transition: 'font-size 0.2s',
               }}
             >
               本サービスで使用されている技術は特許出願中です。無断での複製・転用を禁止します。
@@ -281,6 +318,7 @@ export function TermsOfServiceModal({ onAccept, isMobile }: TermsOfServiceModalP
               cursor: 'pointer',
               marginBottom: 20,
             }}
+            onClick={(e) => e.stopPropagation()}
           >
             <input
               type="checkbox"
@@ -296,9 +334,10 @@ export function TermsOfServiceModal({ onAccept, isMobile }: TermsOfServiceModalP
             />
             <span
               style={{
-                fontSize: isMobile ? 13 : 14,
+                fontSize: isMobile ? (isExpanded ? 16 : 13) : 14,
                 color: '#EAF2FF',
                 lineHeight: 1.5,
+                transition: 'font-size 0.2s',
               }}
             >
               上記の利用規約、プライバシーポリシー、免責事項を読み、理解し、同意します
@@ -307,7 +346,10 @@ export function TermsOfServiceModal({ onAccept, isMobile }: TermsOfServiceModalP
 
           {/* 同意ボタン */}
           <button
-            onClick={onAccept}
+            onClick={(e) => {
+              e.stopPropagation();
+              onAccept();
+            }}
             disabled={!agreed}
             style={{
               width: '100%',
@@ -318,7 +360,7 @@ export function TermsOfServiceModal({ onAccept, isMobile }: TermsOfServiceModalP
               border: 'none',
               borderRadius: 12,
               color: '#fff',
-              fontSize: isMobile ? 15 : 16,
+              fontSize: isMobile ? (isExpanded ? 18 : 15) : 16,
               fontWeight: 700,
               cursor: agreed ? 'pointer' : 'not-allowed',
               transition: 'all 0.2s',
@@ -344,9 +386,10 @@ export function TermsOfServiceModal({ onAccept, isMobile }: TermsOfServiceModalP
           <p
             style={{
               margin: '12px 0 0 0',
-              fontSize: isMobile ? 11 : 12,
+              fontSize: isMobile ? (isExpanded ? 14 : 11) : 12,
               color: 'rgba(255, 255, 255, 0.5)',
               textAlign: 'center',
+              transition: 'font-size 0.2s',
             }}
           >
             同意しない場合はサービスをご利用いただけません
