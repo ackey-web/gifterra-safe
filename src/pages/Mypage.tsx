@@ -1548,7 +1548,7 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
             />
           </div>
 
-          {/* MATIC */}
+          {/* POL (旧MATIC) */}
           <div style={{
             padding: isMobile ? '8px 10px' : '10px 12px',
             background: 'linear-gradient(135deg, #8247e5 0%, #6d28d9 100%)',
@@ -1556,7 +1556,7 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
             color: '#ffffff',
             position: 'relative',
           }}>
-            <div style={{ fontSize: 10, opacity: 0.85, marginBottom: 2 }}>MATIC</div>
+            <div style={{ fontSize: 10, opacity: 0.85, marginBottom: 2 }}>POL</div>
             <div style={{ fontSize: isMobile ? 14 : 16, fontWeight: 700 }}>
               {balanceVisible
                 ? (balances.matic.loading ? '...' : balances.matic.formatted)
