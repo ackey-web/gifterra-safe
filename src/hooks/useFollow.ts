@@ -148,7 +148,6 @@ export function useFollow(
 
         // フォロー通知を作成
         await supabase.from('notifications').insert({
-          tenant_id: 'default',
           user_address: targetAddress.toLowerCase(),
           type: 'follow',
           title: '新しいフォロワー',
