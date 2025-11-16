@@ -285,8 +285,8 @@ export function ProfilePage() {
                   />
                 ) : (
                   <img
-                    src="/マス.png"
-                    alt="カバー画像未設定"
+                    src="/mas.png"
+                    alt=""
                     style={{
                       maxWidth: '30%',
                       maxHeight: '30%',
