@@ -409,6 +409,13 @@ export function MypagePage() {
           onClose={() => setShowWalletSetupModal(false)}
         />
       )}
+
+      {/* AIアシスタント（モバイル・PC両対応） - ページ全体に固定表示 */}
+      <MypageAssistant
+        isMobile={isMobile}
+        walletAddress={displayAddress}
+        displayName={undefined}  // TODO: プロフィールから取得
+      />
     </div>
   );
 }
@@ -865,13 +872,6 @@ function Header({ viewMode, setViewMode, isMobile, tenantRank, showSettingsModal
           isMobile={isMobile}
         />
       )}
-
-      {/* AIアシスタント（モバイル・PC両対応） */}
-      <MypageAssistant
-        isMobile={isMobile}
-        walletAddress={displayAddress}
-        displayName={undefined}  // TODO: プロフィールから取得
-      />
     </div>
   );
 }
