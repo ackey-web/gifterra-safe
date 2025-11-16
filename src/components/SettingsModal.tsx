@@ -6,6 +6,8 @@ import { createPortal } from 'react-dom';
 import { ContactFormModal } from './ContactFormModal';
 import { NotificationSettings } from './NotificationSettings';
 import { ProfileEditModal } from './ProfileEditModal';
+import { LoginHistoryModal } from './LoginHistoryModal';
+import { AccountDeletionModal } from './AccountDeletionModal';
 import { usePrivy } from '@privy-io/react-auth';
 import { useAddress } from '@thirdweb-dev/react';
 import { supabase } from '../lib/supabase';
@@ -20,6 +22,8 @@ export function SettingsModal({ onClose, isMobile, onLogout }: SettingsModalProp
   const [showContactForm, setShowContactForm] = useState(false);
   const [showNotificationSettings, setShowNotificationSettings] = useState(false);
   const [showProfileEdit, setShowProfileEdit] = useState(false);
+  const [showLoginHistory, setShowLoginHistory] = useState(false);
+  const [showAccountDeletion, setShowAccountDeletion] = useState(false);
   const [userProfile, setUserProfile] = useState<any>(null);
   const { user } = usePrivy();
   const thirdwebAddress = useAddress();
@@ -404,6 +408,118 @@ export function SettingsModal({ onClose, isMobile, onLogout }: SettingsModalProp
             </span>
           </button>
 
+          {/* ログイン履歴 */}
+          {connectedAddress && (
+            <button
+              type="button"
+              onClick={() => setShowLoginHistory(true)}
+              style={{
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
+                padding: isMobile ? 14 : 16,
+                background: 'rgba(255, 255, 255, 0.03)',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+                borderRadius: 12,
+                marginBottom: 12,
+                textDecoration: 'none',
+                color: '#EAF2FF',
+                transition: 'all 0.2s',
+                cursor: 'pointer',
+                textAlign: 'left',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)';
+                e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.3)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)';
+                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+              }}
+            >
+              <span style={{ fontSize: 20 }}>🔐</span>
+              <div style={{ flex: 1 }}>
+                <div
+                  style={{
+                    fontSize: isMobile ? 14 : 15,
+                    fontWeight: 600,
+                    marginBottom: 4,
+                  }}
+                >
+                  ログイン履歴
+                </div>
+                <div
+                  style={{
+                    fontSize: isMobile ? 11 : 12,
+                    color: 'rgba(255, 255, 255, 0.6)',
+                  }}
+                >
+                  セキュリティとログイン履歴を確認
+                </div>
+              </div>
+              <span style={{ fontSize: 14, color: 'rgba(255, 255, 255, 0.4)' }}>
+                →
+              </span>
+            </button>
+          )}
+
+          {/* 退会 */}
+          {connectedAddress && (
+            <button
+              type="button"
+              onClick={() => setShowAccountDeletion(true)}
+              style={{
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
+                padding: isMobile ? 14 : 16,
+                background: 'rgba(220, 38, 38, 0.05)',
+                border: '1px solid rgba(220, 38, 38, 0.2)',
+                borderRadius: 12,
+                marginBottom: 12,
+                textDecoration: 'none',
+                color: 'rgba(252, 165, 165, 0.9)',
+                transition: 'all 0.2s',
+                cursor: 'pointer',
+                textAlign: 'left',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(220, 38, 38, 0.1)';
+                e.currentTarget.style.borderColor = 'rgba(220, 38, 38, 0.3)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'rgba(220, 38, 38, 0.05)';
+                e.currentTarget.style.borderColor = 'rgba(220, 38, 38, 0.2)';
+              }}
+            >
+              <span style={{ fontSize: 20 }}>⚠️</span>
+              <div style={{ flex: 1 }}>
+                <div
+                  style={{
+                    fontSize: isMobile ? 14 : 15,
+                    fontWeight: 600,
+                    marginBottom: 4,
+                  }}
+                >
+                  退会する
+                </div>
+                <div
+                  style={{
+                    fontSize: isMobile ? 11 : 12,
+                    color: 'rgba(252, 165, 165, 0.7)',
+                  }}
+                >
+                  アカウント情報を匿名化
+                </div>
+              </div>
+              <span style={{ fontSize: 14, color: 'rgba(252, 165, 165, 0.5)' }}>
+                →
+              </span>
+            </button>
+          )}
+
           {/* ログアウト */}
           {onLogout && (
             <button
@@ -643,6 +759,34 @@ export function SettingsModal({ onClose, isMobile, onLogout }: SettingsModalProp
             receive_message: userProfile?.receive_message || 'ありがとうございました。',
           }}
           walletAddress={connectedAddress}
+        />
+      )}
+
+      {/* ログイン履歴モーダル */}
+      {showLoginHistory && connectedAddress && (
+        <LoginHistoryModal
+          isOpen={showLoginHistory}
+          onClose={() => setShowLoginHistory(false)}
+          walletAddress={connectedAddress}
+          isMobile={isMobile}
+        />
+      )}
+
+      {/* アカウント退会モーダル */}
+      {showAccountDeletion && connectedAddress && (
+        <AccountDeletionModal
+          isOpen={showAccountDeletion}
+          onClose={() => setShowAccountDeletion(false)}
+          onSuccess={() => {
+            setShowAccountDeletion(false);
+            onClose();
+            // ログアウト処理
+            if (onLogout) {
+              onLogout();
+            }
+          }}
+          walletAddress={connectedAddress}
+          isMobile={isMobile}
         />
       )}
     </>
