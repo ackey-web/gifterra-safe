@@ -23,7 +23,6 @@ import { TransferMessageHistory } from '../components/TransferMessageHistory';
 import { NotificationBell } from '../components/NotificationBell';
 import { X402PaymentSection } from '../components/X402PaymentSection';
 import { UserSearchModal } from '../components/UserSearchModal';
-import { MypageAssistant } from '../components/MypageAssistant';
 import flowImage from '../assets/flow.png';
 import studioImage from '../assets/studio.png';
 import studioProImage from '../assets/studio-pro.png';
@@ -427,11 +426,8 @@ function Header({ viewMode, setViewMode, isMobile, tenantRank, showSettingsModal
   setShowUserSearchModal: (show: boolean) => void;
 }) {
   const disconnect = useDisconnect();
-  const { logout: privyLogout, authenticated, user } = usePrivy();
+  const { logout: privyLogout, authenticated } = usePrivy();
   const address = useAddress();
-
-  // 表示するアドレス（Privy優先、なければThirdweb）
-  const displayAddress = user?.wallet?.address || address;
 
   // テナント申請情報取得
   const { application } = useMyTenantApplication();
@@ -675,13 +671,6 @@ function Header({ viewMode, setViewMode, isMobile, tenantRank, showSettingsModal
           isMobile={isMobile}
         />
       )}
-
-      {/* AIアシスタント */}
-      <MypageAssistant
-        isMobile={isMobile}
-        walletAddress={displayAddress}
-        displayName={undefined}  // TODO: プロフィールから取得
-      />
     </div>
   );
 }
