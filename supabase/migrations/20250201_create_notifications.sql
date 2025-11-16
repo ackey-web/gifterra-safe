@@ -27,6 +27,10 @@ CREATE INDEX IF NOT EXISTS idx_notifications_user_unread ON notifications(user_a
 -- RLS（Row Level Security）ポリシー設定
 ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
 
+-- 既存のポリシーを削除（存在する場合）
+DROP POLICY IF EXISTS "Users can view their own notifications" ON notifications;
+DROP POLICY IF EXISTS "Users can mark their own notifications as read" ON notifications;
+
 -- ユーザーは自分の通知のみ閲覧可能
 CREATE POLICY "Users can view their own notifications"
   ON notifications
