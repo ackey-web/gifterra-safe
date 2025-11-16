@@ -818,12 +818,12 @@ function WalletConnectionInfo({ isMobile, onChainIdChange }: { isMobile: boolean
   return (
     <div style={{
       display: 'flex',
-      flexDirection: isMobile ? 'column' : 'row',
-      gap: isMobile ? 8 : 12,
-      marginBottom: isMobile ? 16 : 20,
+      flexDirection: isMobile ? 'row' : 'row',
+      gap: isMobile ? 6 : 12,
+      marginBottom: isMobile ? 12 : 20,
     }}>
       {/* ウォレット接続ボタン */}
-      <div style={{ flex: isMobile ? 'none' : 1 }}>
+      <div style={{ flex: 1 }}>
         {isLoadingWallet ? (
           // ウォレット読み込み中表示
           <div style={{
@@ -861,29 +861,25 @@ function WalletConnectionInfo({ isMobile, onChainIdChange }: { isMobile: boolean
           // ウォレットアドレス表示
           <div style={{
             width: '100%',
-            height: isMobile ? 40 : 44,
+            height: isMobile ? 36 : 44,
             borderRadius: 8,
             background: 'rgba(255, 255, 255, 0.1)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            padding: '0 12px',
-            fontSize: isMobile ? 12 : 14,
+            padding: isMobile ? '0 8px' : '0 12px',
+            fontSize: isMobile ? 11 : 14,
             fontWeight: 600,
             color: '#ffffff',
             border: '1px solid rgba(255, 255, 255, 0.2)',
           }}>
-            <span style={{ marginRight: 8 }}>
+            <span style={{ marginRight: isMobile ? 4 : 8, fontSize: isMobile ? 14 : 16 }}>
               {walletType === 'Privy Wallet' ? '🔐' : '👛'}
             </span>
-            {`${displayAddress.slice(0, 6)}...${displayAddress.slice(-4)}`}
-            <span style={{
-              marginLeft: 8,
-              fontSize: 10,
-              opacity: 0.7,
-            }}>
-              ({walletType})
-            </span>
+            {isMobile
+              ? `${displayAddress.slice(0, 4)}...${displayAddress.slice(-3)}`
+              : `${displayAddress.slice(0, 6)}...${displayAddress.slice(-4)}`
+            }
           </div>
         ) : authenticated && user && !user.wallet ? (
           // Privy認証済みだがウォレット未生成の場合：ウォレット作成ボタン
@@ -947,28 +943,30 @@ function WalletConnectionInfo({ isMobile, onChainIdChange }: { isMobile: boolean
 
       {/* チェーン表示 */}
       <div style={{
-        flex: isMobile ? 'none' : 1,
-        padding: isMobile ? '10px 12px' : '12px 16px',
+        flex: isMobile ? '0 0 auto' : 1,
+        padding: isMobile ? '8px 10px' : '12px 16px',
         background: 'rgba(255, 255, 255, 0.05)',
         border: '1px solid rgba(255, 255, 255, 0.1)',
         borderRadius: 8,
         display: 'flex',
         alignItems: 'center',
-        gap: 8,
+        gap: isMobile ? 6 : 8,
+        minWidth: isMobile ? 'auto' : undefined,
       }}>
         <div style={{
-          width: 8,
-          height: 8,
+          width: isMobile ? 6 : 8,
+          height: isMobile ? 6 : 8,
           borderRadius: '50%',
           // Privyウォレットまたは正しいチェーン(137: Polygon Mainnet)の場合は緑
           background: (privyWalletAddress || displayChainId === 137) ? '#10b981' : displayChainId === 80002 ? '#f59e0b' : '#ef4444',
         }} />
         <span style={{
           color: '#e0e0e0',
-          fontSize: isMobile ? 12 : 14,
+          fontSize: isMobile ? 11 : 14,
           fontWeight: 500,
+          whiteSpace: 'nowrap',
         }}>
-          {getChainName(displayChainId)}
+          {isMobile ? (displayChainId === 137 ? 'Polygon' : displayChainId === 80002 ? 'Amoy' : `#${displayChainId}`) : getChainName(displayChainId)}
         </span>
       </div>
     </div>

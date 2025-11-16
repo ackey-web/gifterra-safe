@@ -254,8 +254,8 @@ export function MypageAssistant({ isMobile, walletAddress, displayName }: Mypage
   };
 
   return (
-    <div style={{ position: 'fixed', bottom: isMobile ? 16 : 24, right: isMobile ? 16 : 24, zIndex: 1000 }}>
-      {/* フローティングボタン */}
+    <div style={{ position: 'fixed', bottom: isMobile ? 80 : 24, right: isMobile ? 16 : 24, zIndex: 1000 }}>
+      {/* GIFTY フローティングボタン */}
       <button
         onClick={() => setIsOpen(!isOpen)}
         style={{
@@ -284,7 +284,7 @@ export function MypageAssistant({ isMobile, walletAddress, displayName }: Mypage
         <div
           style={{
             position: 'fixed',
-            bottom: isMobile ? 80 : 100,
+            bottom: isMobile ? 144 : 100,
             right: isMobile ? 16 : 24,
             width: isMobile ? 'calc(100vw - 32px)' : 380,
             maxHeight: isMobile ? 'calc(100vh - 120px)' : 600,
@@ -295,6 +295,7 @@ export function MypageAssistant({ isMobile, walletAddress, displayName }: Mypage
             flexDirection: 'column',
             overflow: 'hidden',
             border: '1px solid rgba(102, 126, 234, 0.3)',
+            zIndex: 10000,
           }}
         >
           {/* ヘッダー */}
