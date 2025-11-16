@@ -946,12 +946,14 @@ function WalletConnectionInfo({ isMobile, onChainIdChange }: { isMobile: boolean
       {/* チェーン表示 */}
       <div style={{
         flex: isMobile ? '0 0 auto' : 1,
-        padding: isMobile ? '10px 12px' : '12px 16px',
+        height: isMobile ? 40 : 44,
+        padding: isMobile ? '0 12px' : '0 16px',
         background: 'rgba(255, 255, 255, 0.05)',
         border: '1px solid rgba(255, 255, 255, 0.1)',
         borderRadius: 8,
         display: 'flex',
         alignItems: 'center',
+        justifyContent: 'center',
         gap: isMobile ? 8 : 8,
         minWidth: isMobile ? 'auto' : undefined,
       }}>
