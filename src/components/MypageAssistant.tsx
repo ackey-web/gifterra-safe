@@ -256,10 +256,9 @@ export function MypageAssistant({ isMobile, walletAddress, displayName }: Mypage
   return (
     <div style={{
       position: 'fixed',
-      bottom: isMobile ? 20 : '50%',
+      bottom: isMobile ? 20 : 20,
       left: isMobile ? 20 : 'auto',
       right: isMobile ? 'auto' : 20,
-      transform: isMobile ? 'none' : 'translateY(50%)',
       zIndex: 10001,
     }}>
       {/* GIFTY フローティングボタン */}
