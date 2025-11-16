@@ -13,6 +13,8 @@ import { useFollow } from '../hooks/useFollow';
 import { useFollowLists } from '../hooks/useFollowLists';
 import { FollowListModal } from '../components/FollowListModal';
 import { TipModal } from '../components/TipModal';
+import { useRoleUsers } from '../hooks/useRoleUsers';
+import { RoleUsersModal } from '../components/RoleUsersModal';
 
 interface UserProfile {
   display_name: string;
@@ -38,6 +40,8 @@ export function ProfilePage() {
   const [showFollowListModal, setShowFollowListModal] = useState(false);
   const [followListTab, setFollowListTab] = useState<'followers' | 'following'>('followers');
   const [showTipModal, setShowTipModal] = useState(false);
+  const [showRoleUsersModal, setShowRoleUsersModal] = useState(false);
+  const [selectedRole, setSelectedRole] = useState<UserRole | null>(null);
   const { user } = usePrivy();
   const thirdwebAddress = useAddress(); // Thirdwebウォレット（MetaMaskなど）
 
@@ -77,6 +81,12 @@ export function ProfilePage() {
     isLoading: isFollowListsLoading,
     refetch: refetchFollowLists,
   } = useFollowLists(walletAddress, currentUserWalletAddress);
+
+  // ロール別ユーザーリストを取得
+  const {
+    users: roleUsers,
+    isLoading: isRoleUsersLoading,
+  } = useRoleUsers(selectedRole, showRoleUsersModal);
 
   // プロフィールデータ取得
   const fetchProfile = async () => {
@@ -518,6 +528,10 @@ export function ProfilePage() {
                         {profile.roles.map((role) => (
                           <span
                             key={role}
+                            onClick={() => {
+                              setSelectedRole(role);
+                              setShowRoleUsersModal(true);
+                            }}
                             style={{
                               display: 'inline-block',
                               padding: '6px 12px',
@@ -528,6 +542,14 @@ export function ProfilePage() {
                               fontSize: isMobile ? 11 : 12,
                               fontWeight: 600,
                               color: '#fff',
+                              cursor: 'pointer',
+                              transition: 'opacity 0.2s',
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.opacity = '0.8';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.opacity = '1';
                             }}
                           >
                             {ROLE_LABELS[role]}
@@ -820,6 +842,20 @@ export function ProfilePage() {
         recipientAddress={walletAddress}
         recipientName={profile?.display_name || `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`}
         onSendTip={handleSendTip}
+        isMobile={isMobile}
+      />
+
+      {/* ロール別ユーザーリストモーダル */}
+      <RoleUsersModal
+        isOpen={showRoleUsersModal}
+        onClose={() => {
+          setShowRoleUsersModal(false);
+          setSelectedRole(null);
+        }}
+        role={selectedRole}
+        roleLabel={selectedRole ? ROLE_LABELS[selectedRole] : ''}
+        users={roleUsers}
+        isLoading={isRoleUsersLoading}
         isMobile={isMobile}
       />
     </div>
