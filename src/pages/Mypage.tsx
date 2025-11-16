@@ -427,8 +427,11 @@ function Header({ viewMode, setViewMode, isMobile, tenantRank, showSettingsModal
   setShowUserSearchModal: (show: boolean) => void;
 }) {
   const disconnect = useDisconnect();
-  const { logout: privyLogout, authenticated } = usePrivy();
+  const { logout: privyLogout, authenticated, user } = usePrivy();
   const address = useAddress();
+
+  // 表示するアドレス（Privy優先、なければThirdweb）
+  const displayAddress = user?.wallet?.address || address;
 
   // テナント申請情報取得
   const { application } = useMyTenantApplication();
