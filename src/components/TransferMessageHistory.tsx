@@ -726,19 +726,16 @@ export function TransferMessageHistory({
                 <div
                   style={{
                     marginBottom: 20,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 12,
                   }}
                 >
                   <button
                     onClick={handleToggleReaction}
                     disabled={isReacting}
                     style={{
-                      display: 'flex',
+                      display: 'inline-flex',
                       alignItems: 'center',
-                      gap: 8,
-                      padding: isMobile ? '10px 16px' : '12px 20px',
+                      gap: 6,
+                      padding: isMobile ? '6px 12px' : '8px 14px',
                       background: reactions.some(
                         (r) => r.reactor_address.toLowerCase() === walletAddress?.toLowerCase()
                       )
@@ -749,13 +746,13 @@ export function TransferMessageHistory({
                       )
                         ? 'none'
                         : '1px solid rgba(239, 68, 68, 0.3)',
-                      borderRadius: 8,
+                      borderRadius: 20,
                       color: reactions.some(
                         (r) => r.reactor_address.toLowerCase() === walletAddress?.toLowerCase()
                       )
                         ? '#ffffff'
                         : '#fca5a5',
-                      fontSize: isMobile ? 16 : 18,
+                      fontSize: isMobile ? 14 : 15,
                       fontWeight: 600,
                       cursor: isReacting ? 'not-allowed' : 'pointer',
                       transition: 'all 0.2s',
@@ -770,23 +767,8 @@ export function TransferMessageHistory({
                       e.currentTarget.style.transform = 'scale(1)';
                     }}
                   >
-                    <span>❤️</span>
-                    <span style={{ fontSize: isMobile ? 14 : 15 }}>
-                      {reactions.length > 0 ? reactions.length : ''}
-                    </span>
+                    <span style={{ fontSize: isMobile ? 16 : 18 }}>❤️</span>
                   </button>
-
-                  {/* リアクション数の詳細 */}
-                  {reactions.length > 0 && (
-                    <div
-                      style={{
-                        fontSize: isMobile ? 12 : 13,
-                        color: 'rgba(255, 255, 255, 0.6)',
-                      }}
-                    >
-                      {reactions.length}人がリアクションしました
-                    </div>
-                  )}
                 </div>
 
                 {/* Polygonscanリンク */}
