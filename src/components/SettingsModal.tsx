@@ -477,7 +477,12 @@ export function SettingsModal({ onClose, isMobile, onLogout }: SettingsModalProp
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
-                onLogout();
+                // モーダルを先に閉じる
+                onClose();
+                // 少し遅延させてからログアウト処理を実行（モーダルのアニメーションを完了させる）
+                setTimeout(() => {
+                  onLogout();
+                }, 100);
               }}
               style={{
                 width: '100%',
