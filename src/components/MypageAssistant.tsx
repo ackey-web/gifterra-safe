@@ -233,7 +233,7 @@ export function MypageAssistant({ isMobile, walletAddress, displayName, userRole
       const initialMessage: AssistantMessage = {
         id: 'initial',
         role: 'assistant',
-        content: `${greeting}！\n\n私はGIFTERRAアシスタントのギフティです🤖\n使い方やエラーでお困りのことはありませんか？`,
+        content: `${greeting}！\n\n私はGIFTERRAアシスタントのギフティです\n使い方やエラーでお困りのことはありませんか？`,
         timestamp: new Date(),
         suggestions: [
           '🔌 ウォレット接続',
@@ -580,7 +580,9 @@ export function MypageAssistant({ isMobile, walletAddress, displayName, userRole
             {/* タイピング中 */}
             {isTyping && (
               <div style={{ display: 'flex', gap: 8 }}>
-                <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'linear-gradient(135deg, #667eea, #764ba2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>🤖</div>
+                <div style={{ width: 32, height: 32, borderRadius: '50%', overflow: 'hidden', flexShrink: 0 }}>
+                  <img src={giftyIcon} alt="Gifty" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                </div>
                 <div style={{ padding: 12, borderRadius: 16, background: 'rgba(102, 126, 234, 0.1)', border: '1px solid rgba(102, 126, 234, 0.3)', display: 'flex', gap: 4 }}>
                   <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#93c5fd', animation: 'pulse 1.4s infinite' }}></div>
                   <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#93c5fd', animation: 'pulse 1.4s infinite 0.2s' }}></div>

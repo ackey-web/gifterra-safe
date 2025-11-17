@@ -31,7 +31,7 @@ export function LoginSupportChat({ isMobile = false }: LoginSupportChatProps) {
         {
           id: '1',
           role: 'assistant',
-          content: 'こんにちは！\n\n私はGIFTERRAアシスタントのギフティです🤖\nログインでお困りのことはありませんか？\n\nよくある質問:\n\n1️⃣ ログインできない\n2️⃣ ブラウザが対応していない\n3️⃣ ウォレット接続エラー\n4️⃣ Google/SNSログインができない\n\n番号を入力するか、直接質問してください！',
+          content: 'こんにちは！\n\n私はGIFTERRAアシスタントのギフティです\nログインでお困りのことはありませんか？\n\nよくある質問:\n\n1️⃣ ログインできない\n2️⃣ ブラウザが対応していない\n3️⃣ ウォレット接続エラー\n4️⃣ Google/SNSログインができない\n\n番号を入力するか、直接質問してください！',
           timestamp: new Date(),
         },
       ]);
