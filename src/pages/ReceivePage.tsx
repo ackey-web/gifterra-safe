@@ -313,7 +313,7 @@ export function ReceivePage() {
             marginBottom: isMobile ? '5px' : '7px',
             fontSize: isMobile ? 11 : 13,
           }}>
-            ⚠️ 送金手順
+            💰 送金手順
           </div>
           <ol style={{
             margin: 0,
@@ -324,6 +324,8 @@ export function ReceivePage() {
           }}>
             <li>アドレスをタップしてコピー</li>
             <li>GIFTERRAを使って贈るをタップ</li>
+            <li style={{ listStyleType: 'none', textAlign: 'center', marginLeft: isMobile ? '-14px' : '-18px' }}>または</li>
+            <li>ウォレットを接続して贈るをタップ</li>
             <li>コピーしたアドレスを貼り付けて送金</li>
           </ol>
         </div>
