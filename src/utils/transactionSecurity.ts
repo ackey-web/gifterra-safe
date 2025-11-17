@@ -8,6 +8,9 @@ export interface TransactionCheckResult {
   reason?: string;
   requiresConfirmation?: boolean;
   isSuspicious?: boolean;
+  isFrozen?: boolean;
+  freezeReason?: string;
+  isHighAmount?: boolean;
   anomalyScore?: number;
   anomalyReasons?: string[];
 }
@@ -167,6 +170,8 @@ export async function performTransactionSecurityCheck(
   if (isFrozen) {
     return {
       allowed: false,
+      isFrozen: true,
+      freezeReason: 'このアカウントは凍結されています',
       reason: 'このアカウントは凍結されています',
     };
   }
@@ -185,7 +190,9 @@ export async function performTransactionSecurityCheck(
 
   return {
     allowed: true,
+    isFrozen: false,
     requiresConfirmation: isHighAmount || anomalyResult.requiresConfirmation,
+    isHighAmount,
     isSuspicious: anomalyResult.isSuspicious,
     anomalyScore: anomalyResult.anomalyScore,
     anomalyReasons: anomalyResult.anomalyReasons,
