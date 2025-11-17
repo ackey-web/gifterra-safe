@@ -4,6 +4,14 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 
+export interface MessageReaction {
+  id: string;
+  message_id: string;
+  reactor_address: string;
+  reaction_type: string;
+  created_at: string;
+}
+
 export interface TransferMessage {
   id: string;
   tenant_id: string;
@@ -22,6 +30,9 @@ export interface TransferMessage {
   expires_at: string;
   is_read: boolean;
   is_archived: boolean;
+  reactions?: MessageReaction[];
+  reaction_count?: number;
+  has_reacted?: boolean;
 }
 
 /**
@@ -281,5 +292,112 @@ export async function archiveMessage(messageId: string) {
 
   if (error) {
     throw error;
+  }
+}
+
+/**
+ * メッセージにリアクションを追加
+ */
+export async function addMessageReaction(params: {
+  messageId: string;
+  reactorAddress: string;
+  reactionType?: string;
+}) {
+  const { messageId, reactorAddress, reactionType = 'heart' } = params;
+
+  const { data, error } = await supabase
+    .from('message_reactions')
+    .insert({
+      message_id: messageId,
+      reactor_address: reactorAddress.toLowerCase(),
+      reaction_type: reactionType,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
+}
+
+/**
+ * メッセージからリアクションを削除
+ */
+export async function removeMessageReaction(params: {
+  messageId: string;
+  reactorAddress: string;
+  reactionType?: string;
+}) {
+  const { messageId, reactorAddress, reactionType = 'heart' } = params;
+
+  const { error } = await supabase
+    .from('message_reactions')
+    .delete()
+    .eq('message_id', messageId)
+    .eq('reactor_address', reactorAddress.toLowerCase())
+    .eq('reaction_type', reactionType);
+
+  if (error) {
+    throw error;
+  }
+}
+
+/**
+ * メッセージのリアクション一覧を取得
+ */
+export async function getMessageReactions(messageId: string): Promise<MessageReaction[]> {
+  const { data, error } = await supabase
+    .from('message_reactions')
+    .select('*')
+    .eq('message_id', messageId)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    throw error;
+  }
+
+  return data || [];
+}
+
+/**
+ * メッセージに対するリアクション通知を作成
+ */
+export async function createReactionNotification(params: {
+  messageId: string;
+  reactorAddress: string;
+  senderAddress: string;
+  reactionType?: string;
+}) {
+  const { messageId, reactorAddress, senderAddress, reactionType = 'heart' } = params;
+
+  // リアクションしたユーザーのプロフィールを取得
+  const { data: profileData } = await supabase
+    .from('user_profiles')
+    .select('display_name, avatar_url')
+    .eq('wallet_address', reactorAddress.toLowerCase())
+    .maybeSingle();
+
+  const reactorName = profileData?.display_name || '匿名ユーザー';
+  const reactionEmoji = reactionType === 'heart' ? '❤️' : '👍';
+
+  // 通知を作成
+  const { error } = await supabase
+    .from('notifications')
+    .insert({
+      user_address: senderAddress.toLowerCase(),
+      type: 'message_reaction',
+      title: `${reactionEmoji} リアクションがつきました`,
+      message: `${reactorName}さんがあなたのメッセージに${reactionEmoji}をつけました`,
+      from_address: reactorAddress.toLowerCase(),
+      metadata: {
+        message_id: messageId,
+        reaction_type: reactionType,
+      },
+    });
+
+  if (error) {
+    console.error('Failed to create reaction notification:', error);
   }
 }

@@ -3,7 +3,16 @@
 
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { useReceivedTransferMessages, markMessageAsRead, type TransferMessage } from '../hooks/useTransferMessages';
+import {
+  useReceivedTransferMessages,
+  markMessageAsRead,
+  addMessageReaction,
+  removeMessageReaction,
+  getMessageReactions,
+  createReactionNotification,
+  type TransferMessage,
+  type MessageReaction,
+} from '../hooks/useTransferMessages';
 
 interface TransferMessageHistoryProps {
   tenantId: string | undefined;
@@ -19,6 +28,8 @@ export function TransferMessageHistory({
   const { messages, isLoading, error } = useReceivedTransferMessages(tenantId, walletAddress);
   const [selectedMessage, setSelectedMessage] = useState<TransferMessage | null>(null);
   const [showProfileBio, setShowProfileBio] = useState(false);
+  const [reactions, setReactions] = useState<MessageReaction[]>([]);
+  const [isReacting, setIsReacting] = useState(false);
 
   // アドレスを短縮表示する関数
   const shortenAddress = (address: string): string => {
@@ -68,12 +79,74 @@ export function TransferMessageHistory({
         // エラー時は何もしない
       }
     }
+
+    // リアクションを取得
+    try {
+      const messageReactions = await getMessageReactions(message.id);
+      setReactions(messageReactions);
+    } catch (err) {
+      console.error('Failed to load reactions:', err);
+      setReactions([]);
+    }
   };
 
   // モーダルを閉じる
   const handleCloseModal = () => {
     setSelectedMessage(null);
     setShowProfileBio(false);
+    setReactions([]);
+  };
+
+  // リアクションをトグル
+  const handleToggleReaction = async () => {
+    if (!selectedMessage || !walletAddress || isReacting) return;
+
+    setIsReacting(true);
+
+    try {
+      // 既にリアクションしているかチェック
+      const hasReacted = reactions.some(
+        (r) => r.reactor_address.toLowerCase() === walletAddress.toLowerCase()
+      );
+
+      if (hasReacted) {
+        // リアクションを削除
+        await removeMessageReaction({
+          messageId: selectedMessage.id,
+          reactorAddress: walletAddress,
+        });
+
+        // ローカル状態を更新
+        setReactions((prev) =>
+          prev.filter((r) => r.reactor_address.toLowerCase() !== walletAddress.toLowerCase())
+        );
+      } else {
+        // リアクションを追加
+        const newReaction = await addMessageReaction({
+          messageId: selectedMessage.id,
+          reactorAddress: walletAddress,
+        });
+
+        // ローカル状態を更新
+        setReactions((prev) => [newReaction, ...prev]);
+
+        // 送信者に通知を送る
+        try {
+          await createReactionNotification({
+            messageId: selectedMessage.id,
+            reactorAddress: walletAddress,
+            senderAddress: selectedMessage.from_address,
+          });
+        } catch (notifError) {
+          console.error('Failed to create notification:', notifError);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to toggle reaction:', err);
+      alert('リアクションの処理に失敗しました');
+    } finally {
+      setIsReacting(false);
+    }
   };
 
   // ローディング状態
@@ -647,6 +720,73 @@ export function TransferMessageHistory({
                   >
                     {selectedMessage.message}
                   </div>
+                </div>
+
+                {/* リアクションボタン */}
+                <div
+                  style={{
+                    marginBottom: 20,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 12,
+                  }}
+                >
+                  <button
+                    onClick={handleToggleReaction}
+                    disabled={isReacting}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                      padding: isMobile ? '10px 16px' : '12px 20px',
+                      background: reactions.some(
+                        (r) => r.reactor_address.toLowerCase() === walletAddress?.toLowerCase()
+                      )
+                        ? 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)'
+                        : 'rgba(239, 68, 68, 0.1)',
+                      border: reactions.some(
+                        (r) => r.reactor_address.toLowerCase() === walletAddress?.toLowerCase()
+                      )
+                        ? 'none'
+                        : '1px solid rgba(239, 68, 68, 0.3)',
+                      borderRadius: 8,
+                      color: reactions.some(
+                        (r) => r.reactor_address.toLowerCase() === walletAddress?.toLowerCase()
+                      )
+                        ? '#ffffff'
+                        : '#fca5a5',
+                      fontSize: isMobile ? 16 : 18,
+                      fontWeight: 600,
+                      cursor: isReacting ? 'not-allowed' : 'pointer',
+                      transition: 'all 0.2s',
+                      opacity: isReacting ? 0.6 : 1,
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!isReacting) {
+                        e.currentTarget.style.transform = 'scale(1.05)';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'scale(1)';
+                    }}
+                  >
+                    <span>❤️</span>
+                    <span style={{ fontSize: isMobile ? 14 : 15 }}>
+                      {reactions.length > 0 ? reactions.length : ''}
+                    </span>
+                  </button>
+
+                  {/* リアクション数の詳細 */}
+                  {reactions.length > 0 && (
+                    <div
+                      style={{
+                        fontSize: isMobile ? 12 : 13,
+                        color: 'rgba(255, 255, 255, 0.6)',
+                      }}
+                    >
+                      {reactions.length}人がリアクションしました
+                    </div>
+                  )}
                 </div>
 
                 {/* Polygonscanリンク */}
