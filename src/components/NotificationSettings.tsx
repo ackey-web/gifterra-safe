@@ -13,6 +13,7 @@ interface NotificationTypes {
   jpyc_received: boolean;
   rank_up: boolean;
   gift_received: boolean;
+  followed: boolean;
 }
 
 interface UserNotificationSettings {
@@ -64,6 +65,7 @@ export const NotificationSettings: React.FC<NotificationSettingsProps> = ({
             jpyc_received: true,
             rank_up: true,
             gift_received: true,
+            followed: true,
           },
         });
       }
@@ -273,105 +275,134 @@ export const NotificationSettings: React.FC<NotificationSettingsProps> = ({
         )}
       </div>
 
-      {/* 通知タイプ別設定 */}
-      {settings.email_notifications_enabled && (
-        <div style={{ marginBottom: 24 }}>
-          <div
-            style={{
-              fontSize: 14,
-              fontWeight: 600,
-              color: '#EAF2FF',
-              marginBottom: 12,
-            }}
-          >
-            通知タイプ
-          </div>
-
-          {/* JPYC受信 */}
-          <label
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              padding: '10px 0',
-              cursor: 'pointer',
-            }}
-          >
-            <input
-              type="checkbox"
-              checked={settings.notification_types.jpyc_received}
-              onChange={() => toggleNotificationType('jpyc_received')}
-              style={{
-                width: 18,
-                height: 18,
-                marginRight: 10,
-                cursor: 'pointer',
-              }}
-            />
-            <div>
-              <div style={{ fontSize: 14, color: '#EAF2FF' }}>JPYC受信</div>
-              <div style={{ fontSize: 12, color: 'rgba(255, 255, 255, 0.6)' }}>
-                JPYCを受け取ったときに通知
-              </div>
-            </div>
-          </label>
-
-          {/* ランクアップ */}
-          <label
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              padding: '10px 0',
-              cursor: 'pointer',
-            }}
-          >
-            <input
-              type="checkbox"
-              checked={settings.notification_types.rank_up}
-              onChange={() => toggleNotificationType('rank_up')}
-              style={{
-                width: 18,
-                height: 18,
-                marginRight: 10,
-                cursor: 'pointer',
-              }}
-            />
-            <div>
-              <div style={{ fontSize: 14, color: '#EAF2FF' }}>ランクアップ</div>
-              <div style={{ fontSize: 12, color: 'rgba(255, 255, 255, 0.6)' }}>
-                ランクが上がったときに通知
-              </div>
-            </div>
-          </label>
-
-          {/* ギフト受信 */}
-          <label
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              padding: '10px 0',
-              cursor: 'pointer',
-            }}
-          >
-            <input
-              type="checkbox"
-              checked={settings.notification_types.gift_received}
-              onChange={() => toggleNotificationType('gift_received')}
-              style={{
-                width: 18,
-                height: 18,
-                marginRight: 10,
-                cursor: 'pointer',
-              }}
-            />
-            <div>
-              <div style={{ fontSize: 14, color: '#EAF2FF' }}>ギフト受信</div>
-              <div style={{ fontSize: 12, color: 'rgba(255, 255, 255, 0.6)' }}>
-                ギフトを受け取ったときに通知
-              </div>
-            </div>
-          </label>
+      {/* 通知タイプ別設定（メール通知の有効無効に関わらず表示） */}
+      <div style={{ marginBottom: 24 }}>
+        <div
+          style={{
+            fontSize: 14,
+            fontWeight: 600,
+            color: '#EAF2FF',
+            marginBottom: 8,
+          }}
+        >
+          通知内容の設定
         </div>
-      )}
+        <div style={{ fontSize: 12, color: 'rgba(255, 255, 255, 0.6)', marginBottom: 16 }}>
+          受け取る通知の種類を選択できます
+        </div>
+
+        {/* JPYC受信 */}
+        <label
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            padding: '10px 0',
+            cursor: 'pointer',
+          }}
+        >
+          <input
+            type="checkbox"
+            checked={settings.notification_types.jpyc_received}
+            onChange={() => toggleNotificationType('jpyc_received')}
+            style={{
+              width: 18,
+              height: 18,
+              marginRight: 10,
+              cursor: 'pointer',
+            }}
+          />
+          <div>
+            <div style={{ fontSize: 14, color: '#EAF2FF' }}>💴 JPYC受信</div>
+            <div style={{ fontSize: 12, color: 'rgba(255, 255, 255, 0.6)' }}>
+              JPYCを受け取ったときに通知
+            </div>
+          </div>
+        </label>
+
+        {/* フォローされた */}
+        <label
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            padding: '10px 0',
+            cursor: 'pointer',
+          }}
+        >
+          <input
+            type="checkbox"
+            checked={settings.notification_types.followed}
+            onChange={() => toggleNotificationType('followed')}
+            style={{
+              width: 18,
+              height: 18,
+              marginRight: 10,
+              cursor: 'pointer',
+            }}
+          />
+          <div>
+            <div style={{ fontSize: 14, color: '#EAF2FF' }}>👥 フォローされた</div>
+            <div style={{ fontSize: 12, color: 'rgba(255, 255, 255, 0.6)' }}>
+              他のユーザーにフォローされたときに通知
+            </div>
+          </div>
+        </label>
+
+        {/* ランクアップ */}
+        <label
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            padding: '10px 0',
+            cursor: 'pointer',
+          }}
+        >
+          <input
+            type="checkbox"
+            checked={settings.notification_types.rank_up}
+            onChange={() => toggleNotificationType('rank_up')}
+            style={{
+              width: 18,
+              height: 18,
+              marginRight: 10,
+              cursor: 'pointer',
+            }}
+          />
+          <div>
+            <div style={{ fontSize: 14, color: '#EAF2FF' }}>🎖️ ランクアップ</div>
+            <div style={{ fontSize: 12, color: 'rgba(255, 255, 255, 0.6)' }}>
+              ランクが上がったときに通知
+            </div>
+          </div>
+        </label>
+
+        {/* ギフト受信 */}
+        <label
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            padding: '10px 0',
+            cursor: 'pointer',
+          }}
+        >
+          <input
+            type="checkbox"
+            checked={settings.notification_types.gift_received}
+            onChange={() => toggleNotificationType('gift_received')}
+            style={{
+              width: 18,
+              height: 18,
+              marginRight: 10,
+              cursor: 'pointer',
+            }}
+          />
+          <div>
+            <div style={{ fontSize: 14, color: '#EAF2FF' }}>🎁 ギフト受信</div>
+            <div style={{ fontSize: 12, color: 'rgba(255, 255, 255, 0.6)' }}>
+              ギフトを受け取ったときに通知
+            </div>
+          </div>
+        </label>
+      </div>
 
       {/* 保存ボタン */}
       <button
