@@ -323,9 +323,17 @@ export function ReceivePage() {
             lineHeight: isMobile ? 1.4 : 1.6,
           }}>
             <li>アドレスをタップしてコピー</li>
-            <li>GIFTERRAを使って贈るをタップ</li>
-            <li style={{ listStyleType: 'none', textAlign: 'center', marginLeft: isMobile ? '-14px' : '-18px' }}>または</li>
-            <li>ウォレットを接続して贈るをタップ</li>
+            <li>
+              GIFTERRAを使って贈るをタップ
+              <div style={{
+                textAlign: 'center',
+                margin: isMobile ? '4px 0' : '6px 0',
+                fontWeight: 600,
+              }}>
+                または
+              </div>
+              ウォレットを接続して贈るをタップ
+            </li>
             <li>コピーしたアドレスを貼り付けて送金</li>
           </ol>
         </div>
