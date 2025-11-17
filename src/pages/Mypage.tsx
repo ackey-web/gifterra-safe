@@ -24,6 +24,7 @@ import { NotificationBell } from '../components/NotificationBell';
 import { X402PaymentSection } from '../components/X402PaymentSection';
 import { UserSearchModal } from '../components/UserSearchModal';
 import { MypageAssistant } from '../components/MypageAssistant';
+import type { UserRole } from '../types/profile';
 import flowImage from '../assets/flow.png';
 import studioImage from '../assets/studio.png';
 import studioProImage from '../assets/studio-pro.png';
@@ -139,6 +140,7 @@ export function MypagePage() {
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showUserSearchModal, setShowUserSearchModal] = useState(false);
   const [actualChainId, setActualChainId] = useState<number | undefined>(undefined);
+  const [userRoles, setUserRoles] = useState<UserRole[]>([]); // 新規ユーザー通知用のロール情報
   const { user, authenticated } = usePrivy();
   const thirdwebAddress = useAddress(); // Thirdwebウォレット
 
@@ -200,6 +202,34 @@ export function MypagePage() {
     // };
     // fetchTenantRank();
   }, []);
+
+  // ユーザーのロール情報を取得（新規ユーザー通知用）
+  useEffect(() => {
+    const fetchUserRoles = async () => {
+      if (!displayAddress) return;
+
+      try {
+        const { data, error } = await supabase
+          .from('user_profiles')
+          .select('roles')
+          .eq('wallet_address', displayAddress.toLowerCase())
+          .single();
+
+        if (error) {
+          console.error('[Mypage] Failed to fetch user roles:', error);
+          return;
+        }
+
+        if (data?.roles) {
+          setUserRoles(data.roles as UserRole[]);
+        }
+      } catch (error) {
+        console.error('[Mypage] Error fetching user roles:', error);
+      }
+    };
+
+    fetchUserRoles();
+  }, [displayAddress]);
 
   // ログイン直後にウォレット未作成の場合、セットアップモーダルを表示
   useEffect(() => {
@@ -415,6 +445,7 @@ export function MypagePage() {
         isMobile={isMobile}
         walletAddress={displayAddress}
         displayName={undefined}  // TODO: プロフィールから取得
+        userRoles={userRoles}
       />
     </div>
   );

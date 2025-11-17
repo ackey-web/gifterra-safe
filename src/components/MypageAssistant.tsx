@@ -5,6 +5,10 @@ import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import giftyIcon from '../../public/GIFTY.icon.png';
 import { callOpenAI, isAIAvailable, isOnline } from '../utils/openai';
+import { useNewUserNotifications } from '../hooks/useNewUserNotifications';
+import { getNotificationSettings } from '../utils/notificationSettings';
+import type { UserRole } from '../types/profile';
+import { ROLE_LABELS } from '../types/profile';
 
 // ========================================
 // 型定義
@@ -22,6 +26,7 @@ interface MypageAssistantProps {
   isMobile: boolean;
   walletAddress?: string;
   displayName?: string;
+  userRoles?: UserRole[]; // 新規ユーザー通知用
 }
 
 // ========================================
@@ -192,12 +197,34 @@ function getDefaultResponse(): AssistantMessage {
 // メインコンポーネント
 // ========================================
 
-export function MypageAssistant({ isMobile, walletAddress, displayName }: MypageAssistantProps) {
+export function MypageAssistant({ isMobile, walletAddress, displayName, userRoles }: MypageAssistantProps) {
   const [messages, setMessages] = useState<AssistantMessage[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // 新規ユーザー通知フック
+  const notificationSettings = getNotificationSettings();
+  useNewUserNotifications({
+    myRoles: userRoles,
+    enabled: notificationSettings.newUserWithSameRole && isOpen,
+    onNewUser: (notification) => {
+      const roleNames = notification.commonRoles.map(r => ROLE_LABELS[r]).join('、');
+
+      const notificationMessage: AssistantMessage = {
+        id: notification.id,
+        role: 'assistant',
+        content: `🎉 新しい${roleNames}の仲間が登録しました！\n\n` +
+                 `表示名: ${notification.displayName}\n` +
+                 `共通ロール: ${roleNames}\n\n` +
+                 `同じ活動をしている仲間が増えました！\nプロフィールを見に行ってフォローしてみませんか？`,
+        timestamp: notification.timestamp,
+      };
+
+      setMessages(prev => [...prev, notificationMessage]);
+    },
+  });
 
   // 初回メッセージ
   useEffect(() => {
