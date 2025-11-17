@@ -23,6 +23,42 @@ interface UserNotificationSettings {
   notification_types: NotificationTypes;
 }
 
+// トグルボタンコンポーネント
+const ToggleButton: React.FC<{
+  enabled: boolean;
+  onClick: () => void;
+}> = ({ enabled, onClick }) => (
+  <button
+    onClick={onClick}
+    style={{
+      position: 'relative',
+      width: 50,
+      height: 28,
+      borderRadius: 14,
+      border: 'none',
+      background: enabled
+        ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+        : '#cbd5e0',
+      cursor: 'pointer',
+      transition: 'background 0.3s',
+    }}
+  >
+    <div
+      style={{
+        position: 'absolute',
+        top: 2,
+        left: enabled ? 24 : 2,
+        width: 24,
+        height: 24,
+        borderRadius: '50%',
+        background: '#ffffff',
+        transition: 'left 0.3s',
+        boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)',
+      }}
+    />
+  </button>
+);
+
 export const NotificationSettings: React.FC<NotificationSettingsProps> = ({
   userAddress,
   isMobile = false,
@@ -45,10 +81,11 @@ export const NotificationSettings: React.FC<NotificationSettingsProps> = ({
         .from('user_notification_settings')
         .select('*')
         .eq('user_address', userAddress.toLowerCase())
-        .single();
+        .maybeSingle();
 
       if (error && error.code !== 'PGRST116') {
         // PGRST116 = レコードが見つからない
+        console.error('Load settings error:', error);
         throw error;
       }
 
@@ -57,7 +94,7 @@ export const NotificationSettings: React.FC<NotificationSettingsProps> = ({
         setEmailInput(data.email_address || '');
       } else {
         // 初期設定
-        setSettings({
+        const initialSettings: UserNotificationSettings = {
           user_address: userAddress.toLowerCase(),
           email_notifications_enabled: false,
           email_address: null,
@@ -67,7 +104,8 @@ export const NotificationSettings: React.FC<NotificationSettingsProps> = ({
             gift_received: true,
             followed: true,
           },
-        });
+        };
+        setSettings(initialSettings);
       }
     } catch (error) {
       console.error('Failed to load notification settings:', error);
@@ -100,16 +138,25 @@ export const NotificationSettings: React.FC<NotificationSettingsProps> = ({
     try {
       setSaving(true);
 
-      const updatedSettings = {
-        ...settings,
+      const updatedSettings: UserNotificationSettings = {
+        user_address: userAddress.toLowerCase(),
+        email_notifications_enabled: settings.email_notifications_enabled,
         email_address: emailInput.trim() || null,
+        notification_types: settings.notification_types,
       };
+
+      console.log('Saving settings:', updatedSettings);
 
       const { error } = await supabase
         .from('user_notification_settings')
-        .upsert(updatedSettings);
+        .upsert(updatedSettings, {
+          onConflict: 'user_address'
+        });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Save error:', error);
+        throw error;
+      }
 
       setSettings(updatedSettings);
       showMessage('success', '設定を保存しました');
@@ -121,9 +168,9 @@ export const NotificationSettings: React.FC<NotificationSettingsProps> = ({
     }
   };
 
-  const toggleEmailNotifications = (enabled: boolean) => {
+  const toggleEmailNotifications = () => {
     if (!settings) return;
-    setSettings({ ...settings, email_notifications_enabled: enabled });
+    setSettings({ ...settings, email_notifications_enabled: !settings.email_notifications_enabled });
   };
 
   const toggleNotificationType = (type: keyof NotificationTypes) => {
@@ -139,7 +186,7 @@ export const NotificationSettings: React.FC<NotificationSettingsProps> = ({
 
   if (loading) {
     return (
-      <div style={{ textAlign: 'center', padding: '40px 20px', color: '#666' }}>
+      <div style={{ textAlign: 'center', padding: '40px 20px', color: '#EAF2FF' }}>
         読み込み中...
       </div>
     );
@@ -158,7 +205,6 @@ export const NotificationSettings: React.FC<NotificationSettingsProps> = ({
         border: '1px solid rgba(255, 255, 255, 0.1)',
       }}
     >
-
       {/* メッセージ表示 */}
       {message && (
         <div
@@ -176,69 +222,154 @@ export const NotificationSettings: React.FC<NotificationSettingsProps> = ({
         </div>
       )}
 
-      {/* メール通知 ON/OFF */}
-      <div
-        style={{
-          marginBottom: 24,
-          paddingBottom: 20,
-          borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
-        }}
-      >
+      {/* 通知設定一覧 */}
+      <div style={{ marginBottom: 24 }}>
+        <div
+          style={{
+            fontSize: 14,
+            fontWeight: 600,
+            color: '#EAF2FF',
+            marginBottom: 16,
+          }}
+        >
+          通知設定
+        </div>
+
+        {/* JPYC受信 */}
         <div
           style={{
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
-            marginBottom: 12,
+            padding: '12px 0',
+            borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
           }}
         >
           <div>
-            <div style={{ fontWeight: 600, color: '#EAF2FF', marginBottom: 4 }}>
-              メール通知
+            <div style={{ fontSize: 14, color: '#EAF2FF', marginBottom: 4 }}>
+              💴 JPYC受信
             </div>
-            <div style={{ fontSize: 13, color: 'rgba(255, 255, 255, 0.6)' }}>
-              通知をメールで受け取る
+            <div style={{ fontSize: 12, color: 'rgba(255, 255, 255, 0.6)' }}>
+              JPYCを受け取ったときに通知
             </div>
           </div>
-          <button
-            onClick={() => toggleEmailNotifications(!settings.email_notifications_enabled)}
-            style={{
-              position: 'relative',
-              width: 50,
-              height: 28,
-              borderRadius: 14,
-              border: 'none',
-              background: settings.email_notifications_enabled
-                ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
-                : '#cbd5e0',
-              cursor: 'pointer',
-              transition: 'background 0.3s',
-            }}
-          >
-            <div
-              style={{
-                position: 'absolute',
-                top: 2,
-                left: settings.email_notifications_enabled ? 24 : 2,
-                width: 24,
-                height: 24,
-                borderRadius: '50%',
-                background: '#ffffff',
-                transition: 'left 0.3s',
-                boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)',
-              }}
-            />
-          </button>
+          <ToggleButton
+            enabled={settings.notification_types.jpyc_received}
+            onClick={() => toggleNotificationType('jpyc_received')}
+          />
         </div>
 
-        {/* メールアドレス入力 */}
+        {/* フォローされた */}
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            padding: '12px 0',
+            borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+          }}
+        >
+          <div>
+            <div style={{ fontSize: 14, color: '#EAF2FF', marginBottom: 4 }}>
+              👥 フォローされた
+            </div>
+            <div style={{ fontSize: 12, color: 'rgba(255, 255, 255, 0.6)' }}>
+              他のユーザーにフォローされたときに通知
+            </div>
+          </div>
+          <ToggleButton
+            enabled={settings.notification_types.followed}
+            onClick={() => toggleNotificationType('followed')}
+          />
+        </div>
+
+        {/* ランクアップ */}
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            padding: '12px 0',
+            borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+          }}
+        >
+          <div>
+            <div style={{ fontSize: 14, color: '#EAF2FF', marginBottom: 4 }}>
+              🎖️ ランクアップ
+            </div>
+            <div style={{ fontSize: 12, color: 'rgba(255, 255, 255, 0.6)' }}>
+              ランクが上がったときに通知
+            </div>
+          </div>
+          <ToggleButton
+            enabled={settings.notification_types.rank_up}
+            onClick={() => toggleNotificationType('rank_up')}
+          />
+        </div>
+
+        {/* ギフト受信 */}
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            padding: '12px 0',
+            borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+          }}
+        >
+          <div>
+            <div style={{ fontSize: 14, color: '#EAF2FF', marginBottom: 4 }}>
+              🎁 ギフト受信
+            </div>
+            <div style={{ fontSize: 12, color: 'rgba(255, 255, 255, 0.6)' }}>
+              ギフトを受け取ったときに通知
+            </div>
+          </div>
+          <ToggleButton
+            enabled={settings.notification_types.gift_received}
+            onClick={() => toggleNotificationType('gift_received')}
+          />
+        </div>
+
+        {/* メール通知 */}
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            padding: '12px 0',
+          }}
+        >
+          <div>
+            <div style={{ fontSize: 14, color: '#EAF2FF', marginBottom: 4 }}>
+              📧 通知をメールで受け取る
+            </div>
+            <div style={{ fontSize: 12, color: 'rgba(255, 255, 255, 0.6)' }}>
+              メールで通知を受信する
+            </div>
+          </div>
+          <ToggleButton
+            enabled={settings.email_notifications_enabled}
+            onClick={toggleEmailNotifications}
+          />
+        </div>
+
+        {/* メールアドレス入力（展開式） */}
         {settings.email_notifications_enabled && (
-          <div style={{ marginTop: 16 }}>
+          <div
+            style={{
+              marginTop: 12,
+              padding: '16px',
+              background: 'rgba(255, 255, 255, 0.05)',
+              borderRadius: 8,
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+            }}
+          >
             <label
               htmlFor="email-input"
               style={{
                 display: 'block',
-                fontSize: 14,
+                fontSize: 13,
                 fontWeight: 600,
                 color: '#EAF2FF',
                 marginBottom: 8,
@@ -273,135 +404,6 @@ export const NotificationSettings: React.FC<NotificationSettingsProps> = ({
             />
           </div>
         )}
-      </div>
-
-      {/* 通知タイプ別設定（メール通知の有効無効に関わらず表示） */}
-      <div style={{ marginBottom: 24 }}>
-        <div
-          style={{
-            fontSize: 14,
-            fontWeight: 600,
-            color: '#EAF2FF',
-            marginBottom: 8,
-          }}
-        >
-          通知内容の設定
-        </div>
-        <div style={{ fontSize: 12, color: 'rgba(255, 255, 255, 0.6)', marginBottom: 16 }}>
-          受け取る通知の種類を選択できます
-        </div>
-
-        {/* JPYC受信 */}
-        <label
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            padding: '10px 0',
-            cursor: 'pointer',
-          }}
-        >
-          <input
-            type="checkbox"
-            checked={settings.notification_types.jpyc_received}
-            onChange={() => toggleNotificationType('jpyc_received')}
-            style={{
-              width: 18,
-              height: 18,
-              marginRight: 10,
-              cursor: 'pointer',
-            }}
-          />
-          <div>
-            <div style={{ fontSize: 14, color: '#EAF2FF' }}>💴 JPYC受信</div>
-            <div style={{ fontSize: 12, color: 'rgba(255, 255, 255, 0.6)' }}>
-              JPYCを受け取ったときに通知
-            </div>
-          </div>
-        </label>
-
-        {/* フォローされた */}
-        <label
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            padding: '10px 0',
-            cursor: 'pointer',
-          }}
-        >
-          <input
-            type="checkbox"
-            checked={settings.notification_types.followed}
-            onChange={() => toggleNotificationType('followed')}
-            style={{
-              width: 18,
-              height: 18,
-              marginRight: 10,
-              cursor: 'pointer',
-            }}
-          />
-          <div>
-            <div style={{ fontSize: 14, color: '#EAF2FF' }}>👥 フォローされた</div>
-            <div style={{ fontSize: 12, color: 'rgba(255, 255, 255, 0.6)' }}>
-              他のユーザーにフォローされたときに通知
-            </div>
-          </div>
-        </label>
-
-        {/* ランクアップ */}
-        <label
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            padding: '10px 0',
-            cursor: 'pointer',
-          }}
-        >
-          <input
-            type="checkbox"
-            checked={settings.notification_types.rank_up}
-            onChange={() => toggleNotificationType('rank_up')}
-            style={{
-              width: 18,
-              height: 18,
-              marginRight: 10,
-              cursor: 'pointer',
-            }}
-          />
-          <div>
-            <div style={{ fontSize: 14, color: '#EAF2FF' }}>🎖️ ランクアップ</div>
-            <div style={{ fontSize: 12, color: 'rgba(255, 255, 255, 0.6)' }}>
-              ランクが上がったときに通知
-            </div>
-          </div>
-        </label>
-
-        {/* ギフト受信 */}
-        <label
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            padding: '10px 0',
-            cursor: 'pointer',
-          }}
-        >
-          <input
-            type="checkbox"
-            checked={settings.notification_types.gift_received}
-            onChange={() => toggleNotificationType('gift_received')}
-            style={{
-              width: 18,
-              height: 18,
-              marginRight: 10,
-              cursor: 'pointer',
-            }}
-          />
-          <div>
-            <div style={{ fontSize: 14, color: '#EAF2FF' }}>🎁 ギフト受信</div>
-            <div style={{ fontSize: 12, color: 'rgba(255, 255, 255, 0.6)' }}>
-              ギフトを受け取ったときに通知
-            </div>
-          </div>
-        </label>
       </div>
 
       {/* 保存ボタン */}
