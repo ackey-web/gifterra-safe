@@ -314,7 +314,7 @@ function Header({ viewMode, setViewMode, isMobile, tenantRank }: {
   const showToggle = tenantRank === 'R3';
 
   const handleLogout = async () => {
-    if (window.confirm('ログアウトしますか？')) {
+    try {
       // Privy認証の場合はPrivyからもログアウト
       if (authenticated) {
         await privyLogout();
@@ -324,6 +324,10 @@ function Header({ viewMode, setViewMode, isMobile, tenantRank }: {
       // ローカルストレージをクリア
       localStorage.removeItem('gifterra_auth');
       // ログインページにリダイレクト（replaceを使用してブラウザ履歴を置き換え）
+      window.location.replace('/login');
+    } catch (error) {
+      console.error('Logout error:', error);
+      // エラーでもログインページにリダイレクト
       window.location.replace('/login');
     }
   };
