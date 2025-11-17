@@ -4,7 +4,8 @@
 import { useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase, uploadAvatarImage, deleteAvatarImage, uploadCoverImage, deleteCoverImage } from '../lib/supabase';
-import { UserRole, ROLE_LABELS, CustomLink } from '../types/profile';
+import { ROLE_LABELS } from '../types/profile';
+import type { UserRole, CustomLink } from '../types/profile';
 
 interface ProfileEditModalProps {
   onClose: () => void;

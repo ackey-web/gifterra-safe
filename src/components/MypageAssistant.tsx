@@ -4,6 +4,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import giftyIcon from '../../public/GIFTY.icon.png';
+import { callOpenAI, isAIAvailable, isOnline } from '../utils/openai';
 
 // ========================================
 // 型定義
@@ -223,8 +224,8 @@ export function MypageAssistant({ isMobile, walletAddress, displayName }: Mypage
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // メッセージ送信
-  const handleSend = () => {
+  // メッセージ送信（ハイブリッドFAQ+AI）
+  const handleSend = async () => {
     if (!inputValue.trim() || isTyping) return;
 
     // ユーザーメッセージを追加
@@ -235,16 +236,80 @@ export function MypageAssistant({ isMobile, walletAddress, displayName }: Mypage
       timestamp: new Date(),
     };
 
+    const userInput = inputValue.trim();
     setMessages(prev => [...prev, userMessage]);
     setInputValue('');
     setIsTyping(true);
 
-    // AIレスポンスを生成（遅延でリアル感）
-    setTimeout(() => {
-      const response = analyzeIntent(inputValue) || getDefaultResponse();
-      setMessages(prev => [...prev, response]);
-      setIsTyping(false);
-    }, 800);
+    // 1. まずFAQで回答を探す（高速・無料）
+    const faqResponse = analyzeIntent(userInput);
+
+    if (faqResponse) {
+      // FAQで回答が見つかった場合
+      setTimeout(() => {
+        setMessages(prev => [...prev, faqResponse]);
+        setIsTyping(false);
+      }, 800);
+      return;
+    }
+
+    // 2. FAQに無い質問 → AI使用（オンラインの場合のみ）
+    if (isAIAvailable()) {
+      try {
+        const aiResult = await callOpenAI({
+          userMessage: userInput,
+          context: 'マイページでのユーザーサポート',
+          walletAddress,
+          displayName,
+        });
+
+        if (aiResult.success && aiResult.content) {
+          // AI回答を表示
+          const aiMessage: AssistantMessage = {
+            id: `assistant-${Date.now()}`,
+            role: 'assistant',
+            content: aiResult.content,
+            timestamp: new Date(),
+          };
+          setMessages(prev => [...prev, aiMessage]);
+          setIsTyping(false);
+        } else {
+          // AIエラー時はデフォルト応答
+          const errorMessage: AssistantMessage = {
+            id: `assistant-${Date.now()}`,
+            role: 'assistant',
+            content: `申し訳ありません。AIが一時的に利用できません。\n\n${aiResult.error || 'もう一度お試しください。'}`,
+            timestamp: new Date(),
+          };
+          setMessages(prev => [...prev, errorMessage]);
+          setIsTyping(false);
+        }
+      } catch (error) {
+        // ネットワークエラー等
+        const errorMessage: AssistantMessage = {
+          id: `assistant-${Date.now()}`,
+          role: 'assistant',
+          content: 'ネットワークエラーが発生しました。接続を確認してください。',
+          timestamp: new Date(),
+        };
+        setMessages(prev => [...prev, errorMessage]);
+        setIsTyping(false);
+      }
+    } else {
+      // 3. オフライン時はデフォルト応答
+      setTimeout(() => {
+        const offlineMessage: AssistantMessage = {
+          id: `assistant-${Date.now()}`,
+          role: 'assistant',
+          content: isOnline()
+            ? getDefaultResponse().content
+            : '現在オフラインです。よくある質問に該当しない場合は、オンライン時に再度お試しください。\n\n' + getDefaultResponse().content,
+          timestamp: new Date(),
+        };
+        setMessages(prev => [...prev, offlineMessage]);
+        setIsTyping(false);
+      }, 800);
+    }
   };
 
   // 提案クリック
