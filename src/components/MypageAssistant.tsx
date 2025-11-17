@@ -3,6 +3,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import giftyIcon from '../../public/GIFTY.icon.png';
 
 // ========================================
 // 型定義
@@ -204,7 +205,7 @@ export function MypageAssistant({ isMobile, walletAddress, displayName }: Mypage
       const initialMessage: AssistantMessage = {
         id: 'initial',
         role: 'assistant',
-        content: `${greeting}！\n\n私はGifterraのアシスタントです🤖\n使い方やエラーでお困りのことはありませんか？`,
+        content: `${greeting}！\n\n私はGIFTERRAアシスタントのギフティです🤖\n使い方やエラーでお困りのことはありませんか？`,
         timestamp: new Date(),
         suggestions: [
           '🔌 ウォレット接続',
@@ -275,14 +276,23 @@ export function MypageAssistant({ isMobile, walletAddress, displayName }: Mypage
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          fontSize: isMobile ? 28 : 32,
+          padding: 0,
+          overflow: 'hidden',
           transition: 'all 0.3s ease',
           transform: isOpen ? 'scale(0.9)' : 'scale(1)',
         }}
         onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.1)'; }}
         onMouseLeave={(e) => { e.currentTarget.style.transform = isOpen ? 'scale(0.9)' : 'scale(1)'; }}
       >
-        🤖
+        <img
+          src={giftyIcon}
+          alt="GIFTY"
+          style={{
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover'
+          }}
+        />
       </button>
 
       {/* チャットパネル */}
@@ -329,14 +339,23 @@ export function MypageAssistant({ isMobile, walletAddress, displayName }: Mypage
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  fontSize: 24,
+                  overflow: 'hidden',
+                  padding: 0,
                 }}
               >
-                🤖
+                <img
+                  src={giftyIcon}
+                  alt="GIFTY"
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover'
+                  }}
+                />
               </div>
               <div>
-                <div style={{ fontSize: 16, fontWeight: 700, color: 'white' }}>Gifterraアシスタント</div>
-                <div style={{ fontSize: 12, color: 'rgba(255, 255, 255, 0.8)' }}>いつでもお手伝いします</div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: 'white' }}>ギフティ</div>
+                <div style={{ fontSize: 12, color: 'rgba(255, 255, 255, 0.8)' }}>GIFTERRA アシスタント</div>
               </div>
             </div>
             <button
