@@ -2,11 +2,9 @@
 // 通知一覧ページ
 
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useNotifications, type Notification } from '../hooks/useNotifications';
 
 export function NotificationsPage() {
-  const navigate = useNavigate();
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [userAddress, setUserAddress] = useState<string | undefined>();
 
@@ -73,7 +71,7 @@ export function NotificationsPage() {
     switch (notification.type) {
       case 'follow':
         if (notification.from_address) {
-          navigate(`/profile/${notification.from_address}`);
+          window.location.href = `/profile/${notification.from_address}`;
         }
         break;
       case 'jpyc_received':
@@ -125,7 +123,7 @@ export function NotificationsPage() {
             }}
           >
             <button
-              onClick={() => navigate(-1)}
+              onClick={() => window.history.back()}
               style={{
                 background: 'rgba(255, 255, 255, 0.2)',
                 border: '1px solid rgba(255, 255, 255, 0.3)',
