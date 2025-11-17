@@ -1,6 +1,6 @@
 /**
  * @file ログインサポートチャット
- * @description ログインページ専用のサポートチャットボット
+ * @description ログインページ専用のサポートチャットボット（Giftyアシスタント）
  */
 
 import React, { useState, useRef, useEffect } from 'react';
@@ -29,7 +29,7 @@ export function LoginSupportChat({ isMobile = false }: LoginSupportChatProps) {
         {
           id: '1',
           role: 'assistant',
-          content: 'こんにちは！ログインでお困りですか？\n\nよくある質問:\n\n1️⃣ ログインできない\n2️⃣ ブラウザが対応していない\n3️⃣ ウォレット接続エラー\n4️⃣ Google/SNSログインができない\n\n番号を入力するか、直接質問してください！',
+          content: 'こんにちは！私はGifty、あなたのログインをサポートするAIアシスタントです🎁\n\nログインでお困りですか？\n\nよくある質問:\n\n1️⃣ ログインできない\n2️⃣ ブラウザが対応していない\n3️⃣ ウォレット接続エラー\n4️⃣ Google/SNSログインができない\n\n番号を入力するか、直接質問してください！',
           timestamp: new Date(),
         },
       ]);
@@ -193,32 +193,32 @@ Privyによる安全な認証システムを使用しています。`;
         onClick={() => setIsOpen(!isOpen)}
         style={{
           position: 'fixed',
-          bottom: isMobile ? 20 : 30,
-          right: isMobile ? 20 : 30,
+          bottom: isMobile ? 20 : 24,
+          right: isMobile ? 20 : 24,
           width: isMobile ? 56 : 64,
           height: isMobile ? 56 : 64,
           borderRadius: '50%',
-          background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
           border: 'none',
-          boxShadow: '0 4px 16px rgba(16, 185, 129, 0.4)',
+          boxShadow: '0 4px 20px rgba(102, 126, 234, 0.4)',
           cursor: 'pointer',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          fontSize: isMobile ? 24 : 28,
+          fontSize: isMobile ? 28 : 32,
           zIndex: 9999,
           transition: 'all 0.3s',
         }}
         onMouseEnter={(e) => {
           e.currentTarget.style.transform = 'scale(1.1)';
-          e.currentTarget.style.boxShadow = '0 6px 20px rgba(16, 185, 129, 0.5)';
+          e.currentTarget.style.boxShadow = '0 6px 30px rgba(102, 126, 234, 0.6)';
         }}
         onMouseLeave={(e) => {
-          e.currentTarget.style.transform = 'scale(1)';
-          e.currentTarget.style.boxShadow = '0 4px 16px rgba(16, 185, 129, 0.4)';
+          e.currentTarget.style.transform = isOpen ? 'scale(0.9)' : 'scale(1)';
+          e.currentTarget.style.boxShadow = '0 4px 20px rgba(102, 126, 234, 0.4)';
         }}
       >
-        {isOpen ? '✕' : '💬'}
+        🎁
       </button>
 
       {/* チャットウィンドウ */}
@@ -226,36 +226,73 @@ Privyによる安全な認証システムを使用しています。`;
         <div
           style={{
             position: 'fixed',
-            bottom: isMobile ? 90 : 110,
-            right: isMobile ? 20 : 30,
-            width: isMobile ? 'calc(100vw - 40px)' : 380,
-            height: isMobile ? 'calc(100vh - 180px)' : 500,
-            background: 'rgba(255, 255, 255, 0.98)',
-            borderRadius: 16,
-            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',
+            bottom: isMobile ? 90 : 100,
+            right: isMobile ? 20 : 24,
+            width: isMobile ? 'calc(100vw - 40px)' : 360,
+            maxHeight: isMobile ? 'calc(100vh - 180px)' : 600,
+            background: 'white',
+            borderRadius: 20,
+            boxShadow: '0 10px 40px rgba(0, 0, 0, 0.2)',
             display: 'flex',
             flexDirection: 'column',
             zIndex: 9998,
-            backdropFilter: 'blur(10px)',
-            border: '1px solid rgba(255, 255, 255, 0.5)',
+            overflow: 'hidden',
           }}
         >
           {/* ヘッダー */}
           <div
             style={{
-              padding: 16,
-              background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-              borderRadius: '16px 16px 0 0',
+              padding: '16px 20px',
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
               color: 'white',
-              fontWeight: 600,
-              fontSize: 16,
               display: 'flex',
               alignItems: 'center',
-              gap: 8,
+              gap: 12,
             }}
           >
-            <span style={{ fontSize: 20 }}>🤖</span>
-            ログインサポート
+            <div
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: '50%',
+                background: 'white',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: 24,
+              }}
+            >
+              🎁
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 16, fontWeight: 'bold' }}>Gifty</div>
+              <div style={{ fontSize: 12, opacity: 0.9 }}>AIアシスタント</div>
+            </div>
+            <button
+              onClick={() => setIsOpen(false)}
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: '50%',
+                background: 'rgba(255, 255, 255, 0.2)',
+                border: 'none',
+                color: 'white',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: 18,
+                transition: 'all 0.2s',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.3)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)';
+              }}
+            >
+              ✕
+            </button>
           </div>
 
           {/* メッセージエリア */}
@@ -263,49 +300,61 @@ Privyによる安全な認証システムを使用しています。`;
             style={{
               flex: 1,
               overflowY: 'auto',
-              padding: 16,
+              padding: 20,
               display: 'flex',
               flexDirection: 'column',
-              gap: 12,
+              gap: 16,
+              background: '#f8f9fa',
             }}
           >
             {messages.map((message) => (
               <div
                 key={message.id}
                 style={{
-                  alignSelf: message.role === 'user' ? 'flex-end' : 'flex-start',
-                  maxWidth: '80%',
+                  display: 'flex',
+                  gap: 8,
+                  flexDirection: message.role === 'user' ? 'row-reverse' : 'row',
                 }}
               >
+                {/* アバター */}
                 <div
                   style={{
-                    padding: '10px 14px',
-                    borderRadius: 12,
+                    width: 32,
+                    height: 32,
+                    borderRadius: '50%',
                     background:
                       message.role === 'user'
-                        ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
-                        : 'rgba(16, 185, 129, 0.1)',
-                    color: message.role === 'user' ? 'white' : '#1f2937',
-                    fontSize: 14,
-                    lineHeight: 1.6,
-                    whiteSpace: 'pre-wrap',
-                    wordBreak: 'break-word',
+                        ? '#e2e8f0'
+                        : 'linear-gradient(135deg, #667eea, #764ba2)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: 16,
+                    flexShrink: 0,
                   }}
                 >
-                  {message.content}
+                  {message.role === 'assistant' ? '🎁' : '👤'}
                 </div>
-                <div
-                  style={{
-                    fontSize: 10,
-                    color: '#9ca3af',
-                    marginTop: 4,
-                    textAlign: message.role === 'user' ? 'right' : 'left',
-                  }}
-                >
-                  {message.timestamp.toLocaleTimeString('ja-JP', {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })}
+                {/* メッセージバブル */}
+                <div style={{ maxWidth: '70%' }}>
+                  <div
+                    style={{
+                      padding: '12px 16px',
+                      borderRadius: 16,
+                      background:
+                        message.role === 'user'
+                          ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+                          : 'white',
+                      color: message.role === 'user' ? 'white' : '#2d3748',
+                      fontSize: 14,
+                      lineHeight: 1.5,
+                      whiteSpace: 'pre-wrap',
+                      wordBreak: 'break-word',
+                      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+                    }}
+                  >
+                    {message.content}
+                  </div>
                 </div>
               </div>
             ))}
@@ -315,8 +364,9 @@ Privyによる安全な認証システムを使用しています。`;
           {/* 入力エリア */}
           <div
             style={{
-              padding: 16,
-              borderTop: '1px solid #e5e7eb',
+              padding: '16px 20px',
+              background: 'white',
+              borderTop: '1px solid #e2e8f0',
               display: 'flex',
               gap: 8,
             }}
@@ -347,7 +397,7 @@ Privyによる安全な認証システムを使用しています。`;
                 padding: '10px 16px',
                 borderRadius: 8,
                 background: inputValue.trim()
-                  ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
+                  ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
                   : '#d1d5db',
                 color: 'white',
                 border: 'none',
@@ -355,6 +405,19 @@ Privyによる安全な認証システムを使用しています。`;
                 fontSize: 14,
                 fontWeight: 600,
                 transition: 'all 0.2s',
+                boxShadow: inputValue.trim() ? '0 2px 8px rgba(102, 126, 234, 0.3)' : 'none',
+              }}
+              onMouseEnter={(e) => {
+                if (inputValue.trim()) {
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.4)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (inputValue.trim()) {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 2px 8px rgba(102, 126, 234, 0.3)';
+                }
               }}
             >
               送信
