@@ -1,9 +1,11 @@
 /**
  * @file ログインサポートチャット
- * @description ログインページ専用のサポートチャットボット（Giftyアシスタント）
+ * @description ログインページ専用のサポートチャットボット（ギフティアシスタント）
  */
 
 import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
+import giftyIcon from '../../public/GIFTY.icon.png';
 
 interface Message {
   id: string;
@@ -29,7 +31,7 @@ export function LoginSupportChat({ isMobile = false }: LoginSupportChatProps) {
         {
           id: '1',
           role: 'assistant',
-          content: 'こんにちは！私はGifty、あなたのログインをサポートするAIアシスタントです🎁\n\nログインでお困りですか？\n\nよくある質問:\n\n1️⃣ ログインできない\n2️⃣ ブラウザが対応していない\n3️⃣ ウォレット接続エラー\n4️⃣ Google/SNSログインができない\n\n番号を入力するか、直接質問してください！',
+          content: 'こんにちは！\n\n私はGIFTERRAアシスタントのギフティです🤖\nログインでお困りのことはありませんか？\n\nよくある質問:\n\n1️⃣ ログインできない\n2️⃣ ブラウザが対応していない\n3️⃣ ウォレット接続エラー\n4️⃣ Google/SNSログインができない\n\n番号を入力するか、直接質問してください！',
           timestamp: new Date(),
         },
       ]);
@@ -187,14 +189,17 @@ Privyによる安全な認証システムを使用しています。`;
   };
 
   return (
-    <>
-      {/* チャットボタン */}
+    <div style={{
+      position: 'fixed',
+      bottom: isMobile ? 20 : 20,
+      left: isMobile ? 20 : 'auto',
+      right: isMobile ? 'auto' : 20,
+      zIndex: 10001,
+    }}>
+      {/* ギフティ フローティングボタン */}
       <button
         onClick={() => setIsOpen(!isOpen)}
         style={{
-          position: 'fixed',
-          bottom: isMobile ? 20 : 24,
-          right: isMobile ? 20 : 24,
           width: isMobile ? 56 : 64,
           height: isMobile ? 56 : 64,
           borderRadius: '50%',
@@ -205,68 +210,87 @@ Privyによる安全な認証システムを使用しています。`;
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          fontSize: isMobile ? 28 : 32,
-          zIndex: 9999,
-          transition: 'all 0.3s',
+          padding: 0,
+          overflow: 'hidden',
+          transition: 'all 0.3s ease',
+          transform: isOpen ? 'scale(0.9)' : 'scale(1)',
         }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.transform = 'scale(1.1)';
-          e.currentTarget.style.boxShadow = '0 6px 30px rgba(102, 126, 234, 0.6)';
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.transform = isOpen ? 'scale(0.9)' : 'scale(1)';
-          e.currentTarget.style.boxShadow = '0 4px 20px rgba(102, 126, 234, 0.4)';
-        }}
+        onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.1)'; }}
+        onMouseLeave={(e) => { e.currentTarget.style.transform = isOpen ? 'scale(0.9)' : 'scale(1)'; }}
       >
-        🎁
+        <img
+          src={giftyIcon}
+          alt="ギフティ"
+          style={{
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover'
+          }}
+        />
       </button>
 
-      {/* チャットウィンドウ */}
-      {isOpen && (
+      {/* チャットパネル */}
+      {isOpen && createPortal(
         <div
           style={{
             position: 'fixed',
-            bottom: isMobile ? 90 : 100,
-            right: isMobile ? 20 : 24,
-            width: isMobile ? 'calc(100vw - 40px)' : 360,
-            maxHeight: isMobile ? 'calc(100vh - 180px)' : 600,
-            background: 'white',
+            top: isMobile ? '50%' : '50%',
+            left: isMobile ? '50%' : 'auto',
+            right: isMobile ? 'auto' : 20,
+            transform: isMobile ? 'translate(-50%, -50%)' : 'translateY(-50%)',
+            width: isMobile ? 'calc(100vw - 40px)' : 420,
+            maxWidth: isMobile ? '90vw' : '420px',
+            height: isMobile ? 'calc(100vh - 100px)' : 'auto',
+            maxHeight: isMobile ? 'calc(100vh - 100px)' : '80vh',
+            background: 'linear-gradient(135deg, #1a1a24 0%, #2d2d3a 100%)',
             borderRadius: 20,
-            boxShadow: '0 10px 40px rgba(0, 0, 0, 0.2)',
+            boxShadow: '0 10px 40px rgba(0, 0, 0, 0.3)',
             display: 'flex',
             flexDirection: 'column',
-            zIndex: 9998,
             overflow: 'hidden',
+            border: '1px solid rgba(102, 126, 234, 0.3)',
+            zIndex: 10002,
           }}
         >
           {/* ヘッダー */}
           <div
             style={{
-              padding: '16px 20px',
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-              color: 'white',
+              padding: isMobile ? 16 : 20,
+              borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
               display: 'flex',
               alignItems: 'center',
-              gap: 12,
+              justifyContent: 'space-between',
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
             }}
           >
-            <div
-              style={{
-                width: 40,
-                height: 40,
-                borderRadius: '50%',
-                background: 'white',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: 24,
-              }}
-            >
-              🎁
-            </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 16, fontWeight: 'bold' }}>Gifty</div>
-              <div style={{ fontSize: 12, opacity: 0.9 }}>AIアシスタント</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: '50%',
+                  background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  overflow: 'hidden',
+                  padding: 0,
+                }}
+              >
+                <img
+                  src={giftyIcon}
+                  alt="ギフティ"
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover'
+                  }}
+                />
+              </div>
+              <div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: 'white' }}>ギフティ</div>
+                <div style={{ fontSize: 12, color: 'rgba(255, 255, 255, 0.8)' }}>GIFTERRA アシスタント</div>
+              </div>
             </div>
             <button
               onClick={() => setIsOpen(false)}
@@ -284,12 +308,8 @@ Privyによる安全な認証システムを使用しています。`;
                 fontSize: 18,
                 transition: 'all 0.2s',
               }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.3)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)';
-              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.3)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)'; }}
             >
               ✕
             </button>
@@ -300,57 +320,64 @@ Privyによる安全な認証システムを使用しています。`;
             style={{
               flex: 1,
               overflowY: 'auto',
-              padding: 20,
+              padding: isMobile ? 16 : 20,
               display: 'flex',
               flexDirection: 'column',
               gap: 16,
-              background: '#f8f9fa',
+              background: '#1a1a24',
             }}
           >
             {messages.map((message) => (
-              <div
-                key={message.id}
-                style={{
-                  display: 'flex',
-                  gap: 8,
-                  flexDirection: message.role === 'user' ? 'row-reverse' : 'row',
-                }}
-              >
-                {/* アバター */}
+              <div key={message.id}>
                 <div
                   style={{
-                    width: 32,
-                    height: 32,
-                    borderRadius: '50%',
-                    background:
-                      message.role === 'user'
-                        ? '#e2e8f0'
-                        : 'linear-gradient(135deg, #667eea, #764ba2)',
                     display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: 16,
-                    flexShrink: 0,
+                    gap: 8,
+                    flexDirection: message.role === 'user' ? 'row-reverse' : 'row',
                   }}
                 >
-                  {message.role === 'assistant' ? '🎁' : '👤'}
-                </div>
-                {/* メッセージバブル */}
-                <div style={{ maxWidth: '70%' }}>
                   <div
                     style={{
-                      padding: '12px 16px',
+                      width: 32,
+                      height: 32,
+                      borderRadius: '50%',
+                      background: message.role === 'assistant'
+                        ? 'linear-gradient(135deg, #667eea, #764ba2)'
+                        : 'rgba(255, 255, 255, 0.1)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: 16,
+                      flexShrink: 0,
+                      overflow: 'hidden',
+                      padding: 0,
+                    }}
+                  >
+                    {message.role === 'assistant' ? (
+                      <img
+                        src={giftyIcon}
+                        alt="ギフティ"
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'cover'
+                        }}
+                      />
+                    ) : '👤'}
+                  </div>
+                  <div
+                    style={{
+                      maxWidth: '70%',
+                      padding: 12,
                       borderRadius: 16,
-                      background:
-                        message.role === 'user'
-                          ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
-                          : 'white',
-                      color: message.role === 'user' ? 'white' : '#2d3748',
+                      background: message.role === 'assistant'
+                        ? 'rgba(102, 126, 234, 0.1)'
+                        : 'linear-gradient(135deg, #667eea, #764ba2)',
+                      color: '#EAF2FF',
                       fontSize: 14,
                       lineHeight: 1.5,
                       whiteSpace: 'pre-wrap',
-                      wordBreak: 'break-word',
-                      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+                      border: message.role === 'assistant' ? '1px solid rgba(102, 126, 234, 0.3)' : 'none',
                     }}
                   >
                     {message.content}
@@ -364,28 +391,26 @@ Privyによる安全な認証システムを使用しています。`;
           {/* 入力エリア */}
           <div
             style={{
-              padding: '16px 20px',
-              background: 'white',
-              borderTop: '1px solid #e2e8f0',
+              padding: isMobile ? 12 : 16,
+              borderTop: '1px solid rgba(255, 255, 255, 0.1)',
               display: 'flex',
               gap: 8,
+              background: '#1a1a24',
             }}
           >
             <input
               type="text"
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
-              onKeyPress={(e) => {
-                if (e.key === 'Enter') {
-                  handleSendMessage();
-                }
-              }}
-              placeholder="メッセージを入力..."
+              onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+              placeholder="質問を入力..."
               style={{
                 flex: 1,
-                padding: '10px 12px',
-                borderRadius: 8,
-                border: '1px solid #d1d5db',
+                padding: isMobile ? 10 : 12,
+                background: 'rgba(255, 255, 255, 0.05)',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+                borderRadius: 12,
+                color: '#EAF2FF',
                 fontSize: 14,
                 outline: 'none',
               }}
@@ -394,37 +419,26 @@ Privyによる安全な認証システムを使用しています。`;
               onClick={handleSendMessage}
               disabled={!inputValue.trim()}
               style={{
-                padding: '10px 16px',
-                borderRadius: 8,
+                padding: isMobile ? '10px 16px' : '12px 20px',
                 background: inputValue.trim()
-                  ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
-                  : '#d1d5db',
-                color: 'white',
+                  ? 'linear-gradient(135deg, #667eea, #764ba2)'
+                  : 'rgba(255, 255, 255, 0.1)',
                 border: 'none',
-                cursor: inputValue.trim() ? 'pointer' : 'not-allowed',
+                borderRadius: 12,
+                color: '#EAF2FF',
                 fontSize: 14,
                 fontWeight: 600,
+                cursor: inputValue.trim() ? 'pointer' : 'not-allowed',
+                opacity: inputValue.trim() ? 1 : 0.5,
                 transition: 'all 0.2s',
-                boxShadow: inputValue.trim() ? '0 2px 8px rgba(102, 126, 234, 0.3)' : 'none',
-              }}
-              onMouseEnter={(e) => {
-                if (inputValue.trim()) {
-                  e.currentTarget.style.transform = 'translateY(-2px)';
-                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.4)';
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (inputValue.trim()) {
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = '0 2px 8px rgba(102, 126, 234, 0.3)';
-                }
               }}
             >
               送信
             </button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
-    </>
+    </div>
   );
 }
