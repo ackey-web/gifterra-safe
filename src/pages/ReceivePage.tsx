@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { ConnectWallet } from '@thirdweb-dev/react';
+import { JPYC_TOKEN } from '../contract';
 
 export function ReceivePage() {
   const [address, setAddress] = useState<string>('');
@@ -274,6 +275,16 @@ export function ReceivePage() {
           <ConnectWallet
             theme="dark"
             btnTitle="🔗 ウォレットを接続して贈る"
+            supportedTokens={{
+              137: [
+                {
+                  address: JPYC_TOKEN.ADDRESS,
+                  name: JPYC_TOKEN.NAME,
+                  symbol: JPYC_TOKEN.SYMBOL,
+                  icon: 'https://jpyc.jp/logo.png',
+                }
+              ]
+            }}
             style={{
               width: '100%',
               padding: isMobile ? '12px' : '16px',
