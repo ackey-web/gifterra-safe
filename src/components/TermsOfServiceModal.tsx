@@ -139,6 +139,44 @@ export function TermsOfServiceModal({ onAccept, isMobile }: TermsOfServiceModalP
             </ul>
           </div>
 
+          {/* GIFT HUB関連の重要事項 */}
+          <div
+            style={{
+              background: 'rgba(59, 130, 246, 0.1)',
+              border: '1px solid rgba(59, 130, 246, 0.3)',
+              borderRadius: 12,
+              padding: isMobile ? 16 : 20,
+              marginBottom: 24,
+            }}
+          >
+            <h3
+              style={{
+                margin: '0 0 12px 0',
+                fontSize: isMobile ? (isExpanded ? 18 : 15) : 16,
+                fontWeight: 700,
+                color: '#3b82f6',
+                transition: 'font-size 0.2s',
+              }}
+            >
+              GIFT HUB（デジタルコンテンツ提供）について
+            </h3>
+            <ul
+              style={{
+                margin: 0,
+                padding: '0 0 0 20px',
+                fontSize: isMobile ? (isExpanded ? 15 : 12) : 13,
+                color: 'rgba(255, 255, 255, 0.8)',
+                lineHeight: 1.6,
+                transition: 'font-size 0.2s',
+              }}
+            >
+              <li>GIFT HUB上のデジタルコンテンツ取引の契約当事者は「テナントオーナー」と「利用者」です</li>
+              <li>GIFTERRAは取引の当事者とはならず、決済・自動配布を技術的に支援するのみです</li>
+              <li>コンテンツの品質・適法性・権利関係についてはテナントオーナーが全責任を負います</li>
+              <li>GIFTERRAは決済代行・立替え・資産保管を行いません（ノンカストディ）</li>
+            </ul>
+          </div>
+
           {/* 利用規約リンク */}
           <div
             style={{

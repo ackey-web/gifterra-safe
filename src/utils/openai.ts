@@ -1,6 +1,8 @@
 // src/utils/openai.ts
 // OpenAI APIとの統合（ギフティAIアシスタント用）
 
+import { SUPPORT_KNOWLEDGE } from '../data/support-knowledge';
+
 const OPENAI_API_KEY = import.meta.env.VITE_OPENAI_API_KEY;
 const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
 
@@ -73,7 +75,7 @@ export async function callOpenAI(params: {
   }
 
   try {
-    // システムプロンプト
+    // システムプロンプト（ナレッジベース統合）
     const systemPrompt = `あなたはGIFTERRAアシスタントの「ギフティ」です。
 ユーザーを手助けするフレンドリーで親切なAIアシスタントとして振る舞ってください。
 
@@ -81,14 +83,18 @@ export async function callOpenAI(params: {
 - GIFTERRAの使い方やトラブルシューティングをサポート
 - 簡潔でわかりやすい日本語で回答
 - 技術的な質問には具体的なステップで説明
+- 以下のナレッジベースの情報を活用して正確に回答
 - わからないことは正直に伝える
 
-【GIFTERRAについて】
-- Web3ベースのチップ（投げ銭）プラットフォーム
-- JPYCトークンを使った送金機能
-- Polygon Mainnetで動作
-- Privy認証またはMetaMask等のウォレット接続
-${params.context ? `\n【追加コンテキスト】\n${params.context}` : ''}`;
+【GIFTERRA ナレッジベース】
+${SUPPORT_KNOWLEDGE}
+${params.context ? `\n【追加コンテキスト】\n${params.context}` : ''}
+
+【回答ガイドライン】
+- ナレッジベースに記載されている情報を優先して使用
+- 具体的な手順がある場合は番号付きリストで説明
+- エラーメッセージの対処法は明確に提示
+- セキュリティに関わる質問は特に慎重に回答`;
 
     // リクエストボディ
     const requestBody = {
