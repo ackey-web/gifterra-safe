@@ -7,6 +7,7 @@ import {
   useWallet,
 } from "@thirdweb-dev/react";
 import { usePrivy } from "@privy-io/react-auth";
+import { LoginSupportChat } from "../components/LoginSupportChat";
 
 export const LoginPage: React.FC = () => {
   const address = useAddress();
@@ -467,6 +468,9 @@ export const LoginPage: React.FC = () => {
           </p>
         </div>
       </div>
+
+      {/* ログインサポートチャット */}
+      <LoginSupportChat isMobile={isMobile} />
     </div>
   );
 };
