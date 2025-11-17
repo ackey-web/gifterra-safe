@@ -349,7 +349,7 @@ export function ProfilePage() {
                       e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.2)';
                     }}
                   >
-                    💰 チップを送る
+                    💰 チップを贈る
                   </button>
 
                   {/* フォローボタン */}

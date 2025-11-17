@@ -1,8 +1,7 @@
 // src/pages/ReceivePage.tsx
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { ConnectButton } from 'thirdweb/react';
-import { client } from '../lib/thirdwebClient';
+import { ConnectWallet } from '@thirdweb-dev/react';
 
 export function ReceivePage() {
   const [address, setAddress] = useState<string>('');
@@ -244,7 +243,7 @@ export function ReceivePage() {
           </div>
         </button>
 
-        {/* GIFTERRAを使って送るボタン */}
+        {/* GIFTERRAを使って贈るボタン */}
         <a
           href="/login"
           style={{
@@ -264,30 +263,28 @@ export function ReceivePage() {
             marginBottom: isMobile ? '10px' : '16px',
           }}
         >
-          💴 GIFTERRAを使って送る
+          💴 GIFTERRAを使って贈る
         </a>
 
-        {/* ウォレットを接続して送るボタン */}
+        {/* ウォレットを接続して贈るボタン */}
         <div style={{
           width: '100%',
           marginBottom: isMobile ? '10px' : '16px',
         }}>
-          <ConnectButton
-            client={client}
-            connectButton={{
-              label: '🔗 ウォレットを接続して送る',
-              style: {
-                width: '100%',
-                padding: isMobile ? '12px' : '16px',
-                background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                border: 'none',
-                borderRadius: isMobile ? '8px' : '10px',
-                color: '#ffffff',
-                fontSize: isMobile ? 13 : 15,
-                fontWeight: 700,
-                cursor: 'pointer',
-                boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-              },
+          <ConnectWallet
+            theme="dark"
+            btnTitle="🔗 ウォレットを接続して贈る"
+            style={{
+              width: '100%',
+              padding: isMobile ? '12px' : '16px',
+              background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+              border: 'none',
+              borderRadius: isMobile ? '8px' : '10px',
+              color: '#ffffff',
+              fontSize: isMobile ? 13 : 15,
+              fontWeight: 700,
+              cursor: 'pointer',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
             }}
           />
         </div>
@@ -315,7 +312,7 @@ export function ReceivePage() {
             lineHeight: isMobile ? 1.4 : 1.6,
           }}>
             <li>アドレスをタップしてコピー</li>
-            <li>GIFTERRAを使って送るをタップ</li>
+            <li>GIFTERRAを使って贈るをタップ</li>
             <li>コピーしたアドレスを貼り付けて送金</li>
           </ol>
         </div>

@@ -167,7 +167,7 @@ export function TipModal({
                 marginBottom: '4px',
               }}
             >
-              チップを送る
+              チップを贈る
             </h2>
             <p
               style={{
@@ -393,7 +393,7 @@ export function TipModal({
               }
             }}
           >
-            {isSending ? '送信中...' : 'チップを送る'}
+            {isSending ? '送信中...' : 'チップを贈る'}
           </button>
         </div>
       </div>
