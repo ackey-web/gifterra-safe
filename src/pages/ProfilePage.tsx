@@ -147,9 +147,10 @@ export function ProfilePage() {
   };
 
   // チップ送信処理
-  const handleSendTip = async (amount: number) => {
+  const handleSendTip = (amount: number) => {
     if (!walletAddress) {
-      throw new Error('送信先のアドレスが取得できません');
+      alert('送信先のアドレスが取得できません');
+      return Promise.reject(new Error('送信先のアドレスが取得できません'));
     }
 
     // 送金ページに遷移（金額とアドレスを含む）
@@ -159,6 +160,9 @@ export function ProfilePage() {
       isTip: 'true',
     });
     window.location.href = `/mypage?${params.toString()}`;
+
+    // ページ遷移が完了するまでPromiseを解決しない
+    return new Promise<void>(() => {});
   };
 
   return (
