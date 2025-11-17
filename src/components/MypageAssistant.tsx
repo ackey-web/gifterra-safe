@@ -335,7 +335,7 @@ export function MypageAssistant({ isMobile, walletAddress, displayName }: Mypage
                   width: 40,
                   height: 40,
                   borderRadius: '50%',
-                  background: 'white',
+                  background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -415,9 +415,21 @@ export function MypageAssistant({ isMobile, walletAddress, displayName }: Mypage
                       justifyContent: 'center',
                       fontSize: 16,
                       flexShrink: 0,
+                      overflow: 'hidden',
+                      padding: 0,
                     }}
                   >
-                    {message.role === 'assistant' ? '🤖' : '👤'}
+                    {message.role === 'assistant' ? (
+                      <img
+                        src={giftyIcon}
+                        alt="GIFTY"
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'cover'
+                        }}
+                      />
+                    ) : '👤'}
                   </div>
                   <div
                     style={{
