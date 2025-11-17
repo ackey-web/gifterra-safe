@@ -326,7 +326,6 @@ export function ReceivePage() {
             <li>
               GIFTERRAを使って贈るをタップ
               <div style={{
-                textAlign: 'center',
                 margin: isMobile ? '4px 0' : '6px 0',
                 fontWeight: 600,
               }}>
