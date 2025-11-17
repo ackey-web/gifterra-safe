@@ -726,29 +726,6 @@ function Header({ viewMode, setViewMode, isMobile, tenantRank, showSettingsModal
                     <span>Adminで開く</span>
                   </button>
                 )}
-
-                <button
-                  onClick={() => {
-                    handleLogout();
-                    setShowMobileMenu(false);
-                  }}
-                  style={{
-                    padding: '12px 16px',
-                    background: 'rgba(220, 38, 38, 0.1)',
-                    border: '1px solid rgba(220, 38, 38, 0.3)',
-                    borderRadius: 8,
-                    color: '#FCA5A5',
-                    fontSize: 14,
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 12,
-                    marginTop: 20,
-                  }}
-                >
-                  <span style={{ fontSize: 18 }}>🚪</span>
-                  <span>ログアウト</span>
-                </button>
               </div>
             </div>,
             document.body
