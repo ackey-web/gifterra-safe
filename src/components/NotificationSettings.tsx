@@ -75,23 +75,35 @@ export const NotificationSettings: React.FC<NotificationSettingsProps> = ({
   }, [userAddress]);
 
   const loadSettings = async () => {
+    if (!userAddress) {
+      console.error('No user address provided');
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
+      console.log('Loading settings for address:', userAddress);
+
       const { data, error } = await supabase
         .from('user_notification_settings')
         .select('*')
         .eq('user_address', userAddress.toLowerCase())
         .maybeSingle();
 
+      console.log('Load result:', { data, error });
+
       if (error && error.code !== 'PGRST116') {
         // PGRST116 = レコードが見つからない
         console.error('Load settings error:', error);
+        showMessage('error', `設定の読み込みエラー: ${error.message}`);
         throw error;
       }
 
       if (data) {
         setSettings(data);
         setEmailInput(data.email_address || '');
+        console.log('Settings loaded successfully:', data);
       } else {
         // 初期設定
         const initialSettings: UserNotificationSettings = {
@@ -106,10 +118,11 @@ export const NotificationSettings: React.FC<NotificationSettingsProps> = ({
           },
         };
         setSettings(initialSettings);
+        console.log('Using initial settings:', initialSettings);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to load notification settings:', error);
-      showMessage('error', '設定の読み込みに失敗しました');
+      showMessage('error', `設定の読み込みに失敗しました: ${error?.message || '不明なエラー'}`);
     } finally {
       setLoading(false);
     }
@@ -121,7 +134,15 @@ export const NotificationSettings: React.FC<NotificationSettingsProps> = ({
   };
 
   const handleSave = async () => {
-    if (!settings) return;
+    if (!settings) {
+      showMessage('error', '設定が読み込まれていません');
+      return;
+    }
+
+    if (!userAddress) {
+      showMessage('error', 'ウォレットアドレスが取得できません');
+      return;
+    }
 
     // メール通知が有効な場合はメールアドレス必須
     if (settings.email_notifications_enabled && !emailInput.trim()) {
@@ -145,24 +166,36 @@ export const NotificationSettings: React.FC<NotificationSettingsProps> = ({
         notification_types: settings.notification_types,
       };
 
-      console.log('Saving settings:', updatedSettings);
+      console.log('Attempting to save settings:', updatedSettings);
 
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('user_notification_settings')
         .upsert(updatedSettings, {
-          onConflict: 'user_address'
-        });
+          onConflict: 'user_address',
+          ignoreDuplicates: false,
+        })
+        .select()
+        .single();
+
+      console.log('Save result:', { data, error });
 
       if (error) {
-        console.error('Save error:', error);
+        console.error('Save error details:', {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code,
+        });
         throw error;
       }
 
       setSettings(updatedSettings);
       showMessage('success', '設定を保存しました');
-    } catch (error) {
+      console.log('Settings saved successfully:', data);
+    } catch (error: any) {
       console.error('Failed to save notification settings:', error);
-      showMessage('error', '設定の保存に失敗しました');
+      const errorMessage = error?.message || '不明なエラー';
+      showMessage('error', `設定の保存に失敗しました: ${errorMessage}`);
     } finally {
       setSaving(false);
     }

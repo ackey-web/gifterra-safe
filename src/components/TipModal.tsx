@@ -67,14 +67,12 @@ export function TipModal({
         return;
       }
 
-      // 問題なければ送信
-      await onSendTip(selectedAmount);
-      setSelectedAmount(null);
-      onClose();
+      // 問題なければ送信（ページ遷移するのでawaitしない）
+      onSendTip(selectedAmount);
+      // ページ遷移が開始されるので、モーダルを閉じたりstateを更新しない
     } catch (error) {
       console.error('Security check or send failed:', error);
       alert('送信に失敗しました');
-    } finally {
       setIsSending(false);
     }
   };
@@ -85,13 +83,12 @@ export function TipModal({
     setShowSecurityModal(false);
     setIsSending(true);
     try {
-      await onSendTip(selectedAmount);
-      setSelectedAmount(null);
-      onClose();
+      // ページ遷移するのでawaitしない
+      onSendTip(selectedAmount);
+      // ページ遷移が開始されるので、モーダルを閉じたりstateを更新しない
     } catch (error) {
       console.error('Send failed after security confirmation:', error);
       alert('送信に失敗しました');
-    } finally {
       setIsSending(false);
     }
   };
