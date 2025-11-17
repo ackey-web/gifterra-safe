@@ -1107,6 +1107,22 @@ export function ProfileEditModal({
                   </div>
                 </div>
               </label>
+              {!showWalletAddress && (
+                <div
+                  style={{
+                    marginTop: 8,
+                    padding: isMobile ? '8px 10px' : '10px 12px',
+                    background: 'rgba(234, 179, 8, 0.1)',
+                    border: '1px solid rgba(234, 179, 8, 0.3)',
+                    borderRadius: 6,
+                    fontSize: isMobile ? 11 : 12,
+                    color: 'rgba(234, 179, 8, 0.9)',
+                    lineHeight: 1.5,
+                  }}
+                >
+                  ⚠️ 非公開にすると、プロフィールからのチップの受け取りができなくなります
+                </div>
+              )}
             </div>
 
             {/* エラーメッセージ */}

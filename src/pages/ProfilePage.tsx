@@ -322,35 +322,37 @@ export function ProfilePage() {
                     borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
                   }}
                 >
-                  {/* チップボタン */}
-                  <button
-                    onClick={() => setShowTipModal(true)}
-                    style={{
-                      padding: isMobile ? '8px 16px' : '10px 20px',
-                      background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
-                      border: 'none',
-                      borderRadius: 8,
-                      color: '#fff',
-                      fontSize: isMobile ? 14 : 15,
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      transition: 'all 0.2s',
-                      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.transform = 'scale(1.05)';
-                      e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.3)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.transform = 'scale(1)';
-                      e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.2)';
-                    }}
-                  >
-                    💰 チップを贈る
-                  </button>
+                  {/* チップボタン（ウォレットアドレスが公開されている場合のみ表示） */}
+                  {profile?.show_wallet_address !== false && (
+                    <button
+                      onClick={() => setShowTipModal(true)}
+                      style={{
+                        padding: isMobile ? '8px 16px' : '10px 20px',
+                        background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                        border: 'none',
+                        borderRadius: 8,
+                        color: '#fff',
+                        fontSize: isMobile ? 14 : 15,
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        transition: 'all 0.2s',
+                        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.transform = 'scale(1.05)';
+                        e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.3)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = 'scale(1)';
+                        e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.2)';
+                      }}
+                    >
+                      💰 チップを贈る
+                    </button>
+                  )}
 
                   {/* フォローボタン */}
                   <button
