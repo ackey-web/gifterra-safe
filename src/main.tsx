@@ -178,11 +178,18 @@ if (wantsTerms) {
     </React.StrictMode>
   );
 } else if (wantsReceive) {
-  // 受け取りページ（認証不要）
+  // 受け取りページ（認証不要、Thirdweb必須）
   root.render(
     <React.StrictMode>
       <Suspense fallback={<LoadingFallback />}>
-        <ReceivePage />
+        <QueryClientProvider client={queryClient}>
+          <ThirdwebProvider
+            activeChain={polygonChain}
+            clientId={import.meta.env.VITE_THIRDWEB_CLIENT_ID}
+          >
+            <ReceivePage />
+          </ThirdwebProvider>
+        </QueryClientProvider>
       </Suspense>
     </React.StrictMode>
   );
