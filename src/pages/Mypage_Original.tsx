@@ -323,8 +323,8 @@ function Header({ viewMode, setViewMode, isMobile, tenantRank }: {
       await disconnect();
       // ローカルストレージをクリア
       localStorage.removeItem('gifterra_auth');
-      // ログインページにリダイレクト
-      window.location.href = '/login';
+      // ログインページにリダイレクト（replaceを使用してブラウザ履歴を置き換え）
+      window.location.replace('/login');
     }
   };
 

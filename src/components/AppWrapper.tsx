@@ -25,8 +25,8 @@ export function AppWrapper({ children, isMobile = false }: AppWrapperProps) {
     setTermsConsent();
     setShowTermsModal(false);
 
-    // 利用規約に同意したらログイン画面にリダイレクト
-    window.location.href = '/login';
+    // 利用規約に同意したらログイン画面にリダイレクト（replaceを使用してブラウザ履歴を置き換え）
+    window.location.replace('/login');
   };
 
   // チェック中は何も表示しない（ちらつき防止）

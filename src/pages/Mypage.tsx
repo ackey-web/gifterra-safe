@@ -485,12 +485,12 @@ function Header({ viewMode, setViewMode, isMobile, tenantRank, showSettingsModal
         await disconnect();
         // ローカルストレージをクリア
         localStorage.removeItem('gifterra_auth');
-        // ログインページにリダイレクト
-        window.location.href = '/login';
+        // ログインページにリダイレクト（replaceを使用してブラウザ履歴を置き換え）
+        window.location.replace('/login');
       } catch (error) {
         console.error('Logout error:', error);
         // エラーでもログインページにリダイレクト
-        window.location.href = '/login';
+        window.location.replace('/login');
       }
     }
   };
