@@ -83,15 +83,12 @@ export const NotificationSettings: React.FC<NotificationSettingsProps> = ({
 
     try {
       setLoading(true);
-      console.log('Loading settings for address:', userAddress);
 
       const { data, error } = await supabase
         .from('user_notification_settings')
         .select('*')
         .eq('user_address', userAddress.toLowerCase())
         .maybeSingle();
-
-      console.log('Load result:', { data, error });
 
       if (error && error.code !== 'PGRST116') {
         // PGRST116 = レコードが見つからない
@@ -103,7 +100,6 @@ export const NotificationSettings: React.FC<NotificationSettingsProps> = ({
       if (data) {
         setSettings(data);
         setEmailInput(data.email_address || '');
-        console.log('Settings loaded successfully:', data);
       } else {
         // 初期設定
         const initialSettings: UserNotificationSettings = {
@@ -118,7 +114,6 @@ export const NotificationSettings: React.FC<NotificationSettingsProps> = ({
           },
         };
         setSettings(initialSettings);
-        console.log('Using initial settings:', initialSettings);
       }
     } catch (error: any) {
       console.error('Failed to load notification settings:', error);
@@ -166,8 +161,6 @@ export const NotificationSettings: React.FC<NotificationSettingsProps> = ({
         notification_types: settings.notification_types,
       };
 
-      console.log('Attempting to save settings:', updatedSettings);
-
       const { data, error } = await supabase
         .from('user_notification_settings')
         .upsert(updatedSettings, {
@@ -176,8 +169,6 @@ export const NotificationSettings: React.FC<NotificationSettingsProps> = ({
         })
         .select()
         .single();
-
-      console.log('Save result:', { data, error });
 
       if (error) {
         console.error('Save error details:', {
@@ -191,7 +182,6 @@ export const NotificationSettings: React.FC<NotificationSettingsProps> = ({
 
       setSettings(updatedSettings);
       showMessage('success', '設定を保存しました');
-      console.log('Settings saved successfully:', data);
     } catch (error: any) {
       console.error('Failed to save notification settings:', error);
       const errorMessage = error?.message || '不明なエラー';
