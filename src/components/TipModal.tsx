@@ -3,9 +3,6 @@
 
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useActiveAccount } from 'thirdweb/react';
-import { performTransactionSecurityCheck } from '../utils/transactionSecurity';
-import { TransactionSecurityModal } from './TransactionSecurityModal';
 
 interface TipModalProps {
   isOpen: boolean;
@@ -28,90 +25,19 @@ export function TipModal({
 }: TipModalProps) {
   const [selectedAmount, setSelectedAmount] = useState<number | null>(null);
   const [isSending, setIsSending] = useState(false);
-  const [showSecurityModal, setShowSecurityModal] = useState(false);
-  const [securityCheckResult, setSecurityCheckResult] = useState<any>(null);
-  const account = useActiveAccount();
 
   if (!isOpen) return null;
 
-  const handleSend = async () => {
-    if (!selectedAmount || isSending || !account) return;
-
-    setIsSending(true);
-    try {
-      // セキュリティチェック実行
-      const checkResult = await performTransactionSecurityCheck(
-        account.address,
-        selectedAmount
-      );
-
-      // アカウントが凍結されている場合
-      if (checkResult.isFrozen) {
-        alert(`アカウントが凍結されています\n理由: ${checkResult.freezeReason || '不明'}`);
-        setIsSending(false);
-        return;
-      }
-
-      // トランザクション制限に引っかかった場合
-      if (!checkResult.allowed) {
-        alert(`トランザクションが制限されています\n理由: ${checkResult.reason || '不明'}`);
-        setIsSending(false);
-        return;
-      }
-
-      // 確認が必要な場合（高額または疑わしい取引）
-      if (checkResult.requiresConfirmation) {
-        setSecurityCheckResult(checkResult);
-        setShowSecurityModal(true);
-        setIsSending(false);
-        return;
-      }
-
-      // 問題なければ送信（ページ遷移するのでawaitしない）
-      onSendTip(selectedAmount);
-      // ページ遷移が開始されるので、モーダルを閉じたりstateを更新しない
-    } catch (error) {
-      console.error('Security check or send failed:', error);
-      alert('送信に失敗しました');
-      setIsSending(false);
+  const handleSend = () => {
+    if (!selectedAmount || isSending) {
+      return;
     }
+
+    // マイページの送信画面に遷移（そこでセキュリティチェックが行われる）
+    onSendTip(selectedAmount);
   };
 
-  const handleSecurityConfirm = async () => {
-    if (!selectedAmount) return;
-
-    setShowSecurityModal(false);
-    setIsSending(true);
-    try {
-      // ページ遷移するのでawaitしない
-      onSendTip(selectedAmount);
-      // ページ遷移が開始されるので、モーダルを閉じたりstateを更新しない
-    } catch (error) {
-      console.error('Send failed after security confirmation:', error);
-      alert('送信に失敗しました');
-      setIsSending(false);
-    }
-  };
-
-  return (
-    <>
-      {/* セキュリティ確認モーダル */}
-      {securityCheckResult && (
-        <TransactionSecurityModal
-          isOpen={showSecurityModal}
-          onClose={() => setShowSecurityModal(false)}
-          onConfirm={handleSecurityConfirm}
-          amount={selectedAmount || 0}
-          recipientName={recipientName}
-          isHighAmount={securityCheckResult.isHighAmount || false}
-          isSuspicious={securityCheckResult.isSuspicious || false}
-          anomalyScore={securityCheckResult.anomalyScore}
-          anomalyReasons={securityCheckResult.anomalyReasons}
-          isMobile={isMobile}
-        />
-      )}
-
-      {createPortal(
+  return createPortal(
         <div
           style={{
             position: 'fixed',
@@ -395,8 +321,6 @@ export function TipModal({
         </div>
       </div>
     </div>,
-        document.body
-      )}
-    </>
+    document.body
   );
 }
