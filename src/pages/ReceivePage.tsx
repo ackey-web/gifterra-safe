@@ -1,6 +1,8 @@
 // src/pages/ReceivePage.tsx
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
+import { ConnectButton } from 'thirdweb/react';
+import { client } from '../lib/thirdwebClient';
 
 export function ReceivePage() {
   const [address, setAddress] = useState<string>('');
@@ -264,6 +266,31 @@ export function ReceivePage() {
         >
           💴 GIFTERRAを使って送る
         </a>
+
+        {/* ウォレットを接続して送るボタン */}
+        <div style={{
+          width: '100%',
+          marginBottom: isMobile ? '10px' : '16px',
+        }}>
+          <ConnectButton
+            client={client}
+            connectButton={{
+              label: '🔗 ウォレットを接続して送る',
+              style: {
+                width: '100%',
+                padding: isMobile ? '12px' : '16px',
+                background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                border: 'none',
+                borderRadius: isMobile ? '8px' : '10px',
+                color: '#ffffff',
+                fontSize: isMobile ? 13 : 15,
+                fontWeight: 700,
+                cursor: 'pointer',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+              },
+            }}
+          />
+        </div>
 
         {/* 注意事項 */}
         <div style={{
