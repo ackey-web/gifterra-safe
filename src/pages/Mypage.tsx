@@ -3680,10 +3680,12 @@ function ReceiveAddress({ isMobile }: { isMobile: boolean }) {
           <div
             style={{
               background: '#ffffff',
-              borderRadius: isMobile ? 20 : 28,
-              padding: isMobile ? 28 : 40,
+              borderRadius: isMobile ? 16 : 24,
+              padding: isMobile ? 16 : 32,
               maxWidth: isMobile ? '90%' : 480,
               width: '100%',
+              maxHeight: isMobile ? '85vh' : '90vh',
+              overflowY: 'auto',
               boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
               position: 'relative',
             }}
@@ -3712,8 +3714,8 @@ function ReceiveAddress({ isMobile }: { isMobile: boolean }) {
             </button>
 
             <h2 style={{
-              margin: '0 0 12px 0',
-              fontSize: isMobile ? 20 : 24,
+              margin: '0 0 8px 0',
+              fontSize: isMobile ? 18 : 22,
               fontWeight: 700,
               color: '#1a1a1a',
               textAlign: 'center',
@@ -3723,20 +3725,20 @@ function ReceiveAddress({ isMobile }: { isMobile: boolean }) {
 
             {/* 説明文 */}
             <div style={{
-              margin: '0 0 20px 0',
-              fontSize: isMobile ? 12 : 13,
+              margin: '0 0 12px 0',
+              fontSize: isMobile ? 11 : 12,
               color: '#4a5568',
               textAlign: 'center',
-              lineHeight: 1.7,
+              lineHeight: 1.5,
               background: '#ecfdf5',
-              padding: '14px',
-              borderRadius: '12px',
+              padding: isMobile ? '10px' : '12px',
+              borderRadius: '10px',
               border: '1px solid #10b981',
             }}>
-              <div style={{ fontWeight: 600, color: '#065f46', marginBottom: '8px' }}>
+              <div style={{ fontWeight: 600, color: '#065f46', marginBottom: '6px', fontSize: isMobile ? 11 : 12 }}>
                 📱 QRコードの使い方
               </div>
-              <div style={{ fontSize: isMobile ? 11 : 12, color: '#047857', marginBottom: '12px' }}>
+              <div style={{ fontSize: isMobile ? 10 : 11, color: '#047857', marginBottom: '8px' }}>
                 スマートフォンのカメラやQRコードリーダーで読み取ると、<br />
                 受け取り専用ページが開きます。<br />
                 アドレスのコピーやMetaMaskアプリの起動が簡単にできます。
@@ -3767,21 +3769,21 @@ function ReceiveAddress({ isMobile }: { isMobile: boolean }) {
               <div style={{
                 display: 'flex',
                 justifyContent: 'center',
-                marginBottom: 24,
+                marginBottom: isMobile ? 12 : 16,
               }}>
                 <div style={{
-                  padding: 16,
+                  padding: isMobile ? 12 : 14,
                   background: '#ffffff',
-                  border: '3px solid #10b981',
-                  borderRadius: 16,
-                  boxShadow: '0 8px 24px rgba(16, 185, 129, 0.2)',
+                  border: '2px solid #10b981',
+                  borderRadius: 12,
+                  boxShadow: '0 6px 20px rgba(16, 185, 129, 0.2)',
                 }}>
                   <img
                     src={qrDataURL}
                     alt="JPYC Payment Request QR Code"
                     style={{
-                      width: isMobile ? 320 : 320,
-                      height: isMobile ? 320 : 320,
+                      width: isMobile ? 240 : 280,
+                      height: isMobile ? 240 : 280,
                       display: 'block',
                     }}
                   />
@@ -3793,13 +3795,13 @@ function ReceiveAddress({ isMobile }: { isMobile: boolean }) {
             <div
               onClick={handleCopy}
               style={{
-                padding: isMobile ? '12px 14px' : '14px 16px',
+                padding: isMobile ? '10px 12px' : '12px 14px',
                 background: copySuccess ? '#d1fae5' : '#f7fafc',
                 border: copySuccess ? '2px solid #10b981' : '2px solid #e2e8f0',
-                borderRadius: 12,
-                marginBottom: 20,
+                borderRadius: 10,
+                marginBottom: isMobile ? 12 : 16,
                 wordBreak: 'break-all',
-                fontSize: isMobile ? 13 : 14,
+                fontSize: isMobile ? 12 : 13,
                 fontFamily: 'monospace',
                 color: '#1a1a1a',
                 textAlign: 'center',
@@ -3815,10 +3817,10 @@ function ReceiveAddress({ isMobile }: { isMobile: boolean }) {
               <div style={{
                 textAlign: 'center',
                 color: '#10b981',
-                fontSize: isMobile ? 13 : 14,
+                fontSize: isMobile ? 12 : 13,
                 fontWeight: 600,
-                marginBottom: 16,
-                marginTop: -12,
+                marginBottom: isMobile ? 10 : 12,
+                marginTop: isMobile ? -8 : -10,
               }}>
                 ✓ アドレスをコピーしました！
               </div>
@@ -3827,19 +3829,19 @@ function ReceiveAddress({ isMobile }: { isMobile: boolean }) {
             {/* ボタン */}
             <div style={{
               display: 'flex',
-              gap: 12,
+              gap: isMobile ? 8 : 10,
               flexDirection: isMobile ? 'column' : 'row',
             }}>
               <button
                 onClick={handleCopy}
                 style={{
                   flex: 1,
-                  padding: isMobile ? '14px' : '16px',
+                  padding: isMobile ? '12px' : '14px',
                   background: copySuccess ? '#10b981' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                   border: 'none',
-                  borderRadius: 12,
+                  borderRadius: 10,
                   color: '#ffffff',
-                  fontSize: isMobile ? 14 : 15,
+                  fontSize: isMobile ? 13 : 14,
                   fontWeight: 700,
                   cursor: 'pointer',
                   boxShadow: '0 4px 12px rgba(102, 126, 234, 0.3)',
@@ -3853,12 +3855,12 @@ function ReceiveAddress({ isMobile }: { isMobile: boolean }) {
                 onClick={handleDownload}
                 style={{
                   flex: 1,
-                  padding: isMobile ? '14px' : '16px',
+                  padding: isMobile ? '12px' : '14px',
                   background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
                   border: 'none',
-                  borderRadius: 12,
+                  borderRadius: 10,
                   color: '#ffffff',
-                  fontSize: isMobile ? 14 : 15,
+                  fontSize: isMobile ? 13 : 14,
                   fontWeight: 700,
                   cursor: 'pointer',
                   boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)',
