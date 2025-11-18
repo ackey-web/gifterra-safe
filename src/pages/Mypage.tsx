@@ -1428,6 +1428,24 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
 
   // ガスレス送金処理
   const handleSend = async () => {
+    // 残高チェック（トランザクション実行前）
+    if (amount && selectedToken) {
+      const amountNum = parseFloat(amount);
+      const currentBalance = selectedToken === 'JPYC'
+        ? parseFloat(balances.jpyc)
+        : parseFloat(balances.nht);
+
+      if (amountNum > currentBalance) {
+        alert(
+          `❌ 残高不足です\n\n` +
+          `送金額: ${amount} ${selectedToken}\n` +
+          `現在の残高: ${currentBalance.toFixed(2)} ${selectedToken}\n\n` +
+          `残高を確認してから再度お試しください。`
+        );
+        return;
+      }
+    }
+
     // Signerとアドレスの取得（PrivyまたはThirdweb）
     let signer: ethers.Signer | null = null;
     let userAddress: string | null = null;
@@ -1437,7 +1455,7 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
       try {
         // wallets配列から同じアドレスのウォレットを探す
         const embeddedWallet = wallets.find(
-          w => w.address.toLowerCase() === user.wallet.address.toLowerCase()
+          w => w.address.toLowerCase() === user?.wallet?.address.toLowerCase()
         );
 
         if (embeddedWallet) {
