@@ -86,8 +86,14 @@ export default defineConfig(({ mode }) => {
     chunkSizeWarningLimit: 10000,
     // モジュールプリロードを無効化（循環依存の初期化エラーを防ぐ）
     modulePreload: false,
-    // 緊急対応: minify無効化でビルド時間を1-2分に短縮（本番修正のため）
-    minify: false,
+    // モバイルアプリ用: minify有効化（バンドルサイズ削減）
+    minify: 'terser',
+    terserOptions: {
+      compress: {
+        drop_console: mode === 'production',
+        drop_debugger: true,
+      },
+    },
     // CSS圧縮を有効化
     cssMinify: true,
     // アセット最適化
