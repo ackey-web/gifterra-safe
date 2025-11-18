@@ -1,41 +1,27 @@
-// src/components/TransferMessageHistory.tsx
-// 送金メッセージ受信履歴コンポーネント
+// src/components/SentTransferMessageHistory.tsx
+// 送金メッセージ送信履歴コンポーネント
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
-  useReceivedTransferMessages,
-  markMessageAsRead,
-  addMessageReaction,
-  removeMessageReaction,
-  getMessageReactions,
-  createReactionNotification,
+  useSentTransferMessages,
   type TransferMessage,
-  type MessageReaction,
 } from '../hooks/useTransferMessages';
 
-interface TransferMessageHistoryProps {
+interface SentTransferMessageHistoryProps {
   tenantId: string | undefined;
   walletAddress: string | undefined;
   isMobile: boolean;
 }
 
-export function TransferMessageHistory({
+export function SentTransferMessageHistory({
   tenantId,
   walletAddress,
   isMobile,
-}: TransferMessageHistoryProps) {
-  const { messages: fetchedMessages, isLoading, error } = useReceivedTransferMessages(tenantId, walletAddress);
-  const [messages, setMessages] = useState<TransferMessage[]>([]);
+}: SentTransferMessageHistoryProps) {
+  const { messages, isLoading, error } = useSentTransferMessages(tenantId, walletAddress);
   const [selectedMessage, setSelectedMessage] = useState<TransferMessage | null>(null);
   const [showProfileBio, setShowProfileBio] = useState(false);
-  const [reactions, setReactions] = useState<MessageReaction[]>([]);
-  const [isReacting, setIsReacting] = useState(false);
-
-  // フックから取得したメッセージをローカル状態にコピー
-  useEffect(() => {
-    setMessages(fetchedMessages);
-  }, [fetchedMessages]);
 
   // アドレスを短縮表示する関数
   const shortenAddress = (address: string): string => {
@@ -50,7 +36,7 @@ export function TransferMessageHistory({
     return `${message.slice(0, 30)}...`;
   };
 
-  // 相対時刻を表示する関数（date-fnsの代わりにシンプルな実装）
+  // 相対時刻を表示する関数
   const getRelativeTime = (dateString: string): string => {
     const date = new Date(dateString);
     const now = new Date();
@@ -73,95 +59,15 @@ export function TransferMessageHistory({
   };
 
   // モーダルを開く
-  const handleOpenModal = async (message: TransferMessage) => {
+  const handleOpenModal = (message: TransferMessage) => {
     setSelectedMessage(message);
     setShowProfileBio(false);
-
-    // 未読の場合は既読にする
-    if (!message.is_read) {
-      try {
-        // データベースを更新
-        await markMessageAsRead(message.id);
-        console.log('✅ Message marked as read:', message.id);
-
-        // ローカル状態を即座に更新（リアルタイム更新を待たずに反映）
-        setMessages(prevMessages =>
-          prevMessages.map(m =>
-            m.id === message.id ? { ...m, is_read: true } : m
-          )
-        );
-      } catch (err) {
-        console.error('❌ Failed to mark message as read:', err);
-      }
-    }
-
-    // リアクションを取得
-    try {
-      const messageReactions = await getMessageReactions(message.id);
-      setReactions(messageReactions);
-    } catch (err) {
-      console.error('Failed to load reactions:', err);
-      setReactions([]);
-    }
   };
 
   // モーダルを閉じる
   const handleCloseModal = () => {
     setSelectedMessage(null);
     setShowProfileBio(false);
-    setReactions([]);
-  };
-
-  // リアクションをトグル
-  const handleToggleReaction = async () => {
-    if (!selectedMessage || !walletAddress || isReacting) return;
-
-    setIsReacting(true);
-
-    try {
-      // 既にリアクションしているかチェック
-      const hasReacted = reactions.some(
-        (r) => r.reactor_address.toLowerCase() === walletAddress.toLowerCase()
-      );
-
-      if (hasReacted) {
-        // リアクションを削除
-        await removeMessageReaction({
-          messageId: selectedMessage.id,
-          reactorAddress: walletAddress,
-        });
-
-        // ローカル状態を更新
-        setReactions((prev) =>
-          prev.filter((r) => r.reactor_address.toLowerCase() !== walletAddress.toLowerCase())
-        );
-      } else {
-        // リアクションを追加
-        const newReaction = await addMessageReaction({
-          messageId: selectedMessage.id,
-          reactorAddress: walletAddress,
-        });
-
-        // ローカル状態を更新
-        setReactions((prev) => [newReaction, ...prev]);
-
-        // 送信者に通知を送る
-        try {
-          await createReactionNotification({
-            messageId: selectedMessage.id,
-            reactorAddress: walletAddress,
-            senderAddress: selectedMessage.from_address,
-          });
-        } catch (notifError) {
-          console.error('Failed to create notification:', notifError);
-        }
-      }
-    } catch (err) {
-      console.error('Failed to toggle reaction:', err);
-      alert('リアクションの処理に失敗しました');
-    } finally {
-      setIsReacting(false);
-    }
   };
 
   // ローディング状態
@@ -222,10 +128,10 @@ export function TransferMessageHistory({
         }}
       >
         <div style={{ fontSize: isMobile ? 40 : 48, marginBottom: 16 }}>
-          📭
+          📤
         </div>
         <p style={{ margin: 0, fontSize: isMobile ? 14 : 15 }}>
-          受信したメッセージはまだありません
+          送信したメッセージはまだありません
         </p>
       </div>
     );
@@ -249,7 +155,7 @@ export function TransferMessageHistory({
           display: 'flex',
           flexDirection: 'column',
           gap: isMobile ? 6 : 8,
-          height: isMobile ? '168px' : '204px', // 3件分の固定高さ (モバイル: 50*3 + 6*2 = 168px, PC: 60*3 + 8*2 = 204px)
+          height: isMobile ? '168px' : '204px',
           overflowY: 'auto',
           paddingRight: 4,
         }}
@@ -280,32 +186,16 @@ export function TransferMessageHistory({
               e.currentTarget.style.boxShadow = 'none';
             }}
           >
-            {/* 未読バッジ */}
-            {!message.is_read && (
-              <div
-                style={{
-                  position: 'absolute',
-                  top: 6,
-                  left: 6,
-                  width: 6,
-                  height: 6,
-                  borderRadius: '50%',
-                  background: '#3b82f6',
-                  boxShadow: '0 0 8px #3b82f6',
-                }}
-              />
-            )}
-
-            {/* アバター */}
+            {/* アバター（受信者） */}
             <div
               style={{
                 width: isMobile ? 36 : 42,
                 height: isMobile ? 36 : 42,
                 borderRadius: '50%',
                 overflow: 'hidden',
-                background: message.sender_profile?.icon_url
+                background: message.recipient_profile?.icon_url
                   ? 'transparent'
-                  : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  : 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -314,10 +204,10 @@ export function TransferMessageHistory({
                 border: '2px solid rgba(255, 255, 255, 0.1)',
               }}
             >
-              {message.sender_profile?.icon_url ? (
+              {message.recipient_profile?.icon_url ? (
                 <img
-                  src={message.sender_profile.icon_url}
-                  alt="送信者"
+                  src={message.recipient_profile.icon_url}
+                  alt="受信者"
                   style={{
                     width: '100%',
                     height: '100%',
@@ -329,7 +219,7 @@ export function TransferMessageHistory({
               )}
             </div>
 
-            {/* メイン情報（送信者名・時刻・メッセージ） */}
+            {/* メイン情報（受信者名・時刻・メッセージ） */}
             <div
               style={{
                 flex: 1,
@@ -339,7 +229,7 @@ export function TransferMessageHistory({
                 gap: 2,
               }}
             >
-              {/* 送信者名と時刻 */}
+              {/* 受信者名と時刻 */}
               <div
                 style={{
                   display: 'flex',
@@ -358,7 +248,7 @@ export function TransferMessageHistory({
                     textOverflow: 'ellipsis',
                   }}
                 >
-                  {message.sender_profile?.name || '匿名ユーザー'}
+                  {message.recipient_profile?.name || '匿名ユーザー'}
                 </div>
                 <div
                   style={{
@@ -392,7 +282,7 @@ export function TransferMessageHistory({
               style={{
                 fontSize: isMobile ? 16 : 18,
                 fontWeight: 700,
-                color: '#667eea',
+                color: '#f59e0b',
                 whiteSpace: 'nowrap',
                 flexShrink: 0,
               }}
@@ -503,7 +393,7 @@ export function TransferMessageHistory({
                 width: '100%',
                 maxHeight: '90vh',
                 overflowY: 'auto',
-                border: '1px solid rgba(59, 130, 246, 0.3)',
+                border: '1px solid rgba(245, 158, 11, 0.3)',
                 boxShadow: '0 20px 60px rgba(0, 0, 0, 0.5)',
               }}
               onClick={(e) => e.stopPropagation()}
@@ -526,7 +416,7 @@ export function TransferMessageHistory({
                     color: '#EAF2FF',
                   }}
                 >
-                  メッセージ詳細
+                  送信履歴詳細
                 </h2>
                 <button
                   onClick={handleCloseModal}
@@ -557,7 +447,7 @@ export function TransferMessageHistory({
 
               {/* モーダルコンテンツ */}
               <div style={{ padding: isMobile ? 20 : 24 }}>
-                {/* 送信者情報 */}
+                {/* 受信者情報 */}
                 <div
                   style={{
                     display: 'flex',
@@ -569,17 +459,17 @@ export function TransferMessageHistory({
                   {/* プロフィール画像（クリック可能 - プロフィールページに遷移） */}
                   <div
                     onClick={() => {
-                      // 送信者のプロフィールページに遷移
-                      window.location.href = `/profile/${selectedMessage.from_address}`;
+                      // 受信者のプロフィールページに遷移
+                      window.location.href = `/profile/${selectedMessage.to_address}`;
                     }}
                     style={{
                       width: isMobile ? 60 : 70,
                       height: isMobile ? 60 : 70,
                       borderRadius: '50%',
                       overflow: 'hidden',
-                      background: selectedMessage.sender_profile?.icon_url
+                      background: selectedMessage.recipient_profile?.icon_url
                         ? 'transparent'
-                        : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                        : 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -590,7 +480,7 @@ export function TransferMessageHistory({
                     }}
                     onMouseEnter={(e) => {
                       e.currentTarget.style.transform = 'scale(1.05)';
-                      e.currentTarget.style.borderColor = 'rgba(102, 126, 234, 0.6)';
+                      e.currentTarget.style.borderColor = 'rgba(245, 158, 11, 0.6)';
                     }}
                     onMouseLeave={(e) => {
                       e.currentTarget.style.transform = 'scale(1)';
@@ -598,10 +488,10 @@ export function TransferMessageHistory({
                     }}
                     title="プロフィールを見る"
                   >
-                    {selectedMessage.sender_profile?.icon_url ? (
+                    {selectedMessage.recipient_profile?.icon_url ? (
                       <img
-                        src={selectedMessage.sender_profile.icon_url}
-                        alt="送信者"
+                        src={selectedMessage.recipient_profile.icon_url}
+                        alt="受信者"
                         style={{
                           width: '100%',
                           height: '100%',
@@ -613,8 +503,17 @@ export function TransferMessageHistory({
                     )}
                   </div>
 
-                  {/* 送信者名とアドレス */}
+                  {/* 受信者名とアドレス */}
                   <div style={{ flex: 1 }}>
+                    <div
+                      style={{
+                        fontSize: isMobile ? 12 : 13,
+                        color: 'rgba(255, 255, 255, 0.6)',
+                        marginBottom: 4,
+                      }}
+                    >
+                      送信先
+                    </div>
                     <div
                       style={{
                         fontSize: isMobile ? 16 : 18,
@@ -623,7 +522,7 @@ export function TransferMessageHistory({
                         marginBottom: 4,
                       }}
                     >
-                      {selectedMessage.sender_profile?.name || '匿名ユーザー'}
+                      {selectedMessage.recipient_profile?.name || '匿名ユーザー'}
                     </div>
                     <div
                       style={{
@@ -632,19 +531,19 @@ export function TransferMessageHistory({
                         fontFamily: 'monospace',
                       }}
                     >
-                      {shortenAddress(selectedMessage.from_address)}
+                      {shortenAddress(selectedMessage.to_address)}
                     </div>
                   </div>
                 </div>
 
                 {/* プロフィールbio（トグル展開） */}
-                {showProfileBio && selectedMessage.sender_profile?.bio && (
+                {showProfileBio && selectedMessage.recipient_profile?.bio && (
                   <div
                     style={{
                       marginBottom: 20,
                       padding: isMobile ? 12 : 16,
-                      background: 'rgba(102, 126, 234, 0.1)',
-                      border: '1px solid rgba(102, 126, 234, 0.3)',
+                      background: 'rgba(245, 158, 11, 0.1)',
+                      border: '1px solid rgba(245, 158, 11, 0.3)',
                       borderRadius: 8,
                       color: 'rgba(255, 255, 255, 0.9)',
                       fontSize: isMobile ? 13 : 14,
@@ -661,7 +560,7 @@ export function TransferMessageHistory({
                     >
                       プロフィール
                     </div>
-                    {selectedMessage.sender_profile.bio}
+                    {selectedMessage.recipient_profile.bio}
                   </div>
                 )}
 
@@ -670,8 +569,8 @@ export function TransferMessageHistory({
                   style={{
                     marginBottom: 20,
                     padding: isMobile ? 16 : 20,
-                    background: 'rgba(102, 126, 234, 0.05)',
-                    border: '1px solid rgba(102, 126, 234, 0.2)',
+                    background: 'rgba(245, 158, 11, 0.05)',
+                    border: '1px solid rgba(245, 158, 11, 0.2)',
                     borderRadius: 12,
                   }}
                 >
@@ -688,7 +587,7 @@ export function TransferMessageHistory({
                     style={{
                       fontSize: isMobile ? 28 : 32,
                       fontWeight: 700,
-                      color: '#667eea',
+                      color: '#f59e0b',
                     }}
                   >
                     {selectedMessage.amount} {selectedMessage.token_symbol}
@@ -705,86 +604,39 @@ export function TransferMessageHistory({
                 </div>
 
                 {/* メッセージ全文 */}
-                <div
-                  style={{
-                    marginBottom: 20,
-                  }}
-                >
+                {selectedMessage.message && (
                   <div
                     style={{
-                      fontSize: isMobile ? 13 : 14,
-                      color: 'rgba(255, 255, 255, 0.7)',
-                      marginBottom: 8,
-                      fontWeight: 600,
+                      marginBottom: 20,
                     }}
                   >
-                    メッセージ
+                    <div
+                      style={{
+                        fontSize: isMobile ? 13 : 14,
+                        color: 'rgba(255, 255, 255, 0.7)',
+                        marginBottom: 8,
+                        fontWeight: 600,
+                      }}
+                    >
+                      メッセージ
+                    </div>
+                    <div
+                      style={{
+                        padding: isMobile ? 14 : 16,
+                        background: 'rgba(255, 255, 255, 0.05)',
+                        border: '1px solid rgba(255, 255, 255, 0.1)',
+                        borderRadius: 8,
+                        color: '#EAF2FF',
+                        fontSize: isMobile ? 14 : 15,
+                        lineHeight: 1.7,
+                        whiteSpace: 'pre-wrap',
+                        wordBreak: 'break-word',
+                      }}
+                    >
+                      {selectedMessage.message}
+                    </div>
                   </div>
-                  <div
-                    style={{
-                      padding: isMobile ? 14 : 16,
-                      background: 'rgba(255, 255, 255, 0.05)',
-                      border: '1px solid rgba(255, 255, 255, 0.1)',
-                      borderRadius: 8,
-                      color: '#EAF2FF',
-                      fontSize: isMobile ? 14 : 15,
-                      lineHeight: 1.7,
-                      whiteSpace: 'pre-wrap',
-                      wordBreak: 'break-word',
-                    }}
-                  >
-                    {selectedMessage.message}
-                  </div>
-                </div>
-
-                {/* リアクションボタン */}
-                <div
-                  style={{
-                    marginBottom: 20,
-                  }}
-                >
-                  <button
-                    onClick={handleToggleReaction}
-                    disabled={isReacting}
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: 6,
-                      padding: isMobile ? '6px 12px' : '8px 14px',
-                      background: reactions.some(
-                        (r) => r.reactor_address.toLowerCase() === walletAddress?.toLowerCase()
-                      )
-                        ? 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)'
-                        : 'rgba(239, 68, 68, 0.1)',
-                      border: reactions.some(
-                        (r) => r.reactor_address.toLowerCase() === walletAddress?.toLowerCase()
-                      )
-                        ? 'none'
-                        : '1px solid rgba(239, 68, 68, 0.3)',
-                      borderRadius: 20,
-                      color: reactions.some(
-                        (r) => r.reactor_address.toLowerCase() === walletAddress?.toLowerCase()
-                      )
-                        ? '#ffffff'
-                        : '#fca5a5',
-                      fontSize: isMobile ? 14 : 15,
-                      fontWeight: 600,
-                      cursor: isReacting ? 'not-allowed' : 'pointer',
-                      transition: 'all 0.2s',
-                      opacity: isReacting ? 0.6 : 1,
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!isReacting) {
-                        e.currentTarget.style.transform = 'scale(1.05)';
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.transform = 'scale(1)';
-                    }}
-                  >
-                    <span style={{ fontSize: isMobile ? 16 : 18 }}>❤️</span>
-                  </button>
-                </div>
+                )}
 
                 {/* Polygonscanリンク */}
                 {selectedMessage.tx_hash && (

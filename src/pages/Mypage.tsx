@@ -20,6 +20,7 @@ import { TenantPlanCard } from '../components/TenantPlanCard';
 import { supabase } from '../lib/supabase';
 import { SettingsModal } from '../components/SettingsModal';
 import { TransferMessageHistory } from '../components/TransferMessageHistory';
+import { SentTransferMessageHistory } from '../components/SentTransferMessageHistory';
 import { NotificationBell } from '../components/NotificationBell';
 import { X402PaymentSection } from '../components/X402PaymentSection';
 import { UserSearchModal } from '../components/UserSearchModal';
@@ -5332,6 +5333,9 @@ function HistorySection({
   address: string | undefined;
   tenantId: string | null;
 }) {
+  const [activeTab, setActiveTab] = useState<'received' | 'sent'>('received');
+  const { unreadCount } = useReceivedTransferMessages(tenantId || undefined, address);
+
   return (
     <div style={{
       background: 'linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)',
@@ -5342,14 +5346,110 @@ function HistorySection({
       boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
     }}>
       <h2 style={{ margin: '0 0 16px 0', fontSize: isMobile ? 18 : 22, fontWeight: 700 }}>
-        📥 受信履歴
+        📥📤 送受信履歴
       </h2>
 
-      <TransferMessageHistory
-        tenantId={tenantId}
-        walletAddress={address}
-        isMobile={isMobile}
-      />
+      {/* タブボタン */}
+      <div style={{
+        display: 'flex',
+        gap: isMobile ? 8 : 12,
+        marginBottom: 16,
+      }}>
+        <button
+          onClick={() => setActiveTab('received')}
+          style={{
+            flex: 1,
+            padding: isMobile ? '10px 16px' : '12px 20px',
+            background: activeTab === 'received'
+              ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+              : 'rgba(255, 255, 255, 0.1)',
+            border: activeTab === 'received'
+              ? 'none'
+              : '1px solid rgba(255, 255, 255, 0.2)',
+            borderRadius: 8,
+            color: '#ffffff',
+            fontSize: isMobile ? 14 : 15,
+            fontWeight: 600,
+            cursor: 'pointer',
+            transition: 'all 0.2s',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 6,
+          }}
+          onMouseEnter={(e) => {
+            if (activeTab !== 'received') {
+              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)';
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (activeTab !== 'received') {
+              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+            }
+          }}
+        >
+          <span>📥 受信履歴</span>
+          {unreadCount > 0 && (
+            <span style={{
+              background: '#ef4444',
+              color: '#ffffff',
+              borderRadius: '12px',
+              padding: '2px 8px',
+              fontSize: isMobile ? 11 : 12,
+              fontWeight: 700,
+            }}>
+              {unreadCount}
+            </span>
+          )}
+        </button>
+
+        <button
+          onClick={() => setActiveTab('sent')}
+          style={{
+            flex: 1,
+            padding: isMobile ? '10px 16px' : '12px 20px',
+            background: activeTab === 'sent'
+              ? 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)'
+              : 'rgba(255, 255, 255, 0.1)',
+            border: activeTab === 'sent'
+              ? 'none'
+              : '1px solid rgba(255, 255, 255, 0.2)',
+            borderRadius: 8,
+            color: '#ffffff',
+            fontSize: isMobile ? 14 : 15,
+            fontWeight: 600,
+            cursor: 'pointer',
+            transition: 'all 0.2s',
+          }}
+          onMouseEnter={(e) => {
+            if (activeTab !== 'sent') {
+              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)';
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (activeTab !== 'sent') {
+              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+            }
+          }}
+        >
+          📤 送信履歴
+        </button>
+      </div>
+
+      {/* コンテンツ表示 */}
+      {activeTab === 'received' ? (
+        <TransferMessageHistory
+          tenantId={tenantId}
+          walletAddress={address}
+          isMobile={isMobile}
+        />
+      ) : (
+        <SentTransferMessageHistory
+          tenantId={tenantId}
+          walletAddress={address}
+          isMobile={isMobile}
+        />
+      )}
     </div>
   );
 }
