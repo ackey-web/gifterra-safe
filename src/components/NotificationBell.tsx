@@ -13,7 +13,11 @@ export function NotificationBell({ userAddress, isMobile }: NotificationBellProp
   const [buttonRect, setButtonRect] = useState<DOMRect | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
-  const { notifications, unreadCount, loading, markAsRead, markAllAsRead } = useNotifications(userAddress);
+  const { notifications: allNotifications, loading, markAsRead, markAllAsRead } = useNotifications(userAddress);
+
+  // 受信メッセージの通知を除外（送受信履歴パネルで確認できるため）
+  const notifications = allNotifications.filter(n => n.type !== 'jpyc_received' && n.type !== 'tip_received');
+  const unreadCount = notifications.filter(n => !n.is_read).length;
 
   // ドロップダウン外クリックで閉じる
   useEffect(() => {

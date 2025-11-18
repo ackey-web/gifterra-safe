@@ -5334,7 +5334,7 @@ function HistorySection({
   tenantId: string | null;
 }) {
   const [activeTab, setActiveTab] = useState<'received' | 'sent'>('received');
-  const { unreadCount } = useReceivedTransferMessages(tenantId || undefined, address);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   return (
     <div style={{
@@ -5439,13 +5439,14 @@ function HistorySection({
       {/* コンテンツ表示 */}
       {activeTab === 'received' ? (
         <TransferMessageHistory
-          tenantId={tenantId}
+          tenantId={tenantId || undefined}
           walletAddress={address}
           isMobile={isMobile}
+          onUnreadCountChange={setUnreadCount}
         />
       ) : (
         <SentTransferMessageHistory
-          tenantId={tenantId}
+          tenantId={tenantId || undefined}
           walletAddress={address}
           isMobile={isMobile}
         />

@@ -18,12 +18,14 @@ interface TransferMessageHistoryProps {
   tenantId: string | undefined;
   walletAddress: string | undefined;
   isMobile: boolean;
+  onUnreadCountChange?: (count: number) => void;
 }
 
 export function TransferMessageHistory({
   tenantId,
   walletAddress,
   isMobile,
+  onUnreadCountChange,
 }: TransferMessageHistoryProps) {
   const { messages: fetchedMessages, isLoading, error } = useReceivedTransferMessages(tenantId, walletAddress);
   const [messages, setMessages] = useState<TransferMessage[]>([]);
@@ -36,6 +38,12 @@ export function TransferMessageHistory({
   useEffect(() => {
     setMessages(fetchedMessages);
   }, [fetchedMessages]);
+
+  // 未読数が変わったら親に通知
+  useEffect(() => {
+    const unreadCount = messages.filter(m => !m.is_read).length;
+    onUnreadCountChange?.(unreadCount);
+  }, [messages, onUnreadCountChange]);
 
   // アドレスを短縮表示する関数
   const shortenAddress = (address: string): string => {
