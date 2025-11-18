@@ -37,6 +37,8 @@ export function SentTransferMessageHistory({
   };
 
   // 相対時刻を表示する関数
+  // Note: dateStringはISO 8601形式のタイムスタンプ（DBからTIMESTAMPTZとして取得）
+  // new Date()は自動的にタイムゾーンを考慮してローカル時刻に変換する
   const getRelativeTime = (dateString: string): string => {
     const date = new Date(dateString);
     const now = new Date();
