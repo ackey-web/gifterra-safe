@@ -458,21 +458,38 @@ export function MypageWithSend() {
               {user?.email?.address || user?.google?.email || 'ゲストユーザー'}
             </p>
           </div>
-          <button
-            onClick={logout}
-            style={{
-              padding: '12px 24px',
-              background: '#e53e3e',
-              border: 'none',
-              borderRadius: '8px',
-              color: '#ffffff',
-              fontSize: 14,
-              fontWeight: 600,
-              cursor: 'pointer',
-            }}
-          >
-            ログアウト
-          </button>
+          <div style={{ display: 'flex', gap: '12px' }}>
+            <button
+              onClick={() => window.location.href = '/terminal'}
+              style={{
+                padding: '12px 24px',
+                background: '#3b82f6',
+                border: 'none',
+                borderRadius: '8px',
+                color: '#ffffff',
+                fontSize: 14,
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              💳 ターミナルUI
+            </button>
+            <button
+              onClick={logout}
+              style={{
+                padding: '12px 24px',
+                background: '#e53e3e',
+                border: 'none',
+                borderRadius: '8px',
+                color: '#ffffff',
+                fontSize: 14,
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              ログアウト
+            </button>
+          </div>
         </div>
 
         {/* ウォレットアドレス */}

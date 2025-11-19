@@ -742,6 +742,29 @@ function Header({ viewMode, setViewMode, isMobile, tenantRank, showSettingsModal
                   <span>設定</span>
                 </button>
 
+                {/* ターミナルUI */}
+                <button
+                  onClick={() => {
+                    window.location.href = '/terminal';
+                    setShowMobileMenu(false);
+                  }}
+                  style={{
+                    padding: '12px 16px',
+                    background: 'rgba(59, 130, 246, 0.1)',
+                    border: '1px solid rgba(59, 130, 246, 0.3)',
+                    borderRadius: 8,
+                    color: '#93C5FD',
+                    fontSize: 14,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 12,
+                  }}
+                >
+                  <span style={{ fontSize: 18 }}>💳</span>
+                  <span>ターミナルUI</span>
+                </button>
+
                 {/* ログアウトボタン */}
                 <button
                   onClick={() => {
@@ -857,6 +880,33 @@ function Header({ viewMode, setViewMode, isMobile, tenantRank, showSettingsModal
             }}
           >
             🔍
+          </button>
+          {/* ターミナルUIボタン */}
+          <button
+            onClick={() => window.location.href = '/terminal'}
+            style={{
+              width: 36,
+              height: 36,
+              background: 'rgba(59, 130, 246, 0.1)',
+              border: '1px solid rgba(59, 130, 246, 0.3)',
+              borderRadius: 8,
+              color: '#93C5FD',
+              fontSize: 18,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transition: 'all 0.2s',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'rgba(59, 130, 246, 0.2)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'rgba(59, 130, 246, 0.1)';
+            }}
+            title="ターミナルUI"
+          >
+            💳
           </button>
           {/* 設定ボタン */}
           <button
