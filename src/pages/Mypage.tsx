@@ -741,6 +741,29 @@ function Header({ viewMode, setViewMode, isMobile, tenantRank, showSettingsModal
                   <span>設定</span>
                 </button>
 
+                {/* ログアウトボタン */}
+                <button
+                  onClick={() => {
+                    setShowMobileMenu(false);
+                    handleLogout();
+                  }}
+                  style={{
+                    padding: '12px 16px',
+                    background: 'rgba(220, 38, 38, 0.1)',
+                    border: '1px solid rgba(220, 38, 38, 0.3)',
+                    borderRadius: 8,
+                    color: '#FCA5A5',
+                    fontSize: 14,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 12,
+                  }}
+                >
+                  <span style={{ fontSize: 18 }}>🚪</span>
+                  <span>ログアウト</span>
+                </button>
+
                 {viewMode === 'tenant' && (
                   <button style={{
                     padding: '12px 16px',
@@ -903,9 +926,18 @@ function WalletConnectionInfo({ isMobile, onChainIdChange }: { isMobile: boolean
         return;
       }
 
+      // thirdwebChainIdが取得できている場合はそれを優先使用
+      if (thirdwebChainId) {
+        setActualChainId(thirdwebChainId);
+        onChainIdChange(thirdwebChainId);
+        return;
+      }
+
       // window.ethereumが存在する場合（MetaMaskなど外部ウォレット）
-      if (typeof window.ethereum !== 'undefined') {
+      if (typeof window.ethereum !== 'undefined' && address) {
         try {
+          // 少し遅延を入れてウォレット接続が完了するのを待つ
+          await new Promise(resolve => setTimeout(resolve, 500));
           const chainId = await window.ethereum.request({ method: 'eth_chainId' });
           const numericChainId = parseInt(chainId, 16);
           setActualChainId(numericChainId);
@@ -917,6 +949,9 @@ function WalletConnectionInfo({ isMobile, onChainIdChange }: { isMobile: boolean
           setActualChainId(fallbackChainId);
           onChainIdChange(fallbackChainId);
         }
+      } else if (!address) {
+        // アドレスがまだ取得されていない場合は待機（undefinedのまま）
+        return;
       } else {
         // window.ethereumが存在しない場合
         // thirdwebChainIdがundefinedの場合はPolygon Mainnet (137) をデフォルトとする
