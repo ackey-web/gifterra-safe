@@ -3,6 +3,13 @@
 
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import {
+  isPushNotificationSupported,
+  getPushSubscriptionStatus,
+  subscribeToPushNotifications,
+  unsubscribeFromPushNotifications,
+  sendTestNotification,
+} from '../utils/pushNotifications';
 
 interface NotificationSettingsProps {
   userAddress: string;
@@ -69,10 +76,68 @@ export const NotificationSettings: React.FC<NotificationSettingsProps> = ({
   const [emailInput, setEmailInput] = useState('');
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
+  // プッシュ通知の状態
+  const [pushSupported, setPushSupported] = useState(false);
+  const [pushSubscribed, setPushSubscribed] = useState(false);
+  const [pushLoading, setPushLoading] = useState(false);
+
   // 設定を読み込み
   useEffect(() => {
     loadSettings();
+    checkPushStatus();
   }, [userAddress]);
+
+  // プッシュ通知の状態をチェック
+  const checkPushStatus = async () => {
+    const supported = isPushNotificationSupported();
+    setPushSupported(supported);
+
+    if (supported) {
+      const status = await getPushSubscriptionStatus();
+      setPushSubscribed(status.isSubscribed);
+    }
+  };
+
+  // プッシュ通知の購読を切り替え
+  const togglePushNotifications = async () => {
+    if (!userAddress) return;
+
+    setPushLoading(true);
+    try {
+      if (pushSubscribed) {
+        const success = await unsubscribeFromPushNotifications(userAddress);
+        if (success) {
+          setPushSubscribed(false);
+          showMessage('success', 'プッシュ通知を解除しました');
+        } else {
+          showMessage('error', 'プッシュ通知の解除に失敗しました');
+        }
+      } else {
+        const subscription = await subscribeToPushNotifications(userAddress);
+        if (subscription) {
+          setPushSubscribed(true);
+          showMessage('success', 'プッシュ通知を有効にしました');
+        } else {
+          showMessage('error', 'プッシュ通知の許可が必要です');
+        }
+      }
+    } catch (error) {
+      console.error('Push notification toggle error:', error);
+      showMessage('error', 'プッシュ通知の設定に失敗しました');
+    } finally {
+      setPushLoading(false);
+    }
+  };
+
+  // テスト通知を送信
+  const handleTestNotification = async () => {
+    try {
+      await sendTestNotification();
+      showMessage('success', 'テスト通知を送信しました');
+    } catch (error) {
+      showMessage('error', 'テスト通知の送信に失敗しました');
+    }
+  };
 
   const loadSettings = async () => {
     if (!userAddress) {
@@ -353,6 +418,54 @@ export const NotificationSettings: React.FC<NotificationSettingsProps> = ({
             onClick={() => toggleNotificationType('gift_received')}
           />
         </div>
+
+        {/* プッシュ通知 */}
+        {pushSupported && (
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              padding: '12px 0',
+              borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+            }}
+          >
+            <div>
+              <div style={{ fontSize: 14, color: '#EAF2FF', marginBottom: 4 }}>
+                🔔 プッシュ通知
+              </div>
+              <div style={{ fontSize: 12, color: 'rgba(255, 255, 255, 0.6)' }}>
+                ブラウザにプッシュ通知を送信
+              </div>
+            </div>
+            <ToggleButton
+              enabled={pushSubscribed}
+              onClick={togglePushNotifications}
+            />
+          </div>
+        )}
+
+        {/* テスト通知ボタン（プッシュ通知が有効な場合のみ） */}
+        {pushSupported && pushSubscribed && (
+          <div style={{ padding: '12px 0', borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>
+            <button
+              onClick={handleTestNotification}
+              disabled={pushLoading}
+              style={{
+                padding: '8px 16px',
+                fontSize: 13,
+                color: '#EAF2FF',
+                background: 'rgba(102, 126, 234, 0.2)',
+                border: '1px solid rgba(102, 126, 234, 0.4)',
+                borderRadius: 6,
+                cursor: pushLoading ? 'not-allowed' : 'pointer',
+                opacity: pushLoading ? 0.6 : 1,
+              }}
+            >
+              🧪 テスト通知を送信
+            </button>
+          </div>
+        )}
 
         {/* メール通知 */}
         <div

@@ -1,7 +1,66 @@
 // GIFTERRA Service Worker for PWA
-// Network-first strategy with cache fallback
+// Network-first strategy with cache fallback + Push Notifications
 
 const CACHE_NAME = 'gifterra-v1';
+
+// =============================
+// プッシュ通知の受信処理
+// =============================
+self.addEventListener('push', (event) => {
+  if (!event.data) return;
+
+  try {
+    const data = event.data.json();
+
+    const options = {
+      body: data.body || '',
+      icon: '/pwa-192x192.png',
+      badge: '/pwa-192x192.png',
+      vibrate: [100, 50, 100],
+      data: {
+        url: data.url || '/',
+        ...data.data
+      },
+      actions: data.actions || [],
+      tag: data.tag || 'gifterra-notification',
+      renotify: true,
+    };
+
+    event.waitUntil(
+      self.registration.showNotification(data.title || 'GIFTERRA', options)
+    );
+  } catch (error) {
+    // JSON解析失敗時はテキストとして表示
+    event.waitUntil(
+      self.registration.showNotification('GIFTERRA', {
+        body: event.data.text(),
+        icon: '/pwa-192x192.png',
+      })
+    );
+  }
+});
+
+// 通知クリック時の処理
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+
+  const urlToOpen = event.notification.data?.url || '/';
+
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true })
+      .then((windowClients) => {
+        // 既存のウィンドウがあればフォーカス
+        for (const client of windowClients) {
+          if (client.url.includes(self.location.origin) && 'focus' in client) {
+            client.navigate(urlToOpen);
+            return client.focus();
+          }
+        }
+        // なければ新しいウィンドウを開く
+        return clients.openWindow(urlToOpen);
+      })
+  );
+});
 
 self.addEventListener('install', (event) => {
   event.waitUntil(self.skipWaiting());
