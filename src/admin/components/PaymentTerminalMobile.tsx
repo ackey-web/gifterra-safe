@@ -442,7 +442,7 @@ export function PaymentTerminalMobile() {
               style={{
                 position: 'absolute',
                 left: 0,
-                top: 0,
+                top: '50px',
                 width: '36px',
                 height: '36px',
                 background: allPayments.length > 0 ? 'rgba(59, 130, 246, 0.2)' : 'rgba(255, 255, 255, 0.05)',
@@ -471,7 +471,7 @@ export function PaymentTerminalMobile() {
               style={{
                 position: 'absolute',
                 right: 0,
-                top: 0,
+                top: '50px',
                 width: '36px',
                 height: '36px',
                 background: 'rgba(255, 255, 255, 0.1)',
