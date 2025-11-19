@@ -1779,11 +1779,11 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
           marginBottom: 10,
         }}>
           <div style={{
-            fontSize: isMobile ? 12 : 13,
+            fontSize: isMobile ? 11 : 13,
             fontWeight: 700,
             color: '#1a1a1a',
           }}>
-            🔓 あなたのウォレット内の資産（読み取りのみ）
+            {isMobile ? '🔓 ウォレット資産（読み取りのみ）' : '🔓 あなたのウォレット内の資産（読み取りのみ）'}
           </div>
           <button
             onClick={() => setBalanceVisible(!balanceVisible)}
