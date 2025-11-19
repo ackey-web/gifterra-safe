@@ -923,17 +923,8 @@ function WalletConnectionInfo({ isMobile, onChainIdChange }: { isMobile: boolean
       // Capacitorアプリかどうかを検出
       const isCapacitorApp = typeof (window as any).Capacitor !== 'undefined';
 
-      console.log('[ChainId Debug] fetchChainId called', {
-        privyWallet: user?.wallet?.address,
-        thirdwebAddress: address,
-        thirdwebChainId,
-        hasEthereum: typeof window.ethereum !== 'undefined',
-        isCapacitorApp
-      });
-
       // Privyウォレットの場合は常にPolygon Mainnet（137）
       if (user?.wallet?.address && !address) {
-        console.log('[ChainId Debug] Using Privy wallet, setting chainId to 137');
         setActualChainId(137);
         onChainIdChange(137);
         return;
@@ -941,7 +932,6 @@ function WalletConnectionInfo({ isMobile, onChainIdChange }: { isMobile: boolean
 
       // thirdwebChainIdが取得できている場合はそれを優先使用
       if (thirdwebChainId) {
-        console.log('[ChainId Debug] Using thirdwebChainId:', thirdwebChainId);
         setActualChainId(thirdwebChainId);
         onChainIdChange(thirdwebChainId);
         return;
@@ -951,7 +941,6 @@ function WalletConnectionInfo({ isMobile, onChainIdChange }: { isMobile: boolean
       // WalletConnect経由なのでwindow.ethereumは存在しない
       // アドレスが取得できていれば、Polygon Mainnetとして扱う
       if (isCapacitorApp && address) {
-        console.log('[ChainId Debug] Capacitor app with address, assuming Polygon Mainnet');
         setActualChainId(137);
         onChainIdChange(137);
         return;
@@ -964,26 +953,21 @@ function WalletConnectionInfo({ isMobile, onChainIdChange }: { isMobile: boolean
           await new Promise(resolve => setTimeout(resolve, 500));
           const chainId = await window.ethereum.request({ method: 'eth_chainId' });
           const numericChainId = parseInt(chainId, 16);
-          console.log('[ChainId Debug] Got chainId from window.ethereum:', numericChainId);
           setActualChainId(numericChainId);
           onChainIdChange(numericChainId);
-        } catch (error) {
-          console.error('Failed to fetch chainId from window.ethereum:', error);
+        } catch {
           // エラー時もthirdwebChainIdまたはデフォルト値を設定
           const fallbackChainId = thirdwebChainId || 137;
-          console.log('[ChainId Debug] Error fallback chainId:', fallbackChainId);
           setActualChainId(fallbackChainId);
           onChainIdChange(fallbackChainId);
         }
       } else if (!address) {
         // アドレスがまだ取得されていない場合は待機（undefinedのまま）
-        console.log('[ChainId Debug] No address yet, waiting...');
         return;
       } else {
         // window.ethereumが存在しない場合
         // thirdwebChainIdがundefinedの場合はPolygon Mainnet (137) をデフォルトとする
         const fallbackChainId = thirdwebChainId || 137;
-        console.log('[ChainId Debug] No ethereum, fallback chainId:', fallbackChainId);
         setActualChainId(fallbackChainId);
         onChainIdChange(fallbackChainId);
       }
@@ -1681,12 +1665,6 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
 
         // トランザクション成功後、Supabaseに送金メッセージを保存
         try {
-          // 送金元アドレスをログ出力（デバッグ用）
-          console.log('📤 Transfer message save - fromAddress:', walletAddress);
-          console.log('📤 Transfer message save - actualAddress:', actualAddress);
-          console.log('📤 Transfer message save - privyEmbeddedAddress:', privyEmbeddedAddress);
-          console.log('📤 Transfer message save - thirdwebAddress:', thirdwebAddress);
-
           await saveTransferMessage({
             tenantId: 'default', // 送金メッセージは常にdefaultテナントに保存（グローバル機能のため）
             fromAddress: walletAddress || '',
@@ -1723,15 +1701,7 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
       setSelectedTenant(null);
 
     } catch (error: any) {
-      console.error('❌ 送金エラー:', error);
-      console.error('❌ エラー詳細:', {
-        message: error.message,
-        code: error.code,
-        reason: error.reason,
-        transaction: error.transaction,
-        receipt: error.receipt,
-        stack: error.stack,
-      });
+      console.error('❌ 送金エラー:', error.message || error);
       alert(`❌ 送金に失敗しました\n\nエラー: ${error.message || '不明なエラー'}\nコード: ${error.code || 'N/A'}`);
     } finally {
       setIsSending(false);
@@ -1755,12 +1725,12 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
         background: 'linear-gradient(135deg, #f0f7ff 0%, #e0f0ff 100%)',
         border: '2px solid rgba(59, 130, 246, 0.2)',
         borderRadius: isMobile ? 16 : 24,
-        padding: isMobile ? 20 : 28,
+        padding: isMobile ? 14 : 28,
         boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
         position: 'relative',
       }}
     >
-      <h2 style={{ margin: '0 0 20px 0', fontSize: isMobile ? 18 : 22, fontWeight: 700, color: '#1a1a1a' }}>
+      <h2 style={{ margin: '0 0 14px 0', fontSize: isMobile ? 18 : 22, fontWeight: 700, color: '#1a1a1a' }}>
         送金
       </h2>
 
