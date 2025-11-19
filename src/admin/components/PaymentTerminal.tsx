@@ -2,7 +2,6 @@
 // タブレット専用レジUI - 実店舗向けに最適化
 
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import { usePrivy } from '@privy-io/react-auth';
 import { ConnectWallet, useAddress, useDisconnect } from '@thirdweb-dev/react';
@@ -33,7 +32,6 @@ interface PaymentHistory {
 }
 
 export function PaymentTerminal() {
-  const navigate = useNavigate();
   const { user, login, logout: privyLogout } = usePrivy();
   const thirdwebAddress = useAddress();
   const disconnect = useDisconnect();
@@ -505,7 +503,7 @@ export function PaymentTerminal() {
 
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
           <h1
-            onClick={() => navigate('/mypage')}
+            onClick={() => window.location.href = '/mypage'}
             style={{
               fontSize: '32px',
               margin: 0,
