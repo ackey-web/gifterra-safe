@@ -82,6 +82,9 @@ export function PaymentTerminalMobile() {
   const [tempPresetAmounts, setTempPresetAmounts] = useState<number[]>([100, 500, 1000, 3000, 5000, 10000]);
   const [tempExpiryMinutes, setTempExpiryMinutes] = useState(5);
 
+  // Capacitorアプリかどうかを検出（スマホアプリ版）
+  const isCapacitorApp = typeof (window as any).Capacitor !== 'undefined';
+
   // 受信履歴のプライバシー設定
   const [historyPrivacy, setHistoryPrivacy] = useState(false);
   const [historyPage, setHistoryPage] = useState(0);
@@ -208,10 +211,13 @@ export function PaymentTerminalMobile() {
   // 設定を保存
   const handleSaveSettings = () => {
     try {
-      localStorage.setItem('terminal_preset_amounts', JSON.stringify(tempPresetAmounts));
+      // スマホアプリ以外の場合のみプリセット金額を保存
+      if (!isCapacitorApp) {
+        localStorage.setItem('terminal_preset_amounts', JSON.stringify(tempPresetAmounts));
+        setPresetAmounts(tempPresetAmounts);
+      }
       localStorage.setItem('terminal_qr_expiry', tempExpiryMinutes.toString());
 
-      setPresetAmounts(tempPresetAmounts);
       setExpiryMinutes(tempExpiryMinutes);
 
       setShowSettingsModal(false);
@@ -1030,40 +1036,42 @@ export function PaymentTerminalMobile() {
                   ⚙️ ターミナル設定
                 </h2>
 
-                {/* よく使う金額の編集 */}
-                <div style={{ marginBottom: '24px' }}>
-                  <div style={{ fontSize: '15px', marginBottom: '12px', fontWeight: '600', color: '#fff' }}>
-                    よく使う金額（JPYC）
+                {/* よく使う金額の編集（スマホアプリ以外のみ表示） */}
+                {!isCapacitorApp && (
+                  <div style={{ marginBottom: '24px' }}>
+                    <div style={{ fontSize: '15px', marginBottom: '12px', fontWeight: '600', color: '#fff' }}>
+                      よく使う金額（JPYC）
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                      {tempPresetAmounts.map((amount, index) => (
+                        <div key={`preset-input-${index}`} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.7)', minWidth: '24px' }}>
+                            {index + 1}.
+                          </span>
+                          <input
+                            type="number"
+                            value={amount}
+                            onChange={(e) => {
+                              const newPresets = [...tempPresetAmounts];
+                              newPresets[index] = Math.max(0, parseInt(e.target.value) || 0);
+                              setTempPresetAmounts(newPresets);
+                            }}
+                            style={{
+                              flex: 1,
+                              padding: '10px 12px',
+                              fontSize: '14px',
+                              background: 'rgba(255,255,255,0.1)',
+                              border: '1px solid rgba(255,255,255,0.2)',
+                              borderRadius: '8px',
+                              color: '#fff',
+                              outline: 'none',
+                            }}
+                          />
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                    {tempPresetAmounts.map((amount, index) => (
-                      <div key={`preset-input-${index}`} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.7)', minWidth: '24px' }}>
-                          {index + 1}.
-                        </span>
-                        <input
-                          type="number"
-                          value={amount}
-                          onChange={(e) => {
-                            const newPresets = [...tempPresetAmounts];
-                            newPresets[index] = Math.max(0, parseInt(e.target.value) || 0);
-                            setTempPresetAmounts(newPresets);
-                          }}
-                          style={{
-                            flex: 1,
-                            padding: '10px 12px',
-                            fontSize: '14px',
-                            background: 'rgba(255,255,255,0.1)',
-                            border: '1px solid rgba(255,255,255,0.2)',
-                            borderRadius: '8px',
-                            color: '#fff',
-                            outline: 'none',
-                          }}
-                        />
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                )}
 
                 {/* QRコード有効時間 */}
                 <div style={{ marginBottom: '24px' }}>
