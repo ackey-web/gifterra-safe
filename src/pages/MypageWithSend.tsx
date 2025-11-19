@@ -501,7 +501,7 @@ export function MypageWithSend() {
           </div>
         )}
 
-        {/* トークン残高 */}
+        {/* ウォレット内資産（読み取りのみ） */}
         <div style={{
           background: '#ffffff',
           borderRadius: '16px',
@@ -510,7 +510,7 @@ export function MypageWithSend() {
           boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
         }}>
           <h2 style={{ fontSize: 18, fontWeight: 600, color: '#1a1a1a', margin: '0 0 16px 0' }}>
-            💰 トークン残高
+            🔓 あなたのウォレット内の資産（読み取りのみ）
           </h2>
           <div style={{ display: 'grid', gap: '12px' }}>
             {/* JPYC */}
@@ -544,7 +544,7 @@ export function MypageWithSend() {
                 cursor: 'pointer',
               }}
             >
-              🔄 残高を更新
+              🔄 資産を更新
             </button>
             <button
               onClick={() => setShowSendModeModal(true)}
