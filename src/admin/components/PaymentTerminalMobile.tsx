@@ -2,6 +2,7 @@
 // スマホ専用レジUI - モバイルデバイス向けに最適化
 
 import { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import { usePrivy } from '@privy-io/react-auth';
 import { ConnectWallet, useAddress, useDisconnect } from '@thirdweb-dev/react';
@@ -32,6 +33,7 @@ interface PaymentHistory {
 }
 
 export function PaymentTerminalMobile() {
+  const navigate = useNavigate();
   const { user, login, logout: privyLogout } = usePrivy();
   const thirdwebAddress = useAddress();
   const disconnect = useDisconnect();
@@ -85,7 +87,7 @@ export function PaymentTerminalMobile() {
   // 受信履歴のプライバシー設定
   const [historyPrivacy, setHistoryPrivacy] = useState(false);
   const [historyPage, setHistoryPage] = useState(0);
-  const itemsPerPage = 5;
+  const itemsPerPage = 3;
 
   // テンキー入力
   const handleNumberClick = (num: string) => {
@@ -433,73 +435,49 @@ export function PaymentTerminalMobile() {
     >
       {/* ヘッダー */}
       <header style={{ textAlign: 'center', marginBottom: '24px', position: 'relative' }}>
+        {/* 設定ボタン */}
         {walletAddress && walletConfirmed && (
-          <>
-            {/* 売上履歴エクスポートボタン */}
-            <button
-              onClick={() => setShowExportModal(true)}
-              disabled={allPayments.length === 0}
-              style={{
-                position: 'absolute',
-                left: 0,
-                top: '50px',
-                width: '36px',
-                height: '36px',
-                background: allPayments.length > 0 ? 'rgba(59, 130, 246, 0.2)' : 'rgba(255, 255, 255, 0.05)',
-                border: `1px solid ${allPayments.length > 0 ? 'rgba(59, 130, 246, 0.4)' : 'rgba(255, 255, 255, 0.1)'}`,
-                borderRadius: '8px',
-                color: allPayments.length > 0 ? '#3b82f6' : 'rgba(255, 255, 255, 0.3)',
-                fontSize: '18px',
-                cursor: allPayments.length > 0 ? 'pointer' : 'not-allowed',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                touchAction: 'manipulation',
-              }}
-              title="売上履歴エクスポート"
-            >
-              📥
-            </button>
-
-            {/* 設定ボタン */}
-            <button
-              onClick={() => {
-                setTempPresetAmounts([...presetAmounts]);
-                setTempExpiryMinutes(expiryMinutes);
-                setShowSettingsModal(true);
-              }}
-              style={{
-                position: 'absolute',
-                right: 0,
-                top: '50px',
-                width: '36px',
-                height: '36px',
-                background: 'rgba(255, 255, 255, 0.1)',
-                border: '1px solid rgba(255, 255, 255, 0.2)',
-                borderRadius: '8px',
-                color: '#fff',
-                fontSize: '18px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                touchAction: 'manipulation',
-              }}
-            >
-              ⚙️
-            </button>
-          </>
+          <button
+            onClick={() => {
+              setTempPresetAmounts([...presetAmounts]);
+              setTempExpiryMinutes(expiryMinutes);
+              setShowSettingsModal(true);
+            }}
+            style={{
+              position: 'absolute',
+              right: 0,
+              top: '40px',
+              width: '36px',
+              height: '36px',
+              background: 'rgba(255, 255, 255, 0.1)',
+              border: '1px solid rgba(255, 255, 255, 0.2)',
+              borderRadius: '8px',
+              color: '#fff',
+              fontSize: '18px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              touchAction: 'manipulation',
+            }}
+          >
+            ⚙️
+          </button>
         )}
 
-        <h1 style={{
-          fontSize: '24px',
-          margin: '0 0 8px 0',
-          fontWeight: 'bold',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          gap: '8px',
-        }}>
+        <h1
+          onClick={() => navigate('/mypage')}
+          style={{
+            fontSize: '24px',
+            margin: '0 0 8px 0',
+            fontWeight: 'bold',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '8px',
+            cursor: 'pointer',
+          }}
+        >
           <span style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', justifyContent: 'center' }}>
             <img
               src="/gifterra-logo.png"
@@ -671,7 +649,7 @@ export function PaymentTerminalMobile() {
                   textAlign: 'center',
                 }}
               >
-                <div style={{ fontSize: '12px', opacity: 0.7, marginBottom: '8px' }}>受信金額</div>
+                <div style={{ fontSize: '12px', opacity: 0.7, marginBottom: '8px' }}>お支払い金額</div>
                 <div
                   style={{
                     fontSize: '48px',
@@ -748,32 +726,57 @@ export function PaymentTerminalMobile() {
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                     <h3 style={{ margin: 0, fontSize: '16px' }}>📊 最近の売上履歴</h3>
-                    <button
-                      onClick={toggleHistoryPrivacy}
-                      style={{
-                        width: '32px',
-                        height: '32px',
-                        background: historyPrivacy ? 'rgba(59, 130, 246, 0.2)' : 'rgba(255, 255, 255, 0.1)',
-                        border: `1px solid ${historyPrivacy ? 'rgba(59, 130, 246, 0.4)' : 'rgba(255, 255, 255, 0.2)'}`,
-                        borderRadius: '8px',
-                        color: '#fff',
-                        fontSize: '14px',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        touchAction: 'manipulation',
-                      }}
-                    >
-                      {historyPrivacy ? '👁️' : '👁️‍🗨️'}
-                    </button>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      {/* エクスポートボタン */}
+                      <button
+                        onClick={() => setShowExportModal(true)}
+                        disabled={allPayments.length === 0}
+                        style={{
+                          width: '32px',
+                          height: '32px',
+                          background: allPayments.length > 0 ? 'rgba(59, 130, 246, 0.2)' : 'rgba(255, 255, 255, 0.05)',
+                          border: `1px solid ${allPayments.length > 0 ? 'rgba(59, 130, 246, 0.4)' : 'rgba(255, 255, 255, 0.1)'}`,
+                          borderRadius: '8px',
+                          color: allPayments.length > 0 ? '#3b82f6' : 'rgba(255, 255, 255, 0.3)',
+                          fontSize: '14px',
+                          cursor: allPayments.length > 0 ? 'pointer' : 'not-allowed',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          touchAction: 'manipulation',
+                        }}
+                        title="売上履歴エクスポート"
+                      >
+                        📥
+                      </button>
+                      {/* プライバシーボタン */}
+                      <button
+                        onClick={toggleHistoryPrivacy}
+                        style={{
+                          width: '32px',
+                          height: '32px',
+                          background: historyPrivacy ? 'rgba(59, 130, 246, 0.2)' : 'rgba(255, 255, 255, 0.1)',
+                          border: `1px solid ${historyPrivacy ? 'rgba(59, 130, 246, 0.4)' : 'rgba(255, 255, 255, 0.2)'}`,
+                          borderRadius: '8px',
+                          color: '#fff',
+                          fontSize: '14px',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          touchAction: 'manipulation',
+                        }}
+                      >
+                        {historyPrivacy ? '👁️' : '👁️‍🗨️'}
+                      </button>
+                    </div>
                   </div>
                   <div
                     style={{
                       display: 'flex',
                       flexDirection: 'column',
                       gap: '8px',
-                      maxHeight: '280px',
+                      maxHeight: '240px',
                       overflowY: 'auto',
                     }}
                   >
@@ -1265,7 +1268,7 @@ export function PaymentTerminalMobile() {
                         fontWeight: 600,
                       }}
                     >
-                      受信金額
+                      お支払い金額
                     </div>
                     <div
                       style={{

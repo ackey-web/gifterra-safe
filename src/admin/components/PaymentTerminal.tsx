@@ -2,6 +2,7 @@
 // タブレット専用レジUI - 実店舗向けに最適化
 
 import { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import { usePrivy } from '@privy-io/react-auth';
 import { ConnectWallet, useAddress, useDisconnect } from '@thirdweb-dev/react';
@@ -32,6 +33,7 @@ interface PaymentHistory {
 }
 
 export function PaymentTerminal() {
+  const navigate = useNavigate();
   const { user, login, logout: privyLogout } = usePrivy();
   const thirdwebAddress = useAddress();
   const disconnect = useDisconnect();
@@ -503,6 +505,7 @@ export function PaymentTerminal() {
 
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
           <h1
+            onClick={() => navigate('/mypage')}
             style={{
               fontSize: '32px',
               margin: 0,
@@ -513,6 +516,7 @@ export function PaymentTerminal() {
               gap: '12px',
               flexWrap: 'wrap',
               justifyContent: 'center',
+              cursor: 'pointer',
             }}
           >
             <img
@@ -770,7 +774,7 @@ export function PaymentTerminal() {
                 textAlign: 'center',
               }}
             >
-              <div style={{ fontSize: '14px', opacity: 0.7, marginBottom: '8px' }}>受信金額</div>
+              <div style={{ fontSize: '14px', opacity: 0.7, marginBottom: '8px' }}>お支払い金額</div>
               <div
                 style={{
                   fontSize: '56px',
@@ -1479,7 +1483,7 @@ export function PaymentTerminal() {
                     fontWeight: 600,
                   }}
                 >
-                  受信金額
+                  お支払い金額
                 </div>
                 <div
                   style={{
