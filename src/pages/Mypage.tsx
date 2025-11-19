@@ -1783,7 +1783,7 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
             fontWeight: 700,
             color: '#1a1a1a',
           }}>
-            💰 残高
+            🔓 あなたのウォレット内の資産（読み取りのみ）
           </div>
           <button
             onClick={() => setBalanceVisible(!balanceVisible)}
