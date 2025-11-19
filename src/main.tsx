@@ -50,6 +50,34 @@ const LoadingFallback = () => (
 window.Buffer = window.Buffer || Buffer;
 
 // =============================
+// Service Worker 登録（PWA対応）
+// =============================
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js')
+      .then(registration => {
+        // 新しいバージョンが利用可能な場合、自動更新
+        registration.addEventListener('updatefound', () => {
+          const newWorker = registration.installing;
+          if (newWorker) {
+            newWorker.addEventListener('statechange', () => {
+              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                // 新しいバージョンが準備完了
+                if (confirm('新しいバージョンが利用可能です。更新しますか？')) {
+                  window.location.reload();
+                }
+              }
+            });
+          }
+        });
+      })
+      .catch(err => {
+        console.warn('Service Worker registration failed:', err);
+      });
+  });
+}
+
+// =============================
 // Capacitor ネイティブアプリ初期化
 // =============================
 if (Capacitor.isNativePlatform()) {
