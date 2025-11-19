@@ -363,7 +363,8 @@ export function MypagePage() {
       </div>
 
       {/* チェーン警告バナー */}
-      {actualChainId && actualChainId !== 137 && (
+      {/* Capacitorアプリの場合は警告を表示しない（WalletConnect経由でchainIdが取得できないため） */}
+      {actualChainId && actualChainId !== 137 && typeof (window as any).Capacitor === 'undefined' && (
         <div style={{
           maxWidth: isMobile ? '100%' : 600,
           margin: isMobile ? '0 16px 12px' : '0 auto 16px',
@@ -919,8 +920,20 @@ function WalletConnectionInfo({ isMobile, onChainIdChange }: { isMobile: boolean
   // 実際のチェーンIDを取得（MetaMaskなど外部ウォレット対応）
   useEffect(() => {
     const fetchChainId = async () => {
+      // Capacitorアプリかどうかを検出
+      const isCapacitorApp = typeof (window as any).Capacitor !== 'undefined';
+
+      console.log('[ChainId Debug] fetchChainId called', {
+        privyWallet: user?.wallet?.address,
+        thirdwebAddress: address,
+        thirdwebChainId,
+        hasEthereum: typeof window.ethereum !== 'undefined',
+        isCapacitorApp
+      });
+
       // Privyウォレットの場合は常にPolygon Mainnet（137）
       if (user?.wallet?.address && !address) {
+        console.log('[ChainId Debug] Using Privy wallet, setting chainId to 137');
         setActualChainId(137);
         onChainIdChange(137);
         return;
@@ -928,34 +941,49 @@ function WalletConnectionInfo({ isMobile, onChainIdChange }: { isMobile: boolean
 
       // thirdwebChainIdが取得できている場合はそれを優先使用
       if (thirdwebChainId) {
+        console.log('[ChainId Debug] Using thirdwebChainId:', thirdwebChainId);
         setActualChainId(thirdwebChainId);
         onChainIdChange(thirdwebChainId);
         return;
       }
 
-      // window.ethereumが存在する場合（MetaMaskなど外部ウォレット）
+      // Capacitorアプリの場合（iOS/Android）
+      // WalletConnect経由なのでwindow.ethereumは存在しない
+      // アドレスが取得できていれば、Polygon Mainnetとして扱う
+      if (isCapacitorApp && address) {
+        console.log('[ChainId Debug] Capacitor app with address, assuming Polygon Mainnet');
+        setActualChainId(137);
+        onChainIdChange(137);
+        return;
+      }
+
+      // window.ethereumが存在する場合（MetaMaskなど外部ウォレット - ブラウザのみ）
       if (typeof window.ethereum !== 'undefined' && address) {
         try {
           // 少し遅延を入れてウォレット接続が完了するのを待つ
           await new Promise(resolve => setTimeout(resolve, 500));
           const chainId = await window.ethereum.request({ method: 'eth_chainId' });
           const numericChainId = parseInt(chainId, 16);
+          console.log('[ChainId Debug] Got chainId from window.ethereum:', numericChainId);
           setActualChainId(numericChainId);
           onChainIdChange(numericChainId);
         } catch (error) {
           console.error('Failed to fetch chainId from window.ethereum:', error);
           // エラー時もthirdwebChainIdまたはデフォルト値を設定
           const fallbackChainId = thirdwebChainId || 137;
+          console.log('[ChainId Debug] Error fallback chainId:', fallbackChainId);
           setActualChainId(fallbackChainId);
           onChainIdChange(fallbackChainId);
         }
       } else if (!address) {
         // アドレスがまだ取得されていない場合は待機（undefinedのまま）
+        console.log('[ChainId Debug] No address yet, waiting...');
         return;
       } else {
         // window.ethereumが存在しない場合
         // thirdwebChainIdがundefinedの場合はPolygon Mainnet (137) をデフォルトとする
         const fallbackChainId = thirdwebChainId || 137;
+        console.log('[ChainId Debug] No ethereum, fallback chainId:', fallbackChainId);
         setActualChainId(fallbackChainId);
         onChainIdChange(fallbackChainId);
       }
@@ -1034,8 +1062,13 @@ function WalletConnectionInfo({ isMobile, onChainIdChange }: { isMobile: boolean
   // ウォレットタイプを判定
   const walletType = privyWalletAddress ? 'Privy Wallet' : address ? 'External Wallet' : null;
 
+  // Capacitorアプリかどうかを検出
+  const isCapacitorApp = typeof (window as any).Capacitor !== 'undefined';
+
   // チェーン名を取得
   const getChainName = (chainId: number | undefined) => {
+    // Capacitorアプリの場合は固定でPolygon Mainnet
+    if (isCapacitorApp && address) return 'Polygon Mainnet';
     // Privyウォレットの場合は固定でPolygon Mainnet
     if (privyWalletAddress && !chainId) return 'Polygon Mainnet';
     if (!chainId) return '未接続';
@@ -1044,8 +1077,8 @@ function WalletConnectionInfo({ isMobile, onChainIdChange }: { isMobile: boolean
     return `Chain ID: ${chainId}`;
   };
 
-  // 使用するchainId（実際のchainIdを優先）
-  const displayChainId = actualChainId;
+  // 使用するchainId（実際のchainIdを優先、Capacitorアプリは137固定）
+  const displayChainId = isCapacitorApp && address ? 137 : actualChainId;
 
   return (
     <div style={{
