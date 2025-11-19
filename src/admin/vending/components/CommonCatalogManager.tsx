@@ -241,10 +241,10 @@ export default function CommonCatalogManager() {
 
     try {
       // API経由で削除（ファイルも含む）
-      const response = await fetch('/api/delete/product', {
+      const response = await fetch('/api/delete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ productId: product.id })
+        body: JSON.stringify({ type: 'product', productId: product.id })
       });
 
       if (!response.ok) {

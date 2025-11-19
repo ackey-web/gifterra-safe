@@ -181,10 +181,10 @@ const VendingDashboardNew: React.FC = () => {
       // 2. 各商品を削除API経由で削除（ファイルも含む）
       if (products && products.length > 0) {
         const deletePromises = products.map(async (product) => {
-          const response = await fetch('/api/delete/product', {
+          const response = await fetch('/api/delete', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ productId: product.id })
+            body: JSON.stringify({ type: 'product', productId: product.id })
           });
 
           if (!response.ok) {

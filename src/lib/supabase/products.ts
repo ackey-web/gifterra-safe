@@ -124,10 +124,10 @@ export async function updateProduct(params: UpdateProductParams): Promise<{ succ
 export async function deleteProduct(productId: string): Promise<{ success: boolean; error?: string }> {
   try {
     // サーバーサイドAPIで削除実行（RLSをバイパス）
-    const response = await fetch('/api/delete/product', {
+    const response = await fetch('/api/delete', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ productId })
+      body: JSON.stringify({ type: 'product', productId })
     });
 
     if (!response.ok) {

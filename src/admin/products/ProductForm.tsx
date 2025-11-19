@@ -317,10 +317,10 @@ export function ProductForm({
       // 古い配布ファイルを削除（差し替えの場合）
       if (previousContentPathRef.current && previousContentPathRef.current !== data.path) {
         try {
-          const deleteResponse = await fetch('/api/delete/content', {
+          const deleteResponse = await fetch('/api/delete', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ filePath: previousContentPathRef.current })
+            body: JSON.stringify({ type: 'content', filePath: previousContentPathRef.current })
           });
 
           if (!deleteResponse.ok) {
