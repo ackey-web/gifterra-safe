@@ -1099,6 +1099,12 @@ function UsersTab() {
         throw error;
       }
 
+      // デバッグ：最初のユーザーのフィールドを確認
+      if (data && data.length > 0) {
+        console.log('🔍 [DEBUG] First user object keys:', Object.keys(data[0]));
+        console.log('🔍 [DEBUG] First user wallet_address:', data[0].wallet_address);
+      }
+
       setUsers(data || []);
       setTotalCount(count || 0);
       console.log('✅ Users fetched successfully:', { users: data?.length || 0, total: count || 0 });
