@@ -1,5 +1,6 @@
 // src/pages/SuperAdmin.tsx
 // スーパーアドミン専用ダッシュボード
+// Version: 2024-11-21 (User deletion feature with debug logging)
 
 import { useState, useMemo, useEffect } from 'react';
 import { useAddress, useContract, ConnectWallet } from '@thirdweb-dev/react';
