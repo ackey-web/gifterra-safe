@@ -10,7 +10,8 @@ const supabaseUrl = process.env.SUPABASE_URL!;
 const supabaseServiceRole = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
 // スーパーアドミンアドレス（環境変数から取得）
-const SUPER_ADMIN_ADDRESSES_ENV = process.env.VITE_SUPER_ADMIN_ADDRESSES || '';
+// Note: Vercelではbackend用にSUPER_ADMIN_ADDRESSESを設定してください
+const SUPER_ADMIN_ADDRESSES_ENV = process.env.SUPER_ADMIN_ADDRESSES || process.env.VITE_SUPER_ADMIN_ADDRESSES || '';
 const SUPER_ADMIN_ADDRESSES: string[] = SUPER_ADMIN_ADDRESSES_ENV
   ? SUPER_ADMIN_ADDRESSES_ENV.split(',').map((addr: string) => addr.trim().toLowerCase())
   : ['0x66f1274ad5d042b7571c2efa943370dbcd3459ab']; // デフォルト: METATRON管理者
@@ -45,6 +46,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
+    // 初回リクエストでスーパーアドミン設定をログ出力
+    console.log('🔐 [DELETE API] Super admin configuration:', {
+      configuredAddresses: SUPER_ADMIN_ADDRESSES,
+      envValue: SUPER_ADMIN_ADDRESSES_ENV,
+      hasEnvVar: !!SUPER_ADMIN_ADDRESSES_ENV
+    });
+
     const { type, productId, filePath, walletAddress, adminAddress }: DeleteRequest = req.body;
 
     console.log('🔍 [DELETE API] Request received:', {
