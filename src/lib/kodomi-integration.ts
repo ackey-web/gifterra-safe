@@ -112,10 +112,10 @@ async function fetchTipUIKodomiData(
  */
 async function fetchGiftHubClaimHistory(walletAddress: string) {
   try {
-    const response = await fetch('/api/user/claim-history', {
+    const response = await fetch('/api/user', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ walletAddress })
+      body: JSON.stringify({ action: 'claim-history', walletAddress })
     });
 
     if (!response.ok) {

@@ -56,10 +56,10 @@ export default function ClaimHistory() {
     setError(null);
 
     try {
-      const response = await fetch('/api/user/claim-history', {
+      const response = await fetch('/api/user', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ walletAddress: address })
+        body: JSON.stringify({ action: 'claim-history', walletAddress: address })
       });
 
       if (!response.ok) {
