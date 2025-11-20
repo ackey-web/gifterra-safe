@@ -772,19 +772,26 @@ function DeleteUserDialog({ user, onClose, onDeleted, adminAddress }: DeleteUser
     setError(null);
 
     try {
+      const requestBody = {
+        type: 'user',
+        walletAddress: user.wallet_address,
+        adminAddress,
+      };
+
+      console.log('🔍 [Frontend] Sending delete request:', requestBody);
+
       const response = await fetch('/api/delete', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          type: 'user',
-          walletAddress: user.wallet_address,
-          adminAddress,
-        }),
+        body: JSON.stringify(requestBody),
       });
 
+      console.log('📡 [Frontend] Response status:', response.status);
+
       const data = await response.json();
+      console.log('📦 [Frontend] Response data:', data);
 
       if (!response.ok) {
         throw new Error(data.error || 'ユーザーの削除に失敗しました');
