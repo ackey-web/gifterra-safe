@@ -773,6 +773,11 @@ function DeleteUserDialog({ user, onClose, onDeleted, adminAddress }: DeleteUser
     setError(null);
 
     try {
+      // ウォレットアドレスの存在チェック
+      if (!user.wallet_address || user.wallet_address.trim() === '') {
+        throw new Error('このユーザーにはウォレットアドレスが登録されていません。データベースから直接削除してください。');
+      }
+
       const requestBody = {
         type: 'user',
         walletAddress: user.wallet_address,
@@ -1280,11 +1285,12 @@ function UsersTab() {
                 onClick={() => setSelectedUser(user)}
               >
                 <div style={{
-                  color: '#60a5fa',
+                  color: user.wallet_address ? '#60a5fa' : '#ef4444',
                   textDecoration: 'underline',
                   fontWeight: 600,
                 }}>
                   {user.display_name || user.name || '未設定'}
+                  {!user.wallet_address && ' ⚠️'}
                 </div>
                 {user.bio && (
                   <div style={{
