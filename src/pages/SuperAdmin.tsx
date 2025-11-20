@@ -1084,8 +1084,29 @@ function UsersTab() {
           // ウォレットアドレスで検索
           query = query.eq('wallet_address', searchQuery.toLowerCase());
         } else {
-          // ユーザー名で検索
-          query = query.ilike('display_name', `%${searchQuery.trim()}%`);
+          // ユーザー名で検索（display_name, name, bioを対象に部分一致）
+          const trimmedQuery = searchQuery.trim();
+
+          // ひらがなをカタカナに変換
+          const toKatakana = (str: string) => {
+            return str.replace(/[\u3041-\u3096]/g, (match) => {
+              const chr = match.charCodeAt(0) + 0x60;
+              return String.fromCharCode(chr);
+            });
+          };
+
+          // 元の検索語、カタカナ変換版の両方で検索
+          const searchTerms = [trimmedQuery, toKatakana(trimmedQuery)];
+          const orConditions = searchTerms.flatMap(term => {
+            const searchTerm = `%${term}%`;
+            return [
+              `display_name.ilike.${searchTerm}`,
+              `name.ilike.${searchTerm}`,
+              `bio.ilike.${searchTerm}`
+            ];
+          });
+
+          query = query.or(orConditions.join(','));
         }
       }
 
