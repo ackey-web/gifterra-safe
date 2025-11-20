@@ -748,14 +748,272 @@ function StatCard({ icon, label, value, subtitle, color }: {
 }
 
 /**
+ * ユーザー削除確認ダイアログ
+ */
+interface DeleteUserDialogProps {
+  user: any;
+  onClose: () => void;
+  onDeleted: () => void;
+  adminAddress: string;
+}
+
+function DeleteUserDialog({ user, onClose, onDeleted, adminAddress }: DeleteUserDialogProps) {
+  const [confirmText, setConfirmText] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleDelete = async () => {
+    if (confirmText !== '削除する') {
+      setError('「削除する」と正確に入力してください');
+      return;
+    }
+
+    setIsDeleting(true);
+    setError(null);
+
+    try {
+      const response = await fetch('/api/super-admin/delete-user', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          walletAddress: user.wallet_address,
+          adminAddress,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'ユーザーの削除に失敗しました');
+      }
+
+      console.log('✅ ユーザー削除成功:', data);
+      alert(`✅ ${user.display_name || user.wallet_address} を完全に削除しました`);
+      onDeleted();
+      onClose();
+    } catch (error) {
+      console.error('❌ ユーザー削除エラー:', error);
+      setError(error instanceof Error ? error.message : '削除中にエラーが発生しました');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  return (
+    <div
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        background: 'rgba(0, 0, 0, 0.8)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 9999,
+        padding: 20,
+      }}
+      onClick={onClose}
+    >
+      <div
+        style={{
+          background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)',
+          border: '2px solid rgba(239, 68, 68, 0.5)',
+          borderRadius: 16,
+          maxWidth: 600,
+          width: '100%',
+          padding: 32,
+          color: '#fff',
+          boxShadow: '0 20px 60px rgba(0, 0, 0, 0.5)',
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* ヘッダー */}
+        <div style={{ marginBottom: 24, textAlign: 'center' }}>
+          <div style={{ fontSize: 64, marginBottom: 12 }}>⚠️</div>
+          <h2 style={{ margin: 0, fontSize: 24, fontWeight: 800, color: '#ef4444' }}>
+            ユーザー完全削除
+          </h2>
+          <p style={{ margin: '8px 0 0 0', fontSize: 14, opacity: 0.8 }}>
+            この操作は取り消すことができません
+          </p>
+        </div>
+
+        {/* ユーザー情報 */}
+        <div
+          style={{
+            background: 'rgba(255, 255, 255, 0.05)',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            borderRadius: 12,
+            padding: 20,
+            marginBottom: 24,
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 16 }}>
+            {/* アバター */}
+            <div
+              style={{
+                width: 60,
+                height: 60,
+                borderRadius: '50%',
+                overflow: 'hidden',
+                background: user.avatar_url || user.icon_url
+                  ? 'transparent'
+                  : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: 30,
+                border: '2px solid rgba(255,255,255,0.2)',
+              }}
+            >
+              {user.avatar_url || user.icon_url ? (
+                <img
+                  src={user.avatar_url || user.icon_url}
+                  alt={user.display_name || 'User'}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                />
+              ) : (
+                '👤'
+              )}
+            </div>
+
+            {/* ユーザー名とアドレス */}
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 4 }}>
+                {user.display_name || user.name || '未設定'}
+              </div>
+              <div
+                style={{
+                  fontSize: 12,
+                  fontFamily: 'monospace',
+                  opacity: 0.7,
+                  wordBreak: 'break-all',
+                }}
+              >
+                {user.wallet_address}
+              </div>
+            </div>
+          </div>
+
+          {/* 警告リスト */}
+          <div
+            style={{
+              background: 'rgba(239, 68, 68, 0.1)',
+              border: '1px solid rgba(239, 68, 68, 0.3)',
+              borderRadius: 8,
+              padding: 16,
+            }}
+          >
+            <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8, color: '#fca5a5' }}>
+              以下のデータが完全に削除されます：
+            </div>
+            <ul style={{ margin: 0, paddingLeft: 20, fontSize: 12, opacity: 0.9, lineHeight: 1.8 }}>
+              <li>ユーザープロフィール情報</li>
+              <li>アバター画像</li>
+              <li>購入履歴</li>
+              <li>チップ送受信履歴</li>
+              <li>レビュー・評価</li>
+              <li>アクティビティログ</li>
+              <li>セッション情報</li>
+              <li>Push通知サブスクリプション</li>
+            </ul>
+          </div>
+        </div>
+
+        {/* 確認入力 */}
+        <div style={{ marginBottom: 24 }}>
+          <label style={{ display: 'block', fontSize: 14, fontWeight: 600, marginBottom: 8 }}>
+            削除を実行するには「削除する」と入力してください
+          </label>
+          <input
+            type="text"
+            value={confirmText}
+            onChange={(e) => {
+              setConfirmText(e.target.value);
+              setError(null);
+            }}
+            placeholder="削除する"
+            disabled={isDeleting}
+            style={{
+              width: '100%',
+              padding: '12px 16px',
+              background: 'rgba(0, 0, 0, 0.3)',
+              border: error ? '2px solid #ef4444' : '1px solid rgba(255, 255, 255, 0.2)',
+              borderRadius: 8,
+              color: '#fff',
+              fontSize: 14,
+              outline: 'none',
+              boxSizing: 'border-box',
+            }}
+          />
+          {error && (
+            <div style={{ marginTop: 8, fontSize: 12, color: '#fca5a5' }}>
+              {error}
+            </div>
+          )}
+        </div>
+
+        {/* ボタン */}
+        <div style={{ display: 'flex', gap: 12 }}>
+          <button
+            onClick={onClose}
+            disabled={isDeleting}
+            style={{
+              flex: 1,
+              padding: '12px 24px',
+              background: 'rgba(255, 255, 255, 0.1)',
+              border: '1px solid rgba(255, 255, 255, 0.2)',
+              borderRadius: 8,
+              color: '#fff',
+              fontSize: 15,
+              fontWeight: 600,
+              cursor: isDeleting ? 'not-allowed' : 'pointer',
+              opacity: isDeleting ? 0.5 : 1,
+            }}
+          >
+            キャンセル
+          </button>
+          <button
+            onClick={handleDelete}
+            disabled={isDeleting || confirmText !== '削除する'}
+            style={{
+              flex: 1,
+              padding: '12px 24px',
+              background: confirmText === '削除する' && !isDeleting
+                ? 'linear-gradient(135deg, #dc2626 0%, #991b1b 100%)'
+                : 'rgba(239, 68, 68, 0.3)',
+              border: 'none',
+              borderRadius: 8,
+              color: '#fff',
+              fontSize: 15,
+              fontWeight: 600,
+              cursor: confirmText === '削除する' && !isDeleting ? 'pointer' : 'not-allowed',
+              opacity: confirmText === '削除する' && !isDeleting ? 1 : 0.5,
+            }}
+          >
+            {isDeleting ? '削除中...' : '完全に削除する'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
  * ユーザー一覧タブ
  */
 function UsersTab() {
+  const connectedAddress = useAddress();
   const [users, setUsers] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
+  const [selectedUser, setSelectedUser] = useState<any | null>(null);
   const ITEMS_PER_PAGE = 20;
 
   // ユーザーリストを取得
@@ -972,13 +1230,23 @@ function UsersTab() {
                 )}
               </div>
 
-              {/* ユーザー名 */}
-              <div style={{
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-              }}>
-                {user.display_name || user.name || '未設定'}
+              {/* ユーザー名（クリック可能） */}
+              <div
+                style={{
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                  cursor: 'pointer',
+                }}
+                onClick={() => setSelectedUser(user)}
+              >
+                <div style={{
+                  color: '#60a5fa',
+                  textDecoration: 'underline',
+                  fontWeight: 600,
+                }}>
+                  {user.display_name || user.name || '未設定'}
+                </div>
                 {user.bio && (
                   <div style={{
                     fontSize: 11,
@@ -1096,6 +1364,19 @@ function UsersTab() {
             次へ →
           </button>
         </div>
+      )}
+
+      {/* 削除確認ダイアログ */}
+      {selectedUser && connectedAddress && (
+        <DeleteUserDialog
+          user={selectedUser}
+          adminAddress={connectedAddress}
+          onClose={() => setSelectedUser(null)}
+          onDeleted={() => {
+            setSelectedUser(null);
+            fetchUsers(); // ユーザーリストを再取得
+          }}
+        />
       )}
     </div>
   );
