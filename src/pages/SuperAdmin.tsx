@@ -773,16 +773,19 @@ function DeleteUserDialog({ user, onClose, onDeleted, adminAddress }: DeleteUser
     setError(null);
 
     try {
-      // ウォレットアドレスの存在チェック
-      if (!user.wallet_address || user.wallet_address.trim() === '') {
-        throw new Error('このユーザーにはウォレットアドレスが登録されていません。データベースから直接削除してください。');
-      }
-
-      const requestBody = {
+      // wallet_addressまたはidを使用
+      const requestBody: any = {
         type: 'user',
-        walletAddress: user.wallet_address,
         adminAddress,
       };
+
+      if (user.wallet_address && user.wallet_address.trim() !== '') {
+        requestBody.walletAddress = user.wallet_address;
+      } else if (user.id) {
+        requestBody.userId = user.id;
+      } else {
+        throw new Error('ユーザーIDが取得できません');
+      }
 
       console.log('🔍 [Frontend] Sending delete request:', requestBody);
 

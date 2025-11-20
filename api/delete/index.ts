@@ -28,6 +28,7 @@ interface DeleteRequest {
   productId?: string;
   filePath?: string;
   walletAddress?: string;
+  userId?: string;  // user_profiles.id (ウォレットアドレスがない場合用)
   adminAddress?: string;
 }
 
@@ -53,13 +54,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       hasEnvVar: !!SUPER_ADMIN_ADDRESSES_ENV
     });
 
-    const { type, productId, filePath, walletAddress, adminAddress }: DeleteRequest = req.body;
+    const { type, productId, filePath, walletAddress, userId, adminAddress }: DeleteRequest = req.body;
 
     console.log('🔍 [DELETE API] Request received:', {
       type,
       walletAddress,
+      userId,
       adminAddress,
       hasWalletAddress: !!walletAddress,
+      hasUserId: !!userId,
       hasAdminAddress: !!adminAddress,
       bodyKeys: Object.keys(req.body),
       fullBody: req.body
@@ -67,14 +70,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // ユーザー削除（スーパーアドミン専用）
     if (type === 'user') {
-      if (!walletAddress || !adminAddress) {
+      // walletAddressまたはuserIdのいずれかが必須
+      if ((!walletAddress && !userId) || !adminAddress) {
         console.error('❌ [DELETE API] Missing required fields:', {
           walletAddress: !!walletAddress,
+          userId: !!userId,
           adminAddress: !!adminAddress
         });
         return res.status(400).json({
-          error: 'walletAddress と adminAddress は必須です',
-          received: { walletAddress, adminAddress }
+          error: '(walletAddress または userId) と adminAddress は必須です',
+          received: { walletAddress, userId, adminAddress }
         });
       }
 
@@ -87,22 +92,40 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         });
       }
 
-      console.log(`🗑️ [DELETE USER] Starting deletion for: ${walletAddress}`);
+      console.log(`🗑️ [DELETE USER] Starting deletion for: ${walletAddress || `userId:${userId}`}`);
       console.log(`👤 [DELETE USER] Requested by admin: ${adminAddress}`);
 
-      const normalizedAddress = walletAddress.toLowerCase();
       const deletionLog: string[] = [];
 
-      // ユーザープロフィールを取得
-      const { data: userProfile } = await supabase
-        .from('user_profiles')
-        .select('*')
-        .eq('wallet_address', normalizedAddress)
-        .single();
-
-      if (userProfile) {
-        deletionLog.push(`✅ ユーザー情報取得: ${userProfile.display_name || normalizedAddress}`);
+      // ユーザープロフィールを取得（wallet_addressまたはidで検索）
+      let userProfile: any;
+      if (walletAddress) {
+        const normalizedAddress = walletAddress.toLowerCase();
+        const { data } = await supabase
+          .from('user_profiles')
+          .select('*')
+          .eq('wallet_address', normalizedAddress)
+          .single();
+        userProfile = data;
+      } else if (userId) {
+        const { data } = await supabase
+          .from('user_profiles')
+          .select('*')
+          .eq('id', userId)
+          .single();
+        userProfile = data;
       }
+
+      if (!userProfile) {
+        return res.status(404).json({
+          error: 'ユーザーが見つかりません',
+          walletAddress,
+          userId
+        });
+      }
+
+      const normalizedAddress = userProfile.wallet_address ? userProfile.wallet_address.toLowerCase() : '';
+      deletionLog.push(`✅ ユーザー情報取得: ${userProfile.display_name || userProfile.id}`);
 
       // 全テーブルからユーザーデータを削除
       const tables = [
@@ -131,32 +154,39 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         { table: 'tenant_applications', column: 'applicant_address' },
       ];
 
-      for (const { table, column } of tables) {
-        try {
-          await supabase.from(table).delete().eq(column, normalizedAddress);
-          deletionLog.push(`✅ ${table}.${column} を削除`);
-        } catch (error) {
-          deletionLog.push(`⚠️ ${table}.${column} 削除エラー`);
+      // wallet_addressがある場合のみ関連テーブルを削除
+      if (normalizedAddress) {
+        for (const { table, column } of tables) {
+          try {
+            await supabase.from(table).delete().eq(column, normalizedAddress);
+            deletionLog.push(`✅ ${table}.${column} を削除`);
+          } catch (error) {
+            deletionLog.push(`⚠️ ${table}.${column} 削除エラー`);
+          }
         }
+      } else {
+        deletionLog.push(`ℹ️ wallet_addressがないため、関連テーブルの削除をスキップ`);
       }
 
       // NFT関連（外部キー制約を考慮）
-      try {
-        const { data: userFlagNfts } = await supabase
-          .from('user_flag_nfts')
-          .select('id')
-          .eq('user_id', normalizedAddress);
+      if (normalizedAddress) {
+        try {
+          const { data: userFlagNfts } = await supabase
+            .from('user_flag_nfts')
+            .select('id')
+            .eq('user_id', normalizedAddress);
 
-        if (userFlagNfts && userFlagNfts.length > 0) {
-          const userFlagNftIds = userFlagNfts.map(nft => nft.id);
-          await supabase.from('stamp_check_ins').delete().in('user_flag_nft_id', userFlagNftIds);
-          deletionLog.push('✅ スタンプチェックインを削除');
+          if (userFlagNfts && userFlagNfts.length > 0) {
+            const userFlagNftIds = userFlagNfts.map(nft => nft.id);
+            await supabase.from('stamp_check_ins').delete().in('user_flag_nft_id', userFlagNftIds);
+            deletionLog.push('✅ スタンプチェックインを削除');
+          }
+
+          await supabase.from('user_flag_nfts').delete().eq('user_id', normalizedAddress);
+          deletionLog.push('✅ ユーザー保有NFTを削除');
+        } catch (error) {
+          deletionLog.push('⚠️ NFT関連削除エラー');
         }
-
-        await supabase.from('user_flag_nfts').delete().eq('user_id', normalizedAddress);
-        deletionLog.push('✅ ユーザー保有NFTを削除');
-      } catch (error) {
-        deletionLog.push('⚠️ NFT関連削除エラー');
       }
 
       // ストレージ削除（アバター・カバー画像）
@@ -179,11 +209,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         } catch { deletionLog.push('⚠️ カバー画像削除をスキップ'); }
       }
 
-      // 最後にユーザープロフィールを削除
-      const { error: deleteProfileError } = await supabase
-        .from('user_profiles')
-        .delete()
-        .eq('wallet_address', normalizedAddress);
+      // 最後にユーザープロフィールを削除（wallet_addressまたはidで）
+      let deleteQuery = supabase.from('user_profiles').delete();
+      if (normalizedAddress) {
+        deleteQuery = deleteQuery.eq('wallet_address', normalizedAddress);
+      } else {
+        deleteQuery = deleteQuery.eq('id', userProfile.id);
+      }
+
+      const { error: deleteProfileError } = await deleteQuery;
 
       if (deleteProfileError) {
         return res.status(500).json({
