@@ -47,6 +47,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const { type, productId, filePath, walletAddress, adminAddress }: DeleteRequest = req.body;
 
+    console.log('🔍 [DELETE API] Request received:', { type, walletAddress, adminAddress });
+
     // ユーザー削除（スーパーアドミン専用）
     if (type === 'user') {
       if (!walletAddress || !adminAddress) {
@@ -286,7 +288,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
-    return res.status(400).json({ error: 'type は product または content を指定してください' });
+    return res.status(400).json({ error: 'type は product, content, または user を指定してください' });
 
   } catch (error) {
     console.error('❌ [API] サーバーエラー:', error);
