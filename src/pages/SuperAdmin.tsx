@@ -911,16 +911,34 @@ function DeleteUserDialog({ user, onClose, onDeleted, adminAddress }: DeleteUser
             <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8, color: '#fca5a5' }}>
               以下のデータが完全に削除されます：
             </div>
-            <ul style={{ margin: 0, paddingLeft: 20, fontSize: 12, opacity: 0.9, lineHeight: 1.8 }}>
-              <li>ユーザープロフィール情報</li>
-              <li>アバター画像</li>
-              <li>購入履歴</li>
-              <li>チップ送受信履歴</li>
-              <li>レビュー・評価</li>
-              <li>アクティビティログ</li>
-              <li>セッション情報</li>
-              <li>Push通知サブスクリプション</li>
-            </ul>
+            <div style={{
+              maxHeight: 200,
+              overflowY: 'auto',
+              paddingRight: 8
+            }}>
+              <ul style={{ margin: 0, paddingLeft: 20, fontSize: 11, opacity: 0.9, lineHeight: 1.6 }}>
+                <li>ユーザープロフィール情報</li>
+                <li>アバター・カバー画像</li>
+                <li>購入履歴とダウンロードトークン</li>
+                <li>チップ送受信履歴</li>
+                <li>送金メッセージ（送信・受信）</li>
+                <li>レビュー・評価</li>
+                <li>ユーザースコア（Economic/Resonance）</li>
+                <li>スコアトランザクション</li>
+                <li>テナント別スコア</li>
+                <li>保有フラグNFTとスタンプチェックイン</li>
+                <li>通知と通知設定</li>
+                <li>アクティビティログ</li>
+                <li>トランザクション履歴（送信・受信）</li>
+                <li>アカウント凍結履歴</li>
+                <li>ログイン履歴</li>
+                <li>支払いリクエスト（作成・支払い）</li>
+                <li>テナント申請</li>
+                <li>セッション情報</li>
+                <li>Push通知サブスクリプション</li>
+                <li>ユーザー統計</li>
+              </ul>
+            </div>
           </div>
         </div>
 

@@ -209,7 +209,286 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       deletionLog.push(`❌ セッション情報削除エラー: ${error}`);
     }
 
-    // 2-9. ストレージファイル（アバター、その他アップロード）
+    // 2-9. ダウンロードトークン
+    try {
+      const { error: downloadTokenError } = await supabase
+        .from('download_tokens')
+        .delete()
+        .eq('buyer', normalizedAddress);
+
+      if (downloadTokenError) {
+        deletionLog.push(`⚠️ ダウンロードトークン削除失敗: ${downloadTokenError.message}`);
+      } else {
+        deletionLog.push('✅ ダウンロードトークンを削除');
+      }
+    } catch (error) {
+      deletionLog.push(`❌ ダウンロードトークン削除エラー: ${error}`);
+    }
+
+    // 2-10. 送信した送金メッセージ
+    try {
+      const { error: transferSentError } = await supabase
+        .from('transfer_messages')
+        .delete()
+        .eq('from_address', normalizedAddress);
+
+      if (transferSentError) {
+        deletionLog.push(`⚠️ 送信送金メッセージ削除失敗: ${transferSentError.message}`);
+      } else {
+        deletionLog.push('✅ 送信送金メッセージを削除');
+      }
+    } catch (error) {
+      deletionLog.push(`❌ 送信送金メッセージ削除エラー: ${error}`);
+    }
+
+    // 2-11. 受信した送金メッセージ
+    try {
+      const { error: transferReceivedError } = await supabase
+        .from('transfer_messages')
+        .delete()
+        .eq('to_address', normalizedAddress);
+
+      if (transferReceivedError) {
+        deletionLog.push(`⚠️ 受信送金メッセージ削除失敗: ${transferReceivedError.message}`);
+      } else {
+        deletionLog.push('✅ 受信送金メッセージを削除');
+      }
+    } catch (error) {
+      deletionLog.push(`❌ 受信送金メッセージ削除エラー: ${error}`);
+    }
+
+    // 2-12. 通知
+    try {
+      const { error: notificationError } = await supabase
+        .from('notifications')
+        .delete()
+        .eq('user_address', normalizedAddress);
+
+      if (notificationError) {
+        deletionLog.push(`⚠️ 通知削除失敗: ${notificationError.message}`);
+      } else {
+        deletionLog.push('✅ 通知を削除');
+      }
+    } catch (error) {
+      deletionLog.push(`❌ 通知削除エラー: ${error}`);
+    }
+
+    // 2-13. 通知設定
+    try {
+      const { error: notificationSettingsError } = await supabase
+        .from('user_notification_settings')
+        .delete()
+        .eq('user_address', normalizedAddress);
+
+      if (notificationSettingsError) {
+        deletionLog.push(`⚠️ 通知設定削除失敗: ${notificationSettingsError.message}`);
+      } else {
+        deletionLog.push('✅ 通知設定を削除');
+      }
+    } catch (error) {
+      deletionLog.push(`❌ 通知設定削除エラー: ${error}`);
+    }
+
+    // 2-14. ユーザースコア
+    try {
+      const { error: scoreError } = await supabase
+        .from('user_scores')
+        .delete()
+        .eq('address', normalizedAddress);
+
+      if (scoreError) {
+        deletionLog.push(`⚠️ ユーザースコア削除失敗: ${scoreError.message}`);
+      } else {
+        deletionLog.push('✅ ユーザースコアを削除');
+      }
+    } catch (error) {
+      deletionLog.push(`❌ ユーザースコア削除エラー: ${error}`);
+    }
+
+    // 2-15. スコアトランザクション
+    try {
+      const { error: scoreTxError } = await supabase
+        .from('score_transactions')
+        .delete()
+        .eq('user_address', normalizedAddress);
+
+      if (scoreTxError) {
+        deletionLog.push(`⚠️ スコアトランザクション削除失敗: ${scoreTxError.message}`);
+      } else {
+        deletionLog.push('✅ スコアトランザクションを削除');
+      }
+    } catch (error) {
+      deletionLog.push(`❌ スコアトランザクション削除エラー: ${error}`);
+    }
+
+    // 2-16. テナント別スコア
+    try {
+      const { error: tenantScoreError } = await supabase
+        .from('tenant_scores')
+        .delete()
+        .eq('user_address', normalizedAddress);
+
+      if (tenantScoreError) {
+        deletionLog.push(`⚠️ テナント別スコア削除失敗: ${tenantScoreError.message}`);
+      } else {
+        deletionLog.push('✅ テナント別スコアを削除');
+      }
+    } catch (error) {
+      deletionLog.push(`❌ テナント別スコア削除エラー: ${error}`);
+    }
+
+    // 2-17. ユーザー保有NFT（まずstamp_check_insを削除する必要がある）
+    try {
+      // 先にuser_flag_nftsのIDを取得
+      const { data: userFlagNfts } = await supabase
+        .from('user_flag_nfts')
+        .select('id')
+        .eq('user_id', normalizedAddress);
+
+      if (userFlagNfts && userFlagNfts.length > 0) {
+        const userFlagNftIds = userFlagNfts.map(nft => nft.id);
+
+        // スタンプチェックインを削除
+        const { error: checkInError } = await supabase
+          .from('stamp_check_ins')
+          .delete()
+          .in('user_flag_nft_id', userFlagNftIds);
+
+        if (checkInError) {
+          deletionLog.push(`⚠️ スタンプチェックイン削除失敗: ${checkInError.message}`);
+        } else {
+          deletionLog.push('✅ スタンプチェックインを削除');
+        }
+      }
+
+      // ユーザー保有NFTを削除
+      const { error: flagNftError } = await supabase
+        .from('user_flag_nfts')
+        .delete()
+        .eq('user_id', normalizedAddress);
+
+      if (flagNftError) {
+        deletionLog.push(`⚠️ ユーザー保有NFT削除失敗: ${flagNftError.message}`);
+      } else {
+        deletionLog.push('✅ ユーザー保有NFTを削除');
+      }
+    } catch (error) {
+      deletionLog.push(`❌ ユーザー保有NFT削除エラー: ${error}`);
+    }
+
+    // 2-18. アカウント凍結履歴
+    try {
+      const { error: freezeError } = await supabase
+        .from('account_freezes')
+        .delete()
+        .eq('wallet_address', normalizedAddress);
+
+      if (freezeError) {
+        deletionLog.push(`⚠️ アカウント凍結履歴削除失敗: ${freezeError.message}`);
+      } else {
+        deletionLog.push('✅ アカウント凍結履歴を削除');
+      }
+    } catch (error) {
+      deletionLog.push(`❌ アカウント凍結履歴削除エラー: ${error}`);
+    }
+
+    // 2-19. トランザクション履歴（送信）
+    try {
+      const { error: txSentError } = await supabase
+        .from('transaction_history')
+        .delete()
+        .eq('from_address', normalizedAddress);
+
+      if (txSentError) {
+        deletionLog.push(`⚠️ 送信トランザクション履歴削除失敗: ${txSentError.message}`);
+      } else {
+        deletionLog.push('✅ 送信トランザクション履歴を削除');
+      }
+    } catch (error) {
+      deletionLog.push(`❌ 送信トランザクション履歴削除エラー: ${error}`);
+    }
+
+    // 2-20. トランザクション履歴（受信）
+    try {
+      const { error: txReceivedError } = await supabase
+        .from('transaction_history')
+        .delete()
+        .eq('to_address', normalizedAddress);
+
+      if (txReceivedError) {
+        deletionLog.push(`⚠️ 受信トランザクション履歴削除失敗: ${txReceivedError.message}`);
+      } else {
+        deletionLog.push('✅ 受信トランザクション履歴を削除');
+      }
+    } catch (error) {
+      deletionLog.push(`❌ 受信トランザクション履歴削除エラー: ${error}`);
+    }
+
+    // 2-21. ログイン履歴
+    try {
+      const { error: loginError } = await supabase
+        .from('user_login_history')
+        .delete()
+        .eq('wallet_address', normalizedAddress);
+
+      if (loginError) {
+        deletionLog.push(`⚠️ ログイン履歴削除失敗: ${loginError.message}`);
+      } else {
+        deletionLog.push('✅ ログイン履歴を削除');
+      }
+    } catch (error) {
+      deletionLog.push(`❌ ログイン履歴削除エラー: ${error}`);
+    }
+
+    // 2-22. 支払いリクエスト（作成者として）
+    try {
+      const { error: paymentReqTenantError } = await supabase
+        .from('payment_requests')
+        .delete()
+        .eq('tenant_address', normalizedAddress);
+
+      if (paymentReqTenantError) {
+        deletionLog.push(`⚠️ 支払いリクエスト（作成者）削除失敗: ${paymentReqTenantError.message}`);
+      } else {
+        deletionLog.push('✅ 支払いリクエスト（作成者）を削除');
+      }
+    } catch (error) {
+      deletionLog.push(`❌ 支払いリクエスト（作成者）削除エラー: ${error}`);
+    }
+
+    // 2-23. 支払いリクエスト（支払い者として）
+    try {
+      const { error: paymentReqCompletedError } = await supabase
+        .from('payment_requests')
+        .delete()
+        .eq('completed_by', normalizedAddress);
+
+      if (paymentReqCompletedError) {
+        deletionLog.push(`⚠️ 支払いリクエスト（支払い者）削除失敗: ${paymentReqCompletedError.message}`);
+      } else {
+        deletionLog.push('✅ 支払いリクエスト（支払い者）を削除');
+      }
+    } catch (error) {
+      deletionLog.push(`❌ 支払いリクエスト（支払い者）削除エラー: ${error}`);
+    }
+
+    // 2-24. テナント申請
+    try {
+      const { error: tenantAppError } = await supabase
+        .from('tenant_applications')
+        .delete()
+        .eq('applicant_address', normalizedAddress);
+
+      if (tenantAppError) {
+        deletionLog.push(`⚠️ テナント申請削除失敗: ${tenantAppError.message}`);
+      } else {
+        deletionLog.push('✅ テナント申請を削除');
+      }
+    } catch (error) {
+      deletionLog.push(`❌ テナント申請削除エラー: ${error}`);
+    }
+
+    // 2-25. ストレージファイル（アバター画像）
     if (userProfile?.avatar_url || userProfile?.icon_url) {
       try {
         const avatarUrl = userProfile.avatar_url || userProfile.icon_url;
@@ -228,6 +507,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
       } catch (error) {
         deletionLog.push(`⚠️ アバター画像削除をスキップ: ${error}`);
+      }
+    }
+
+    // 2-26. ストレージファイル（カバー画像）
+    if (userProfile?.cover_image_url) {
+      try {
+        const coverUrl = userProfile.cover_image_url;
+        const url = new URL(coverUrl);
+        const pathParts = url.pathname.split('/');
+        const fileName = pathParts[pathParts.length - 1];
+
+        const { error: storageError } = await supabase.storage
+          .from('public')
+          .remove([fileName]);
+
+        if (storageError) {
+          deletionLog.push(`⚠️ カバー画像削除失敗: ${storageError.message}`);
+        } else {
+          deletionLog.push('✅ カバー画像を削除');
+        }
+      } catch (error) {
+        deletionLog.push(`⚠️ カバー画像削除をスキップ: ${error}`);
       }
     }
 
