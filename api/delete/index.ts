@@ -1,5 +1,5 @@
 // api/delete/index.ts
-// 削除API（商品削除とコンテンツ削除を統合）
+// 削除API（商品削除、コンテンツ削除、ユーザー削除を統合）
 // セキュリティ: サーバーサイドでSERVICE_ROLE_KEYを使用して安全に削除
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
@@ -9,6 +9,12 @@ import { bucket } from '../../src/lib/storageBuckets.js';
 const supabaseUrl = process.env.SUPABASE_URL!;
 const supabaseServiceRole = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
+// スーパーアドミンアドレス（環境変数から取得）
+const SUPER_ADMIN_ADDRESSES_ENV = process.env.VITE_SUPER_ADMIN_ADDRESSES || '';
+const SUPER_ADMIN_ADDRESSES: string[] = SUPER_ADMIN_ADDRESSES_ENV
+  ? SUPER_ADMIN_ADDRESSES_ENV.split(',').map((addr: string) => addr.trim().toLowerCase())
+  : ['0x66f1274ad5d042b7571c2efa943370dbcd3459ab']; // デフォルト: METATRON管理者
+
 const supabase = createClient(supabaseUrl, supabaseServiceRole, {
   auth: {
     autoRefreshToken: false,
@@ -17,9 +23,11 @@ const supabase = createClient(supabaseUrl, supabaseServiceRole, {
 });
 
 interface DeleteRequest {
-  type: 'product' | 'content';
+  type: 'product' | 'content' | 'user';
   productId?: string;
   filePath?: string;
+  walletAddress?: string;
+  adminAddress?: string;
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -37,7 +45,141 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const { type, productId, filePath }: DeleteRequest = req.body;
+    const { type, productId, filePath, walletAddress, adminAddress }: DeleteRequest = req.body;
+
+    // ユーザー削除（スーパーアドミン専用）
+    if (type === 'user') {
+      if (!walletAddress || !adminAddress) {
+        return res.status(400).json({
+          error: 'walletAddress と adminAddress は必須です'
+        });
+      }
+
+      // スーパーアドミンチェック
+      const isAdmin = SUPER_ADMIN_ADDRESSES.includes(adminAddress.toLowerCase());
+      if (!isAdmin) {
+        console.warn(`❌ 不正なアクセス試行: ${adminAddress}`);
+        return res.status(403).json({
+          error: 'アクセスが拒否されました。スーパーアドミン権限が必要です。'
+        });
+      }
+
+      console.log(`🗑️ [DELETE USER] Starting deletion for: ${walletAddress}`);
+      console.log(`👤 [DELETE USER] Requested by admin: ${adminAddress}`);
+
+      const normalizedAddress = walletAddress.toLowerCase();
+      const deletionLog: string[] = [];
+
+      // ユーザープロフィールを取得
+      const { data: userProfile } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .eq('wallet_address', normalizedAddress)
+        .single();
+
+      if (userProfile) {
+        deletionLog.push(`✅ ユーザー情報取得: ${userProfile.display_name || normalizedAddress}`);
+      }
+
+      // 全テーブルからユーザーデータを削除
+      const tables = [
+        { table: 'push_subscriptions', column: 'wallet_address' },
+        { table: 'user_activities', column: 'wallet_address' },
+        { table: 'tip_history', column: 'sender_address' },
+        { table: 'tip_history', column: 'recipient_address' },
+        { table: 'purchases', column: 'wallet_address' },
+        { table: 'product_reviews', column: 'wallet_address' },
+        { table: 'user_stats', column: 'wallet_address' },
+        { table: 'user_sessions', column: 'wallet_address' },
+        { table: 'download_tokens', column: 'buyer' },
+        { table: 'transfer_messages', column: 'from_address' },
+        { table: 'transfer_messages', column: 'to_address' },
+        { table: 'notifications', column: 'user_address' },
+        { table: 'user_notification_settings', column: 'user_address' },
+        { table: 'user_scores', column: 'address' },
+        { table: 'score_transactions', column: 'user_address' },
+        { table: 'tenant_scores', column: 'user_address' },
+        { table: 'account_freezes', column: 'wallet_address' },
+        { table: 'transaction_history', column: 'from_address' },
+        { table: 'transaction_history', column: 'to_address' },
+        { table: 'user_login_history', column: 'wallet_address' },
+        { table: 'payment_requests', column: 'tenant_address' },
+        { table: 'payment_requests', column: 'completed_by' },
+        { table: 'tenant_applications', column: 'applicant_address' },
+      ];
+
+      for (const { table, column } of tables) {
+        try {
+          await supabase.from(table).delete().eq(column, normalizedAddress);
+          deletionLog.push(`✅ ${table}.${column} を削除`);
+        } catch (error) {
+          deletionLog.push(`⚠️ ${table}.${column} 削除エラー`);
+        }
+      }
+
+      // NFT関連（外部キー制約を考慮）
+      try {
+        const { data: userFlagNfts } = await supabase
+          .from('user_flag_nfts')
+          .select('id')
+          .eq('user_id', normalizedAddress);
+
+        if (userFlagNfts && userFlagNfts.length > 0) {
+          const userFlagNftIds = userFlagNfts.map(nft => nft.id);
+          await supabase.from('stamp_check_ins').delete().in('user_flag_nft_id', userFlagNftIds);
+          deletionLog.push('✅ スタンプチェックインを削除');
+        }
+
+        await supabase.from('user_flag_nfts').delete().eq('user_id', normalizedAddress);
+        deletionLog.push('✅ ユーザー保有NFTを削除');
+      } catch (error) {
+        deletionLog.push('⚠️ NFT関連削除エラー');
+      }
+
+      // ストレージ削除（アバター・カバー画像）
+      if (userProfile?.avatar_url || userProfile?.icon_url) {
+        try {
+          const avatarUrl = userProfile.avatar_url || userProfile.icon_url;
+          const url = new URL(avatarUrl);
+          const fileName = url.pathname.split('/').pop();
+          await supabase.storage.from('public').remove([fileName!]);
+          deletionLog.push('✅ アバター画像を削除');
+        } catch { deletionLog.push('⚠️ アバター画像削除をスキップ'); }
+      }
+
+      if (userProfile?.cover_image_url) {
+        try {
+          const url = new URL(userProfile.cover_image_url);
+          const fileName = url.pathname.split('/').pop();
+          await supabase.storage.from('public').remove([fileName!]);
+          deletionLog.push('✅ カバー画像を削除');
+        } catch { deletionLog.push('⚠️ カバー画像削除をスキップ'); }
+      }
+
+      // 最後にユーザープロフィールを削除
+      const { error: deleteProfileError } = await supabase
+        .from('user_profiles')
+        .delete()
+        .eq('wallet_address', normalizedAddress);
+
+      if (deleteProfileError) {
+        return res.status(500).json({
+          error: 'ユーザープロフィールの削除に失敗しました',
+          details: deleteProfileError.message,
+          log: deletionLog
+        });
+      }
+
+      deletionLog.push('✅ ユーザープロフィールを削除');
+      console.log('✅ [DELETE USER] User deletion completed:', normalizedAddress);
+
+      return res.json({
+        success: true,
+        message: `ユーザー ${userProfile?.display_name || normalizedAddress} を完全に削除しました`,
+        walletAddress: normalizedAddress,
+        deletionLog
+      });
+    }
 
     // 商品削除
     if (type === 'product') {

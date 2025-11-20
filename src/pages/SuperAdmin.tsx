@@ -772,12 +772,13 @@ function DeleteUserDialog({ user, onClose, onDeleted, adminAddress }: DeleteUser
     setError(null);
 
     try {
-      const response = await fetch('/api/super-admin/delete-user', {
+      const response = await fetch('/api/delete', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
+          type: 'user',
           walletAddress: user.wallet_address,
           adminAddress,
         }),

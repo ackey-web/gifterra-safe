@@ -8,6 +8,7 @@ import { usePrivy, useWallets } from '@privy-io/react-auth';
 import { ethers } from 'ethers';
 import { CONTRACT_ADDRESS, CONTRACT_ABI, ERC20_MIN_ABI } from '../../contract';
 import { getDefaultToken } from '../../config/tokenHelpers';
+import { useMyTenantApplication } from '../../hooks/useTenantApplications';
 
 /* =========================================
    開発環境用デバッグスーパーアドミン設定
@@ -19,8 +20,9 @@ const DEV_MODE = import.meta.env.DEV || import.meta.env.MODE === 'development';
 const ADMIN_WHITELIST_ENABLED = DEV_MODE || import.meta.env.VITE_ENABLE_ADMIN_WHITELIST === 'true';
 
 // スーパーアドミンアドレス（ホワイトリスト）
+const METATRON_OWNER = '0x66f1274ad5d042b7571c2efa943370dbcd3459ab'; // METATRON管理者
 const DEV_SUPER_ADMIN_ADDRESSES = [
-  '0x66f1274ad5d042b7571c2efa943370dbcd3459ab', // METATRON管理者
+  METATRON_OWNER,
   // 開発チームのアドレスを追加可能
 ];
 
@@ -84,11 +86,16 @@ const DEFAULT_TENANT: TenantConfig = {
 ========================================= */
 export interface TenantContextType {
   // テナント情報
-  tenant: TenantConfig;
+  tenant: TenantConfig | null;
   setTenant: (tenant: TenantConfig) => void;
 
   // 認証アドレス
   finalAddress: string;  // Thirdweb または Privy の統合アドレス
+
+  // アクセス制御
+  hasAccess: boolean;  // デフォルトテナントまたは承認済みテナントへのアクセス権
+  isMETATRONOwner: boolean;  // METATRON Ownerかどうか
+  isApprovedTenant: boolean;  // 承認済みテナントオーナーかどうか
 
   // オーナー権限
   isOwner: boolean;
@@ -203,8 +210,56 @@ export function TenantProvider({ children }: { children: ReactNode }) {
   // Combined address: prefer Thirdweb, fallback to Privy
   const finalAddress = address || privyAddress;
 
-  // テナント設定（将来的にはlocalStorageやAPIから取得）
-  const [tenant, setTenant] = useState<TenantConfig>(DEFAULT_TENANT);
+  // ✅ テナント申請情報を取得
+  const { application, loading: loadingApplication } = useMyTenantApplication();
+
+  // ✅ METATRON Ownerチェック
+  const isMETATRONOwner = finalAddress ? finalAddress.toLowerCase() === METATRON_OWNER.toLowerCase() : false;
+
+  // ✅ 承認済みテナントチェック
+  const isApprovedTenant = application?.status === 'approved' && !!application?.gifterra_address;
+
+  // ✅ アクセス権判定
+  const hasAccess = isMETATRONOwner || isApprovedTenant;
+
+  // ✅ テナント設定（アクセス権に基づいて動的に決定）
+  const [tenant, setTenant] = useState<TenantConfig | null>(() => {
+    // 初期化時はローディング中なので null
+    return null;
+  });
+
+  // テナント情報を更新（application が変わったら再計算）
+  useEffect(() => {
+    if (loadingApplication) {
+      // ローディング中は何もしない
+      return;
+    }
+
+    if (isMETATRONOwner) {
+      // METATRON Owner → デフォルトテナント
+      console.log('✅ Setting DEFAULT_TENANT for METATRON Owner');
+      setTenant(DEFAULT_TENANT);
+    } else if (isApprovedTenant && application) {
+      // 承認済みテナント → 申請データからテナント作成
+      console.log('✅ Setting tenant from approved application:', application);
+      setTenant({
+        id: application.tenant_id || 'unknown',
+        name: application.tenant_name,
+        contracts: {
+          gifterra: application.gifterra_address!,
+          rewardEngine: application.random_reward_engine_address || undefined,
+          flagNFT: application.flag_nft_address || undefined,
+          rewardToken: application.custom_token_address || getDefaultToken().currentAddress,
+          paymentSplitter: application.pay_splitter_address || undefined,
+        },
+        createdAt: application.created_at,
+      });
+    } else {
+      // アクセス権なし → null
+      console.log('❌ No access - setting tenant to null');
+      setTenant(null);
+    }
+  }, [isMETATRONOwner, isApprovedTenant, application, loadingApplication]);
 
   // オーナー権限状態
   const [isCheckingOwner, setIsCheckingOwner] = useState(true);
@@ -218,13 +273,13 @@ export function TenantProvider({ children }: { children: ReactNode }) {
     paymentSplitter: false,
   });
 
-  // コントラクトインスタンス
-  const { contract: gifterraContract } = useContract(tenant.contracts.gifterra, CONTRACT_ABI);
-  const { contract: rewardEngineContract } = useContract(tenant.contracts.rewardEngine);
-  const { contract: flagNFTContract } = useContract(tenant.contracts.flagNFT);
-  const { contract: rewardTokenContract } = useContract(tenant.contracts.rewardToken, ERC20_MIN_ABI);
-  const { contract: tipManagerContract } = useContract(tenant.contracts.tipManager);
-  const { contract: paymentSplitterContract } = useContract(tenant.contracts.paymentSplitter);
+  // コントラクトインスタンス（tenantがnullの場合はundefinedを渡す）
+  const { contract: gifterraContract } = useContract(tenant?.contracts.gifterra, CONTRACT_ABI);
+  const { contract: rewardEngineContract } = useContract(tenant?.contracts.rewardEngine);
+  const { contract: flagNFTContract } = useContract(tenant?.contracts.flagNFT);
+  const { contract: rewardTokenContract } = useContract(tenant?.contracts.rewardToken, ERC20_MIN_ABI);
+  const { contract: tipManagerContract } = useContract(tenant?.contracts.tipManager);
+  const { contract: paymentSplitterContract } = useContract(tenant?.contracts.paymentSplitter);
 
   /* ================= 開発環境スーパーアドミンチェック ================ */
   // スーパーアドミン（運営）の判定のみ - テナント管理者は含まない
@@ -450,6 +505,9 @@ export function TenantProvider({ children }: { children: ReactNode }) {
     tenant,
     setTenant,
     finalAddress,
+    hasAccess,
+    isMETATRONOwner,
+    isApprovedTenant,
     isOwner,
     isCheckingOwner,
     ownerError,
@@ -496,9 +554,10 @@ interface RequireOwnerProps {
 }
 
 export function RequireOwner({ children, contractType, fallback }: RequireOwnerProps) {
-  const { isOwner, isCheckingOwner, ownerError, hasContractAccess, isDevSuperAdmin, finalAddress } = useTenant();
+  const { isOwner, isCheckingOwner, ownerError, hasContractAccess, isDevSuperAdmin, finalAddress, hasAccess } = useTenant();
   const { login: privyLogin, authenticated: privyAuthenticated } = usePrivy();
   const address = useAddress(); // Thirdweb address
+  const { application, loading: loadingApplication } = useMyTenantApplication();
 
   // デバッグ：RequireOwnerの状態をログ出力
   console.log('🔒 RequireOwner rendering:', {
@@ -507,11 +566,13 @@ export function RequireOwner({ children, contractType, fallback }: RequireOwnerP
     finalAddress,
     addressUndefined: finalAddress === undefined,
     addressNull: finalAddress === null,
+    hasAccess,
     isOwner,
     isCheckingOwner,
     isDevSuperAdmin,
+    applicationStatus: application?.status,
+    loadingApplication,
     contractType,
-    willRenderChildren: !finalAddress,
   });
 
   // ウォレット未接続の場合は、接続を促す専用画面を表示
@@ -615,16 +676,41 @@ export function RequireOwner({ children, contractType, fallback }: RequireOwnerP
     );
   }
 
-  if (isCheckingOwner) {
+  // ローディング中（申請情報またはオーナー権限の確認中）
+  if (isCheckingOwner || loadingApplication) {
     console.log('⏳ RequireOwner: Showing checking owner screen');
     return (
       <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: '100vh',
         padding: 40,
         textAlign: 'center',
+        background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)',
         color: '#fff'
       }}>
-        <p style={{ fontSize: 16, marginBottom: 8 }}>🔍 権限を確認中...</p>
-        <p style={{ fontSize: 13, opacity: 0.6 }}>コントラクトオーナー権限をチェックしています</p>
+        <div>
+          <div style={{
+            width: 48,
+            height: 48,
+            margin: '0 auto 16px',
+            border: '4px solid rgba(255,255,255,0.1)',
+            borderTopColor: '#3b82f6',
+            borderRadius: '50%',
+            animation: 'spin 0.8s linear infinite',
+          }} />
+          <p style={{ fontSize: 16, marginBottom: 8, fontWeight: 600 }}>🔍 権限を確認中...</p>
+          <p style={{ fontSize: 13, opacity: 0.6 }}>
+            {loadingApplication ? 'テナント申請状況を確認しています' : 'コントラクトオーナー権限をチェックしています'}
+          </p>
+        </div>
+        <style>{`
+          @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+          }
+        `}</style>
       </div>
     );
   }
@@ -668,9 +754,32 @@ export function RequireOwner({ children, contractType, fallback }: RequireOwnerP
     }
   }
 
-  // 全体のオーナー権限チェック
+  // ✅ アクセス権チェック（デフォルトテナントまたは承認済みテナント）
+  if (!hasAccess) {
+    console.log('🚫 RequireOwner: No access - checking application status');
+
+    // 申請状態に応じて画面を出し分け
+    if (application?.status === 'pending') {
+      console.log('⏳ Application pending - showing pending screen');
+      const { PendingApprovalScreen } = require('../components/PendingApprovalScreen');
+      return <PendingApprovalScreen application={application} />;
+    }
+
+    if (application?.status === 'rejected') {
+      console.log('❌ Application rejected - showing rejection screen');
+      const { RejectedApplicationScreen } = require('../components/RejectedApplicationScreen');
+      return <RejectedApplicationScreen application={application} />;
+    }
+
+    // 未申請またはその他の状態
+    console.log('📝 No application - showing application prompt');
+    const { ApplicationPromptScreen } = require('../components/ApplicationPromptScreen');
+    return <ApplicationPromptScreen />;
+  }
+
+  // ✅ アクセス権はあるが、オーナー権限チェックで失敗した場合
   if (!isOwner) {
-    console.log('🚫 RequireOwner: User is not owner - showing permission error');
+    console.log('🚫 RequireOwner: Has access but not owner - showing permission error');
     return fallback || (
       <div style={{
         display: 'flex',
