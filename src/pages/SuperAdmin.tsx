@@ -794,7 +794,13 @@ function DeleteUserDialog({ user, onClose, onDeleted, adminAddress }: DeleteUser
       console.log('📦 [Frontend] Response data:', data);
 
       if (!response.ok) {
-        throw new Error(data.error || 'ユーザーの削除に失敗しました');
+        console.error('❌ [Frontend] Delete failed:', {
+          status: response.status,
+          data
+        });
+        const errorMessage = data.error || 'ユーザーの削除に失敗しました';
+        const details = data.received ? JSON.stringify(data.received) : '';
+        throw new Error(`${errorMessage}${details ? ` (受信データ: ${details})` : ''}`);
       }
 
       console.log('✅ ユーザー削除成功:', data);

@@ -47,13 +47,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const { type, productId, filePath, walletAddress, adminAddress }: DeleteRequest = req.body;
 
-    console.log('🔍 [DELETE API] Request received:', { type, walletAddress, adminAddress });
+    console.log('🔍 [DELETE API] Request received:', {
+      type,
+      walletAddress,
+      adminAddress,
+      hasWalletAddress: !!walletAddress,
+      hasAdminAddress: !!adminAddress,
+      bodyKeys: Object.keys(req.body),
+      fullBody: req.body
+    });
 
     // ユーザー削除（スーパーアドミン専用）
     if (type === 'user') {
       if (!walletAddress || !adminAddress) {
+        console.error('❌ [DELETE API] Missing required fields:', {
+          walletAddress: !!walletAddress,
+          adminAddress: !!adminAddress
+        });
         return res.status(400).json({
-          error: 'walletAddress と adminAddress は必須です'
+          error: 'walletAddress と adminAddress は必須です',
+          received: { walletAddress, adminAddress }
         });
       }
 
