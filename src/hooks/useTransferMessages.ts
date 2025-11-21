@@ -2,7 +2,9 @@
 // 送金メッセージ機能のカスタムフック
 
 import { useState, useEffect } from 'react';
+import { ethers } from 'ethers';
 import { supabase } from '../lib/supabase';
+import { SUPPORTED_TOKENS } from '../config/supportedTokens';
 
 export interface MessageReaction {
   id: string;
@@ -38,6 +40,79 @@ export interface TransferMessage {
   reactions?: MessageReaction[];
   reaction_count?: number;
   has_reacted?: boolean;
+  source?: 'gifterra' | 'blockchain'; // データソースの識別
+}
+
+/**
+ * PolygonScan APIから受信トランザクションを取得
+ */
+async function fetchBlockchainReceivedTransactions(
+  walletAddress: string
+): Promise<TransferMessage[]> {
+  try {
+    const apiKey = import.meta.env.VITE_POLYGONSCAN_API_KEY || '';
+
+    if (!apiKey) {
+      console.warn('⚠️ PolygonScan API key not found. Skipping blockchain transactions.');
+      return [];
+    }
+
+    console.log('🔗 Fetching blockchain transactions from PolygonScan...');
+
+    const blockchainTxs: TransferMessage[] = [];
+
+    // サポートされている各トークンの受信履歴を取得
+    for (const token of SUPPORTED_TOKENS) {
+      try {
+        const apiUrl = `https://api.polygonscan.com/api?module=account&action=tokentx&contractaddress=${token.ADDRESS}&address=${walletAddress}&page=1&offset=50&sort=desc&apikey=${apiKey}`;
+
+        const response = await fetch(apiUrl);
+        const data = await response.json();
+
+        if (data.status !== '1') {
+          console.warn(`⚠️ ${token.SYMBOL}: PolygonScan API error - ${data.message}`);
+          continue;
+        }
+
+        if (!data.result || !Array.isArray(data.result)) {
+          continue;
+        }
+
+        // 受信トランザクションのみフィルタ
+        const receivedTxs = data.result.filter(
+          (tx: any) => tx.to.toLowerCase() === walletAddress.toLowerCase()
+        );
+
+        console.log(`  - Found ${receivedTxs.length} received ${token.SYMBOL} transactions`);
+
+        // TransferMessage形式に変換
+        for (const tx of receivedTxs) {
+          blockchainTxs.push({
+            id: tx.hash, // トランザクションハッシュをIDとして使用
+            tenant_id: 'blockchain',
+            from_address: tx.from,
+            to_address: tx.to,
+            token_symbol: token.SYMBOL,
+            amount: ethers.utils.formatUnits(tx.value, 18),
+            tx_hash: tx.hash,
+            created_at: new Date(parseInt(tx.timeStamp) * 1000).toISOString(),
+            expires_at: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(), // 1年後
+            is_read: true, // ブロックチェーンからの履歴は既読扱い
+            is_archived: false,
+            source: 'blockchain',
+          });
+        }
+      } catch (tokenError) {
+        console.error(`❌ Failed to fetch ${token.SYMBOL} transactions:`, tokenError);
+      }
+    }
+
+    console.log(`✅ Total ${blockchainTxs.length} blockchain transactions fetched`);
+    return blockchainTxs;
+  } catch (error) {
+    console.error('❌ Failed to fetch blockchain transactions:', error);
+    return [];
+  }
 }
 
 /**
@@ -181,11 +256,17 @@ export function useReceivedTransferMessages(
       setError(null);
 
       try {
+        console.log('📨 Fetching received transfer messages...');
+        console.log('  - Wallet Address:', walletAddress);
+        console.log('  - Tenant ID:', effectiveTenantId);
+
         // テナントIDが'default'の場合は'default'のみ検索
         // テナントIDが指定されている場合は、そのIDと'default'の両方を検索
         const tenantIdsToSearch = effectiveTenantId === 'default'
           ? ['default']
           : [effectiveTenantId, 'default'];
+
+        console.log('  - Searching in tenants:', tenantIdsToSearch);
 
         const { data, error: fetchError } = await supabase
           .from('transfer_messages')
@@ -196,11 +277,20 @@ export function useReceivedTransferMessages(
           .limit(50);
 
         if (fetchError) {
+          console.error('❌ Supabase query error:', fetchError);
           throw fetchError;
         }
 
+        console.log(`✅ Found ${(data || []).length} messages from Supabase`);
+
+        // ブロックチェーンからの受信履歴も取得
+        const blockchainTxs = await fetchBlockchainReceivedTransactions(walletAddress);
+
         // N+1問題を解決: 全アドレスを一度に取得
-        const uniqueAddresses = [...new Set((data || []).map(m => m.from_address.toLowerCase()))];
+        const allMessages = [...(data || []), ...blockchainTxs];
+        const uniqueAddresses = [...new Set(allMessages.map(m => m.from_address.toLowerCase()))];
+
+        console.log(`🔄 Fetching profiles for ${uniqueAddresses.length} unique senders...`);
 
         // バッチでプロフィール情報を取得
         const profilesByAddress = new Map<string, any>();
@@ -257,13 +347,29 @@ export function useReceivedTransferMessages(
         }
 
         // メッセージにプロフィールをマージ
-        const messagesWithProfiles = (data || []).map(message => {
+        const messagesWithProfiles = allMessages.map(message => {
           const profile = profilesByAddress.get(message.from_address.toLowerCase());
-          return profile ? { ...message, sender_profile: profile } : message;
+          const messageWithProfile = profile
+            ? { ...message, sender_profile: profile, source: message.source || 'gifterra' }
+            : { ...message, source: message.source || 'gifterra' };
+          return messageWithProfile;
         });
 
-        setMessages(messagesWithProfiles);
-        setUnreadCount(messagesWithProfiles.filter((m: TransferMessage) => !m.is_read).length);
+        // 作成日時でソート（新しい順）
+        const sortedMessages = messagesWithProfiles.sort((a, b) => {
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        });
+
+        // 重複を除去（同じトランザクションハッシュのメッセージ）
+        const uniqueMessages = sortedMessages.filter((message, index, self) => {
+          if (!message.tx_hash) return true;
+          return index === self.findIndex(m => m.tx_hash === message.tx_hash);
+        });
+
+        console.log(`✅ Total ${uniqueMessages.length} messages (Gifterra: ${data?.length || 0}, Blockchain: ${blockchainTxs.length})`);
+
+        setMessages(uniqueMessages);
+        setUnreadCount(uniqueMessages.filter((m: TransferMessage) => !m.is_read).length);
         setRetryCount(0); // 成功したらリトライカウントをリセット
       } catch (err) {
         console.error('❌ Failed to fetch received transfer messages:', err);
