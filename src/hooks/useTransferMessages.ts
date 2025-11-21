@@ -67,7 +67,8 @@ async function fetchBlockchainReceivedTransactions(
     for (const token of SUPPORTED_TOKENS) {
       try {
         // Etherscan V2 API エンドポイント (Polygon Mainnet)
-        const apiUrl = `https://api.polygonscan.com/v2/api?chainid=137&module=account&action=tokentx&contractaddress=${token.ADDRESS}&address=${walletAddress}&page=1&offset=50&sort=desc&apikey=${apiKey}`;
+        // Note: api.etherscan.io/v2/api を使用（api.polygonscan.comではない）
+        const apiUrl = `https://api.etherscan.io/v2/api?chainid=137&module=account&action=tokentx&contractaddress=${token.ADDRESS}&address=${walletAddress}&page=1&offset=50&sort=desc&apikey=${apiKey}`;
 
         const response = await fetch(apiUrl);
         const data = await response.json();
