@@ -57,7 +57,7 @@ export default function AdminHeader({
           }}
         >
           <span style={{ opacity: 0.7 }}>テナント: </span>
-          <strong>{tenant.name}</strong>
+          <strong>{tenant?.name || '読み込み中...'}</strong>
         </div>
 
         {/* 権限表示 */}
