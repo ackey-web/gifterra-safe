@@ -44,37 +44,42 @@ export interface TransferMessage {
 }
 
 /**
- * PolygonScan APIから受信トランザクションを取得
+ * Etherscan V2 API (Polygon)から受信トランザクションを取得
+ * Note: PolygonScanはEtherscan V2 APIに移行されました
  */
 async function fetchBlockchainReceivedTransactions(
   walletAddress: string
 ): Promise<TransferMessage[]> {
   try {
-    const apiKey = import.meta.env.VITE_POLYGONSCAN_API_KEY || '';
+    // Etherscan V2 API キー (Polygon対応)
+    const apiKey = import.meta.env.VITE_POLYGONSCAN_API_KEY || 'V5XJ3EHND6UZ1PNNQ8XJ293QYJNUUUEMQY';
 
     if (!apiKey) {
-      console.warn('⚠️ PolygonScan API key not found. Skipping blockchain transactions.');
+      console.warn('⚠️ Etherscan API key not found. Skipping blockchain transactions.');
       return [];
     }
 
-    console.log('🔗 Fetching blockchain transactions from PolygonScan...');
+    console.log('🔗 Fetching blockchain transactions from Etherscan V2 API (Polygon)...');
 
     const blockchainTxs: TransferMessage[] = [];
 
     // サポートされている各トークンの受信履歴を取得
     for (const token of SUPPORTED_TOKENS) {
       try {
-        const apiUrl = `https://api.polygonscan.com/api?module=account&action=tokentx&contractaddress=${token.ADDRESS}&address=${walletAddress}&page=1&offset=50&sort=desc&apikey=${apiKey}`;
+        // Etherscan V2 API エンドポイント (Polygon Mainnet)
+        const apiUrl = `https://api.polygonscan.com/v2/api?chainid=137&module=account&action=tokentx&contractaddress=${token.ADDRESS}&address=${walletAddress}&page=1&offset=50&sort=desc&apikey=${apiKey}`;
 
         const response = await fetch(apiUrl);
         const data = await response.json();
 
-        if (data.status !== '1') {
-          console.warn(`⚠️ ${token.SYMBOL}: PolygonScan API error - ${data.message}`);
+        // V2 APIのレスポンス形式に対応
+        if (data.status !== '1' || !data.result) {
+          console.warn(`⚠️ ${token.SYMBOL}: Etherscan API error - ${data.message || 'Unknown error'}`);
           continue;
         }
 
-        if (!data.result || !Array.isArray(data.result)) {
+        if (!Array.isArray(data.result) || data.result.length === 0) {
+          console.log(`  - No ${token.SYMBOL} transactions found`);
           continue;
         }
 
@@ -107,7 +112,7 @@ async function fetchBlockchainReceivedTransactions(
       }
     }
 
-    console.log(`✅ Total ${blockchainTxs.length} blockchain transactions fetched`);
+    console.log(`✅ Total ${blockchainTxs.length} blockchain transactions fetched from Etherscan V2 API`);
     return blockchainTxs;
   } catch (error) {
     console.error('❌ Failed to fetch blockchain transactions:', error);
