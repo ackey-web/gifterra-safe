@@ -33,6 +33,7 @@ export function TransferMessageHistory({
   const [showProfileBio, setShowProfileBio] = useState(false);
   const [reactions, setReactions] = useState<MessageReaction[]>([]);
   const [isReacting, setIsReacting] = useState(false);
+  const [activeTab, setActiveTab] = useState<'gifterra' | 'all'>('all'); // タブ状態
 
   // フックから取得したメッセージをローカル状態にコピー
   useEffect(() => {
@@ -221,25 +222,10 @@ export function TransferMessageHistory({
     );
   }
 
-  // メッセージがない場合
-  if (!messages || messages.length === 0) {
-    return (
-      <div
-        style={{
-          padding: isMobile ? 24 : 32,
-          textAlign: 'center',
-          color: 'rgba(255, 255, 255, 0.5)',
-        }}
-      >
-        <div style={{ fontSize: isMobile ? 40 : 48, marginBottom: 16 }}>
-          📭
-        </div>
-        <p style={{ margin: 0, fontSize: isMobile ? 14 : 15 }}>
-          受信したメッセージはまだありません
-        </p>
-      </div>
-    );
-  }
+  // タブに応じてメッセージをフィルタリング
+  const filteredMessages = activeTab === 'gifterra'
+    ? messages.filter(m => m.source === 'gifterra')
+    : messages;
 
   return (
     <>
@@ -253,6 +239,79 @@ export function TransferMessageHistory({
         `}
       </style>
 
+      {/* タブUI */}
+      <div
+        style={{
+          display: 'flex',
+          gap: 8,
+          marginBottom: 12,
+          borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+        }}
+      >
+        <button
+          onClick={() => setActiveTab('all')}
+          style={{
+            padding: isMobile ? '8px 16px' : '10px 20px',
+            background: activeTab === 'all'
+              ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+              : 'transparent',
+            border: 'none',
+            borderBottom: activeTab === 'all'
+              ? '2px solid #667eea'
+              : '2px solid transparent',
+            color: activeTab === 'all' ? '#ffffff' : 'rgba(255, 255, 255, 0.6)',
+            fontSize: isMobile ? 13 : 14,
+            fontWeight: 600,
+            cursor: 'pointer',
+            transition: 'all 0.2s',
+            borderRadius: '8px 8px 0 0',
+          }}
+          onMouseEnter={(e) => {
+            if (activeTab !== 'all') {
+              e.currentTarget.style.color = 'rgba(255, 255, 255, 0.9)';
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (activeTab !== 'all') {
+              e.currentTarget.style.color = 'rgba(255, 255, 255, 0.6)';
+            }
+          }}
+        >
+          全履歴 ({messages.length})
+        </button>
+        <button
+          onClick={() => setActiveTab('gifterra')}
+          style={{
+            padding: isMobile ? '8px 16px' : '10px 20px',
+            background: activeTab === 'gifterra'
+              ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+              : 'transparent',
+            border: 'none',
+            borderBottom: activeTab === 'gifterra'
+              ? '2px solid #667eea'
+              : '2px solid transparent',
+            color: activeTab === 'gifterra' ? '#ffffff' : 'rgba(255, 255, 255, 0.6)',
+            fontSize: isMobile ? 13 : 14,
+            fontWeight: 600,
+            cursor: 'pointer',
+            transition: 'all 0.2s',
+            borderRadius: '8px 8px 0 0',
+          }}
+          onMouseEnter={(e) => {
+            if (activeTab !== 'gifterra') {
+              e.currentTarget.style.color = 'rgba(255, 255, 255, 0.9)';
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (activeTab !== 'gifterra') {
+              e.currentTarget.style.color = 'rgba(255, 255, 255, 0.6)';
+            }
+          }}
+        >
+          Gifterra内 ({messages.filter(m => m.source === 'gifterra').length})
+        </button>
+      </div>
+
       {/* 履歴カードリスト（スクロール可能） */}
       <div
         style={{
@@ -264,7 +323,28 @@ export function TransferMessageHistory({
           paddingRight: 4,
         }}
       >
-        {messages.map((message) => (
+        {filteredMessages.length === 0 ? (
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              height: '100%',
+              color: 'rgba(255, 255, 255, 0.5)',
+            }}
+          >
+            <div style={{ fontSize: isMobile ? 32 : 40, marginBottom: 8 }}>
+              📭
+            </div>
+            <p style={{ margin: 0, fontSize: isMobile ? 13 : 14 }}>
+              {activeTab === 'gifterra'
+                ? 'Gifterra内の受信履歴はまだありません'
+                : '受信したメッセージはまだありません'}
+            </p>
+          </div>
+        ) : (
+          filteredMessages.map((message) => (
           <div
             key={message.id}
             onClick={() => handleOpenModal(message)}
@@ -486,7 +566,8 @@ export function TransferMessageHistory({
               )}
             </div>
           </div>
-        ))}
+          ))
+        )}
       </div>
 
       {/* メッセージ詳細モーダル */}
