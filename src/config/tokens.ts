@@ -72,8 +72,8 @@ export const TOKEN_MASTER_DATA: Record<TokenId, TokenConfig> = {
    */
   NHT: {
     id: 'NHT',
-    symbol: getNetworkEnv() === 'mainnet' ? 'NHT' : 'tNHT',
-    name: getNetworkEnv() === 'mainnet' ? 'Nihonto Token' : 'Test Nihonto Token',
+    symbol: 'tNHT', // デフォルトはtestnet、getTokenConfig()で動的に変更
+    name: 'Test Nihonto Token', // デフォルトはtestnet、getTokenConfig()で動的に変更
     decimals: 18,
     category: 'utility', // ユーティリティトークン：Reward配布可能
     addresses: {
@@ -141,6 +141,17 @@ export function getTokenAddress(tokenId: TokenId): string {
 export function getTokenConfig(tokenId: TokenId): TokenConfig & { currentAddress: string } {
   const config = TOKEN_MASTER_DATA[tokenId];
   const currentAddress = getTokenAddress(tokenId);
+  const network = getNetworkEnv();
+
+  // NHTの場合、環境に応じてsymbolとnameを動的に設定
+  if (tokenId === 'NHT') {
+    return {
+      ...config,
+      symbol: network === 'mainnet' ? 'NHT' : 'tNHT',
+      name: network === 'mainnet' ? 'Nihonto Token' : 'Test Nihonto Token',
+      currentAddress,
+    };
+  }
 
   return {
     ...config,
