@@ -26,8 +26,8 @@ export default function AdminLayout({
 
   // デフォルトテナント（'default'）の場合は、ランクプランをSTUDIOに固定
   // 将来的には実際のUUIDベースのテナントIDを使用
-  const isDefaultTenant = tenant.id === 'default';
-  const tenantUuid = isDefaultTenant ? undefined : tenant.id;
+  const isDefaultTenant = tenant?.id === 'default';
+  const tenantUuid = tenant && !isDefaultTenant ? tenant.id : undefined;
   const { plan: rankPlan } = useTenantRankPlan(tenantUuid);
 
   // デフォルトテナントの場合はSTUDIOプランを使用
