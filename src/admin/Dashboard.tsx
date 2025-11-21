@@ -354,7 +354,7 @@ export default function AdminDashboard() {
   const { plan: tenantRankPlan } = useTenantRankPlan(tenant?.id);
 
   // マルチトークン対応：環境に応じたトークン設定
-  const activeTokens = getActiveTokens();
+  const activeTokens = getActiveTokens().filter(t => t && t.id); // nullチェック
   const defaultToken = getDefaultToken();
   const networkEnv = getNetworkEnv();
 
