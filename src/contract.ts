@@ -57,6 +57,16 @@ export const MANAGER_CONTRACT = {
   FEATURES: ["sbt-nft-bridge", "level-sync", "unified-management"] as const,
 } as const;
 
+// 🏆 RankPlanRegistry コントラクト (ランクプラン管理)
+export const RANK_PLAN_REGISTRY_CONTRACT = {
+  // テストネット用アドレス（環境変数から取得、未設定時はundefined）
+  ADDRESS: (import.meta as any)?.env?.VITE_RANK_PLAN_REGISTRY_ADDRESS
+    ? getAddress((import.meta as any).env.VITE_RANK_PLAN_REGISTRY_ADDRESS)
+    : undefined,
+  TYPE: "RANK_PLAN_REGISTRY" as const,
+  FEATURES: ["plan-management", "global-configuration"] as const,
+} as const;
+
 // 🔄 後方互換性のため現在のCONTRACT_ADDRESSを維持
 export const CONTRACT_ADDRESS = SBT_CONTRACT.ADDRESS;
 

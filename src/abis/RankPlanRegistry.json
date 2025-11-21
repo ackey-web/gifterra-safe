@@ -1,0 +1,145 @@
+[
+  {
+    "inputs": [
+      {
+        "internalType": "enum RankPlanRegistry.PlanType",
+        "name": "planType",
+        "type": "uint8"
+      }
+    ],
+    "name": "getPlan",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "string",
+            "name": "name",
+            "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "description",
+            "type": "string"
+          },
+          {
+            "internalType": "uint256",
+            "name": "stages",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256[]",
+            "name": "thresholds",
+            "type": "uint256[]"
+          },
+          {
+            "internalType": "string[]",
+            "name": "rankNames",
+            "type": "string[]"
+          },
+          {
+            "internalType": "string[]",
+            "name": "uriTemplates",
+            "type": "string[]"
+          },
+          {
+            "internalType": "bool",
+            "name": "isActive",
+            "type": "bool"
+          }
+        ],
+        "internalType": "struct RankPlanRegistry.RankPlan",
+        "name": "",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "enum RankPlanRegistry.PlanType",
+        "name": "planType",
+        "type": "uint8"
+      },
+      {
+        "internalType": "string",
+        "name": "name",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "description",
+        "type": "string"
+      },
+      {
+        "internalType": "uint256[]",
+        "name": "thresholds",
+        "type": "uint256[]"
+      },
+      {
+        "internalType": "string[]",
+        "name": "rankNames",
+        "type": "string[]"
+      },
+      {
+        "internalType": "string[]",
+        "name": "uriTemplates",
+        "type": "string[]"
+      }
+    ],
+    "name": "updatePlan",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "enum RankPlanRegistry.PlanType",
+        "name": "planType",
+        "type": "uint8"
+      }
+    ],
+    "name": "activatePlan",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "enum RankPlanRegistry.PlanType",
+        "name": "planType",
+        "type": "uint8"
+      }
+    ],
+    "name": "deactivatePlan",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getPlanUsageStats",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  }
+]
