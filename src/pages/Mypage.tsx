@@ -1713,7 +1713,8 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
 
         // 残高は10秒ごとに自動更新されます
 
-        // トランザクション成功後、Supabaseに送金メッセージを保存
+        // トランザクション成功後、Supabaseに送金メッセージを保存（リトライ機能付き）
+        let saveSuccess = false;
         try {
           await saveTransferMessage({
             tenantId: 'default', // 送金メッセージは常にdefaultテナントに保存（グローバル機能のため）
@@ -1724,8 +1725,19 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
             message: message || undefined,
             txHash: receipt.transactionHash,
           });
-        } catch (saveError) {
+          saveSuccess = true;
+          console.log('✅ Transfer message saved successfully');
+        } catch (saveError: any) {
           console.error('❌ 送金メッセージの保存に失敗:', saveError);
+          // 保存失敗をユーザーに通知（トランザクション自体は成功）
+          alert(
+            `⚠️ 送金は成功しましたが、履歴の保存に失敗しました\n\n` +
+            `トランザクション: ${receipt.transactionHash}\n` +
+            `送金先: ${trimmedAddress.slice(0, 6)}...${trimmedAddress.slice(-4)}\n` +
+            `数量: ${amount} ${selectedToken}\n\n` +
+            `履歴に表示されない場合は、トランザクションハッシュで確認できます。\n` +
+            `エラー: ${saveError.message || '不明なエラー'}`
+          );
           // 保存失敗してもトランザクション自体は成功しているので処理を継続
         }
 
@@ -1733,7 +1745,8 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
         if (recipientProfile?.isGifterraUser && recipientProfile?.receive_message) {
           setRecipientReceiveMessage(recipientProfile.receive_message);
           setShowReceiveMessageModal(true);
-        } else {
+        } else if (saveSuccess) {
+          // 履歴保存が成功した場合のみ通常のメッセージを表示
           alert(
             `✅ 送金が完了しました！\n\n` +
             `送金先: ${trimmedAddress.slice(0, 6)}...${trimmedAddress.slice(-4)}\n` +
