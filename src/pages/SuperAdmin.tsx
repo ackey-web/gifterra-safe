@@ -1052,15 +1052,26 @@ function UsersTab() {
   const [users, setUsers] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const [selectedUser, setSelectedUser] = useState<any | null>(null);
+  const [userToDelete, setUserToDelete] = useState<any | null>(null);
   const ITEMS_PER_PAGE = 20;
 
-  // ユーザーリストを取得
+  // 検索クエリをデバウンス（500ms遅延）
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // ユーザーリストを取得（デバウンスされた検索クエリを使用）
   useEffect(() => {
     fetchUsers();
-  }, [currentPage, searchQuery]);
+  }, [currentPage, debouncedSearchQuery]);
 
   const fetchUsers = async () => {
     setIsLoading(true);
@@ -1069,7 +1080,7 @@ function UsersTab() {
       console.log('📋 Query params:', {
         tenant_id: 'default',
         currentPage,
-        searchQuery
+        debouncedSearchQuery
       });
 
       let query = supabase
@@ -1079,13 +1090,13 @@ function UsersTab() {
         .order('created_at', { ascending: false });
 
       // 検索フィルター
-      if (searchQuery.trim()) {
-        if (searchQuery.toLowerCase().startsWith('0x')) {
+      if (debouncedSearchQuery.trim()) {
+        if (debouncedSearchQuery.toLowerCase().startsWith('0x')) {
           // ウォレットアドレスで検索
-          query = query.eq('wallet_address', searchQuery.toLowerCase());
+          query = query.eq('wallet_address', debouncedSearchQuery.toLowerCase());
         } else {
           // ユーザー名で検索（display_name, name, bioを対象に部分一致）
-          const trimmedQuery = searchQuery.trim();
+          const trimmedQuery = debouncedSearchQuery.trim();
 
           // ひらがなをカタカナに変換
           const toKatakana = (str: string) => {
@@ -1298,7 +1309,7 @@ function UsersTab() {
                 )}
               </div>
 
-              {/* ユーザー名（クリック可能） */}
+              {/* ユーザー名（クリック可能 - プロフィール表示） */}
               <div
                 style={{
                   overflow: 'hidden',
@@ -1306,7 +1317,11 @@ function UsersTab() {
                   whiteSpace: 'nowrap',
                   cursor: 'pointer',
                 }}
-                onClick={() => setSelectedUser(user)}
+                onClick={() => {
+                  if (user.wallet_address) {
+                    window.open(`/profile/${user.wallet_address}`, '_blank');
+                  }
+                }}
               >
                 <div style={{
                   color: user.wallet_address ? '#60a5fa' : '#ef4444',
@@ -1366,19 +1381,19 @@ function UsersTab() {
               {/* 操作 */}
               <div>
                 <button
-                  onClick={() => window.open(`/profile/${user.wallet_address}`, '_blank')}
+                  onClick={() => setUserToDelete(user)}
                   style={{
                     padding: '6px 12px',
-                    background: 'rgba(59, 130, 246, 0.2)',
-                    border: '1px solid rgba(59, 130, 246, 0.4)',
+                    background: 'rgba(239, 68, 68, 0.2)',
+                    border: '1px solid rgba(239, 68, 68, 0.4)',
                     borderRadius: 6,
-                    color: '#3b82f6',
+                    color: '#ef4444',
                     fontSize: 11,
                     fontWeight: 600,
                     cursor: 'pointer',
                   }}
                 >
-                  📄 表示
+                  🗑️ 削除
                 </button>
               </div>
             </div>
@@ -1436,13 +1451,13 @@ function UsersTab() {
       )}
 
       {/* 削除確認ダイアログ */}
-      {selectedUser && connectedAddress && (
+      {userToDelete && connectedAddress && (
         <DeleteUserDialog
-          user={selectedUser}
+          user={userToDelete}
           adminAddress={connectedAddress}
-          onClose={() => setSelectedUser(null)}
+          onClose={() => setUserToDelete(null)}
           onDeleted={() => {
-            setSelectedUser(null);
+            setUserToDelete(null);
             fetchUsers(); // ユーザーリストを再取得
           }}
         />
