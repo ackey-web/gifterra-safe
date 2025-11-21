@@ -140,6 +140,11 @@ export function getTokenAddress(tokenId: TokenId): string {
  */
 export function getTokenConfig(tokenId: TokenId): TokenConfig & { currentAddress: string } {
   const config = TOKEN_MASTER_DATA[tokenId];
+
+  if (!config) {
+    throw new Error(`Token config not found for: ${tokenId}`);
+  }
+
   const currentAddress = getTokenAddress(tokenId);
   const network = getNetworkEnv();
 

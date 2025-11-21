@@ -21,10 +21,17 @@ import {
 export function getActiveTokens(): (TokenConfig & { currentAddress: string })[] {
   // 開発・本番環境問わず、NHT + JPYC の両方を返す
   // テストネットでは自動的に tNHT として表示される
-  return [
-    getTokenConfig('NHT'),
-    getTokenConfig('JPYC'),
-  ];
+  try {
+    const tokens = [
+      getTokenConfig('NHT'),
+      getTokenConfig('JPYC'),
+    ];
+    // nullチェック：有効なトークンのみを返す
+    return tokens.filter(t => t && t.id && t.symbol);
+  } catch (error) {
+    console.error('❌ getActiveTokens error:', error);
+    return []; // エラー時は空配列を返す
+  }
 }
 
 /**
@@ -35,7 +42,24 @@ export function getActiveTokens(): (TokenConfig & { currentAddress: string })[] 
  * - mainnet: NHT
  */
 export function getDefaultToken(): TokenConfig & { currentAddress: string } {
-  return getTokenConfig('NHT'); // 環境に応じて自動的にtNHT/NHTが返される
+  try {
+    return getTokenConfig('NHT'); // 環境に応じて自動的にtNHT/NHTが返される
+  } catch (error) {
+    console.error('❌ getDefaultToken error:', error);
+    // フォールバック：最小限の設定を返す
+    return {
+      id: 'NHT',
+      symbol: 'tNHT',
+      name: 'Test Nihonto Token',
+      decimals: 18,
+      category: 'utility',
+      addresses: {
+        testnet: '0xdB738C7A83FE7738299a67741Ae2AbE42B3BA2Ea',
+        mainnet: '0x0000000000000000000000000000000000000000',
+      },
+      currentAddress: '0xdB738C7A83FE7738299a67741Ae2AbE42B3BA2Ea',
+    };
+  }
 }
 
 /**
