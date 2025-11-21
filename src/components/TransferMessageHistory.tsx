@@ -609,23 +609,8 @@ export function TransferMessageHistory({
                 </a>
               )}
 
-              {/* メッセージ詳細ボタン or ブロックチェーン送信表示 */}
-              {message.source === 'blockchain' ? (
-                <div
-                  style={{
-                    padding: isMobile ? '4px 8px' : '6px 12px',
-                    background: 'rgba(255, 255, 255, 0.05)',
-                    border: '1px solid rgba(255, 255, 255, 0.15)',
-                    borderRadius: 12,
-                    fontSize: isMobile ? 10 : 11,
-                    color: 'rgba(255, 255, 255, 0.5)',
-                    whiteSpace: 'nowrap',
-                    fontWeight: 600,
-                  }}
-                >
-                  ギフテラ外からの送信
-                </div>
-              ) : message.message ? (
+              {/* メッセージ詳細ボタン */}
+              {message.source !== 'blockchain' && message.message && (
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -656,7 +641,7 @@ export function TransferMessageHistory({
                 >
                   💬
                 </button>
-              ) : null}
+              )}
             </div>
           </div>
           ))
