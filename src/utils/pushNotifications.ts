@@ -78,9 +78,10 @@ export async function subscribeToPushNotifications(walletAddress: string): Promi
 
     if (!subscription) {
       // 新しい購読を作成
+      const applicationServerKey = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
       subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+        applicationServerKey: applicationServerKey.buffer as ArrayBuffer,
       });
     }
 
@@ -195,7 +196,72 @@ export async function sendTestNotification(): Promise<void> {
     body: 'プッシュ通知が正常に動作しています！',
     icon: '/pwa-192x192.png',
     badge: '/pwa-192x192.png',
-    vibrate: [100, 50, 100],
     tag: 'test-notification',
-  });
+  } as any);
+}
+
+/**
+ * PWA/アプリアイコンにバッジを設定（Badge API）
+ * @param count バッジに表示する数値（0で非表示）
+ */
+export async function setAppBadge(count: number): Promise<void> {
+  try {
+    if ('setAppBadge' in navigator) {
+      if (count > 0) {
+        await (navigator as any).setAppBadge(count);
+        console.log(`✅ App badge set to ${count}`);
+      } else {
+        await (navigator as any).clearAppBadge();
+        console.log('✅ App badge cleared');
+      }
+    } else {
+      console.log('⚠️ Badge API is not supported');
+    }
+  } catch (error) {
+    console.error('Failed to set app badge:', error);
+  }
+}
+
+/**
+ * アプリバッジをクリア
+ */
+export async function clearAppBadge(): Promise<void> {
+  await setAppBadge(0);
+}
+
+/**
+ * 新規JPYC受信の通知を送信
+ */
+export async function sendJpycReceivedNotification(
+  amount: string,
+  fromAddress: string,
+  senderName?: string
+): Promise<void> {
+  try {
+    const permission = getNotificationPermission();
+    if (permission !== 'granted') {
+      console.log('⚠️ Notification permission not granted');
+      return;
+    }
+
+    const registration = await navigator.serviceWorker.ready;
+    const displayName = senderName || `${fromAddress.slice(0, 6)}...${fromAddress.slice(-4)}`;
+
+    await registration.showNotification('💴 JPYC受信', {
+      body: `${displayName}から ${amount} JPYC を受け取りました`,
+      icon: '/pwa-192x192.png',
+      badge: '/pwa-192x192.png',
+      tag: 'jpyc-received',
+      requireInteraction: false,
+      data: {
+        type: 'jpyc_received',
+        fromAddress,
+        amount,
+      },
+    } as any);
+
+    console.log(`✅ Sent JPYC received notification: ${amount} JPYC from ${displayName}`);
+  } catch (error) {
+    console.error('Failed to send JPYC received notification:', error);
+  }
 }

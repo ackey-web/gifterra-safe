@@ -1,7 +1,7 @@
 // src/components/TransferMessageHistory.tsx
 // 送金メッセージ受信履歴コンポーネント
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import {
   useReceivedTransferMessages,
@@ -13,6 +13,7 @@ import {
   type TransferMessage,
   type MessageReaction,
 } from '../hooks/useTransferMessages';
+import { setAppBadge, sendJpycReceivedNotification } from '../utils/pushNotifications';
 
 interface TransferMessageHistoryProps {
   tenantId: string | undefined;
@@ -34,16 +35,41 @@ export function TransferMessageHistory({
   const [reactions, setReactions] = useState<MessageReaction[]>([]);
   const [isReacting, setIsReacting] = useState(false);
   const [activeTab, setActiveTab] = useState<'gifterra' | 'all'>('all'); // タブ状態
+  const previousMessageIdsRef = useRef<Set<string>>(new Set());
 
-  // フックから取得したメッセージをローカル状態にコピー
+  // フックから取得したメッセージをローカル状態にコピー & 新規受信を検出
   useEffect(() => {
-    setMessages(fetchedMessages);
+    if (fetchedMessages.length > 0) {
+      // 新規メッセージを検出（初回ロード時は除外）
+      if (previousMessageIdsRef.current.size > 0) {
+        const newMessages = fetchedMessages.filter(
+          (msg) => !previousMessageIdsRef.current.has(msg.id) && msg.source === 'blockchain'
+        );
+
+        // 新規ブロックチェーン受信があればプッシュ通知とバッジを更新
+        newMessages.forEach((msg) => {
+          console.log('🔔 New blockchain transaction detected:', msg);
+          sendJpycReceivedNotification(
+            msg.amount,
+            msg.from_address,
+            msg.sender_profile?.name
+          );
+        });
+      }
+
+      // メッセージIDのセットを更新
+      previousMessageIdsRef.current = new Set(fetchedMessages.map((m) => m.id));
+      setMessages(fetchedMessages);
+    }
   }, [fetchedMessages]);
 
-  // 未読数が変わったら親に通知
+  // 未読数が変わったら親に通知 & アプリバッジを更新
   useEffect(() => {
     const unreadCount = messages.filter(m => !m.is_read).length;
     onUnreadCountChange?.(unreadCount);
+
+    // PWA/アプリアイコンのバッジを更新
+    setAppBadge(unreadCount);
   }, [messages, onUnreadCountChange]);
 
   // アドレスを短縮表示する関数
@@ -91,8 +117,8 @@ export function TransferMessageHistory({
     // 未読の場合は既読にする
     if (!message.is_read) {
       try {
-        // データベースを更新
-        await markMessageAsRead(message.id);
+        // データベースを更新（ブロックチェーントランザクションの場合はlocalStorageに保存）
+        await markMessageAsRead(message.id, walletAddress);
         console.log('✅ Message marked as read:', message.id);
 
         // ローカル状態を即座に更新（リアルタイム更新を待たずに反映）
@@ -227,6 +253,10 @@ export function TransferMessageHistory({
     ? messages.filter(m => m.source === 'gifterra')
     : messages;
 
+  // 各タブの未読数を計算
+  const unreadCountAll = messages.filter(m => !m.is_read).length;
+  const unreadCountGifterra = messages.filter(m => !m.is_read && m.source === 'gifterra').length;
+
   return (
     <>
       {/* CSSアニメーション */}
@@ -265,6 +295,7 @@ export function TransferMessageHistory({
             cursor: 'pointer',
             transition: 'all 0.2s',
             borderRadius: '8px 8px 0 0',
+            position: 'relative',
           }}
           onMouseEnter={(e) => {
             if (activeTab !== 'all') {
@@ -278,6 +309,29 @@ export function TransferMessageHistory({
           }}
         >
           全履歴 ({messages.length})
+          {unreadCountAll > 0 && (
+            <span
+              style={{
+                position: 'absolute',
+                top: isMobile ? 4 : 6,
+                right: isMobile ? 4 : 6,
+                minWidth: 18,
+                height: 18,
+                padding: '0 5px',
+                background: '#ef4444',
+                color: '#ffffff',
+                fontSize: 11,
+                fontWeight: 700,
+                borderRadius: 9,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 2px 4px rgba(0, 0, 0, 0.3)',
+              }}
+            >
+              {unreadCountAll}
+            </span>
+          )}
         </button>
         <button
           onClick={() => setActiveTab('gifterra')}
@@ -296,6 +350,7 @@ export function TransferMessageHistory({
             cursor: 'pointer',
             transition: 'all 0.2s',
             borderRadius: '8px 8px 0 0',
+            position: 'relative',
           }}
           onMouseEnter={(e) => {
             if (activeTab !== 'gifterra') {
@@ -309,6 +364,29 @@ export function TransferMessageHistory({
           }}
         >
           Gifterra内 ({messages.filter(m => m.source === 'gifterra').length})
+          {unreadCountGifterra > 0 && (
+            <span
+              style={{
+                position: 'absolute',
+                top: isMobile ? 4 : 6,
+                right: isMobile ? 4 : 6,
+                minWidth: 18,
+                height: 18,
+                padding: '0 5px',
+                background: '#ef4444',
+                color: '#ffffff',
+                fontSize: 11,
+                fontWeight: 700,
+                borderRadius: 9,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 2px 4px rgba(0, 0, 0, 0.3)',
+              }}
+            >
+              {unreadCountGifterra}
+            </span>
+          )}
         </button>
       </div>
 

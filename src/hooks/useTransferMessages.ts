@@ -44,6 +44,33 @@ export interface TransferMessage {
 }
 
 /**
+ * ブロックチェーントランザクションの既読状態を管理するための関数
+ */
+const BLOCKCHAIN_READ_KEY = 'gifterra_blockchain_read_transactions';
+
+function getReadBlockchainTransactions(walletAddress: string): Set<string> {
+  try {
+    const stored = localStorage.getItem(`${BLOCKCHAIN_READ_KEY}_${walletAddress.toLowerCase()}`);
+    return stored ? new Set(JSON.parse(stored)) : new Set();
+  } catch {
+    return new Set();
+  }
+}
+
+function markBlockchainTransactionAsRead(walletAddress: string, txHash: string): void {
+  try {
+    const readTxs = getReadBlockchainTransactions(walletAddress);
+    readTxs.add(txHash);
+    localStorage.setItem(
+      `${BLOCKCHAIN_READ_KEY}_${walletAddress.toLowerCase()}`,
+      JSON.stringify(Array.from(readTxs))
+    );
+  } catch (error) {
+    console.error('Failed to mark blockchain transaction as read:', error);
+  }
+}
+
+/**
  * Etherscan V2 API (Polygon)から受信トランザクションを取得
  * Note: PolygonScanはEtherscan V2 APIに移行されました
  */
@@ -60,6 +87,9 @@ async function fetchBlockchainReceivedTransactions(
     }
 
     console.log('🔗 Fetching blockchain transactions from Etherscan V2 API (Polygon)...');
+
+    // 既読済みトランザクションのリストを取得
+    const readTxs = getReadBlockchainTransactions(walletAddress);
 
     const blockchainTxs: TransferMessage[] = [];
 
@@ -103,7 +133,7 @@ async function fetchBlockchainReceivedTransactions(
             tx_hash: tx.hash,
             created_at: new Date(parseInt(tx.timeStamp) * 1000).toISOString(),
             expires_at: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(), // 1年後
-            is_read: true, // ブロックチェーンからの履歴は既読扱い
+            is_read: readTxs.has(tx.hash), // localStorageから既読状態を取得
             is_archived: false,
             source: 'blockchain',
           });
@@ -589,15 +619,25 @@ export function useSentTransferMessages(
 
 /**
  * メッセージを既読にする
+ * ブロックチェーントランザクションの場合はlocalStorageに保存
  */
-export async function markMessageAsRead(messageId: string) {
-  const { error } = await supabase
-    .from('transfer_messages')
-    .update({ is_read: true })
-    .eq('id', messageId);
+export async function markMessageAsRead(messageId: string, walletAddress?: string) {
+  // トランザクションハッシュ形式（0xで始まる64文字）の場合はブロックチェーントランザクション
+  const isBlockchainTx = messageId.startsWith('0x') && messageId.length === 66;
 
-  if (error) {
-    throw error;
+  if (isBlockchainTx && walletAddress) {
+    // ブロックチェーントランザクションの場合はlocalStorageに保存
+    markBlockchainTransactionAsRead(walletAddress, messageId);
+  } else {
+    // Gifterra内のメッセージの場合はSupabaseに保存
+    const { error } = await supabase
+      .from('transfer_messages')
+      .update({ is_read: true })
+      .eq('id', messageId);
+
+    if (error) {
+      throw error;
+    }
   }
 }
 
