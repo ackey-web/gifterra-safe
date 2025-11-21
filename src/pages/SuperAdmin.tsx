@@ -1051,27 +1051,38 @@ function UsersTab() {
   const connectedAddress = useAddress();
   const [users, setUsers] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
+  const [usernameQuery, setUsernameQuery] = useState('');
+  const [addressQuery, setAddressQuery] = useState('');
+  const [debouncedUsernameQuery, setDebouncedUsernameQuery] = useState('');
+  const [debouncedAddressQuery, setDebouncedAddressQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const [selectedUser, setSelectedUser] = useState<any | null>(null);
   const [userToDelete, setUserToDelete] = useState<any | null>(null);
   const ITEMS_PER_PAGE = 20;
 
-  // 検索クエリをデバウンス（500ms遅延）
+  // ユーザー名検索クエリをデバウンス（500ms遅延）
   useEffect(() => {
     const timer = setTimeout(() => {
-      setDebouncedSearchQuery(searchQuery);
+      setDebouncedUsernameQuery(usernameQuery);
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [searchQuery]);
+  }, [usernameQuery]);
+
+  // アドレス検索クエリをデバウンス（500ms遅延）
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedAddressQuery(addressQuery);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [addressQuery]);
 
   // ユーザーリストを取得（デバウンスされた検索クエリを使用）
   useEffect(() => {
     fetchUsers();
-  }, [currentPage, debouncedSearchQuery]);
+  }, [currentPage, debouncedUsernameQuery, debouncedAddressQuery]);
 
   const fetchUsers = async () => {
     setIsLoading(true);
@@ -1080,7 +1091,8 @@ function UsersTab() {
       console.log('📋 Query params:', {
         tenant_id: 'default',
         currentPage,
-        debouncedSearchQuery
+        debouncedUsernameQuery,
+        debouncedAddressQuery
       });
 
       let query = supabase
@@ -1089,36 +1101,40 @@ function UsersTab() {
         .eq('tenant_id', 'default')
         .order('created_at', { ascending: false });
 
-      // 検索フィルター
-      if (debouncedSearchQuery.trim()) {
-        if (debouncedSearchQuery.toLowerCase().startsWith('0x')) {
-          // ウォレットアドレスで検索
-          query = query.eq('wallet_address', debouncedSearchQuery.toLowerCase());
-        } else {
-          // ユーザー名で検索（display_name, name, bioを対象に部分一致）
-          const trimmedQuery = debouncedSearchQuery.trim();
+      // AND条件で両方のフィルターを適用
+      const filters = [];
 
-          // ひらがなをカタカナに変換
-          const toKatakana = (str: string) => {
-            return str.replace(/[\u3041-\u3096]/g, (match) => {
-              const chr = match.charCodeAt(0) + 0x60;
-              return String.fromCharCode(chr);
-            });
-          };
+      // ウォレットアドレスで検索
+      if (debouncedAddressQuery.trim()) {
+        const addressFilter = debouncedAddressQuery.trim().toLowerCase();
+        // 部分一致検索（前方一致）
+        query = query.ilike('wallet_address', `${addressFilter}%`);
+      }
 
-          // 元の検索語、カタカナ変換版の両方で検索
-          const searchTerms = [trimmedQuery, toKatakana(trimmedQuery)];
-          const orConditions = searchTerms.flatMap(term => {
-            const searchTerm = `%${term}%`;
-            return [
-              `display_name.ilike.${searchTerm}`,
-              `name.ilike.${searchTerm}`,
-              `bio.ilike.${searchTerm}`
-            ];
+      // ユーザー名で検索（display_name, name, bioを対象に部分一致）
+      if (debouncedUsernameQuery.trim()) {
+        const trimmedQuery = debouncedUsernameQuery.trim();
+
+        // ひらがなをカタカナに変換
+        const toKatakana = (str: string) => {
+          return str.replace(/[\u3041-\u3096]/g, (match) => {
+            const chr = match.charCodeAt(0) + 0x60;
+            return String.fromCharCode(chr);
           });
+        };
 
-          query = query.or(orConditions.join(','));
-        }
+        // 元の検索語、カタカナ変換版の両方で検索
+        const searchTerms = [trimmedQuery, toKatakana(trimmedQuery)];
+        const orConditions = searchTerms.flatMap(term => {
+          const searchTerm = `%${term}%`;
+          return [
+            `display_name.ilike.${searchTerm}`,
+            `name.ilike.${searchTerm}`,
+            `bio.ilike.${searchTerm}`
+          ];
+        });
+
+        query = query.or(orConditions.join(','));
       }
 
       // ページネーション
@@ -1192,41 +1208,133 @@ function UsersTab() {
         </div>
 
         {/* 検索フォーム */}
-        <div style={{ display: 'flex', gap: 12 }}>
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => {
-              setSearchQuery(e.target.value);
-              setCurrentPage(1); // 検索時はページをリセット
-            }}
-            placeholder="ウォレットアドレス または ユーザー名で検索"
-            style={{
-              flex: 1,
-              padding: '10px 14px',
-              background: 'rgba(0, 0, 0, 0.3)',
-              border: '1px solid rgba(255, 255, 255, 0.2)',
-              borderRadius: 8,
-              color: '#fff',
-              fontSize: 14,
-              outline: 'none',
-            }}
-          />
-          <button
-            onClick={() => fetchUsers()}
-            style={{
-              padding: '10px 20px',
-              background: 'rgba(59, 130, 246, 0.8)',
-              border: 'none',
-              borderRadius: 8,
-              color: '#fff',
-              fontSize: 14,
-              fontWeight: 600,
-              cursor: 'pointer',
-            }}
-          >
-            🔍 検索
-          </button>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {/* ユーザー名検索 */}
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+            <label style={{ minWidth: 120, fontSize: 14, fontWeight: 600 }}>ユーザー名:</label>
+            <input
+              type="text"
+              value={usernameQuery}
+              onChange={(e) => {
+                setUsernameQuery(e.target.value);
+                setCurrentPage(1); // 検索時はページをリセット
+              }}
+              placeholder="ユーザー名で検索（部分一致）"
+              style={{
+                flex: 1,
+                padding: '10px 14px',
+                background: 'rgba(0, 0, 0, 0.3)',
+                border: '1px solid rgba(255, 255, 255, 0.2)',
+                borderRadius: 8,
+                color: '#fff',
+                fontSize: 14,
+                outline: 'none',
+              }}
+            />
+            {usernameQuery && (
+              <button
+                onClick={() => {
+                  setUsernameQuery('');
+                  setCurrentPage(1);
+                }}
+                style={{
+                  padding: '10px 16px',
+                  background: 'rgba(239, 68, 68, 0.2)',
+                  border: '1px solid rgba(239, 68, 68, 0.4)',
+                  borderRadius: 8,
+                  color: '#fca5a5',
+                  fontSize: 14,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                クリア
+              </button>
+            )}
+          </div>
+
+          {/* ウォレットアドレス検索 */}
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+            <label style={{ minWidth: 120, fontSize: 14, fontWeight: 600 }}>ウォレットアドレス:</label>
+            <input
+              type="text"
+              value={addressQuery}
+              onChange={(e) => {
+                setAddressQuery(e.target.value);
+                setCurrentPage(1); // 検索時はページをリセット
+              }}
+              placeholder="0x... で検索（前方一致）"
+              style={{
+                flex: 1,
+                padding: '10px 14px',
+                background: 'rgba(0, 0, 0, 0.3)',
+                border: '1px solid rgba(255, 255, 255, 0.2)',
+                borderRadius: 8,
+                color: '#fff',
+                fontSize: 14,
+                outline: 'none',
+                fontFamily: 'monospace',
+              }}
+            />
+            {addressQuery && (
+              <button
+                onClick={() => {
+                  setAddressQuery('');
+                  setCurrentPage(1);
+                }}
+                style={{
+                  padding: '10px 16px',
+                  background: 'rgba(239, 68, 68, 0.2)',
+                  border: '1px solid rgba(239, 68, 68, 0.4)',
+                  borderRadius: 8,
+                  color: '#fca5a5',
+                  fontSize: 14,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                クリア
+              </button>
+            )}
+          </div>
+
+          {/* 検索ボタン */}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
+            <button
+              onClick={() => {
+                setUsernameQuery('');
+                setAddressQuery('');
+                setCurrentPage(1);
+              }}
+              style={{
+                padding: '10px 20px',
+                background: 'rgba(107, 114, 128, 0.3)',
+                border: '1px solid rgba(255, 255, 255, 0.2)',
+                borderRadius: 8,
+                color: '#fff',
+                fontSize: 14,
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              全クリア
+            </button>
+            <button
+              onClick={() => fetchUsers()}
+              style={{
+                padding: '10px 20px',
+                background: 'rgba(59, 130, 246, 0.8)',
+                border: 'none',
+                borderRadius: 8,
+                color: '#fff',
+                fontSize: 14,
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              🔍 検索
+            </button>
+          </div>
         </div>
       </div>
 
@@ -1266,7 +1374,7 @@ function UsersTab() {
             color: 'rgba(255,255,255,0.6)',
             fontSize: 14,
           }}>
-            {searchQuery ? 'ユーザーが見つかりませんでした' : 'ユーザーが登録されていません'}
+            {(usernameQuery || addressQuery) ? 'ユーザーが見つかりませんでした' : 'ユーザーが登録されていません'}
           </div>
         ) : (
           users.map((user, index) => (
