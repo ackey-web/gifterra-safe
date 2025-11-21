@@ -1682,6 +1682,17 @@ export default function AdminDashboard() {
     const [rankThresholdInputs, setRankThresholdInputs] = useState<Record<number, string>>({});
     const [rankURIInputs, setRankURIInputs] = useState<Record<number, string>>({});
 
+    // プラン情報のstate（RankPlanRegistryから取得）
+    const [planStages, setPlanStages] = useState<{
+      STUDIO: number;
+      STUDIO_PRO: number;
+      STUDIO_PRO_MAX: number;
+    }>({
+      STUDIO: 3,
+      STUDIO_PRO: 5,
+      STUDIO_PRO_MAX: 10,
+    });
+
     // ランクラベルのstate（UI表示用）
     const [rankLabels, setRankLabels] = useState<Record<number, RankInfo>>(() => {
       try {
@@ -1786,6 +1797,27 @@ export default function AdminDashboard() {
       }
     };
 
+    // Super Admin: RankPlanRegistryからプラン情報を読み込む
+    const loadPlanStages = async () => {
+      if (!rankPlanRegistryContract) return;
+
+      try {
+        // STUDIO (0), STUDIO_PRO (1), STUDIO_PRO_MAX (2)
+        const studioPlan = await rankPlanRegistryContract.call("getPlan", [0]);
+        const studioProPlan = await rankPlanRegistryContract.call("getPlan", [1]);
+        const studioProMaxPlan = await rankPlanRegistryContract.call("getPlan", [2]);
+
+        setPlanStages({
+          STUDIO: Number(studioPlan.stages),
+          STUDIO_PRO: Number(studioProPlan.stages),
+          STUDIO_PRO_MAX: Number(studioProMaxPlan.stages),
+        });
+      } catch (error) {
+        console.error("プラン情報の読み込みエラー:", error);
+        // エラー時はデフォルト値を維持
+      }
+    };
+
     // Super Admin: プラン段階数変更（RankPlanRegistryコントラクト呼び出し）
     const handleUpdatePlanStages = async (
       planType: 0 | 1 | 2, // 0=STUDIO, 1=STUDIO_PRO, 2=STUDIO_PRO_MAX
@@ -1848,6 +1880,9 @@ export default function AdminDashboard() {
         await tx.wait?.();
 
         alert(`✅ ${planName} プランの段階数を ${stages} に変更しました\n\n変更は全テナントに反映されます。`);
+
+        // プラン情報を再読み込み
+        await loadPlanStages();
       } catch (error: any) {
         console.error("updatePlan error:", error);
         alert(`❌ プラン段階数の変更に失敗しました\n${error?.message || error}`);
@@ -1943,6 +1978,13 @@ export default function AdminDashboard() {
         loadRankConfig();
       }
     }, [contract, activeTab]);
+
+    // Super Admin: RankPlanRegistryからプラン情報を読み込む
+    useEffect(() => {
+      if (activeTab === 'ranks' && rankPlanRegistryContract && isDevSuperAdmin) {
+        loadPlanStages();
+      }
+    }, [rankPlanRegistryContract, activeTab, isDevSuperAdmin]);
 
     return (
       <div style={{
@@ -2174,11 +2216,11 @@ export default function AdminDashboard() {
                       STUDIO プラン
                     </h4>
                     <p style={{ margin: 0, fontSize: 12, opacity: 0.7 }}>
-                      現在: 3段階
+                      現在: {planStages.STUDIO}段階
                     </p>
                   </div>
                   <button
-                    onClick={() => handleUpdatePlanStages(0, "STUDIO", 3)}
+                    onClick={() => handleUpdatePlanStages(0, "STUDIO", planStages.STUDIO)}
                     style={{
                       padding: "8px 16px",
                       background: "#8B5CF6",
@@ -2208,11 +2250,11 @@ export default function AdminDashboard() {
                       STUDIO PRO プラン
                     </h4>
                     <p style={{ margin: 0, fontSize: 12, opacity: 0.7 }}>
-                      現在: 5段階
+                      現在: {planStages.STUDIO_PRO}段階
                     </p>
                   </div>
                   <button
-                    onClick={() => handleUpdatePlanStages(1, "STUDIO PRO", 5)}
+                    onClick={() => handleUpdatePlanStages(1, "STUDIO PRO", planStages.STUDIO_PRO)}
                     style={{
                       padding: "8px 16px",
                       background: "#8B5CF6",
@@ -2242,11 +2284,11 @@ export default function AdminDashboard() {
                       STUDIO PRO MAX プラン
                     </h4>
                     <p style={{ margin: 0, fontSize: 12, opacity: 0.7 }}>
-                      現在: 10段階
+                      現在: {planStages.STUDIO_PRO_MAX}段階
                     </p>
                   </div>
                   <button
-                    onClick={() => handleUpdatePlanStages(2, "STUDIO PRO MAX", 10)}
+                    onClick={() => handleUpdatePlanStages(2, "STUDIO PRO MAX", planStages.STUDIO_PRO_MAX)}
                     style={{
                       padding: "8px 16px",
                       background: "#8B5CF6",
@@ -2323,6 +2365,11 @@ export default function AdminDashboard() {
                     </h4>
                     <p style={{ margin: 0, fontSize: 13, opacity: 0.7 }}>
                       現在のランク数: <strong style={{ color: "#3B82F6" }}>{maxRankLevel}</strong> 段階
+                      {tenantRankPlan && (
+                        <span style={{ marginLeft: 8, opacity: 0.6 }}>
+                          （プラン上限: {getTenantPlanDetails(tenantRankPlan).sbtRanks}段階）
+                        </span>
+                      )}
                     </p>
                   </div>
                   <button
