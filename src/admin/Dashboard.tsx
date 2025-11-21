@@ -1908,7 +1908,7 @@ export default function AdminDashboard() {
       }
 
       try {
-        const amountWei = ethersUtils.parseUnits(value, defaultToken.decimals);
+        const amountWei = ethers.utils.parseUnits(value, defaultToken.decimals);
         const tx = await contract.call("setRankThreshold", [rank, amountWei.toString()]);
         await tx.wait?.();
         alert(`✅ ランク${rank}の閾値を ${value} ${defaultToken.symbol} に設定しました`);
