@@ -614,11 +614,11 @@ export function TransferMessageHistory({
                 <div
                   style={{
                     padding: isMobile ? '4px 8px' : '6px 12px',
-                    background: 'rgba(139, 92, 246, 0.1)',
-                    border: '1px solid rgba(139, 92, 246, 0.3)',
+                    background: 'rgba(255, 255, 255, 0.05)',
+                    border: '1px solid rgba(255, 255, 255, 0.15)',
                     borderRadius: 12,
                     fontSize: isMobile ? 10 : 11,
-                    color: 'rgba(139, 92, 246, 0.9)',
+                    color: 'rgba(255, 255, 255, 0.5)',
                     whiteSpace: 'nowrap',
                     fontWeight: 600,
                   }}
@@ -978,11 +978,11 @@ export function TransferMessageHistory({
                     style={{
                       marginBottom: 20,
                       padding: isMobile ? '10px 16px' : '12px 20px',
-                      background: 'rgba(139, 92, 246, 0.1)',
-                      border: '1px solid rgba(139, 92, 246, 0.3)',
+                      background: 'rgba(255, 255, 255, 0.05)',
+                      border: '1px solid rgba(255, 255, 255, 0.15)',
                       borderRadius: 12,
                       fontSize: isMobile ? 13 : 14,
-                      color: 'rgba(139, 92, 246, 0.9)',
+                      color: 'rgba(255, 255, 255, 0.5)',
                       fontWeight: 600,
                       textAlign: 'center',
                     }}
