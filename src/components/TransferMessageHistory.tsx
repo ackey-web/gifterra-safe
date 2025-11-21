@@ -609,8 +609,23 @@ export function TransferMessageHistory({
                 </a>
               )}
 
-              {/* メッセージ詳細ボタン */}
-              {message.message && (
+              {/* メッセージ詳細ボタン or ブロックチェーン送信表示 */}
+              {message.source === 'blockchain' ? (
+                <div
+                  style={{
+                    padding: isMobile ? '4px 8px' : '6px 12px',
+                    background: 'rgba(139, 92, 246, 0.1)',
+                    border: '1px solid rgba(139, 92, 246, 0.3)',
+                    borderRadius: 12,
+                    fontSize: isMobile ? 10 : 11,
+                    color: 'rgba(139, 92, 246, 0.9)',
+                    whiteSpace: 'nowrap',
+                    fontWeight: 600,
+                  }}
+                >
+                  ギフテラ外からの送信
+                </div>
+              ) : message.message ? (
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -641,7 +656,7 @@ export function TransferMessageHistory({
                 >
                   💬
                 </button>
-              )}
+              ) : null}
             </div>
           </div>
           ))
@@ -906,54 +921,75 @@ export function TransferMessageHistory({
                   </div>
                 </div>
 
-                {/* リアクションボタン */}
-                <div
-                  style={{
-                    marginBottom: 20,
-                  }}
-                >
-                  <button
-                    onClick={handleToggleReaction}
-                    disabled={isReacting}
+                {/* リアクションボタン（ギフテラ内のみ） */}
+                {selectedMessage.source !== 'blockchain' && (
+                  <div
                     style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: 6,
-                      padding: isMobile ? '6px 12px' : '8px 14px',
-                      background: reactions.some(
-                        (r) => r.reactor_address.toLowerCase() === walletAddress?.toLowerCase()
-                      )
-                        ? 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)'
-                        : 'rgba(239, 68, 68, 0.1)',
-                      border: reactions.some(
-                        (r) => r.reactor_address.toLowerCase() === walletAddress?.toLowerCase()
-                      )
-                        ? 'none'
-                        : '1px solid rgba(239, 68, 68, 0.3)',
-                      borderRadius: 20,
-                      color: reactions.some(
-                        (r) => r.reactor_address.toLowerCase() === walletAddress?.toLowerCase()
-                      )
-                        ? '#ffffff'
-                        : '#fca5a5',
-                      fontSize: isMobile ? 14 : 15,
-                      fontWeight: 600,
-                      cursor: isReacting ? 'not-allowed' : 'pointer',
-                      transition: 'all 0.2s',
-                      opacity: isReacting ? 0.6 : 1,
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!isReacting) {
-                        e.currentTarget.style.transform = 'scale(1.05)';
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.transform = 'scale(1)';
+                      marginBottom: 20,
                     }}
                   >
-                    <span style={{ fontSize: isMobile ? 16 : 18 }}>❤️</span>
-                  </button>
-                </div>
+                    <button
+                      onClick={handleToggleReaction}
+                      disabled={isReacting}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        padding: isMobile ? '6px 12px' : '8px 14px',
+                        background: reactions.some(
+                          (r) => r.reactor_address.toLowerCase() === walletAddress?.toLowerCase()
+                        )
+                          ? 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)'
+                          : 'rgba(239, 68, 68, 0.1)',
+                        border: reactions.some(
+                          (r) => r.reactor_address.toLowerCase() === walletAddress?.toLowerCase()
+                        )
+                          ? 'none'
+                          : '1px solid rgba(239, 68, 68, 0.3)',
+                        borderRadius: 20,
+                        color: reactions.some(
+                          (r) => r.reactor_address.toLowerCase() === walletAddress?.toLowerCase()
+                        )
+                          ? '#ffffff'
+                          : '#fca5a5',
+                        fontSize: isMobile ? 14 : 15,
+                        fontWeight: 600,
+                        cursor: isReacting ? 'not-allowed' : 'pointer',
+                        transition: 'all 0.2s',
+                        opacity: isReacting ? 0.6 : 1,
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!isReacting) {
+                          e.currentTarget.style.transform = 'scale(1.05)';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = 'scale(1)';
+                      }}
+                    >
+                      <span style={{ fontSize: isMobile ? 16 : 18 }}>❤️</span>
+                    </button>
+                  </div>
+                )}
+
+                {/* ブロックチェーン送信の表示 */}
+                {selectedMessage.source === 'blockchain' && (
+                  <div
+                    style={{
+                      marginBottom: 20,
+                      padding: isMobile ? '10px 16px' : '12px 20px',
+                      background: 'rgba(139, 92, 246, 0.1)',
+                      border: '1px solid rgba(139, 92, 246, 0.3)',
+                      borderRadius: 12,
+                      fontSize: isMobile ? 13 : 14,
+                      color: 'rgba(139, 92, 246, 0.9)',
+                      fontWeight: 600,
+                      textAlign: 'center',
+                    }}
+                  >
+                    ギフテラ外からの送信
+                  </div>
+                )}
 
                 {/* Polygonscanリンク */}
                 {selectedMessage.tx_hash && (
