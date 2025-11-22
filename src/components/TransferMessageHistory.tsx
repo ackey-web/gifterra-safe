@@ -158,18 +158,18 @@ export function TransferMessageHistory({
 
     // 未読メッセージがあれば一括既読にする
     const unreadMessages = messages.filter(m => !m.is_read);
-    if (unreadMessages.length === 0) return;
+    if (unreadMessages.length > 0) {
+      try {
+        await markMultipleMessagesAsRead(unreadMessages, walletAddress);
+        console.log(`✅ Marked ${unreadMessages.length} messages as read`);
 
-    try {
-      await markMultipleMessagesAsRead(unreadMessages, walletAddress);
-      console.log(`✅ Marked ${unreadMessages.length} messages as read`);
-
-      // ローカル状態を即座に更新
-      setMessages(prevMessages =>
-        prevMessages.map(m => ({ ...m, is_read: true }))
-      );
-    } catch (err) {
-      console.error('❌ Failed to mark messages as read:', err);
+        // ローカル状態を即座に更新
+        setMessages(prevMessages =>
+          prevMessages.map(m => ({ ...m, is_read: true }))
+        );
+      } catch (err) {
+        console.error('❌ Failed to mark messages as read:', err);
+      }
     }
   };
 
