@@ -319,6 +319,14 @@ export function TransferMessageHistory({
     ? messages.filter(m => m.source === 'gifterra')
     : messages;
 
+  // デバッグ用ログ
+  console.log('📊 TransferMessageHistory Debug:', {
+    activeTab,
+    totalMessages: messages.length,
+    filteredMessages: filteredMessages.length,
+    messagesData: messages.slice(0, 3), // 最初の3件を表示
+  });
+
   // 各タブの未読数を計算
   const unreadCountAll = messages.filter(m => !m.is_read).length;
   const unreadCountGifterra = messages.filter(m => !m.is_read && m.source === 'gifterra').length;
