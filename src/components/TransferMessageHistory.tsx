@@ -493,310 +493,310 @@ export function TransferMessageHistory({
             const currentSwipeOffset = isCurrentlySwiping ? swipeOffset : 0;
 
             return (
-          <div
-            key={message.id}
-            style={{
-              position: 'relative',
-              overflow: 'hidden',
-            }}
-          >
-            {/* スワイプ時の背景（既読アイコン） */}
-            {isCurrentlySwiping && currentSwipeOffset < 0 && (
               <div
+                key={message.id}
                 style={{
-                  position: 'absolute',
-                  right: 0,
-                  top: 0,
-                  bottom: 0,
-                  width: Math.abs(currentSwipeOffset),
-                  background: currentSwipeOffset < -50
-                    ? 'linear-gradient(90deg, rgba(34, 197, 94, 0.3), rgba(34, 197, 94, 0.6))'
-                    : 'linear-gradient(90deg, rgba(59, 130, 246, 0.2), rgba(59, 130, 246, 0.4))',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'flex-end',
-                  paddingRight: 16,
-                  fontSize: 20,
-                  transition: 'background 0.2s',
+                  position: 'relative',
+                  overflow: 'hidden',
                 }}
               >
-                {currentSwipeOffset < -50 ? '✓' : '←'}
-              </div>
-            )}
+                {/* スワイプ時の背景（既読アイコン） */}
+                {isCurrentlySwiping && currentSwipeOffset < 0 && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      right: 0,
+                      top: 0,
+                      bottom: 0,
+                      width: Math.abs(currentSwipeOffset),
+                      background: currentSwipeOffset < -50
+                        ? 'linear-gradient(90deg, rgba(34, 197, 94, 0.3), rgba(34, 197, 94, 0.6))'
+                        : 'linear-gradient(90deg, rgba(59, 130, 246, 0.2), rgba(59, 130, 246, 0.4))',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'flex-end',
+                      paddingRight: 16,
+                      fontSize: 20,
+                      transition: 'background 0.2s',
+                    }}
+                  >
+                    {currentSwipeOffset < -50 ? '✓' : '←'}
+                  </div>
+                )}
 
-            <div
-              onClick={() => handleOpenModal(message)}
-              onTouchStart={(e) => {
-                e.stopPropagation();
-                const touch = e.touches[0];
-                handleSwipeStart(message.id);
-                (e.currentTarget as any)._startX = touch.clientX;
-              }}
-              onTouchMove={(e) => {
-                const touch = e.touches[0];
-                const startX = (e.currentTarget as any)._startX || touch.clientX;
-                handleSwipeMove(touch.clientX, startX);
-                if (swipingMessageId) {
-                  e.preventDefault();
-                }
-              }}
-              onTouchEnd={() => handleSwipeEnd(message)}
-              onMouseDown={(e) => {
-                handleSwipeStart(message.id);
-                (e.currentTarget as any)._startX = e.clientX;
-                (e.currentTarget as any)._isDragging = true;
-              }}
-              onMouseMove={(e) => {
-                if ((e.currentTarget as any)._isDragging) {
-                  const startX = (e.currentTarget as any)._startX || e.clientX;
-                  handleSwipeMove(e.clientX, startX);
-                }
-              }}
-              onMouseUp={(e) => {
-                (e.currentTarget as any)._isDragging = false;
-                handleSwipeEnd(message);
-              }}
-              onMouseLeave={(e) => {
-                if ((e.currentTarget as any)._isDragging) {
-                  (e.currentTarget as any)._isDragging = false;
-                  handleSwipeEnd(message);
-                } else if (!isCurrentlySwiping) {
-                  e.currentTarget.style.transform = 'scale(1)';
-                  e.currentTarget.style.boxShadow = 'none';
-                }
-              }}
-              style={{
-                background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%)',
-                border: '1px solid rgba(255, 255, 255, 0.1)',
-                borderRadius: 8,
-                padding: isMobile ? '8px 10px' : '10px 12px',
-                transition: isCurrentlySwiping ? 'none' : 'all 0.2s',
-                cursor: 'pointer',
-                position: 'relative',
-                display: 'flex',
-                alignItems: 'center',
-                gap: isMobile ? 8 : 10,
-                minHeight: isMobile ? 50 : 60,
-                transform: `translateX(${currentSwipeOffset}px)`,
-              }}
-              onMouseEnter={(e) => {
-                if (!isCurrentlySwiping) {
-                  e.currentTarget.style.transform = 'scale(1.01)';
-                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.15)';
-                }
-              }}
-            >
-            {/* 未読バッジ */}
-            {!message.is_read && (
-              <div
-                style={{
-                  position: 'absolute',
-                  top: 6,
-                  left: 6,
-                  width: 6,
-                  height: 6,
-                  borderRadius: '50%',
-                  background: '#3b82f6',
-                  boxShadow: '0 0 8px #3b82f6',
-                }}
-              />
-            )}
-
-            {/* アバター */}
-            <div
-              style={{
-                width: isMobile ? 36 : 42,
-                height: isMobile ? 36 : 42,
-                borderRadius: '50%',
-                overflow: 'hidden',
-                background: message.is_anonymous || !message.sender_profile?.icon_url
-                  ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
-                  : 'transparent',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: isMobile ? 18 : 20,
-                flexShrink: 0,
-                border: '2px solid rgba(255, 255, 255, 0.1)',
-              }}
-            >
-              {message.is_anonymous ? (
-                '🕶️'
-              ) : message.sender_profile?.icon_url ? (
-                <img
-                  src={message.sender_profile.icon_url}
-                  alt="送信者"
-                  style={{
-                    width: '100%',
-                    height: '100%',
-                    objectFit: 'cover',
-                  }}
-                />
-              ) : (
-                '👤'
-              )}
-            </div>
-
-            {/* メイン情報（送信者名・時刻・メッセージ） */}
-            <div
-              style={{
-                flex: 1,
-                minWidth: 0,
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 2,
-              }}
-            >
-              {/* 送信者名と時刻 */}
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  flexWrap: 'nowrap',
-                }}
-              >
                 <div
-                  style={{
-                    fontSize: isMobile ? 13 : 14,
-                    fontWeight: 600,
-                    color: '#EAF2FF',
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 6,
-                  }}
-                >
-                  {message.is_anonymous ? (
-                    <>
-                      <span>🕶️</span>
-                      <span style={{ opacity: 0.7 }}>匿名ユーザー</span>
-                    </>
-                  ) : (
-                    message.sender_profile?.name || '匿名ユーザー'
-                  )}
-                </div>
-                <div
-                  style={{
-                    fontSize: isMobile ? 11 : 12,
-                    color: 'rgba(255, 255, 255, 0.5)',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {getRelativeTime(message.created_at)}
-                </div>
-              </div>
-
-              {/* メッセージプレビュー */}
-              {message.message && (
-                <div
-                  style={{
-                    fontSize: isMobile ? 12 : 13,
-                    color: 'rgba(255, 255, 255, 0.7)',
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                  }}
-                >
-                  {shortenMessage(message.message)}
-                </div>
-              )}
-            </div>
-
-            {/* 送金額 */}
-            <div
-              style={{
-                fontSize: isMobile ? 16 : 18,
-                fontWeight: 700,
-                color: '#667eea',
-                whiteSpace: 'nowrap',
-                flexShrink: 0,
-              }}
-            >
-              {message.amount} {message.token_symbol}
-            </div>
-
-            {/* アクションボタン */}
-            <div
-              style={{
-                display: 'flex',
-                gap: 4,
-                flexShrink: 0,
-              }}
-            >
-              {/* Polygonscanリンク（匿名送金の場合は非表示） */}
-              {message.tx_hash && !message.is_anonymous && (
-                <a
-                  href={`https://polygonscan.com/tx/${message.tx_hash}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{
-                    width: isMobile ? 28 : 32,
-                    height: isMobile ? 28 : 32,
-                    background: 'rgba(139, 92, 246, 0.1)',
-                    border: '1px solid rgba(139, 92, 246, 0.3)',
-                    borderRadius: 6,
-                    color: '#c4b5fd',
-                    fontSize: isMobile ? 14 : 16,
-                    textDecoration: 'none',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    transition: 'all 0.2s',
-                  }}
-                  onClick={(e) => e.stopPropagation()}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'rgba(139, 92, 246, 0.2)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'rgba(139, 92, 246, 0.1)';
-                  }}
-                  title="Polygonscanで確認"
-                >
-                  ↗
-                </a>
-              )}
-
-              {/* メッセージ詳細ボタン */}
-              {message.source !== 'blockchain' && message.message && (
-                <button
-                  onClick={(e) => {
+                  onClick={() => handleOpenModal(message)}
+                  onTouchStart={(e) => {
                     e.stopPropagation();
-                    handleOpenModal(message);
+                    const touch = e.touches[0];
+                    handleSwipeStart(message.id);
+                    (e.currentTarget as any)._startX = touch.clientX;
                   }}
-                  style={{
-                    width: isMobile ? 28 : 32,
-                    height: isMobile ? 28 : 32,
-                    background: 'rgba(59, 130, 246, 0.1)',
-                    border: '1px solid rgba(59, 130, 246, 0.3)',
-                    borderRadius: 6,
-                    color: '#93c5fd',
-                    fontSize: isMobile ? 14 : 16,
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    transition: 'all 0.2s',
-                    padding: 0,
+                  onTouchMove={(e) => {
+                    const touch = e.touches[0];
+                    const startX = (e.currentTarget as any)._startX || touch.clientX;
+                    handleSwipeMove(touch.clientX, startX);
+                    if (swipingMessageId) {
+                      e.preventDefault();
+                    }
                   }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'rgba(59, 130, 246, 0.2)';
+                  onTouchEnd={() => handleSwipeEnd(message)}
+                  onMouseDown={(e) => {
+                    handleSwipeStart(message.id);
+                    (e.currentTarget as any)._startX = e.clientX;
+                    (e.currentTarget as any)._isDragging = true;
+                  }}
+                  onMouseMove={(e) => {
+                    if ((e.currentTarget as any)._isDragging) {
+                      const startX = (e.currentTarget as any)._startX || e.clientX;
+                      handleSwipeMove(e.clientX, startX);
+                    }
+                  }}
+                  onMouseUp={(e) => {
+                    (e.currentTarget as any)._isDragging = false;
+                    handleSwipeEnd(message);
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'rgba(59, 130, 246, 0.1)';
+                    if ((e.currentTarget as any)._isDragging) {
+                      (e.currentTarget as any)._isDragging = false;
+                      handleSwipeEnd(message);
+                    } else if (!isCurrentlySwiping) {
+                      e.currentTarget.style.transform = 'scale(1)';
+                      e.currentTarget.style.boxShadow = 'none';
+                    }
                   }}
-                  title="メッセージを見る"
+                  style={{
+                    background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%)',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    borderRadius: 8,
+                    padding: isMobile ? '8px 10px' : '10px 12px',
+                    transition: isCurrentlySwiping ? 'none' : 'all 0.2s',
+                    cursor: 'pointer',
+                    position: 'relative',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: isMobile ? 8 : 10,
+                    minHeight: isMobile ? 50 : 60,
+                    transform: `translateX(${currentSwipeOffset}px)`,
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isCurrentlySwiping) {
+                      e.currentTarget.style.transform = 'scale(1.01)';
+                      e.currentTarget.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.15)';
+                    }
+                  }}
                 >
-                  💬
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      );
-    })
+                  {/* 未読バッジ */}
+                  {!message.is_read && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: 6,
+                        left: 6,
+                        width: 6,
+                        height: 6,
+                        borderRadius: '50%',
+                        background: '#3b82f6',
+                        boxShadow: '0 0 8px #3b82f6',
+                      }}
+                    />
+                  )}
+
+                  {/* アバター */}
+                  <div
+                    style={{
+                      width: isMobile ? 36 : 42,
+                      height: isMobile ? 36 : 42,
+                      borderRadius: '50%',
+                      overflow: 'hidden',
+                      background: message.is_anonymous || !message.sender_profile?.icon_url
+                        ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+                        : 'transparent',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: isMobile ? 18 : 20,
+                      flexShrink: 0,
+                      border: '2px solid rgba(255, 255, 255, 0.1)',
+                    }}
+                  >
+                    {message.is_anonymous ? (
+                      '🕶️'
+                    ) : message.sender_profile?.icon_url ? (
+                      <img
+                        src={message.sender_profile.icon_url}
+                        alt="送信者"
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'cover',
+                        }}
+                      />
+                    ) : (
+                      '👤'
+                    )}
+                  </div>
+
+                  {/* メイン情報（送信者名・時刻・メッセージ） */}
+                  <div
+                    style={{
+                      flex: 1,
+                      minWidth: 0,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 2,
+                    }}
+                  >
+                    {/* 送信者名と時刻 */}
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                        flexWrap: 'nowrap',
+                      }}
+                    >
+                      <div
+                        style={{
+                          fontSize: isMobile ? 13 : 14,
+                          fontWeight: 600,
+                          color: '#EAF2FF',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 6,
+                        }}
+                      >
+                        {message.is_anonymous ? (
+                          <>
+                            <span>🕶️</span>
+                            <span style={{ opacity: 0.7 }}>匿名ユーザー</span>
+                          </>
+                        ) : (
+                          message.sender_profile?.name || '匿名ユーザー'
+                        )}
+                      </div>
+                      <div
+                        style={{
+                          fontSize: isMobile ? 11 : 12,
+                          color: 'rgba(255, 255, 255, 0.5)',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {getRelativeTime(message.created_at)}
+                      </div>
+                    </div>
+
+                    {/* メッセージプレビュー */}
+                    {message.message && (
+                      <div
+                        style={{
+                          fontSize: isMobile ? 12 : 13,
+                          color: 'rgba(255, 255, 255, 0.7)',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                        }}
+                      >
+                        {shortenMessage(message.message)}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 送金額 */}
+                  <div
+                    style={{
+                      fontSize: isMobile ? 16 : 18,
+                      fontWeight: 700,
+                      color: '#667eea',
+                      whiteSpace: 'nowrap',
+                      flexShrink: 0,
+                    }}
+                  >
+                    {message.amount} {message.token_symbol}
+                  </div>
+
+                  {/* アクションボタン */}
+                  <div
+                    style={{
+                      display: 'flex',
+                      gap: 4,
+                      flexShrink: 0,
+                    }}
+                  >
+                    {/* Polygonscanリンク（匿名送金の場合は非表示） */}
+                    {message.tx_hash && !message.is_anonymous && (
+                      <a
+                        href={`https://polygonscan.com/tx/${message.tx_hash}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          width: isMobile ? 28 : 32,
+                          height: isMobile ? 28 : 32,
+                          background: 'rgba(139, 92, 246, 0.1)',
+                          border: '1px solid rgba(139, 92, 246, 0.3)',
+                          borderRadius: 6,
+                          color: '#c4b5fd',
+                          fontSize: isMobile ? 14 : 16,
+                          textDecoration: 'none',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          transition: 'all 0.2s',
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background = 'rgba(139, 92, 246, 0.2)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = 'rgba(139, 92, 246, 0.1)';
+                        }}
+                        title="Polygonscanで確認"
+                      >
+                        ↗
+                      </a>
+                    )}
+
+                    {/* メッセージ詳細ボタン */}
+                    {message.source !== 'blockchain' && message.message && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleOpenModal(message);
+                        }}
+                        style={{
+                          width: isMobile ? 28 : 32,
+                          height: isMobile ? 28 : 32,
+                          background: 'rgba(59, 130, 246, 0.1)',
+                          border: '1px solid rgba(59, 130, 246, 0.3)',
+                          borderRadius: 6,
+                          color: '#93c5fd',
+                          fontSize: isMobile ? 14 : 16,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          transition: 'all 0.2s',
+                          padding: 0,
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background = 'rgba(59, 130, 246, 0.2)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = 'rgba(59, 130, 246, 0.1)';
+                        }}
+                        title="メッセージを見る"
+                      >
+                        💬
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })
         )}
       </div>
 
