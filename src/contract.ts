@@ -70,6 +70,25 @@ export const RANK_PLAN_REGISTRY_CONTRACT = {
 // 🔄 後方互換性のため現在のCONTRACT_ADDRESSを維持
 export const CONTRACT_ADDRESS = SBT_CONTRACT.ADDRESS;
 
+/**
+ * テナント設定からGifterraコントラクトアドレスを取得
+ * @returns カスタムアドレスまたはデフォルトアドレス
+ */
+export function getGifterraAddress(): string {
+  try {
+    const savedProfile = localStorage.getItem('tenant_profile');
+    if (savedProfile) {
+      const profile = JSON.parse(savedProfile);
+      if (profile.gifterraAddress && profile.gifterraAddress !== '0x0000000000000000000000000000000000000000') {
+        return profile.gifterraAddress;
+      }
+    }
+  } catch (error) {
+    console.error('Failed to load Gifterra address from tenant profile:', error);
+  }
+  return CONTRACT_ADDRESS; // デフォルトに戻る
+}
+
 // � メタバースEC設定
 export const METAVERSE_CONFIG = {
   // 🏰 メタバース空間設定
