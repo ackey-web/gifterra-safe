@@ -6,7 +6,7 @@ import { createPortal } from 'react-dom';
 import { useDisconnect, useSigner, useAddress, ConnectWallet, useChainId, useNetwork } from '@thirdweb-dev/react';
 import { usePrivy, useCreateWallet, useWallets } from '@privy-io/react-auth';
 import { ethers } from 'ethers';
-import { JPYC_TOKEN, TNHT_TOKEN, NHT_TOKEN, SBT_CONTRACT, CONTRACT_ABI, ERC20_MIN_ABI } from '../contract';
+import { JPYC_TOKEN, TNHT_TOKEN, NHT_TOKEN, SBT_CONTRACT, CONTRACT_ABI, ERC20_MIN_ABI, getGifterraAddress } from '../contract';
 import { useTokenBalances } from '../hooks/useTokenBalances';
 import { useUserNFTs } from '../hooks/useUserNFTs';
 import { useTransactionHistory, type Transaction } from '../hooks/useTransactionHistory';
@@ -1285,7 +1285,7 @@ function FlowModeContent({
 }
 
 // 送金モード定義
-type SendMode = 'simple' | 'tenant' | 'bulk' | 'bookmark';
+type SendMode = 'simple' | 'tenant' | 'bulk' | 'bookmark' | 'anonymous';
 
 // 1. 送金フォーム
 function SendForm({ isMobile }: { isMobile: boolean }) {
@@ -1668,6 +1668,7 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
             txHash: receipt.transactionHash,
             tokenSymbol: 'POL',
             tenantId: 'default',
+            isAnonymous: sendMode === 'anonymous', // 匿名送金フラグ
           });
         } catch (saveError) {
           console.error('❌ 送金メッセージの保存に失敗:', saveError);
@@ -1708,15 +1709,16 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
         );
 
         // 2. SBTコントラクトにapprove
+        const gifterraAddress = getGifterraAddress();
         const approveTx = await tokenContract.approve(
-          SBT_CONTRACT.ADDRESS,
+          gifterraAddress,
           amountWei
         );
         await approveTx.wait();
 
         // 3. SBTコントラクトのtip関数を呼び出し（kodomiポイント加算 + SBT自動ミント）
         const sbtContract = new ethers.Contract(
-          SBT_CONTRACT.ADDRESS,
+          gifterraAddress,
           CONTRACT_ABI,
           signer
         );
@@ -1767,6 +1769,7 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
             amount: amount,
             message: message || undefined,
             txHash: receipt.transactionHash,
+            isAnonymous: sendMode === 'anonymous', // 匿名送金フラグ
           });
           saveSuccess = true;
           console.log('✅ Transfer message saved successfully');
@@ -2015,6 +2018,7 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
               textShadow: '0 2px 4px rgba(0,0,0,0.2)',
             }}>
               {sendMode === 'simple' && '💸 シンプル送金'}
+              {sendMode === 'anonymous' && '🕶️ 匿名送金'}
               {sendMode === 'tenant' && '🎁 テナントへチップ'}
               {sendMode === 'bulk' && '📤 一括送金'}
               {sendMode === 'bookmark' && '⭐ ブックマークユーザーへ送金'}
@@ -2078,6 +2082,39 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
         </div>
       )}
 
+      {/* 匿名送金時の警告メッセージ */}
+      {sendMode === 'anonymous' && (
+        <div style={{
+          marginBottom: 16,
+          padding: isMobile ? '12px 14px' : '14px 16px',
+          background: 'rgba(251, 191, 36, 0.1)',
+          border: '1px solid rgba(251, 191, 36, 0.3)',
+          borderRadius: 12,
+        }}>
+          <div style={{
+            fontSize: isMobile ? 13 : 14,
+            fontWeight: 600,
+            marginBottom: 8,
+            color: '#d97706',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+          }}>
+            <span>⚠️</span>
+            <span>匿名送金について</span>
+          </div>
+          <div style={{
+            fontSize: isMobile ? 11 : 12,
+            lineHeight: 1.6,
+            color: '#92400e',
+          }}>
+            • アプリ内では送信者情報が非表示になります<br />
+            • ブロックチェーン上は公開されます（Polygonscan等で確認可能）<br />
+            • 完全な匿名性は保証されません
+          </div>
+        </div>
+      )}
+
       <div style={{ marginBottom: 16 }}>
         <label style={{ display: 'block', fontSize: isMobile ? 13 : 14, color: '#1a1a1a', fontWeight: 700, marginBottom: 8 }}>
           宛先アドレス {(sendMode === 'tenant' || sendMode === 'bookmark') && '（自動入力済み）'}
@@ -2110,7 +2147,7 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
         </div>
 
         {/* 受取人プロフィール表示 */}
-        {(sendMode === 'simple' || sendMode === 'bulk' || sendMode === 'bookmark') && address && address.trim().length === 42 && (
+        {(sendMode === 'simple' || sendMode === 'anonymous' || sendMode === 'bulk' || sendMode === 'bookmark') && address && address.trim().length === 42 && (
           <div style={{
             marginTop: 12,
             padding: isMobile ? '12px' : '14px',
@@ -2907,6 +2944,14 @@ function SendModeModal({ isMobile, onClose, onSelectMode }: {
       features: ['自由なアドレス入力', 'kodomi記録なし'],
     },
     {
+      id: 'anonymous' as SendMode,
+      icon: '🕶️',
+      title: '匿名送金',
+      description: '送信者を伏せて送金',
+      features: ['アドレス非表示', 'メッセージ送信可', 'プライバシー保護'],
+      badge: { text: 'NEW', color: '#10b981' },
+    },
+    {
       id: 'bookmark' as SendMode,
       icon: '⭐',
       title: 'ブックマークユーザーへ送金',
@@ -3033,7 +3078,21 @@ function SendModeModal({ isMobile, onClose, onSelectMode }: {
                 e.currentTarget.style.transform = 'translateY(0)';
               }}
             >
-              <div style={{ fontSize: 32, marginBottom: 12 }}>{mode.icon}</div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                <div style={{ fontSize: 32 }}>{mode.icon}</div>
+                {mode.badge && (
+                  <div style={{
+                    background: mode.badge.color,
+                    color: 'white',
+                    fontSize: 10,
+                    fontWeight: 700,
+                    padding: '4px 8px',
+                    borderRadius: 4,
+                  }}>
+                    {mode.badge.text}
+                  </div>
+                )}
+              </div>
               <h4 style={{
                 margin: '0 0 8px 0',
                 fontSize: isMobile ? 16 : 18,

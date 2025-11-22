@@ -37,6 +37,7 @@ export interface TransferMessage {
   expires_at: string;
   is_read: boolean;
   is_archived: boolean;
+  is_anonymous?: boolean; // 匿名送金フラグ
   reactions?: MessageReaction[];
   reaction_count?: number;
   has_reacted?: boolean;
@@ -162,8 +163,9 @@ export async function saveTransferMessage(params: {
   amount: string;
   message?: string;
   txHash?: string;
+  isAnonymous?: boolean;
 }) {
-  const { tenantId, fromAddress, toAddress, tokenSymbol, amount, message, txHash } = params;
+  const { tenantId, fromAddress, toAddress, tokenSymbol, amount, message, txHash, isAnonymous } = params;
 
   // テナントIDがない場合はデフォルト値を使用
   const effectiveTenantId = tenantId || 'default';
@@ -228,6 +230,7 @@ export async function saveTransferMessage(params: {
         message: message || null,
         sender_profile: senderProfile || null,
         tx_hash: txHash || null,
+        is_anonymous: isAnonymous || false,
       };
 
       const { data, error } = await supabase

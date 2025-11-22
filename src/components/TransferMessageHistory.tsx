@@ -524,9 +524,19 @@ export function TransferMessageHistory({
                     whiteSpace: 'nowrap',
                     overflow: 'hidden',
                     textOverflow: 'ellipsis',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
                   }}
                 >
-                  {message.sender_profile?.name || '匿名ユーザー'}
+                  {message.is_anonymous ? (
+                    <>
+                      <span>🕶️</span>
+                      <span style={{ opacity: 0.7 }}>匿名ユーザー</span>
+                    </>
+                  ) : (
+                    message.sender_profile?.name || '匿名ユーザー'
+                  )}
                 </div>
                 <div
                   style={{
@@ -790,9 +800,19 @@ export function TransferMessageHistory({
                         fontWeight: 600,
                         color: '#EAF2FF',
                         marginBottom: 4,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
                       }}
                     >
-                      {selectedMessage.sender_profile?.name || '匿名ユーザー'}
+                      {selectedMessage.is_anonymous ? (
+                        <>
+                          <span>🕶️</span>
+                          <span style={{ opacity: 0.7 }}>匿名ユーザー</span>
+                        </>
+                      ) : (
+                        selectedMessage.sender_profile?.name || '匿名ユーザー'
+                      )}
                     </div>
                     <div
                       style={{
@@ -801,7 +821,7 @@ export function TransferMessageHistory({
                         fontFamily: 'monospace',
                       }}
                     >
-                      {shortenAddress(selectedMessage.from_address)}
+                      {selectedMessage.is_anonymous ? '非公開' : shortenAddress(selectedMessage.from_address)}
                     </div>
                   </div>
                 </div>
