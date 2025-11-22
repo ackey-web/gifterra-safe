@@ -1596,12 +1596,24 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
         }
 
         // POL(ネイティブトークン)を直接送信
+        console.log('💸 POL送金開始:', {
+          to: normalizedAddress,
+          amount: ethers.utils.formatEther(amountWei),
+          balance: ethers.utils.formatEther(maticBalance)
+        });
+
         const tx = await signer.sendTransaction({
           to: normalizedAddress,
           value: amountWei,
+          gasLimit: 21000, // POL/MATIC送金の標準ガスリミット
         });
 
+        console.log('📡 トランザクション送信完了:', tx.hash);
+        console.log('⏳ トランザクション確認待ち...');
+
         const receipt = await tx.wait();
+
+        console.log('✅ トランザクション確認完了:', receipt.transactionHash);
 
         // トランザクション成功後、Supabaseに送金メッセージを保存
         try {
