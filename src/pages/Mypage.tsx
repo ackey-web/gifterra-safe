@@ -2521,18 +2521,24 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
           }}
           onSelectUser={(userAddress, userName) => {
             console.log('📌 ブックマークユーザー選択:', { userAddress, userName });
-            setSelectedBookmarkUser({ address: userAddress, name: userName });
-            setAddress(userAddress);
-            setSendMode('bookmark'); // 送金タイプを自動的に設定
+
+            // モーダルを閉じる前に状態を更新
             setShowBookmarkSelectModal(false);
 
-            // プロフィール表示を確実にするため、少し遅延してスクロール
+            // 状態更新を確実に反映させるため、少し遅延してから設定
             setTimeout(() => {
-              const sendFormSection = document.getElementById('send-form-section');
-              if (sendFormSection) {
-                sendFormSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-              }
-            }, 100);
+              setSelectedBookmarkUser({ address: userAddress, name: userName });
+              setAddress(userAddress);
+              setSendMode('bookmark');
+
+              // さらに遅延してスクロール（プロフィール取得を待つ）
+              setTimeout(() => {
+                const sendFormSection = document.getElementById('send-form-section');
+                if (sendFormSection) {
+                  sendFormSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+              }, 200);
+            }, 50);
           }}
         />
       )}
