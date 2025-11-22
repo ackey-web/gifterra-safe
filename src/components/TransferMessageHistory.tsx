@@ -6,6 +6,7 @@ import { createPortal } from 'react-dom';
 import {
   useReceivedTransferMessages,
   markMessageAsRead,
+  markMultipleMessagesAsRead,
   addMessageReaction,
   removeMessageReaction,
   getMessageReactions,
@@ -35,6 +36,8 @@ export function TransferMessageHistory({
   const [reactions, setReactions] = useState<MessageReaction[]>([]);
   const [isReacting, setIsReacting] = useState(false);
   const [activeTab, setActiveTab] = useState<'gifterra' | 'all'>('all'); // タブ状態
+  const [swipingMessageId, setSwipingMessageId] = useState<string | null>(null);
+  const [swipeOffset, setSwipeOffset] = useState<number>(0);
   const previousMessageIdsRef = useRef<Set<string>>(new Set());
 
   // フックから取得したメッセージをローカル状態にコピー & 新規受信を検出
@@ -147,6 +150,69 @@ export function TransferMessageHistory({
     setSelectedMessage(null);
     setShowProfileBio(false);
     setReactions([]);
+  };
+
+  // タブをクリックしたときに未読メッセージを一括既読にする
+  const handleTabClick = async (tab: 'gifterra' | 'all') => {
+    setActiveTab(tab);
+
+    // 未読メッセージがあれば一括既読にする
+    const unreadMessages = messages.filter(m => !m.is_read);
+    if (unreadMessages.length === 0) return;
+
+    try {
+      await markMultipleMessagesAsRead(unreadMessages, walletAddress);
+      console.log(`✅ Marked ${unreadMessages.length} messages as read`);
+
+      // ローカル状態を即座に更新
+      setMessages(prevMessages =>
+        prevMessages.map(m => ({ ...m, is_read: true }))
+      );
+    } catch (err) {
+      console.error('❌ Failed to mark messages as read:', err);
+    }
+  };
+
+  // スワイプ開始
+  const handleSwipeStart = (messageId: string) => {
+    setSwipingMessageId(messageId);
+    setSwipeOffset(0);
+  };
+
+  // スワイプ中
+  const handleSwipeMove = (clientX: number, startX: number) => {
+    if (!swipingMessageId) return;
+    const diff = clientX - startX;
+    // 左スワイプのみ許可（負の値）、最大80pxまで
+    if (diff < 0) {
+      setSwipeOffset(Math.max(diff, -80));
+    }
+  };
+
+  // スワイプ終了
+  const handleSwipeEnd = async (message: TransferMessage) => {
+    if (!swipingMessageId) return;
+
+    // 50px以上スワイプしたら既読にする
+    if (swipeOffset < -50 && !message.is_read) {
+      try {
+        await markMessageAsRead(message.id, walletAddress);
+        console.log('✅ Message marked as read via swipe:', message.id);
+
+        // ローカル状態を即座に更新
+        setMessages(prevMessages =>
+          prevMessages.map(m =>
+            m.id === message.id ? { ...m, is_read: true } : m
+          )
+        );
+      } catch (err) {
+        console.error('❌ Failed to mark message as read:', err);
+      }
+    }
+
+    // スワイプ状態をリセット
+    setSwipingMessageId(null);
+    setSwipeOffset(0);
   };
 
   // リアクションをトグル
@@ -279,7 +345,7 @@ export function TransferMessageHistory({
         }}
       >
         <button
-          onClick={() => setActiveTab('all')}
+          onClick={() => handleTabClick('all')}
           style={{
             padding: isMobile ? '8px 16px' : '10px 20px',
             background: activeTab === 'all'
@@ -334,7 +400,7 @@ export function TransferMessageHistory({
           )}
         </button>
         <button
-          onClick={() => setActiveTab('gifterra')}
+          onClick={() => handleTabClick('gifterra')}
           style={{
             padding: isMobile ? '8px 16px' : '10px 20px',
             background: activeTab === 'gifterra'
@@ -422,32 +488,104 @@ export function TransferMessageHistory({
             </p>
           </div>
         ) : (
-          filteredMessages.map((message) => (
+          filteredMessages.map((message) => {
+            const isCurrentlySwiping = swipingMessageId === message.id;
+            const currentSwipeOffset = isCurrentlySwiping ? swipeOffset : 0;
+
+            return (
           <div
             key={message.id}
-            onClick={() => handleOpenModal(message)}
             style={{
-              background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%)',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
-              borderRadius: 8,
-              padding: isMobile ? '8px 10px' : '10px 12px',
-              transition: 'all 0.2s',
-              cursor: 'pointer',
               position: 'relative',
-              display: 'flex',
-              alignItems: 'center',
-              gap: isMobile ? 8 : 10,
-              minHeight: isMobile ? 50 : 60,
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = 'scale(1.01)';
-              e.currentTarget.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.15)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = 'scale(1)';
-              e.currentTarget.style.boxShadow = 'none';
+              overflow: 'hidden',
             }}
           >
+            {/* スワイプ時の背景（既読アイコン） */}
+            {isCurrentlySwiping && currentSwipeOffset < 0 && (
+              <div
+                style={{
+                  position: 'absolute',
+                  right: 0,
+                  top: 0,
+                  bottom: 0,
+                  width: Math.abs(currentSwipeOffset),
+                  background: currentSwipeOffset < -50
+                    ? 'linear-gradient(90deg, rgba(34, 197, 94, 0.3), rgba(34, 197, 94, 0.6))'
+                    : 'linear-gradient(90deg, rgba(59, 130, 246, 0.2), rgba(59, 130, 246, 0.4))',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'flex-end',
+                  paddingRight: 16,
+                  fontSize: 20,
+                  transition: 'background 0.2s',
+                }}
+              >
+                {currentSwipeOffset < -50 ? '✓' : '←'}
+              </div>
+            )}
+
+            <div
+              onClick={() => handleOpenModal(message)}
+              onTouchStart={(e) => {
+                e.stopPropagation();
+                const touch = e.touches[0];
+                handleSwipeStart(message.id);
+                (e.currentTarget as any)._startX = touch.clientX;
+              }}
+              onTouchMove={(e) => {
+                const touch = e.touches[0];
+                const startX = (e.currentTarget as any)._startX || touch.clientX;
+                handleSwipeMove(touch.clientX, startX);
+                if (swipingMessageId) {
+                  e.preventDefault();
+                }
+              }}
+              onTouchEnd={() => handleSwipeEnd(message)}
+              onMouseDown={(e) => {
+                handleSwipeStart(message.id);
+                (e.currentTarget as any)._startX = e.clientX;
+                (e.currentTarget as any)._isDragging = true;
+              }}
+              onMouseMove={(e) => {
+                if ((e.currentTarget as any)._isDragging) {
+                  const startX = (e.currentTarget as any)._startX || e.clientX;
+                  handleSwipeMove(e.clientX, startX);
+                }
+              }}
+              onMouseUp={(e) => {
+                (e.currentTarget as any)._isDragging = false;
+                handleSwipeEnd(message);
+              }}
+              onMouseLeave={(e) => {
+                if ((e.currentTarget as any)._isDragging) {
+                  (e.currentTarget as any)._isDragging = false;
+                  handleSwipeEnd(message);
+                } else if (!isCurrentlySwiping) {
+                  e.currentTarget.style.transform = 'scale(1)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }
+              }}
+              style={{
+                background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%)',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+                borderRadius: 8,
+                padding: isMobile ? '8px 10px' : '10px 12px',
+                transition: isCurrentlySwiping ? 'none' : 'all 0.2s',
+                cursor: 'pointer',
+                position: 'relative',
+                display: 'flex',
+                alignItems: 'center',
+                gap: isMobile ? 8 : 10,
+                minHeight: isMobile ? 50 : 60,
+                transform: `translateX(${currentSwipeOffset}px)`,
+              }}
+              onMouseEnter={(e) => {
+                if (!isCurrentlySwiping) {
+                  e.currentTarget.style.transform = 'scale(1.01)';
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.15)';
+                }
+              }}
+            >
             {/* 未読バッジ */}
             {!message.is_read && (
               <div
@@ -656,7 +794,9 @@ export function TransferMessageHistory({
               )}
             </div>
           </div>
-          ))
+        </div>
+      );
+    })
         )}
       </div>
 

@@ -645,6 +645,45 @@ export async function markMessageAsRead(messageId: string, walletAddress?: strin
 }
 
 /**
+ * 複数のメッセージを一括既読にする
+ */
+export async function markMultipleMessagesAsRead(messages: TransferMessage[], walletAddress?: string) {
+  const gifterraMessages: string[] = [];
+  const blockchainTxHashes: string[] = [];
+
+  // メッセージをソース別に分類
+  for (const msg of messages) {
+    if (msg.is_read) continue; // 既に既読の場合はスキップ
+
+    const isBlockchainTx = msg.id.startsWith('0x') && msg.id.length === 66;
+    if (isBlockchainTx) {
+      blockchainTxHashes.push(msg.id);
+    } else {
+      gifterraMessages.push(msg.id);
+    }
+  }
+
+  // Gifterraメッセージを一括更新
+  if (gifterraMessages.length > 0) {
+    const { error } = await supabase
+      .from('transfer_messages')
+      .update({ is_read: true })
+      .in('id', gifterraMessages);
+
+    if (error) {
+      throw error;
+    }
+  }
+
+  // ブロックチェーントランザクションをlocalStorageに保存
+  if (blockchainTxHashes.length > 0 && walletAddress) {
+    for (const txHash of blockchainTxHashes) {
+      markBlockchainTransactionAsRead(walletAddress, txHash);
+    }
+  }
+}
+
+/**
  * メッセージをアーカイブする
  */
 export async function archiveMessage(messageId: string) {
