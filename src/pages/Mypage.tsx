@@ -600,31 +600,29 @@ function Header({ viewMode, setViewMode, isMobile, tenantRank, showSettingsModal
         </div>
       )}
 
-      {/* 右：通知・プロフィール・設定・シェア・Admin・ログアウト */}
-      {isMobile ? (
-        /* スマホ：通知ベル + ハンバーガーメニュー */
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          {/* 通知ベル */}
-          <NotificationBell userAddress={address} isMobile={isMobile} />
+      {/* 右:通知ベル + ハンバーガーメニュー（スマホ・デスクトップ共通） */}
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        {/* 通知ベル */}
+        <NotificationBell userAddress={address} isMobile={isMobile} />
 
-          <button
-            onClick={() => setShowMobileMenu(!showMobileMenu)}
-            style={{
-              width: 36,
-              height: 36,
-              background: 'rgba(255,255,255,0.05)',
-              border: '1px solid rgba(255,255,255,0.1)',
-              borderRadius: 8,
-              color: '#EAF2FF',
-              fontSize: 20,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            ☰
-          </button>
+        <button
+          onClick={() => setShowMobileMenu(!showMobileMenu)}
+          style={{
+            width: 36,
+            height: 36,
+            background: 'rgba(255,255,255,0.05)',
+            border: '1px solid rgba(255,255,255,0.1)',
+            borderRadius: 8,
+            color: '#EAF2FF',
+            fontSize: 20,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          ☰
+        </button>
 
           {showMobileMenu && createPortal(
             <div
@@ -809,133 +807,7 @@ function Header({ viewMode, setViewMode, isMobile, tenantRank, showSettingsModal
             </div>,
             document.body
           )}
-        </div>
-      ) : (
-        /* PC：従来の横並びボタン */
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-          {/* 通知ベル */}
-          <NotificationBell userAddress={address} isMobile={isMobile} />
-
-          {viewMode === 'tenant' && (
-            <button style={{
-              padding: '8px 16px',
-              background: 'rgba(255,255,255,0.05)',
-              border: '1px solid rgba(255,255,255,0.1)',
-              borderRadius: 8,
-              color: '#EAF2FF',
-              fontSize: 13,
-              fontWeight: 600,
-              cursor: 'pointer',
-            }}>
-              Adminで開く
-            </button>
-          )}
-          <button
-            onClick={() => window.location.href = '/profile'}
-            style={{
-              width: 36,
-              height: 36,
-              background: 'rgba(255,255,255,0.05)',
-              border: '1px solid rgba(255,255,255,0.1)',
-              borderRadius: 8,
-              color: '#EAF2FF',
-              fontSize: 18,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              transition: 'all 0.2s',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
-            }}
-          >
-            👤
-          </button>
-          {/* 検索ボタン */}
-          <button
-            onClick={() => setShowUserSearchModal(true)}
-            style={{
-              width: 36,
-              height: 36,
-              background: 'rgba(255,255,255,0.05)',
-              border: '1px solid rgba(255,255,255,0.1)',
-              borderRadius: 8,
-              color: '#EAF2FF',
-              fontSize: 18,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              transition: 'all 0.2s',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
-            }}
-          >
-            🔍
-          </button>
-          {/* ターミナルUIボタン */}
-          <button
-            onClick={() => window.location.href = '/terminal'}
-            style={{
-              width: 36,
-              height: 36,
-              background: 'rgba(59, 130, 246, 0.1)',
-              border: '1px solid rgba(59, 130, 246, 0.3)',
-              borderRadius: 8,
-              color: '#93C5FD',
-              fontSize: 18,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              transition: 'all 0.2s',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = 'rgba(59, 130, 246, 0.2)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'rgba(59, 130, 246, 0.1)';
-            }}
-            title="ターミナルUI"
-          >
-            💳
-          </button>
-          {/* 設定ボタン */}
-          <button
-            onClick={() => setShowSettingsModal(true)}
-            style={{
-              width: 36,
-              height: 36,
-              background: 'rgba(255,255,255,0.05)',
-              border: '1px solid rgba(255,255,255,0.1)',
-              borderRadius: 8,
-              color: '#EAF2FF',
-              fontSize: 18,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              transition: 'all 0.2s',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
-            }}
-          >
-            ⚙️
-          </button>
-        </div>
-      )}
+      </div>
 
       {/* 設定モーダル */}
       {showSettingsModal && (
@@ -1380,7 +1252,8 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
     ? wallets.find(w => w.address.toLowerCase() === privyEmbeddedAddress.toLowerCase())
     : null;
 
-  const selectedToken = 'JPYC'; // JPYC固定
+  const [selectedToken, setSelectedToken] = useState<'JPYC' | 'POL'>('JPYC'); // トークン選択（JPYC or POL）
+  const [showTokenDropdown, setShowTokenDropdown] = useState(false); // トークン選択ドロップダウン表示状態
   const [sendMode, setSendMode] = useState<SendMode | null>(null); // null = 未選択
   const [showModeModal, setShowModeModal] = useState(false);
   const [showTenantModal, setShowTenantModal] = useState(false);
@@ -1494,15 +1367,27 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
   // トークン残高を取得
   const { balances } = useTokenBalances(walletAddress, signer);
 
-  const tokenInfo = {
-    name: 'JPYC',
-    symbol: 'JPYC',
-    description: 'ステーブルコイン',
-    detail: '日本円と同価値、送金ツールとして利用',
-    color: '#667eea',
+  // トークン情報の定義
+  const tokenInfoMap = {
+    JPYC: {
+      name: 'JPYC',
+      symbol: 'JPYC',
+      description: 'ステーブルコイン',
+      detail: '日本円と同価値、送金ツールとして利用',
+      color: '#667eea',
+      logo: '/JPYC-logo.png',
+    },
+    POL: {
+      name: 'POL',
+      symbol: 'POL',
+      description: 'Polygon ネイティブトークン',
+      detail: 'ガス代やネイティブ送金に利用',
+      color: '#8247e5',
+      logo: '/polygon-logo.png',
+    },
   };
 
-  const currentToken = tokenInfo;
+  const currentToken = tokenInfoMap[selectedToken];
 
   // Privyウォレット準備状態の監視
   useEffect(() => {
@@ -1534,8 +1419,10 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
     if (amount && selectedToken) {
       const amountNum = parseFloat(amount);
       const currentBalance = selectedToken === 'JPYC'
-        ? parseFloat(balances.jpyc)
-        : parseFloat(balances.nht);
+        ? parseFloat(balances.jpyc.formatted)
+        : selectedToken === 'POL'
+        ? parseFloat(balances.matic.formatted)
+        : parseFloat(balances.nht.formatted);
 
       if (amountNum > currentBalance) {
         alert(
@@ -1642,11 +1529,78 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
     try {
       setIsSending(true);
 
-      // トークンアドレスを取得（メインネット用）
-      const tokenAddress = selectedToken === 'JPYC' ? JPYC_TOKEN.ADDRESS : NHT_TOKEN.ADDRESS;
+      if (!signer) {
+        throw new Error('Signerが見つかりません');
+      }
+
+      // アドレスを正規化（チェックサム形式に変換）
+      const normalizedAddress = ethers.utils.getAddress(trimmedAddress);
 
       // 数量をwei単位に変換
       const amountWei = ethers.utils.parseUnits(amount, 18);
+
+      // POL送信の場合
+      if (selectedToken === 'POL') {
+        // MATICバランスチェック
+        const maticBalance = await signer.getBalance();
+
+        if (maticBalance.lt(amountWei)) {
+          alert(
+            `❌ 残高不足です\n\n` +
+            `送金額: ${amount} POL\n` +
+            `残高: ${ethers.utils.formatEther(maticBalance)} POL`
+          );
+          setIsSending(false);
+          return;
+        }
+
+        // POL(ネイティブトークン)を直接送信
+        const tx = await signer.sendTransaction({
+          to: normalizedAddress,
+          value: amountWei,
+        });
+
+        const receipt = await tx.wait();
+
+        // トランザクション成功後、Supabaseに送金メッセージを保存
+        try {
+          await saveTransferMessage({
+            fromAddress: actualAddress,
+            toAddress: normalizedAddress,
+            amount: amount,
+            message: message,
+            txHash: receipt.transactionHash,
+            tokenSymbol: 'POL',
+            tenantId: 'default',
+          });
+        } catch (saveError) {
+          console.error('❌ 送金メッセージの保存に失敗:', saveError);
+          alert(
+            `⚠️ 送金は成功しましたが、履歴の保存に失敗しました\n\n` +
+            `トランザクションハッシュ:\n${receipt.transactionHash}\n\n` +
+            `送金先: ${trimmedAddress.slice(0, 6)}...${trimmedAddress.slice(-4)}\n` +
+            `数量: ${amount} POL`
+          );
+          setIsSending(false);
+          return;
+        }
+
+        alert(
+          `✅ 送金が完了しました！\n\n` +
+          `送金先: ${trimmedAddress.slice(0, 6)}...${trimmedAddress.slice(-4)}\n` +
+          `数量: ${amount} POL\n` +
+          `トランザクションハッシュ:\n${receipt.transactionHash}`
+        );
+
+        setAddress('');
+        setAmount('');
+        setMessage('');
+        setIsSending(false);
+        return;
+      }
+
+      // JPYC送信の場合
+      const tokenAddress = JPYC_TOKEN.ADDRESS;
 
       // テナントチップモードの場合は従来のコントラクトを使用
       if (sendMode === 'tenant') {
@@ -1684,13 +1638,6 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
         );
       } else {
         // シンプル送金モード - 通常送金（MATICガス必要）
-
-        if (!signer) {
-          throw new Error('Signerが見つかりません');
-        }
-
-        // アドレスを正規化（チェックサム形式に変換）
-        const normalizedAddress = ethers.utils.getAddress(trimmedAddress);
 
         // ERC20 Interface を使用して transfer データを手動エンコード
         const erc20Interface = new ethers.utils.Interface(ERC20_MIN_ABI);
@@ -2234,25 +2181,118 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
               boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)',
             }}
           />
-          <div style={{
-            position: 'absolute',
-            right: isMobile ? 8 : 10,
-            top: '50%',
-            transform: 'translateY(-50%)',
-            fontSize: isMobile ? 13 : 14,
-            fontWeight: 700,
-            color: '#ffffff',
-            background: currentToken.color,
-            padding: isMobile ? '4px 8px' : '5px 10px',
-            borderRadius: 6,
-            border: `1.5px solid ${currentToken.color}`,
-            boxShadow: `0 2px 8px ${currentToken.color}66`,
-            pointerEvents: 'none',
-            zIndex: 10,
-            letterSpacing: '0.3px',
-          }}>
+          <button
+            onClick={() => setShowTokenDropdown(!showTokenDropdown)}
+            style={{
+              position: 'absolute',
+              right: isMobile ? 8 : 10,
+              top: '50%',
+              transform: 'translateY(-50%)',
+              fontSize: isMobile ? 13 : 14,
+              fontWeight: 700,
+              color: '#ffffff',
+              background: currentToken.color,
+              padding: isMobile ? '4px 8px' : '5px 10px',
+              borderRadius: 6,
+              border: `1.5px solid ${currentToken.color}`,
+              boxShadow: `0 2px 8px ${currentToken.color}66`,
+              cursor: 'pointer',
+              zIndex: 10,
+              letterSpacing: '0.3px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4,
+            }}
+          >
             {currentToken.symbol}
-          </div>
+            <span style={{ fontSize: 10 }}>▼</span>
+          </button>
+
+          {/* トークン選択ドロップダウン */}
+          {showTokenDropdown && (
+            <div
+              style={{
+                position: 'absolute',
+                right: isMobile ? 8 : 10,
+                top: 'calc(50% + 25px)',
+                background: '#ffffff',
+                border: '2px solid #3b82f6',
+                borderRadius: 8,
+                boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                zIndex: 20,
+                minWidth: 120,
+                overflow: 'hidden',
+              }}
+            >
+              <button
+                onClick={() => {
+                  setSelectedToken('JPYC');
+                  setShowTokenDropdown(false);
+                }}
+                style={{
+                  width: '100%',
+                  padding: '10px 14px',
+                  background: selectedToken === 'JPYC' ? '#667eea' : '#ffffff',
+                  color: selectedToken === 'JPYC' ? '#ffffff' : '#1a1a1a',
+                  border: 'none',
+                  borderBottom: '1px solid #e5e7eb',
+                  cursor: 'pointer',
+                  fontSize: 14,
+                  fontWeight: 600,
+                  textAlign: 'left',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                }}
+                onMouseEnter={(e) => {
+                  if (selectedToken !== 'JPYC') {
+                    e.currentTarget.style.background = '#f3f4f6';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (selectedToken !== 'JPYC') {
+                    e.currentTarget.style.background = '#ffffff';
+                  }
+                }}
+              >
+                <img src="/JPYC-logo.png" alt="JPYC" style={{ width: 20, height: 20 }} />
+                JPYC
+              </button>
+              <button
+                onClick={() => {
+                  setSelectedToken('POL');
+                  setShowTokenDropdown(false);
+                }}
+                style={{
+                  width: '100%',
+                  padding: '10px 14px',
+                  background: selectedToken === 'POL' ? '#8247e5' : '#ffffff',
+                  color: selectedToken === 'POL' ? '#ffffff' : '#1a1a1a',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontSize: 14,
+                  fontWeight: 600,
+                  textAlign: 'left',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                }}
+                onMouseEnter={(e) => {
+                  if (selectedToken !== 'POL') {
+                    e.currentTarget.style.background = '#f3f4f6';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (selectedToken !== 'POL') {
+                    e.currentTarget.style.background = '#ffffff';
+                  }
+                }}
+              >
+                <img src="/polygon-logo.png" alt="POL" style={{ width: 20, height: 20 }} />
+                POL
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
