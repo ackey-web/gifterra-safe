@@ -2477,9 +2477,11 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
             }
           }}
           onSelectUser={(userAddress, userName) => {
+            console.log('📌 ブックマークユーザー選択:', { userAddress, userName });
             setSelectedBookmarkUser({ address: userAddress, name: userName });
             setAddress(userAddress);
             setShowBookmarkSelectModal(false);
+            // sendModeは'bookmark'のまま維持されるため、再選択は不要
           }}
         />
       )}
