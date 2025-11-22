@@ -40,26 +40,47 @@ export function useUserBookmarks(userAddress: string | undefined) {
         setIsLoading(true);
         setError(null);
 
-        const { data, error: fetchError } = await supabase
+        console.log('📚 ブックマーク取得開始:', userAddress);
+
+        // まずブックマークデータを取得
+        const { data: bookmarkData, error: fetchError } = await supabase
           .from('user_bookmarks')
-          .select(`
-            *,
-            profile:user_profiles!user_bookmarks_bookmarked_address_fkey(
-              name,
-              bio,
-              avatar_url
-            )
-          `)
+          .select('*')
           .eq('user_address', userAddress.toLowerCase())
           .order('created_at', { ascending: false });
 
         if (fetchError) {
+          console.error('❌ ブックマーク取得エラー:', fetchError);
           throw fetchError;
         }
 
-        setBookmarks(data || []);
+        console.log('✅ ブックマーク取得成功:', bookmarkData?.length, '件');
+
+        // ブックマークされたユーザーのプロフィールを個別に取得
+        const bookmarksWithProfile = await Promise.all(
+          (bookmarkData || []).map(async (bookmark) => {
+            const { data: profileData } = await supabase
+              .from('user_profiles')
+              .select('display_name, bio, avatar_url')
+              .eq('tenant_id', 'default')
+              .eq('wallet_address', bookmark.bookmarked_address.toLowerCase())
+              .maybeSingle();
+
+            return {
+              ...bookmark,
+              profile: profileData ? {
+                name: profileData.display_name,
+                bio: profileData.bio,
+                avatar_url: profileData.avatar_url,
+              } : null,
+            };
+          })
+        );
+
+        console.log('✅ プロフィール情報付きブックマーク:', bookmarksWithProfile.length, '件');
+        setBookmarks(bookmarksWithProfile);
       } catch (err) {
-        console.error('ブックマーク取得エラー:', err);
+        console.error('❌ ブックマーク取得エラー:', err);
         setError(err as Error);
       } finally {
         setIsLoading(false);
