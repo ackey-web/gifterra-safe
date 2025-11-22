@@ -24,6 +24,7 @@ import { SentTransferMessageHistory } from '../components/SentTransferMessageHis
 import { NotificationBell } from '../components/NotificationBell';
 import { X402PaymentSection } from '../components/X402PaymentSection';
 import { UserSearchModal } from '../components/UserSearchModal';
+import { BookmarkUserModal } from '../components/BookmarkUserModal';
 import { MypageAssistant } from '../components/MypageAssistant';
 import type { UserRole } from '../types/profile';
 import flowImage from '../assets/flow.png';
@@ -140,6 +141,7 @@ export function MypagePage() {
   const [showWalletSetupModal, setShowWalletSetupModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showUserSearchModal, setShowUserSearchModal] = useState(false);
+  const [showBookmarkModal, setShowBookmarkModal] = useState(false);
   const [actualChainId, setActualChainId] = useState<number | undefined>(undefined);
   const [userRoles, setUserRoles] = useState<UserRole[]>([]); // 新規ユーザー通知用のロール情報
   const { user, authenticated } = usePrivy();
@@ -359,6 +361,8 @@ export function MypagePage() {
           setShowSettingsModal={setShowSettingsModal}
           showUserSearchModal={showUserSearchModal}
           setShowUserSearchModal={setShowUserSearchModal}
+          showBookmarkModal={showBookmarkModal}
+          setShowBookmarkModal={setShowBookmarkModal}
         />
       </div>
 
@@ -456,7 +460,7 @@ export function MypagePage() {
 // ========================================
 // [A] ヘッダー
 // ========================================
-function Header({ viewMode, setViewMode, isMobile, tenantRank, showSettingsModal, setShowSettingsModal, showUserSearchModal, setShowUserSearchModal }: {
+function Header({ viewMode, setViewMode, isMobile, tenantRank, showSettingsModal, setShowSettingsModal, showUserSearchModal, setShowUserSearchModal, showBookmarkModal, setShowBookmarkModal }: {
   viewMode: ViewMode;
   setViewMode: (mode: ViewMode) => void;
   isMobile: boolean;
@@ -465,6 +469,8 @@ function Header({ viewMode, setViewMode, isMobile, tenantRank, showSettingsModal
   setShowSettingsModal: (show: boolean) => void;
   showUserSearchModal: boolean;
   setShowUserSearchModal: (show: boolean) => void;
+  showBookmarkModal: boolean;
+  setShowBookmarkModal: (show: boolean) => void;
 }) {
   const disconnect = useDisconnect();
   const { logout: privyLogout, authenticated, user } = usePrivy();
@@ -718,6 +724,29 @@ function Header({ viewMode, setViewMode, isMobile, tenantRank, showSettingsModal
                   <span>ユーザー検索</span>
                 </button>
 
+                {/* ブックマークユーザー */}
+                <button
+                  onClick={() => {
+                    setShowBookmarkModal(true);
+                    setShowMobileMenu(false);
+                  }}
+                  style={{
+                    padding: '12px 16px',
+                    background: 'rgba(255,255,255,0.05)',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    borderRadius: 8,
+                    color: '#EAF2FF',
+                    fontSize: 14,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 12,
+                  }}
+                >
+                  <span style={{ fontSize: 18 }}>⭐</span>
+                  <span>ブックマークユーザー</span>
+                </button>
+
                 <button
                   onClick={() => {
                     setShowSettingsModal(true);
@@ -823,6 +852,16 @@ function Header({ viewMode, setViewMode, isMobile, tenantRank, showSettingsModal
         <UserSearchModal
           onClose={() => setShowUserSearchModal(false)}
           isMobile={isMobile}
+        />
+      )}
+
+      {/* ブックマークユーザーモーダル */}
+      {showBookmarkModal && (
+        <BookmarkUserModal
+          userAddress={address}
+          onClose={() => setShowBookmarkModal(false)}
+          isMobile={isMobile}
+          mode="view"
         />
       )}
     </div>
@@ -1231,7 +1270,7 @@ function FlowModeContent({
 }
 
 // 送金モード定義
-type SendMode = 'simple' | 'tenant' | 'bulk';
+type SendMode = 'simple' | 'tenant' | 'bulk' | 'bookmark';
 
 // 1. 送金フォーム
 function SendForm({ isMobile }: { isMobile: boolean }) {
@@ -1257,9 +1296,11 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
   const [sendMode, setSendMode] = useState<SendMode | null>(null); // null = 未選択
   const [showModeModal, setShowModeModal] = useState(false);
   const [showTenantModal, setShowTenantModal] = useState(false);
+  const [showBookmarkSelectModal, setShowBookmarkSelectModal] = useState(false); // ブックマーク選択モーダル
   const [showPrepModal, setShowPrepModal] = useState(false); // JPYC/MATIC準備モーダル
   const [balanceVisible, setBalanceVisible] = useState(true); // 残高の目隠し状態
   const [selectedTenant, setSelectedTenant] = useState<any>(null);
+  const [selectedBookmarkUser, setSelectedBookmarkUser] = useState<{ address: string; name?: string } | null>(null);
   const [address, setAddress] = useState('');
   const [amount, setAmount] = useState('');
   const [message, setMessage] = useState('');
@@ -1921,10 +1962,16 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
               {sendMode === 'simple' && '💸 シンプル送金'}
               {sendMode === 'tenant' && '🎁 テナントへチップ'}
               {sendMode === 'bulk' && '📤 一括送金'}
+              {sendMode === 'bookmark' && '⭐ ブックマークユーザーへ送金'}
             </div>
             {sendMode === 'tenant' && selectedTenant && (
               <div style={{ fontSize: isMobile ? 12 : 13, color: '#ffffff', fontWeight: 600, opacity: 0.95 }}>
                 {selectedTenant.icon} {selectedTenant.name}
+              </div>
+            )}
+            {sendMode === 'bookmark' && selectedBookmarkUser && (
+              <div style={{ fontSize: isMobile ? 12 : 13, color: '#ffffff', fontWeight: 600, opacity: 0.95 }}>
+                👤 {selectedBookmarkUser.name || 'User'}
               </div>
             )}
           </div>
@@ -1932,6 +1979,7 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
             onClick={() => {
               setSendMode(null);
               setSelectedTenant(null);
+              setSelectedBookmarkUser(null);
               setAddress('');
             }}
             style={{
@@ -1977,33 +2025,37 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
 
       <div style={{ marginBottom: 16 }}>
         <label style={{ display: 'block', fontSize: isMobile ? 13 : 14, color: '#1a1a1a', fontWeight: 700, marginBottom: 8 }}>
-          宛先アドレス {sendMode === 'tenant' && '（自動入力済み）'}
+          宛先アドレス {(sendMode === 'tenant' || sendMode === 'bookmark') && '（自動入力済み）'}
         </label>
         <div style={{ position: 'relative' }}>
           <input
             type="text"
-            placeholder={sendMode === 'tenant' ? 'テナントを選択してください' : '0x...'}
+            placeholder={
+              sendMode === 'tenant' ? 'テナントを選択してください' :
+              sendMode === 'bookmark' ? 'ブックマークユーザーを選択してください' :
+              '0x...'
+            }
             value={address}
             onChange={(e) => setAddress(e.target.value)}
-            disabled={sendMode === 'tenant'}
+            disabled={sendMode === 'tenant' || sendMode === 'bookmark'}
             style={{
               width: '100%',
               padding: isMobile ? '10px 12px' : '12px 14px',
-              paddingRight: sendMode !== 'tenant' ? (isMobile ? '50px' : '60px') : (isMobile ? '10px 12px' : '12px 14px'),
-              background: sendMode === 'tenant' ? '#f5f5f5' : '#ffffff',
+              paddingRight: (sendMode !== 'tenant' && sendMode !== 'bookmark') ? (isMobile ? '50px' : '60px') : (isMobile ? '10px 12px' : '12px 14px'),
+              background: (sendMode === 'tenant' || sendMode === 'bookmark') ? '#f5f5f5' : '#ffffff',
               border: '2px solid #3b82f6',
               borderRadius: 8,
               color: '#1a1a1a',
               fontSize: isMobile ? 14 : 15,
-              opacity: sendMode === 'tenant' ? 0.6 : 1,
-              cursor: sendMode === 'tenant' ? 'not-allowed' : 'text',
+              opacity: (sendMode === 'tenant' || sendMode === 'bookmark') ? 0.6 : 1,
+              cursor: (sendMode === 'tenant' || sendMode === 'bookmark') ? 'not-allowed' : 'text',
               boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)',
             }}
           />
         </div>
 
         {/* 受取人プロフィール表示 */}
-        {(sendMode === 'simple' || sendMode === 'bulk') && address && address.trim().length === 42 && (
+        {(sendMode === 'simple' || sendMode === 'bulk' || sendMode === 'bookmark') && address && address.trim().length === 42 && (
           <div style={{
             marginTop: 12,
             padding: isMobile ? '12px' : '14px',
@@ -2379,6 +2431,8 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
             setShowModeModal(false);
             if (mode === 'tenant') {
               setShowTenantModal(true);
+            } else if (mode === 'bookmark') {
+              setShowBookmarkSelectModal(true);
             }
           }}
         />
@@ -2395,6 +2449,26 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
             }
           }}
           onSelectTenant={handleTenantSelect}
+        />
+      )}
+
+      {/* ブックマークユーザー選択モーダル */}
+      {showBookmarkSelectModal && (
+        <BookmarkUserModal
+          userAddress={walletAddress}
+          isMobile={isMobile}
+          mode="select"
+          onClose={() => {
+            setShowBookmarkSelectModal(false);
+            if (!selectedBookmarkUser) {
+              setSendMode(null); // ユーザー未選択でキャンセルした場合はモードもリセット
+            }
+          }}
+          onSelectUser={(userAddress, userName) => {
+            setSelectedBookmarkUser({ address: userAddress, name: userName });
+            setAddress(userAddress);
+            setShowBookmarkSelectModal(false);
+          }}
         />
       )}
 
@@ -2760,6 +2834,13 @@ function SendModeModal({ isMobile, onClose, onSelectMode }: {
       title: 'シンプル送金',
       description: '個人アドレスへ自由に送金',
       features: ['自由なアドレス入力', 'kodomi記録なし'],
+    },
+    {
+      id: 'bookmark' as SendMode,
+      icon: '⭐',
+      title: 'ブックマークユーザーへ送金',
+      description: 'よく送金するユーザーから選択',
+      features: ['ブックマーク一覧から選択', '簡単・スピーディー', 'アドレス入力不要'],
     },
     {
       id: 'bulk' as SendMode,
