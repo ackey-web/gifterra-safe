@@ -2525,6 +2525,14 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
             setAddress(userAddress);
             setSendMode('bookmark'); // 送金タイプを自動的に設定
             setShowBookmarkSelectModal(false);
+
+            // プロフィール表示を確実にするため、少し遅延してスクロール
+            setTimeout(() => {
+              const sendFormSection = document.getElementById('send-form-section');
+              if (sendFormSection) {
+                sendFormSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }
+            }, 100);
           }}
         />
       )}
