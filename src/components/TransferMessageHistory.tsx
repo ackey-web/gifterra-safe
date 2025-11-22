@@ -462,9 +462,12 @@ export function TransferMessageHistory({
           display: 'flex',
           flexDirection: 'column',
           gap: isMobile ? 6 : 8,
-          height: isMobile ? '168px' : '204px', // 3件分の固定高さ (モバイル: 50*3 + 6*2 = 168px, PC: 60*3 + 8*2 = 204px)
+          // 5件分の固定高さ (モバイル: (50+6)*5-6 = 274px, PC: (60+8)*5-8 = 332px)
+          height: isMobile ? '274px' : '332px',
           overflowY: 'auto',
+          overflowX: 'hidden',
           paddingRight: 4,
+          WebkitOverflowScrolling: 'touch', // iOS向けスムーズスクロール
         }}
       >
         {filteredMessages.length === 0 ? (
@@ -497,7 +500,8 @@ export function TransferMessageHistory({
                 key={message.id}
                 style={{
                   position: 'relative',
-                  overflow: 'hidden',
+                  flexShrink: 0, // カードが縮小されないようにする
+                  overflow: 'hidden', // スワイプ機能のために必要
                 }}
               >
                 {/* スワイプ時の背景（既読アイコン） */}
