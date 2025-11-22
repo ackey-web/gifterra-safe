@@ -6,7 +6,7 @@ import { createPortal } from 'react-dom';
 import { useDisconnect, useSigner, useAddress, ConnectWallet, useChainId, useNetwork } from '@thirdweb-dev/react';
 import { usePrivy, useCreateWallet, useWallets } from '@privy-io/react-auth';
 import { ethers } from 'ethers';
-import { JPYC_TOKEN, TNHT_TOKEN, NHT_TOKEN, SBT_CONTRACT, CONTRACT_ABI, ERC20_MIN_ABI, getGifterraAddress } from '../contract';
+import { JPYC_TOKEN, ERC20_MIN_ABI } from '../contract';
 import { useTokenBalances } from '../hooks/useTokenBalances';
 import { useUserNFTs } from '../hooks/useUserNFTs';
 import { useTransactionHistory, type Transaction } from '../hooks/useTransactionHistory';
