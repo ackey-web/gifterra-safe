@@ -2116,6 +2116,38 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
         </div>
       )}
 
+      {/* 匿名送金拒否エラー */}
+      {isAnonymous && recipientProfile?.reject_anonymous_transfers && (
+        <div style={{
+          marginBottom: 16,
+          padding: isMobile ? '12px 14px' : '14px 16px',
+          background: 'rgba(239, 68, 68, 0.1)',
+          border: '2px solid rgba(239, 68, 68, 0.4)',
+          borderRadius: 12,
+        }}>
+          <div style={{
+            fontSize: isMobile ? 13 : 14,
+            fontWeight: 700,
+            marginBottom: 8,
+            color: '#dc2626',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+          }}>
+            <span>🚫</span>
+            <span>匿名送金はできません</span>
+          </div>
+          <div style={{
+            fontSize: isMobile ? 11 : 12,
+            lineHeight: 1.6,
+            color: '#991b1b',
+          }}>
+            この受信者は匿名送金を拒否しています。<br />
+            匿名送金トグルをOFFにして、通常の送金（氏名表示あり）に切り替えてください。
+          </div>
+        </div>
+      )}
+
       <div style={{ marginBottom: 16 }}>
         <label style={{ display: 'block', fontSize: isMobile ? 13 : 14, color: '#1a1a1a', fontWeight: 700, marginBottom: 8 }}>
           宛先アドレス {(sendMode === 'tenant' || sendMode === 'bookmark') && '（自動入力済み）'}
@@ -2492,11 +2524,11 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
           onClick={() => {
             handleSend();
           }}
-          disabled={isSending || !address || !amount}
+          disabled={isSending || !address || !amount || (isAnonymous && recipientProfile?.reject_anonymous_transfers)}
           style={{
             width: '100%',
             padding: isMobile ? '12px' : '14px',
-            background: isSending || !address || !amount
+            background: isSending || !address || !amount || (isAnonymous && recipientProfile?.reject_anonymous_transfers)
               ? '#cccccc'
               : `linear-gradient(135deg, ${currentToken.color} 0%, ${currentToken.color}dd 100%)`,
             border: 'none',
@@ -2504,13 +2536,13 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
             color: '#fff',
             fontSize: isMobile ? 14 : 15,
             fontWeight: 600,
-            cursor: isSending || !address || !amount ? 'not-allowed' : 'pointer',
+            cursor: isSending || !address || !amount || (isAnonymous && recipientProfile?.reject_anonymous_transfers) ? 'not-allowed' : 'pointer',
             transition: 'all 0.2s',
             boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
-            opacity: isSending || !address || !amount ? 0.6 : 1,
+            opacity: isSending || !address || !amount || (isAnonymous && recipientProfile?.reject_anonymous_transfers) ? 0.6 : 1,
           }}
         >
-          {isSending ? '送金中...' : '送金する'}
+          {isSending ? '送金中...' : (isAnonymous && recipientProfile?.reject_anonymous_transfers) ? '送金不可（匿名拒否）' : '送金する'}
         </button>
       )}
 

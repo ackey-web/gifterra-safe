@@ -9,6 +9,7 @@ export interface RecipientProfile {
   display_name: string | null;
   avatar_url: string | null;
   receive_message: string | null;
+  reject_anonymous_transfers: boolean; // 匿名送金拒否設定
   isGifterraUser: boolean;
 }
 
@@ -50,7 +51,7 @@ export function useRecipientProfile(address: string, debounceMs: number = 500) {
 
         const { data, error: fetchError } = await supabase
           .from('user_profiles')
-          .select('wallet_address, display_name, avatar_url, receive_message')
+          .select('wallet_address, display_name, avatar_url, receive_message, reject_anonymous_transfers')
           .eq('wallet_address', trimmedAddress.toLowerCase())
           .maybeSingle();
 
@@ -81,6 +82,7 @@ export function useRecipientProfile(address: string, debounceMs: number = 500) {
             display_name: data.display_name,
             avatar_url: data.avatar_url,
             receive_message: data.receive_message || 'ありがとうございました。',
+            reject_anonymous_transfers: data.reject_anonymous_transfers ?? false, // デフォルトはfalse
             isGifterraUser: true,
           });
         } else {
@@ -90,6 +92,7 @@ export function useRecipientProfile(address: string, debounceMs: number = 500) {
             display_name: null,
             avatar_url: null,
             receive_message: null,
+            reject_anonymous_transfers: false, // デフォルトはfalse（匿名許可）
             isGifterraUser: false,
           });
         }

@@ -54,6 +54,7 @@ export interface ExtendedProfile {
   roles?: UserRole[];             // ロール（複数選択可）
   location?: string;              // 所在地（20文字以内）
   cover_image_url?: string;       // カバー画像
+  reject_anonymous_transfers?: boolean; // 匿名送金拒否設定
 }
 
 /**

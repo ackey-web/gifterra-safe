@@ -22,6 +22,7 @@ interface ProfileEditModalProps {
     roles?: UserRole[];
     location?: string;
     show_wallet_address?: boolean;
+    reject_anonymous_transfers?: boolean;
   };
   walletAddress: string;
 }
@@ -47,6 +48,7 @@ export function ProfileEditModal({
   const [roles, setRoles] = useState<UserRole[]>(currentProfile.roles || []);
   const [location, setLocation] = useState(currentProfile.location || '');
   const [showWalletAddress, setShowWalletAddress] = useState(currentProfile.show_wallet_address !== false);
+  const [rejectAnonymousTransfers, setRejectAnonymousTransfers] = useState(currentProfile.reject_anonymous_transfers === true);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -234,6 +236,7 @@ export function ProfileEditModal({
           roles: roles.length > 0 ? roles : [],
           location: location.trim() || null,
           show_wallet_address: showWalletAddress,
+          reject_anonymous_transfers: rejectAnonymousTransfers,
           updated_at: new Date().toISOString(),
         }, {
           onConflict: 'wallet_address', // wallet_addressのユニーク制約に基づいてupsert
@@ -1051,7 +1054,7 @@ export function ProfileEditModal({
             </div>
 
             {/* ウォレットアドレス公開/非公開 */}
-            <div style={{ marginBottom: 20 }}>
+            <div style={{ marginBottom: 16 }}>
               <label
                 style={{
                   display: 'flex',
@@ -1122,6 +1125,82 @@ export function ProfileEditModal({
                   }}
                 >
                   ⚠️ 非公開にすると、プロフィールからのチップの受け取りができなくなります
+                </div>
+              )}
+            </div>
+
+            {/* 匿名送金拒否設定 */}
+            <div style={{ marginBottom: 20 }}>
+              <label
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  cursor: 'pointer',
+                  padding: isMobile ? '12px' : '14px 16px',
+                  background: 'rgba(255, 255, 255, 0.05)',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  borderRadius: 8,
+                  transition: 'all 0.2s',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)';
+                  e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.3)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+                  e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={rejectAnonymousTransfers}
+                  onChange={(e) => setRejectAnonymousTransfers(e.target.checked)}
+                  style={{
+                    width: 20,
+                    height: 20,
+                    cursor: 'pointer',
+                    accentColor: '#ef4444',
+                  }}
+                />
+                <div style={{ flex: 1 }}>
+                  <div
+                    style={{
+                      fontSize: isMobile ? 13 : 14,
+                      fontWeight: 600,
+                      color: '#EAF2FF',
+                      marginBottom: 4,
+                    }}
+                  >
+                    匿名送金を拒否する
+                  </div>
+                  <div
+                    style={{
+                      fontSize: isMobile ? 11 : 12,
+                      color: 'rgba(255, 255, 255, 0.6)',
+                      lineHeight: 1.4,
+                    }}
+                  >
+                    {rejectAnonymousTransfers
+                      ? '他のユーザーはあなたに匿名で送金できません'
+                      : '匿名送金を許可しています'}
+                  </div>
+                </div>
+              </label>
+              {rejectAnonymousTransfers && (
+                <div
+                  style={{
+                    marginTop: 8,
+                    padding: isMobile ? '8px 10px' : '10px 12px',
+                    background: 'rgba(59, 130, 246, 0.1)',
+                    border: '1px solid rgba(59, 130, 246, 0.2)',
+                    borderRadius: 6,
+                    fontSize: isMobile ? 11 : 12,
+                    color: 'rgba(147, 197, 253, 0.9)',
+                    lineHeight: 1.5,
+                  }}
+                >
+                  💡 送信者があなたに匿名で送金しようとすると、警告が表示され送金がブロックされます
                 </div>
               )}
             </div>
