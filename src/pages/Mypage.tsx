@@ -2529,7 +2529,7 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: 6,
+              gap: 8,
               cursor: 'pointer',
               fontSize: isMobile ? 13 : 14,
               color: '#666',
@@ -2538,16 +2538,35 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
           >
             <span>🕶️</span>
             <span>匿名送金</span>
-            <input
-              type="checkbox"
-              checked={isAnonymous}
-              onChange={(e) => setIsAnonymous(e.target.checked)}
+            {/* スライドトグル */}
+            <div
+              onClick={() => setIsAnonymous(!isAnonymous)}
               style={{
-                width: 16,
-                height: 16,
+                position: 'relative',
+                width: 44,
+                height: 24,
+                background: isAnonymous
+                  ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+                  : '#ddd',
+                borderRadius: 12,
+                transition: 'background 0.3s',
                 cursor: 'pointer',
               }}
-            />
+            >
+              <div
+                style={{
+                  position: 'absolute',
+                  top: 2,
+                  left: isAnonymous ? 22 : 2,
+                  width: 20,
+                  height: 20,
+                  background: '#fff',
+                  borderRadius: '50%',
+                  transition: 'left 0.3s',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                }}
+              />
+            </div>
           </label>
         </div>
       )}
