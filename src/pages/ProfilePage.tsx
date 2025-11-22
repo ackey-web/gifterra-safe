@@ -15,6 +15,7 @@ import { FollowListModal } from '../components/FollowListModal';
 import { TipModal } from '../components/TipModal';
 import { useRoleUsers } from '../hooks/useRoleUsers';
 import { RoleUsersModal } from '../components/RoleUsersModal';
+import { addBookmark, removeBookmark, isBookmarked } from '../hooks/useUserBookmarks';
 
 interface UserProfile {
   display_name: string;
@@ -42,6 +43,9 @@ export function ProfilePage() {
   const [showTipModal, setShowTipModal] = useState(false);
   const [showRoleUsersModal, setShowRoleUsersModal] = useState(false);
   const [selectedRole, setSelectedRole] = useState<UserRole | null>(null);
+  const [isUserBookmarked, setIsUserBookmarked] = useState(false);
+  const [isBookmarkLoading, setIsBookmarkLoading] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
   const { user } = usePrivy();
   const thirdwebAddress = useAddress(); // Thirdwebウォレット（MetaMaskなど）
 
@@ -119,6 +123,31 @@ export function ProfilePage() {
     fetchProfile();
   }, [walletAddress]);
 
+  // ブックマーク状態をチェック
+  useEffect(() => {
+    const checkBookmarkStatus = async () => {
+      if (!currentUserWalletAddress || !walletAddress || !isViewingOtherProfile) {
+        setIsUserBookmarked(false);
+        return;
+      }
+
+      const bookmarked = await isBookmarked(currentUserWalletAddress, walletAddress);
+      setIsUserBookmarked(bookmarked);
+    };
+
+    checkBookmarkStatus();
+  }, [currentUserWalletAddress, walletAddress, isViewingOtherProfile]);
+
+  // トースト通知の自動非表示
+  useEffect(() => {
+    if (toastMessage) {
+      const timer = setTimeout(() => {
+        setToastMessage(null);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [toastMessage]);
+
   const handleBack = () => {
     // ブラウザ履歴で一つ前の画面に戻る
     window.history.back();
@@ -143,6 +172,50 @@ export function ProfilePage() {
       }
     } catch (err) {
       throw err;
+    }
+  };
+
+  // ブックマーク追加・削除
+  const handleToggleBookmark = async () => {
+    if (!currentUserWalletAddress || !walletAddress) {
+      return;
+    }
+
+    setIsBookmarkLoading(true);
+
+    try {
+      if (isUserBookmarked) {
+        // ブックマークから削除
+        // まず現在のブックマークIDを取得する必要がある
+        const { data } = await supabase
+          .from('user_bookmarks')
+          .select('id')
+          .eq('user_address', currentUserWalletAddress.toLowerCase())
+          .eq('bookmarked_address', walletAddress.toLowerCase())
+          .single();
+
+        if (data) {
+          const result = await removeBookmark(data.id);
+          if (result.success) {
+            setIsUserBookmarked(false);
+            setToastMessage('ブックマークから除外しました');
+          }
+        }
+      } else {
+        // ブックマークに追加
+        const result = await addBookmark(currentUserWalletAddress, walletAddress);
+        if (result.success) {
+          setIsUserBookmarked(true);
+          setToastMessage('このユーザーをブックマークに追加しました');
+        } else if (result.error) {
+          setToastMessage(result.error);
+        }
+      }
+    } catch (err) {
+      console.error('ブックマーク操作エラー:', err);
+      setToastMessage('エラーが発生しました');
+    } finally {
+      setIsBookmarkLoading(false);
     }
   };
 
@@ -322,6 +395,45 @@ export function ProfilePage() {
                     borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
                   }}
                 >
+                  {/* ブックマークボタン */}
+                  <button
+                    onClick={handleToggleBookmark}
+                    disabled={isBookmarkLoading}
+                    style={{
+                      padding: isMobile ? '8px 16px' : '10px 20px',
+                      background: isUserBookmarked
+                        ? 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)'
+                        : 'linear-gradient(135deg, #94a3b8 0%, #64748b 100%)',
+                      border: 'none',
+                      borderRadius: 8,
+                      color: '#fff',
+                      fontSize: isMobile ? 18 : 20,
+                      fontWeight: 600,
+                      cursor: isBookmarkLoading ? 'not-allowed' : 'pointer',
+                      transition: 'all 0.2s',
+                      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      opacity: isBookmarkLoading ? 0.6 : 1,
+                      minWidth: isMobile ? 44 : 48,
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!isBookmarkLoading) {
+                        e.currentTarget.style.transform = 'scale(1.05)';
+                        e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.3)';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!isBookmarkLoading) {
+                        e.currentTarget.style.transform = 'scale(1)';
+                        e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.2)';
+                      }
+                    }}
+                  >
+                    ⭐
+                  </button>
+
                   {/* チップボタン（ウォレットアドレスが公開されている場合のみ表示） */}
                   {profile?.show_wallet_address !== false && (
                     <button
@@ -801,6 +913,31 @@ export function ProfilePage() {
         isLoading={isRoleUsersLoading}
         isMobile={isMobile}
       />
+
+      {/* トースト通知 */}
+      {toastMessage && (
+        <div
+          style={{
+            position: 'fixed',
+            bottom: isMobile ? 80 : 40,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            background: 'rgba(0, 0, 0, 0.9)',
+            color: '#fff',
+            padding: isMobile ? '12px 20px' : '14px 24px',
+            borderRadius: 8,
+            fontSize: isMobile ? 13 : 14,
+            fontWeight: 500,
+            boxShadow: '0 4px 16px rgba(0, 0, 0, 0.3)',
+            zIndex: 10001,
+            maxWidth: '90%',
+            textAlign: 'center',
+            animation: 'fadeIn 0.3s ease-in-out',
+          }}
+        >
+          {toastMessage}
+        </div>
+      )}
     </div>
   );
 }
