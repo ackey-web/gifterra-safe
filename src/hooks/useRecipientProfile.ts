@@ -47,24 +47,11 @@ export function useRecipientProfile(address: string, debounceMs: number = 500) {
 
     const timeoutId = setTimeout(async () => {
       try {
-        console.log('🔍 Fetching profile for address:', trimmedAddress.toLowerCase());
-
         const { data, error: fetchError } = await supabase
           .from('user_profiles')
           .select('wallet_address, display_name, avatar_url, receive_message, reject_anonymous_transfers')
           .eq('wallet_address', trimmedAddress.toLowerCase())
           .maybeSingle();
-
-        console.log('📊 Query result:', { data, error: fetchError });
-
-        if (fetchError) {
-          console.error('❌ Supabase error details:', {
-            message: fetchError.message,
-            code: fetchError.code,
-            details: fetchError.details,
-            hint: fetchError.hint
-          });
-        }
 
         if (fetchError) {
           console.error('Failed to fetch recipient profile:', fetchError);
@@ -76,7 +63,6 @@ export function useRecipientProfile(address: string, debounceMs: number = 500) {
 
         if (data) {
           // GIFTERRAユーザーが見つかった
-          console.log('✅ GIFTERRA user found!', data);
           setProfile({
             wallet_address: data.wallet_address,
             display_name: data.display_name,

@@ -51,7 +51,6 @@ export function TransferMessageHistory({
 
         // 新規ブロックチェーン受信があればプッシュ通知とバッジを更新
         newMessages.forEach((msg) => {
-          console.log('🔔 New blockchain transaction detected:', msg);
           sendJpycReceivedNotification(
             msg.amount,
             msg.from_address,
@@ -122,7 +121,6 @@ export function TransferMessageHistory({
       try {
         // データベースを更新（ブロックチェーントランザクションの場合はlocalStorageに保存）
         await markMessageAsRead(message.id, walletAddress);
-        console.log('✅ Message marked as read:', message.id);
 
         // ローカル状態を即座に更新（リアルタイム更新を待たずに反映）
         setMessages(prevMessages =>
@@ -161,7 +159,6 @@ export function TransferMessageHistory({
     if (unreadMessages.length > 0) {
       try {
         await markMultipleMessagesAsRead(unreadMessages, walletAddress);
-        console.log(`✅ Marked ${unreadMessages.length} messages as read`);
 
         // ローカル状態を即座に更新
         setMessages(prevMessages =>
@@ -197,7 +194,6 @@ export function TransferMessageHistory({
     if (swipeOffset < -50 && !message.is_read) {
       try {
         await markMessageAsRead(message.id, walletAddress);
-        console.log('✅ Message marked as read via swipe:', message.id);
 
         // ローカル状態を即座に更新
         setMessages(prevMessages =>
