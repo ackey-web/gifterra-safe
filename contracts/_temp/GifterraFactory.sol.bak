@@ -175,51 +175,15 @@ contract GifterraFactory is AccessControl, ReentrancyGuard, Pausable {
 
         uint256 tenantId = nextTenantId++;
 
-        // コントラクトセットをデプロイ
-        TenantContracts memory contracts = _deployTenantContracts(
-            tenantName,
-            admin,
-            rewardTokenAddress,
-            tipWalletAddress,
-            rankPlan
-        );
-
-        // テナント情報を保存
-        _saveTenantInfo(tenantId, admin, tenantName, contracts);
-
-        // 手数料徴収
-        totalFeesCollected += msg.value;
-
-        emit TenantCreated(
-            tenantId,
-            admin,
-            tenantName,
-            contracts.gifterra,
-            contracts.rewardNFT,
-            contracts.payLitter,
-            contracts.flagNFT,
-            contracts.randomRewardEngine
-        );
-
-        return tenantId;
-    }
-
-    /**
-     * @notice テナントコントラクトセットをデプロイ
-     * @dev internal関数（Stack too deep対策）
-     */
-    function _deployTenantContracts(
-        string memory tenantName,
-        address admin,
-        address rewardTokenAddress,
-        address tipWalletAddress,
-        RankPlanRegistry.PlanType rankPlan
-    ) internal returns (TenantContracts memory) {
         // 1. Gifterra (SBT) デプロイ
         Gifterra gifterra = new Gifterra(rewardTokenAddress, tipWalletAddress);
 
+        // 1-1. ランクプランで初期化（固定プラン制）
+        // CUSTOM プランの場合はスキップ（手動設定を許可）
         if (rankPlanRegistry != address(0) && rankPlan != RankPlanRegistry.PlanType.CUSTOM) {
             gifterra.initializeWithPlan(rankPlanRegistry, rankPlan);
+
+            // プラン使用回数を記録
             RankPlanRegistry(rankPlanRegistry).recordPlanUsage(rankPlan);
         }
 
@@ -231,86 +195,50 @@ contract GifterraFactory is AccessControl, ReentrancyGuard, Pausable {
             "REWARD",
             "https://api.gifterra.com/metadata/",
             admin,
-            address(0),
-            0,
-            0
+            address(0),  // distributor は後で設定
+            0,           // maxSupply無制限
+            0            // mintPrice
         );
 
-        // 3-5. 残りのコントラクトデプロイ
-        return _deployRemainingContracts(
-            tenantName,
-            admin,
-            rewardTokenAddress,
-            address(gifterra),
-            address(rewardNFT)
-        );
-    }
-
-    /**
-     * @notice 残りのコントラクトをデプロイ
-     * @dev internal関数（Stack too deep対策）
-     */
-    function _deployRemainingContracts(
-        string memory tenantName,
-        address admin,
-        address rewardTokenAddress,
-        address gifterraAddr,
-        address rewardNFTAddr
-    ) internal returns (TenantContracts memory) {
-        // 3. PaySplitter
+        // 3. GifterraPaySplitter デプロイ
         address[] memory payees = new address[](1);
         uint256[] memory shares = new uint256[](1);
         payees[0] = admin;
         shares[0] = 100;
         GifterraPaySplitter payLitter = new GifterraPaySplitter(payees, shares);
 
-        // 4. FlagNFT
+        // 4. FlagNFT デプロイ
         FlagNFT flagNFT = new FlagNFT(
             string(abi.encodePacked(tenantName, " Flag NFT")),
             "FNFT",
             "https://api.gifterra.com/flagnft/",
-            admin,
-            0
+            admin
         );
 
-        // 5. RandomRewardEngine
+        // 5. RandomRewardEngine デプロイ
         RandomRewardEngine randomEngine = new RandomRewardEngine(
-            gifterraAddr,
-            rewardNFTAddr,
+            address(gifterra),
+            address(rewardNFT),
             rewardTokenAddress,
             admin
         );
 
-        // 権限設定
-        RewardNFT_v2(rewardNFTAddr).grantRole(
-            RewardNFT_v2(rewardNFTAddr).DISTRIBUTOR_ROLE(),
-            address(randomEngine)
-        );
+        // 権限設定：RandomRewardEngine に RewardNFT の DISTRIBUTOR_ROLE 付与
+        bytes32 DISTRIBUTOR_ROLE = rewardNFT.DISTRIBUTOR_ROLE();
+        rewardNFT.grantRole(DISTRIBUTOR_ROLE, address(randomEngine));
 
-        return TenantContracts({
-            gifterra: gifterraAddr,
-            rewardNFT: rewardNFTAddr,
-            payLitter: address(payLitter),
-            flagNFT: address(flagNFT),
-            randomRewardEngine: address(randomEngine)
-        });
-    }
-
-    /**
-     * @notice テナント情報を保存
-     * @dev internal関数（Stack too deep対策）
-     */
-    function _saveTenantInfo(
-        uint256 tenantId,
-        address admin,
-        string memory tenantName,
-        TenantContracts memory contracts
-    ) internal {
+        // テナント情報保存
         tenants[tenantId] = TenantInfo({
             tenantId: tenantId,
             admin: admin,
             tenantName: tenantName,
-            contracts: contracts,
+            contracts: TenantContracts({
+                gifterra: address(gifterra),
+                rewardNFT: address(rewardNFT),
+                payLitter: address(payLitter),
+                flagNFT: address(flagNFT),
+                randomRewardEngine: address(randomEngine)
+            }),
             createdAt: block.timestamp,
             lastActivityAt: block.timestamp,
             isActive: true,
@@ -321,11 +249,28 @@ contract GifterraFactory is AccessControl, ReentrancyGuard, Pausable {
         totalTenants++;
         activeTenants++;
 
-        isTenantContract[contracts.gifterra] = true;
-        isTenantContract[contracts.rewardNFT] = true;
-        isTenantContract[contracts.payLitter] = true;
-        isTenantContract[contracts.flagNFT] = true;
-        isTenantContract[contracts.randomRewardEngine] = true;
+        // デプロイされたコントラクトをマーク
+        isTenantContract[address(gifterra)] = true;
+        isTenantContract[address(rewardNFT)] = true;
+        isTenantContract[address(payLitter)] = true;
+        isTenantContract[address(flagNFT)] = true;
+        isTenantContract[address(randomEngine)] = true;
+
+        // 手数料徴収
+        totalFeesCollected += msg.value;
+
+        emit TenantCreated(
+            tenantId,
+            admin,
+            tenantName,
+            address(gifterra),
+            address(rewardNFT),
+            address(payLitter),
+            address(flagNFT),
+            address(randomEngine)
+        );
+
+        return tenantId;
     }
 
     // ========================================

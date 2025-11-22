@@ -3,10 +3,11 @@ pragma solidity ^0.8.19;
 
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
-import "@openzeppelin/contracts/token/common/ERC2981.sol";
+import "@openzeppelin/contracts/token/common/ERC2981.sol"; // OZ実装に移行
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
+import "@openzeppelin/contracts/interfaces/IERC4906.sol"; // メタデータ更新イベント
 
 /**
  * @title RewardNFT v2
@@ -40,9 +41,10 @@ import "@openzeppelin/contracts/security/Pausable.sol";
 contract RewardNFT_v2 is
     ERC721URIStorage,
     AccessControl,
+    ERC2981, // OZ実装に移行
     ReentrancyGuard,
     Pausable,
-    ERC2981
+    IERC4906 // メタデータ更新イベント
 {
     // ロール定義
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
@@ -314,6 +316,7 @@ contract RewardNFT_v2 is
     /**
      * @notice 自動配布ミント（v1互換）
      * @dev 非推奨：distributeMintBySkuを使用してください
+     * @deprecated Use distributeMintBySku instead
      */
     function distributeMint(
         address to,
@@ -351,6 +354,7 @@ contract RewardNFT_v2 is
     /**
      * @notice バッチ自動配布ミント（v1互換）
      * @dev 非推奨：distributeMintBatchBySkuを使用してください
+     * @deprecated Use distributeMintBatchBySku instead
      */
     function distributeMintBatch(
         address[] calldata recipients,
@@ -401,6 +405,7 @@ contract RewardNFT_v2 is
     /**
      * @notice 有料ミント（v1互換）
      * @dev 非推奨：publicMintV2を使用してください（フィッシング対策）
+     * @deprecated Use publicMintV2 instead - user-provided URI is a phishing risk
      */
     function publicMint(string memory tokenURI)
         external payable whenNotPaused nonReentrant {
@@ -774,7 +779,8 @@ contract RewardNFT_v2 is
 
     function supportsInterface(bytes4 interfaceId)
         public view virtual override(ERC721URIStorage, AccessControl, ERC2981) returns (bool) {
-        return super.supportsInterface(interfaceId);
+        return interfaceId == type(IERC4906).interfaceId ||
+               super.supportsInterface(interfaceId);
     }
 
     function totalSupply() public view returns (uint256) {

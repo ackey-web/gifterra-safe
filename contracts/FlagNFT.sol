@@ -572,6 +572,13 @@ contract FlagNFT is ERC721, AccessControl, Pausable, ReentrancyGuard, IERC4906 {
         return maxSupply == 0 || _nextTokenId <= maxSupply;
     }
 
+    /**
+     * @dev トークンが存在するかチェック（ownerOfがrevertすることで確認）
+     */
+    function _requireOwned(uint256 tokenId) internal view {
+        ownerOf(tokenId); // トークンが存在しない場合revert
+    }
+
     function _countSetBits(uint256 flags) internal pure returns (uint256 count) {
         while (flags != 0) {
             count += flags & 1;

@@ -61,7 +61,7 @@ contract Gifterra is ERC721Enumerable, Ownable {
     constructor(
         address _tokenAddress,
         address _tipWallet
-    ) ERC721("Gifterra Supporter SBT", "GFTS") Ownable(msg.sender) {
+    ) ERC721("Gifterra Supporter SBT", "GFTS") {
         rewardToken = IERC20(_tokenAddress);
         tipWallet = _tipWallet;
     }
@@ -295,19 +295,19 @@ contract Gifterra is ERC721Enumerable, Ownable {
     // SBT特性（譲渡・承認無効）
     // ========================================
 
-    function approve(address, uint256) public pure override {
+    function approve(address, uint256) public pure override(ERC721, IERC721) {
         revert("SBT non-transferable");
     }
 
-    function setApprovalForAll(address, bool) public pure override {
+    function setApprovalForAll(address, bool) public pure override(ERC721, IERC721) {
         revert("SBT non-transferable");
     }
 
-    function transferFrom(address, address, uint256) public pure override {
+    function transferFrom(address, address, uint256) public pure override(ERC721, IERC721) {
         revert("SBT non-transferable");
     }
 
-    function safeTransferFrom(address, address, uint256) public pure override {
+    function safeTransferFrom(address, address, uint256) public pure override(ERC721, IERC721) {
         revert("SBT non-transferable");
     }
 
