@@ -76,83 +76,121 @@
 
 ## デプロイ手順
 
-### Phase 1: Factory デプロイ
+### Phase 1: 完全デプロイ（RankPlanRegistry + GifterraFactory）
 
-#### 1.1 Hardhat スクリプト作成
+#### 1.1 環境変数設定
 
-`scripts/deploy-factory.js`:
-
-```javascript
-const { ethers } = require("hardhat");
-
-async function main() {
-  const [deployer] = await ethers.getSigners();
-  console.log("Deploying Factory with account:", deployer.address);
-
-  // 手数料受取アドレス（運営ウォレット）
-  const feeRecipient = process.env.FEE_RECIPIENT || deployer.address;
-
-  // Factory デプロイ
-  const GifterraFactory = await ethers.getContractFactory("GifterraFactory");
-  const factory = await GifterraFactory.deploy(feeRecipient);
-  await factory.waitForDeployment();
-
-  const factoryAddress = await factory.getAddress();
-  console.log("✅ GifterraFactory deployed to:", factoryAddress);
-
-  // 初期設定確認
-  const deploymentFee = await factory.deploymentFee();
-  const totalTenants = await factory.totalTenants();
-
-  console.log("Deployment Fee:", ethers.formatEther(deploymentFee), "ETH");
-  console.log("Total Tenants:", totalTenants.toString());
-
-  // Verify 用データ保存
-  console.log("\n--- Verification Command ---");
-  console.log(`npx hardhat verify --network ${network.name} ${factoryAddress} ${feeRecipient}`);
-
-  return { factory: factoryAddress, feeRecipient };
-}
-
-main()
-  .then(() => process.exit(0))
-  .catch((error) => {
-    console.error(error);
-    process.exit(1);
-  });
-```
-
-#### 1.2 実行
+プロジェクトルートに `.env` ファイルを作成：
 
 ```bash
-# テストネット（Polygon Amoy）
-npx hardhat run scripts/deploy-factory.js --network amoy
+# デプロイアカウント
+PRIVATE_KEY=your_private_key_here
 
-# メインネット（Polygon Mainnet）
-npx hardhat run scripts/deploy-factory.js --network polygon
+# ネットワーク RPC URLs
+AMOY_RPC_URL=https://rpc-amoy.polygon.technology/
+POLYGON_RPC_URL=https://polygon-rpc.com/
 
-# ローカル（Anvil/Hardhat）
-npx hardhat run scripts/deploy-factory.js --network localhost
+# オプション: カスタム手数料受取人（デフォルト: デプロイヤーアドレス）
+FEE_RECIPIENT=0x...
+
+# オプション: カスタムデプロイ手数料（デフォルト: Polygon=10 MATIC, Ethereum=0.1 ETH）
+DEPLOYMENT_FEE=10
+
+# ブロックエクスプローラー API キー（検証用）
+POLYGONSCAN_API_KEY=your_polygonscan_api_key
 ```
+
+#### 1.2 必要資金
+
+デプロイアカウントに以下を用意：
+
+- **Polygon Amoy Testnet**: ~5-10 MATIC（ガス代用）
+  - [Polygon Faucet](https://faucet.polygon.technology/) から取得
+- **Polygon Mainnet**: ~20-30 MATIC（ガス代用）
+
+#### 1.3 コンパイル確認
+
+```bash
+npx hardhat compile
+```
+
+期待される出力：
+```
+Compiled 40 Solidity files successfully (evm target: paris).
+```
+
+#### 1.4 デプロイ実行
+
+**推奨: 完全デプロイスクリプト使用**
+
+`scripts/deploy-complete-factory.js` を使用すると、RankPlanRegistry と GifterraFactory を同時にデプロイし、自動的にリンクします。
+
+```bash
+# ローカルテスト（Hardhat Network）
+# ターミナル1: ローカルノード起動
+npx hardhat node
+
+# ターミナル2: デプロイ実行
+npx hardhat run scripts/deploy-complete-factory.js --network localhost
+
+# Polygon Amoy テストネット
+npx hardhat run scripts/deploy-complete-factory.js --network polygon_amoy
+
+# Polygon Mainnet（本番環境）
+npx hardhat run scripts/deploy-complete-factory.js --network polygon_mainnet
+```
+
+#### 1.5 デプロイ出力
+
+スクリプトは以下の処理を実行します：
+
+1. **RankPlanRegistry デプロイ** - 3つのデフォルトプラン初期化
+   - STUDIO (3段階): Beginner → Supporter → Champion
+   - STUDIO PRO (5段階): Beginner → Bronze → Silver → Gold → Platinum
+   - STUDIO PRO MAX (10段階): Beginner → Bronze → Silver → Gold → Platinum → Diamond → Ruby → Sapphire → Emerald → Legend
+
+2. **GifterraFactory デプロイ** - 設定済みデプロイ手数料
+
+3. **コントラクトリンク** - `factory.setRankPlanRegistry()` を自動実行
+
+4. **デプロイ情報保存** - `deployments/complete-factory-{network}-{timestamp}.json` に保存
 
 **推奨ガス代（Polygon）**:
-- Factory デプロイ: 約 $0.10-0.50（~2M gas @ 100 Gwei, MATIC $0.9）
+- RankPlanRegistry デプロイ: 約 $0.20-0.80（~3M gas @ 100 Gwei, MATIC $0.9）
+- Factory デプロイ: 約 $0.30-1.00（~3M gas @ 100 Gwei, MATIC $0.9）
 - テナント作成: 約 $0.50-3.00（~8M gas @ 100 Gwei, MATIC $0.9）
 
-#### 1.3 コントラクト検証
+#### 1.6 コントラクト検証
+
+デプロイスクリプトが出力する検証コマンドを実行：
 
 ```bash
-# Polygon Amoy
-npx hardhat verify --network amoy \
-  0x... \  # Factory アドレス
-  "0x..." \  # Fee Recipient アドレス
-  "10000000000000000000"  # Deployment Fee (10 MATIC in wei)
+# RankPlanRegistry 検証
+npx hardhat verify --network polygon_amoy 0xRANK_PLAN_REGISTRY_ADDRESS
 
-# Polygon Mainnet
-npx hardhat verify --network polygon \
-  0x... \
-  "0x..." \
-  "10000000000000000000"
+# GifterraFactory 検証
+npx hardhat verify --network polygon_amoy 0xFACTORY_ADDRESS "0xFEE_RECIPIENT" "10000000000000000000"
+```
+
+**注意**: `deploymentFee` は wei 単位（例: 10000000000000000000 = 10 MATIC）
+
+#### 1.7 フロントエンド設定更新
+
+`.env` ファイルに追加：
+
+```bash
+VITE_RANK_PLAN_REGISTRY_ADDRESS=0x...
+VITE_GIFTERRA_FACTORY_ADDRESS=0x...
+VITE_NETWORK_CHAIN_ID=80002
+```
+
+`src/config/contracts.ts` を更新：
+
+```typescript
+export const CONTRACT_ADDRESSES = {
+  rankPlanRegistry: '0x...',  // デプロイされた RankPlanRegistry
+  gifterraFactory: '0x...',   // デプロイされた GifterraFactory
+}
 ```
 
 ---
@@ -202,6 +240,7 @@ const tx = await factory.createTenant(
   "0xCafeAdmin",                    // admin
   "0xRewardToken",                  // rewardTokenAddress (Polygon上のERC20)
   "0xCafeTipWallet",                // tipWalletAddress
+  0,                                // rankPlan (0=STUDIO, 1=STUDIO_PRO, 2=STUDIO_PRO_MAX)
   { value: ethers.parseEther("10") }  // デプロイ手数料（10 MATIC）
 );
 
@@ -220,7 +259,7 @@ const {
   gifterra,
   rewardNFT,
   payLitter,
-  journeyPass,
+  flagNFT,
   randomRewardEngine
 } = event.args;
 
@@ -228,7 +267,7 @@ console.log("Tenant ID:", tenantId);
 console.log("Gifterra (SBT):", gifterra);
 console.log("RewardNFT_v2:", rewardNFT);
 console.log("PaySplitter:", payLitter);
-console.log("JourneyPass:", journeyPass);
+console.log("FlagNFT:", flagNFT);
 console.log("RandomRewardEngine:", randomRewardEngine);
 ```
 
