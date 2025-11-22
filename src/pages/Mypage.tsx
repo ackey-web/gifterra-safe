@@ -6,7 +6,7 @@ import { createPortal } from 'react-dom';
 import { useDisconnect, useSigner, useAddress, ConnectWallet, useChainId, useNetwork } from '@thirdweb-dev/react';
 import { usePrivy, useCreateWallet, useWallets } from '@privy-io/react-auth';
 import { ethers } from 'ethers';
-import { JPYC_TOKEN, ERC20_MIN_ABI } from '../contract';
+import { JPYC_TOKEN, NHT_TOKEN, CONTRACT_ABI, ERC20_MIN_ABI, getGifterraAddress } from '../contract';
 import { useTokenBalances } from '../hooks/useTokenBalances';
 import { useUserNFTs } from '../hooks/useUserNFTs';
 import { useTransactionHistory, type Transaction } from '../hooks/useTransactionHistory';
@@ -1314,6 +1314,7 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
   const [showBookmarkSelectModal, setShowBookmarkSelectModal] = useState(false); // ブックマーク選択モーダル
   const [showPrepModal, setShowPrepModal] = useState(false); // JPYC/MATIC準備モーダル
   const [balanceVisible, setBalanceVisible] = useState(true); // 残高の目隠し状態
+  const [isAnonymous, setIsAnonymous] = useState(false); // 匿名送金トグル
   const [selectedTenant, setSelectedTenant] = useState<any>(null);
   const [selectedBookmarkUser, setSelectedBookmarkUser] = useState<{ address: string; name?: string } | null>(null);
   const [address, setAddress] = useState('');
@@ -1668,7 +1669,7 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
             txHash: receipt.transactionHash,
             tokenSymbol: 'POL',
             tenantId: 'default',
-            isAnonymous: sendMode === 'anonymous', // 匿名送金フラグ
+            isAnonymous: isAnonymous, // 匿名送金フラグ
           });
         } catch (saveError) {
           console.error('❌ 送金メッセージの保存に失敗:', saveError);
@@ -1769,7 +1770,7 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
             amount: amount,
             message: message || undefined,
             txHash: receipt.transactionHash,
-            isAnonymous: sendMode === 'anonymous', // 匿名送金フラグ
+            isAnonymous: isAnonymous, // 匿名送金フラグ
           });
           saveSuccess = true;
           console.log('✅ Transfer message saved successfully');
@@ -2083,7 +2084,7 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
       )}
 
       {/* 匿名送金時の警告メッセージ */}
-      {sendMode === 'anonymous' && (
+      {isAnonymous && (
         <div style={{
           marginBottom: 16,
           padding: isMobile ? '12px 14px' : '14px 16px',
@@ -2511,6 +2512,44 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
         >
           {isSending ? '送金中...' : '送金する'}
         </button>
+      )}
+
+      {/* 匿名送金トグル */}
+      {sendMode !== 'bulk' && sendMode !== 'tenant' && (
+        <div
+          style={{
+            marginTop: 12,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'flex-end',
+            gap: 8,
+          }}
+        >
+          <label
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              cursor: 'pointer',
+              fontSize: isMobile ? 13 : 14,
+              color: '#666',
+              userSelect: 'none',
+            }}
+          >
+            <span>🕶️</span>
+            <span>匿名送金</span>
+            <input
+              type="checkbox"
+              checked={isAnonymous}
+              onChange={(e) => setIsAnonymous(e.target.checked)}
+              style={{
+                width: 16,
+                height: 16,
+                cursor: 'pointer',
+              }}
+            />
+          </label>
+        </div>
       )}
 
       {/* 送金モード選択モーダル */}
@@ -2942,14 +2981,6 @@ function SendModeModal({ isMobile, onClose, onSelectMode }: {
       title: 'シンプル送金',
       description: '個人アドレスへ自由に送金',
       features: ['自由なアドレス入力', 'kodomi記録なし'],
-    },
-    {
-      id: 'anonymous' as SendMode,
-      icon: '🕶️',
-      title: '匿名送金',
-      description: '送信者を伏せて送金',
-      features: ['アドレス非表示', 'メッセージ送信可', 'プライバシー保護'],
-      badge: { text: 'NEW', color: '#10b981' },
     },
     {
       id: 'bookmark' as SendMode,

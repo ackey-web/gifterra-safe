@@ -471,9 +471,9 @@ export function TransferMessageHistory({
                 height: isMobile ? 36 : 42,
                 borderRadius: '50%',
                 overflow: 'hidden',
-                background: message.sender_profile?.icon_url
-                  ? 'transparent'
-                  : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                background: message.is_anonymous || !message.sender_profile?.icon_url
+                  ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+                  : 'transparent',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -482,7 +482,9 @@ export function TransferMessageHistory({
                 border: '2px solid rgba(255, 255, 255, 0.1)',
               }}
             >
-              {message.sender_profile?.icon_url ? (
+              {message.is_anonymous ? (
+                '🕶️'
+              ) : message.sender_profile?.icon_url ? (
                 <img
                   src={message.sender_profile.icon_url}
                   alt="送信者"
@@ -586,8 +588,8 @@ export function TransferMessageHistory({
                 flexShrink: 0,
               }}
             >
-              {/* Polygonscanリンク */}
-              {message.tx_hash && (
+              {/* Polygonscanリンク（匿名送金の場合は非表示） */}
+              {message.tx_hash && !message.is_anonymous && (
                 <a
                   href={`https://polygonscan.com/tx/${message.tx_hash}`}
                   target="_blank"
@@ -748,36 +750,44 @@ export function TransferMessageHistory({
                   {/* プロフィール画像（クリック可能 - プロフィールページに遷移） */}
                   <div
                     onClick={() => {
-                      // 送信者のプロフィールページに遷移
-                      window.location.href = `/profile/${selectedMessage.from_address}`;
+                      // 匿名送金の場合はプロフィールページに遷移しない
+                      if (!selectedMessage.is_anonymous) {
+                        window.location.href = `/profile/${selectedMessage.from_address}`;
+                      }
                     }}
                     style={{
                       width: isMobile ? 60 : 70,
                       height: isMobile ? 60 : 70,
                       borderRadius: '50%',
                       overflow: 'hidden',
-                      background: selectedMessage.sender_profile?.icon_url
-                        ? 'transparent'
-                        : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                      background: selectedMessage.is_anonymous || !selectedMessage.sender_profile?.icon_url
+                        ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+                        : 'transparent',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
                       fontSize: isMobile ? 28 : 32,
-                      cursor: 'pointer',
+                      cursor: selectedMessage.is_anonymous ? 'default' : 'pointer',
                       border: '3px solid rgba(255, 255, 255, 0.2)',
                       transition: 'all 0.2s',
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.transform = 'scale(1.05)';
-                      e.currentTarget.style.borderColor = 'rgba(102, 126, 234, 0.6)';
+                      if (!selectedMessage.is_anonymous) {
+                        e.currentTarget.style.transform = 'scale(1.05)';
+                        e.currentTarget.style.borderColor = 'rgba(102, 126, 234, 0.6)';
+                      }
                     }}
                     onMouseLeave={(e) => {
-                      e.currentTarget.style.transform = 'scale(1)';
-                      e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+                      if (!selectedMessage.is_anonymous) {
+                        e.currentTarget.style.transform = 'scale(1)';
+                        e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+                      }
                     }}
-                    title="プロフィールを見る"
+                    title={selectedMessage.is_anonymous ? undefined : "プロフィールを見る"}
                   >
-                    {selectedMessage.sender_profile?.icon_url ? (
+                    {selectedMessage.is_anonymous ? (
+                      '🕶️'
+                    ) : selectedMessage.sender_profile?.icon_url ? (
                       <img
                         src={selectedMessage.sender_profile.icon_url}
                         alt="送信者"
@@ -996,8 +1006,8 @@ export function TransferMessageHistory({
                   </div>
                 )}
 
-                {/* Polygonscanリンク */}
-                {selectedMessage.tx_hash && (
+                {/* Polygonscanリンク（匿名送金の場合は非表示） */}
+                {selectedMessage.tx_hash && !selectedMessage.is_anonymous && (
                   <a
                     href={`https://polygonscan.com/tx/${selectedMessage.tx_hash}`}
                     target="_blank"
