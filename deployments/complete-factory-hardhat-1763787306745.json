@@ -1,0 +1,58 @@
+{
+  "network": "hardhat",
+  "chainId": 1337,
+  "deployer": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+  "timestamp": "2025-11-22T04:55:06.745Z",
+  "contracts": {
+    "rankPlanRegistry": "0x5FbDB2315678afecb367f032d93F642f64180aa3",
+    "factory": "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512",
+    "feeRecipient": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
+  },
+  "config": {
+    "deploymentFee": "0.01",
+    "totalTenants": "0"
+  },
+  "roles": {
+    "DEFAULT_ADMIN_ROLE": "0x0000000000000000000000000000000000000000000000000000000000000000",
+    "SUPER_ADMIN_ROLE": "0x7613a25ecc738585a232ad50a301178f12b3ba8887d13e138b523c4269c47689",
+    "OPERATOR_ROLE": "0x97667070c54ef182b0f5858b034beac1b6f3089aa2d3188bb1e8929f4fa9b929"
+  },
+  "plans": {
+    "studio": {
+      "name": "STUDIO Plan",
+      "stages": "3",
+      "rankNames": [
+        "Beginner",
+        "Supporter",
+        "Champion"
+      ]
+    },
+    "studioPro": {
+      "name": "STUDIO PRO Plan",
+      "stages": "5",
+      "rankNames": [
+        "Beginner",
+        "Bronze",
+        "Silver",
+        "Gold",
+        "Platinum"
+      ]
+    },
+    "studioProMax": {
+      "name": "STUDIO PRO MAX Plan",
+      "stages": "10",
+      "rankNames": [
+        "Beginner",
+        "Bronze",
+        "Silver",
+        "Gold",
+        "Platinum",
+        "Diamond",
+        "Ruby",
+        "Sapphire",
+        "Emerald",
+        "Legend"
+      ]
+    }
+  }
+}

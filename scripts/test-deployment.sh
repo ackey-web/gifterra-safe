@@ -43,7 +43,7 @@ trap cleanup EXIT
 
 # Step 3: Deploy contracts
 echo -e "${YELLOW}Step 3: Deploying RankPlanRegistry + GifterraFactory...${NC}"
-npx hardhat run scripts/deploy-complete-factory.js --network localhost
+npx hardhat run scripts/deploy-complete-factory.cjs --network localhost
 echo -e "${GREEN}✅ Deployment successful${NC}"
 echo ""
 
