@@ -861,7 +861,22 @@ function Header({ viewMode, setViewMode, isMobile, tenantRank, showSettingsModal
           userAddress={address}
           onClose={() => setShowBookmarkModal(false)}
           isMobile={isMobile}
-          mode="view"
+          mode="select"
+          onSelectUser={(selectedAddress, userName) => {
+            // マイページにユーザー選択情報を渡す
+            const sendFormSection = document.getElementById('send-form-section');
+            if (sendFormSection) {
+              sendFormSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+
+            // URLパラメータでマイページに送信
+            const params = new URLSearchParams({
+              to: selectedAddress,
+              mode: 'bookmark',
+              userName: userName || '',
+            });
+            window.location.href = `/mypage?${params.toString()}`;
+          }}
         />
       )}
     </div>
@@ -1383,8 +1398,36 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
     // ウォレットアドレス変更時の処理（必要に応じて追加）
   }, [walletAddress, privyEmbeddedAddress, actualAddress, privyWallet, thirdwebAddress, signer]);
 
-  // チップ送信情報を sessionStorage から読み込んで自動入力
+  // チップ送信情報 or ブックマークユーザー選択情報を読み込んで自動入力
   useEffect(() => {
+    // URLパラメータから読み込み
+    const params = new URLSearchParams(window.location.search);
+    const to = params.get('to');
+    const mode = params.get('mode');
+    const userName = params.get('userName');
+
+    if (to && mode === 'bookmark') {
+      // ブックマークユーザー選択の場合
+      console.log('📌 URLパラメータからブックマークユーザー情報を読み込み:', { to, userName });
+      setAddress(to);
+      setSendMode('bookmark');
+      if (userName) {
+        setSelectedBookmarkUser({ address: to, name: userName });
+      }
+
+      // URLパラメータをクリア（履歴を汚さないため）
+      window.history.replaceState({}, '', '/mypage');
+
+      // 送金フォームにスクロール
+      setTimeout(() => {
+        const sendFormSection = document.getElementById('send-form-section');
+        if (sendFormSection) {
+          sendFormSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 300);
+      return;
+    }
+
     // sessionStorageの読み込みを少し遅延させる（親コンポーネントのuseEffectが先に実行されるため）
     const timer = setTimeout(() => {
       const tipTo = sessionStorage.getItem('gifterra_tip_to');
@@ -2480,8 +2523,8 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
             console.log('📌 ブックマークユーザー選択:', { userAddress, userName });
             setSelectedBookmarkUser({ address: userAddress, name: userName });
             setAddress(userAddress);
+            setSendMode('bookmark'); // 送金タイプを自動的に設定
             setShowBookmarkSelectModal(false);
-            // sendModeは'bookmark'のまま維持されるため、再選択は不要
           }}
         />
       )}
