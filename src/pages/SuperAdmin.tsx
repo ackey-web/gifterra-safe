@@ -4,13 +4,15 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { useAddress, useContract, ConnectWallet } from '@thirdweb-dev/react';
+import { ethers } from 'ethers';
 import { isSuperAdminWithDebug, SUPER_ADMIN_ADDRESSES } from '../config/superAdmin';
 import { useSystemStats, useRealtimeStats } from '../hooks/useSystemStats';
 import { useTenantList } from '../hooks/useTenantList';
 import { useRecentActivity, getActivityCategoryInfo } from '../hooks/useRecentActivity';
 import { useSystemHealth, getHealthStatusInfo } from '../hooks/useSystemHealth';
 import { formatTokenAmount } from '../utils/userProfile';
-import { TOKEN, TNHT_TOKEN, GIFTERRA_FACTORY_ABI } from '../contract';
+import { TOKEN, TNHT_TOKEN, GIFTERRA_FACTORY_ABI, RANK_PLAN_REGISTRY_CONTRACT } from '../contract';
+import RANK_PLAN_REGISTRY_ABI from '../abis/RankPlanRegistry.json';
 import { useTenantApplications, useApproveTenantApplication, useRejectTenantApplication } from '../hooks/useTenantApplications';
 import { RANK_PLANS } from '../types/tenantApplication';
 import type { TenantApplication, ApplicationStatus } from '../types/tenantApplication';
@@ -2823,6 +2825,12 @@ function RankPlansTab() {
   const { pricing, loading: pricingLoading, refetch: refetchPricing } = useRankPlanPricing();
   const { updatePrice, updating: updatingPrice } = useUpdateRankPlanPrice();
 
+  // RankPlanRegistryコントラクト接続
+  const { contract: rankPlanRegistryContract } = useContract(
+    RANK_PLAN_REGISTRY_CONTRACT.ADDRESS,
+    RANK_PLAN_REGISTRY_ABI
+  );
+
   // 編集中のテナントプラン
   const [editingTenantId, setEditingTenantId] = useState<number | null>(null);
   const [formData, setFormData] = useState<TenantRankPlanForm>({
@@ -2936,10 +2944,78 @@ function RankPlansTab() {
       return;
     }
 
-    // TODO: コントラクトのupdatePlan関数を呼び出して段階数を更新
-    // 現在はフロントエンドのみの実装のため、将来的にコントラクト連携が必要
-    alert(`段階数の更新機能は開発中です。\n\nプラン: ${rankPlan}\n新しい段階数: ${newStages}\n\nコントラクトのupdatePlan関数を実装する必要があります。`);
-    setEditingStagesFor(null);
+    if (!rankPlanRegistryContract) {
+      alert('❌ RankPlanRegistryコントラクトが初期化されていません');
+      return;
+    }
+
+    // プランタイプのマッピング
+    const planTypeMap: { [key: string]: number } = {
+      'STUDIO': 0,
+      'STUDIO_PRO': 1,
+      'STUDIO_PRO_MAX': 2,
+    };
+
+    const planType = planTypeMap[rankPlan];
+    if (planType === undefined) {
+      alert('❌ 不明なプランタイプです');
+      return;
+    }
+
+    // 確認ダイアログ
+    const confirmed = confirm(
+      `${rankPlan}プランの段階数を${newStages}に変更しますか？\n\n⚠️ この変更は全テナントに影響します。\n変更後、各テナントは新しい段階数に合わせて閾値を再設定する必要があります。`
+    );
+    if (!confirmed) return;
+
+    try {
+      // デフォルトの閾値、ランク名、URIテンプレートを生成
+      const thresholds: string[] = [];
+      const rankNames: string[] = [];
+      const uriTemplates: string[] = [];
+
+      const baseThreshold = ethers.utils.parseUnits("1000", 18); // 1000トークン
+      for (let i = 0; i < newStages; i++) {
+        // 指数的に増加する閾値（0, 1000, 3000, 7000, 15000, ...）
+        const threshold = i === 0 ? "0" : baseThreshold.mul(Math.pow(2, i) - 1).toString();
+        thresholds.push(threshold);
+
+        // デフォルトランク名
+        rankNames.push(`Rank ${i + 1}`);
+
+        // デフォルトURIテンプレート
+        uriTemplates.push(`https://api.gifterra.com/nft/rank/${i + 1}`);
+      }
+
+      console.log('🔄 プラン段階数更新開始:', {
+        planType,
+        planName: rankPlan,
+        stages: newStages,
+        thresholds,
+        rankNames,
+        uriTemplates,
+      });
+
+      // RankPlanRegistry.updatePlan() を呼び出し
+      const tx = await rankPlanRegistryContract.call("updatePlan", [
+        planType,
+        rankPlan,
+        `${rankPlan} plan with ${newStages} stages`,
+        thresholds,
+        rankNames,
+        uriTemplates
+      ]);
+
+      await tx.wait?.();
+
+      console.log('✅ プラン段階数更新成功:', tx);
+
+      alert(`✅ ${rankPlan}プランの段階数を${newStages}に変更しました\n\n変更は全テナントに反映されます。`);
+      setEditingStagesFor(null);
+    } catch (error: any) {
+      console.error('❌ プラン段階数更新エラー:', error);
+      alert(`❌ プラン段階数の変更に失敗しました\n\n${error?.message || error}`);
+    }
   };
 
   // 段階数編集キャンセル
