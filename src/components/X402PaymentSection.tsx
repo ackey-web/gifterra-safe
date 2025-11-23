@@ -182,8 +182,12 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
   // QRコードスキャン処理
   const handleScan = async (data: string, debugLogs?: string[]) => {
     // デバッグログを保存
+    console.log('📊 X402PaymentSection handleScan - debugLogs受信:', debugLogs?.length || 0, '件');
     if (debugLogs) {
       setQrDebugLogs(debugLogs);
+      console.log('📊 qrDebugLogs状態更新完了:', debugLogs.length, '件');
+    } else {
+      console.log('⚠️ debugLogsが渡されていません');
     }
 
     try {
@@ -881,6 +885,20 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
             }}>
               送信内容の確認
             </h2>
+
+            {/* 診断用: デバッグログ件数表示 */}
+            <div style={{
+              background: '#fff3cd',
+              border: '1px solid #ffc107',
+              borderRadius: 8,
+              padding: 8,
+              marginBottom: 12,
+              fontSize: 12,
+              color: '#856404',
+              textAlign: 'center',
+            }}>
+              🔍 診断: デバッグログ {qrDebugLogs.length} 件
+            </div>
 
             {/* デバッグパネル */}
             {qrDebugLogs.length > 0 && (
