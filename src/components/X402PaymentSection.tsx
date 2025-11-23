@@ -316,10 +316,25 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
       let signerChainId: number | null = null;
 
       // 1. Privyのwalletsから取得（最優先）
+      console.log('🔍 Privy wallets 配列:', wallets);
+      console.log('🔍 Privy wallets 件数:', wallets?.length || 0);
+
       if (wallets && wallets.length > 0) {
         try {
+          // 全てのウォレットをログ出力
+          wallets.forEach((w: any, index: number) => {
+            console.log(`🔍 Wallet[${index}]:`, {
+              walletClientType: w.walletClientType,
+              chainId: w.chainId,
+              address: w.address,
+              connectorType: w.connectorType,
+            });
+          });
+
           // MetaMaskまたは外部ウォレットを検索
           const externalWallet = wallets.find((w: any) => w.walletClientType !== 'privy');
+          console.log('🔍 外部ウォレット検索結果:', externalWallet);
+
           if (externalWallet && externalWallet.chainId) {
             // chainIdは16進数文字列の場合と数値の場合がある
             const chainIdValue = externalWallet.chainId;
@@ -331,10 +346,14 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
               privyWalletChainId = chainIdValue;
             }
             console.log('🟣 Privy walletから取得したChainID:', privyWalletChainId, '(type:', externalWallet.walletClientType, ')');
+          } else {
+            console.warn('⚠️ 外部ウォレットが見つからないか、chainIdが未設定');
           }
         } catch (e: any) {
           console.warn('Privy wallet ChainID取得エラー:', e.message);
         }
+      } else {
+        console.warn('⚠️ Privy wallets が空またはnull');
       }
 
       // 2. window.ethereumから取得
