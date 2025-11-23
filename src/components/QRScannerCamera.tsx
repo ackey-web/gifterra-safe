@@ -104,7 +104,7 @@ export function QRScannerCamera({ onScan, onClose, placeholder = 'QRコードを
               if (validation.isValid) {
                 console.log('✅ バリデーション成功 - スキャナー停止処理開始');
 
-                // スキャナーを明示的に停止してからコールバック実行
+                // スキャナーを停止してコールバック実行
                 const stopAndCallback = async () => {
                   try {
                     if (scannerRef.current) {
@@ -115,7 +115,7 @@ export function QRScannerCamera({ onScan, onClose, placeholder = 'QRコードを
                     console.error('❌ スキャナー停止エラー:', e.message);
                   }
 
-                  // 停止完了を待ってから、先にコールバック実行
+                  // コールバックを先に実行（親の状態を更新）
                   try {
                     console.log('✅ コールバック実行:', decodedText.substring(0, 50));
                     onScan(decodedText);
@@ -123,15 +123,12 @@ export function QRScannerCamera({ onScan, onClose, placeholder = 'QRコードを
                     console.error('❌ QRスキャンコールバックエラー:', e.message);
                   }
 
-                  // コールバック完了後、わずかな遅延を入れてからクローズ
-                  // これにより、親コンポーネントの状態更新が完了する
-                  setTimeout(() => {
-                    try {
-                      onClose();
-                    } catch (e: any) {
-                      console.error('❌ QRスキャナークローズエラー:', e.message);
-                    }
-                  }, 100);
+                  // すぐにクローズ（遅延なし）
+                  try {
+                    onClose();
+                  } catch (e: any) {
+                    console.error('❌ QRスキャナークローズエラー:', e.message);
+                  }
                 };
 
                 stopAndCallback();
@@ -167,7 +164,13 @@ export function QRScannerCamera({ onScan, onClose, placeholder = 'QRコードを
     return () => {
       isMounted.current = false;
       if (scannerRef.current) {
-        scannerRef.current.stop().catch(() => {});
+        try {
+          scannerRef.current.stop().catch(() => {
+            console.log('クリーンアップ: スキャナー停止');
+          });
+        } catch (e) {
+          console.log('クリーンアップエラー（無視）');
+        }
       }
     };
   }, []);
