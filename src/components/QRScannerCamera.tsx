@@ -22,13 +22,16 @@ export function QRScannerCamera({ onScan, onClose, placeholder = 'QRコードを
   const readerRef = useRef<BrowserQRCodeReader | null>(null);
   const isMounted = useRef(true);
   const isStoppingRef = useRef(false); // 停止処理中フラグ
+  const debugLogsRef = useRef<string[]>([]); // 最新のログ配列を保持
 
   // デバッグログを追加する関数
   const addDebugLog = (message: string) => {
     const timestamp = new Date().toLocaleTimeString();
     const logMessage = `[${timestamp}] ${message}`;
     console.log(logMessage);
-    setDebugLogs(prev => [logMessage, ...prev].slice(0, 20)); // 最新20件まで保持
+    const newLogs = [logMessage, ...debugLogsRef.current].slice(0, 20);
+    debugLogsRef.current = newLogs; // refを更新
+    setDebugLogs(newLogs); // 状態も更新（UI用）
   };
 
   // X402形式、ウォレットQR、または通常のアドレスかを判定してバリデーション
@@ -146,7 +149,8 @@ export function QRScannerCamera({ onScan, onClose, placeholder = 'QRコードを
                       try {
                         console.log('✅ コールバック実行:', decodedText.substring(0, 50));
                         addDebugLog('✅ コールバック実行 - 親コンポーネントに送信');
-                        onScan(decodedText, debugLogs);
+                        // 最新のログ配列（ref）を渡す
+                        onScan(decodedText, debugLogsRef.current);
                       } catch (e: any) {
                         console.error('❌ QRスキャンコールバックエラー:', e.message);
                       }
@@ -221,7 +225,8 @@ export function QRScannerCamera({ onScan, onClose, placeholder = 'QRコードを
     }
 
     addDebugLog('✅ 手動入力完了 - 親コンポーネントに送信');
-    onScan(trimmed, debugLogs);
+    // 最新のログ配列（ref）を渡す
+    onScan(trimmed, debugLogsRef.current);
     onClose();
   };
 
