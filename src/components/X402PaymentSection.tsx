@@ -361,7 +361,19 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
         hasSendTransaction: !!sendTransaction,
         hasSigner: !!signer,
         walletAddress,
+        hasWindowEthereum: typeof window !== 'undefined' && !!window.ethereum,
+        isMetaMask: typeof window !== 'undefined' && window.ethereum?.isMetaMask,
       });
+
+      // Androidデバッグ用: 接続状態を確認
+      if (typeof window !== 'undefined' && window.ethereum) {
+        console.log('📱 window.ethereum 状態:', {
+          isMetaMask: window.ethereum.isMetaMask,
+          isConnected: window.ethereum.isConnected?.(),
+          chainId: window.ethereum.chainId,
+          selectedAddress: window.ethereum.selectedAddress,
+        });
+      }
 
       // Privy埋め込みウォレットの場合はPrivy sendTransactionを使用
       if (privyEmbeddedWalletAddress && sendTransaction) {
