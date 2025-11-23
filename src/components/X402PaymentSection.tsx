@@ -306,32 +306,45 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
     setMessage(null);
 
     try {
-      // 接続中のChainIDを確認（signerから）
-      if (signer) {
+      // 接続中のChainIDを確認
+      // MetaMaskの場合はwindow.ethereumから直接チェック
+      let currentChainId: number | null = null;
+
+      if (typeof window !== 'undefined' && window.ethereum && window.ethereum.isMetaMask) {
+        // MetaMaskから直接chainIdを取得
+        const chainIdHex = window.ethereum.chainId;
+        if (chainIdHex) {
+          currentChainId = parseInt(chainIdHex, 16);
+          console.log('📱 MetaMaskから取得したChainID:', currentChainId, `(${chainIdHex})`);
+        }
+      } else if (signer && signer.provider) {
+        // Privy等の場合はsigner.providerから取得
         try {
-          const provider = signer.provider;
-          if (provider) {
-            const currentChainId = await getCurrentChainId(provider as ethers.providers.Provider);
-            const chainValidation = validateChainId(currentChainId, 137);
-
-            if (!chainValidation.valid) {
-              setMessage({
-                type: 'error',
-                text: `ネットワークをPolygon Mainnetに切り替えてください。現在: ${chainValidation.chainName}`
-              });
-              console.error('🔴 接続中のChainID検証失敗:', chainValidation.error);
-              setIsProcessing(false);
-              return;
-            }
-
-            console.log('✅ 接続中のChainID検証成功:', {
-              chainId: currentChainId,
-              chainName: chainValidation.chainName,
-            });
-          }
+          currentChainId = await getCurrentChainId(signer.provider as ethers.providers.Provider);
+          console.log('🟣 Signerから取得したChainID:', currentChainId);
         } catch (chainError: any) {
           console.warn('ChainID確認エラー（続行）:', chainError.message);
         }
+      }
+
+      // ChainIDが取得できた場合はバリデーション
+      if (currentChainId !== null) {
+        const chainValidation = validateChainId(currentChainId, 137);
+
+        if (!chainValidation.valid) {
+          setMessage({
+            type: 'error',
+            text: `ネットワークをPolygon Mainnetに切り替えてください。現在: ${chainValidation.chainName}`
+          });
+          console.error('🔴 接続中のChainID検証失敗:', chainValidation.error);
+          setIsProcessing(false);
+          return;
+        }
+
+        console.log('✅ 接続中のChainID検証成功:', {
+          chainId: currentChainId,
+          chainName: chainValidation.chainName,
+        });
       }
 
       // RequestID重複チェック（リプレイアタック防止 - Phase 1）
