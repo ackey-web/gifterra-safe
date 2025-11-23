@@ -2,7 +2,7 @@
 // リワードUI管理ページ - タブ切り替え式（GIFT HUB管理画面と統一）
 import React, { useState, useRef } from 'react';
 import { uploadImage, deleteFileFromUrl } from '../../lib/supabase';
-import { CONTRACT_ADDRESS } from '../../contract';
+import { getGifterraAddress } from '../../contract';
 import { getDefaultToken } from '../../config/tokenHelpers';
 import { RewardDistributionHistoryTab } from './components/RewardDistributionHistoryTab';
 
@@ -320,7 +320,7 @@ export function RewardUIManagementPage({
                   </div>
                 )}
                 <div style={{ fontSize: 12, opacity: 0.7, marginTop: 4 }}>
-                  ※ コントラクトアドレス: {CONTRACT_ADDRESS}
+                  ※ コントラクトアドレス: {getGifterraAddress()}
                 </div>
               </div>
             </div>

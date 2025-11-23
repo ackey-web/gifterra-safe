@@ -7,9 +7,12 @@ import { ethers } from 'ethers';
 import { useTokenBalances } from '../hooks/useTokenBalances';
 import { useTransactionHistory } from '../hooks/useTransactionHistory';
 import { QRScannerSimple } from '../components/QRScannerSimple';
+import { WalletQRPaymentModal } from '../components/WalletQRPaymentModal';
 import { JPYC_TOKEN, ERC20_MIN_ABI } from '../contract';
 import { analyzeSentiment } from '../lib/ai_analysis';
 import { saveTipMessageToSupabase } from '../lib/saveTipMessage';
+import { parseWalletQR, isInvoiceQR, type WalletQRData } from '../types/qrPayment';
+import { saveWalletQRPayment } from '../lib/saveWalletQRPayment';
 
 // 送金タイプ定義
 type SendMode = 'simple' | 'bulk' | 'tenant';
@@ -97,6 +100,10 @@ export function MypageWithSend() {
   const [showTenantModal, setShowTenantModal] = useState(false);
   const [selectedTenant, setSelectedTenant] = useState<Tenant | null>(null);
   const [tenants, setTenants] = useState<Tenant[]>([]);
+
+  // ウォレットQR決済用の状態
+  const [showWalletQRPayment, setShowWalletQRPayment] = useState(false);
+  const [walletQRData, setWalletQRData] = useState<WalletQRData | null>(null);
 
   // Privyウォレットからsignerを取得
   useEffect(() => {
@@ -254,10 +261,88 @@ export function MypageWithSend() {
     }
   };
 
-  // QRスキャン結果を受け取る
+  // QRスキャン結果を受け取る（請求書 & ウォレット両対応）
   const handleQRScan = (data: string) => {
+    // ウォレットQRコードかチェック
+    if (!isInvoiceQR(data)) {
+      const walletResult = parseWalletQR(data);
+      if (walletResult.success && walletResult.data) {
+        // ウォレットQR: 金額入力モーダルを表示
+        setWalletQRData(walletResult.data as WalletQRData);
+        setShowQRScanner(false);
+        setShowWalletQRPayment(true);
+        return;
+      }
+    }
+
+    // 請求書QR or 通常アドレス: 従来通りの処理
     setSendTo(data);
     setShowQRScanner(false);
+  };
+
+  // ウォレットQR決済の確定
+  // 【プライバシー保護設計】
+  // - GIFTERRAユーザー情報は店舗に共有されない
+  // - 直接ブロックチェーン上でトランザクションを実行
+  // - 記録されるのはトランザクション情報のみ（from, to, amount）
+  // - Supabaseなど中央サーバーへの保存は行わない
+  const handleWalletQRPaymentConfirm = async (amount: string, message: string) => {
+    if (!walletQRData) return;
+
+    // 送金情報をセット
+    setSendTo(walletQRData.address);
+    setSendAmount(amount);
+    setSendMessage(message);
+
+    // 金額入力モーダルを閉じる
+    setShowWalletQRPayment(false);
+
+    // 送金を実行（プライバシー保護: 直接ブロックチェーンへ）
+    if (!signer) {
+      alert('ウォレットが接続されていません');
+      return;
+    }
+
+    setSending(true);
+    setSendError(null);
+
+    try {
+      // JPYC ERC20トークンの直接転送（中央サーバー不使用）
+      const jpycContract = new ethers.Contract(JPYC_TOKEN.ADDRESS, ERC20_MIN_ABI, signer);
+      const amountWei = ethers.utils.parseUnits(amount, 18);
+
+      // ブロックチェーントランザクション実行
+      const tx = await jpycContract.transfer(walletQRData.address, amountWei);
+      const receipt = await tx.wait();
+
+      // 決済完了後、店舗側の売上履歴に記録（リアルタイム反映）
+      // トランザクションハッシュと最小限の情報のみ保存
+      const trackingResult = await saveWalletQRPayment({
+        walletData: walletQRData,
+        amount,
+        message,
+        transactionHash: receipt.transactionHash,
+      });
+
+      if (!trackingResult.success) {
+        console.warn('⚠️ 売上履歴への記録に失敗（決済自体は成功）:', trackingResult.error);
+      }
+
+      setSendSuccess(true);
+      alert('✅ 支払いが完了しました！');
+
+      // リセット
+      setWalletQRData(null);
+      setSendTo('');
+      setSendAmount('');
+      setSendMessage('');
+    } catch (error: any) {
+      console.error('Wallet QR payment error:', error);
+      setSendError(error.message || '支払いに失敗しました');
+      alert('❌ 支払いに失敗しました: ' + (error.message || '不明なエラー'));
+    } finally {
+      setSending(false);
+    }
   };
 
   // 一括送金: 受取人管理
@@ -1257,6 +1342,18 @@ export function MypageWithSend() {
           onScan={handleQRScan}
           onClose={() => setShowQRScanner(false)}
           placeholder="送金先アドレスを入力"
+        />
+      )}
+
+      {/* ウォレットQR決済モーダル */}
+      {showWalletQRPayment && walletQRData && (
+        <WalletQRPaymentModal
+          walletData={walletQRData}
+          onConfirm={handleWalletQRPaymentConfirm}
+          onCancel={() => {
+            setShowWalletQRPayment(false);
+            setWalletQRData(null);
+          }}
         />
       )}
 

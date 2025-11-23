@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { useContract, useContractRead } from '@thirdweb-dev/react';
-import { SBT_CONTRACT, JPYC_TOKEN } from '../contract';
+import { SBT_CONTRACT, JPYC_TOKEN, getGifterraAddress } from '../contract';
 import { supabase } from '../lib/supabase';
 import { publicClient } from '../contract';
 
@@ -71,7 +71,8 @@ export function useSystemHealth() {
   const [isChecking, setIsChecking] = useState(false);
 
   // Gifterraコントラクトの接続チェック
-  const { contract: gifterraContract } = useContract(SBT_CONTRACT.ADDRESS);
+  const gifterraAddress = getGifterraAddress();
+  const { contract: gifterraContract } = useContract(gifterraAddress);
   const { data: contractPaused, isLoading: isCheckingContract } = useContractRead(
     gifterraContract,
     'paused'

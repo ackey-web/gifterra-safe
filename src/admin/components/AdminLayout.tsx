@@ -108,7 +108,7 @@ export default function AdminLayout({
                 marginTop: 32,
               }}
             >
-              Presented by <strong>METATRON.</strong>
+              Powered by <strong>GIFTERRA</strong>
             </footer>
           </main>
         </div>

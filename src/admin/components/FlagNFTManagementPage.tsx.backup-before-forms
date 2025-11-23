@@ -1,0 +1,2664 @@
+// src/admin/FlagNFTManagementPage.tsx
+// フラグNFT管理ページ
+// 法務対応: 「商品」「購入」などの表現を使用せず、「特典」「チップ」で統一
+
+import React, { useState, useRef, useEffect } from 'react';
+import type { FlagNFTCategory } from '../../types/flagNFT';
+import { uploadImage, deleteFileFromUrl } from '../../lib/supabase';
+import { adminSupabase } from '../../lib/adminSupabase';
+import { useTenant } from '../contexts/TenantContext';
+import { useMintFlagNFT, useConfigureCategory } from '../../hooks/useFlagNFTContract';
+import {
+  BenefitConfigForm,
+  MembershipConfigForm,
+  AchievementConfigForm,
+  CampaignConfigForm,
+  AccessPassConfigForm,
+  CollectibleConfigForm,
+} from './FlagNFTCategoryForms';
+import { executeSaveFlagNFTWorkflow } from '../utils/flagNFTSaveWorkflow';
+import { estimateGasCost, getSuccessMessage } from '../utils/flagNFTContractIntegration';
+
+type CreateStep = 'category' | 'basic' | 'detail';
+
+interface CategoryOption {
+  id: FlagNFTCategory;
+  label: string;
+  icon: string;
+  description: string;
+  color: string;
+}
+
+const CATEGORY_OPTIONS: CategoryOption[] = [
+  {
+    id: 'BENEFIT',
+    label: '特典NFT',
+    icon: '💳',
+    description: '割引や特典を提供するNFT',
+    color: '#3b82f6',
+  },
+  {
+    id: 'MEMBERSHIP',
+    label: '会員証NFT',
+    icon: '👤',
+    description: '会員資格とアクセス権を証明',
+    color: '#8b5cf6',
+  },
+  {
+    id: 'ACHIEVEMENT',
+    label: '実績バッジNFT',
+    icon: '🏆',
+    description: 'チップ回数や達成条件で自動配布',
+    color: '#f59e0b',
+  },
+  {
+    id: 'CAMPAIGN',
+    label: 'キャンペーンNFT',
+    icon: '🎪',
+    description: '期間限定イベントやキャンペーン',
+    color: '#ec4899',
+  },
+  {
+    id: 'ACCESS_PASS',
+    label: 'アクセス権NFT',
+    icon: '🗝️',
+    description: '特定エリアやコンテンツへのアクセス',
+    color: '#10b981',
+  },
+  {
+    id: 'COLLECTIBLE',
+    label: 'コレクティブルNFT',
+    icon: '🎴',
+    description: 'コレクション要素を持つNFT',
+    color: '#6366f1',
+  },
+];
+
+interface BasicFormData {
+  name: string;
+  description: string;
+  image: string;
+  validFrom: string;
+  validUntil: string;
+  usageLimit: string;
+  maxSupply: string;
+  isTransferable: boolean;
+  isBurnable: boolean;
+  autoDistributionEnabled: boolean;
+  requiredTipAmount: string;
+  targetToken: 'JPYC' | 'tNHT' | 'both';
+}
+
+interface BenefitFormData {
+  discountType: 'PERCENTAGE' | 'FIXED_AMOUNT' | 'GIFT_ITEM';
+  discountValue: string;
+  minTipAmount: string;
+  applicableGifts: string;
+  maxDiscountAmount: string;
+}
+
+interface CheckpointFormData {
+  id: string;
+  name: string;
+  description: string;
+  nfcTagId: string;
+  nfcEnabled: boolean;
+  qrCode: string;
+  qrEnabled: boolean;
+  locationLat: string;
+  locationLng: string;
+  radiusMeters: string;
+}
+
+interface StampRallyFormData {
+  checkpoints: CheckpointFormData[];
+  completionReward: string;
+  requireSequential: boolean;
+  verificationMethod: 'NFC' | 'QR' | 'BOTH';
+}
+
+interface MembershipFormData {
+  membershipLevel: string;
+  accessAreas: string; // カンマ区切り
+  benefits: string; // カンマ区切り
+  renewalType: 'AUTO' | 'MANUAL' | 'NONE';
+}
+
+interface AchievementFormData {
+  triggerType: 'TIP_COUNT' | 'TOTAL_TIPPED' | 'GIFT_COLLECTION' | 'MANUAL';
+  threshold: string;
+  autoDistribute: boolean;
+  additionalBenefits: string; // カンマ区切り
+}
+
+interface CollectibleFormData {
+  seriesName: string;
+  seriesNumber: string;
+  totalInSeries: string;
+  collectionGoal: string;
+  progressReward: string;
+  distributionTrigger: 'TIP_AMOUNT' | 'EVENT_PARTICIPATION' | 'CAMPAIGN' | 'MANUAL';
+  requiredCondition: string;
+  artist: string;
+  releaseDate: string;
+  description: string;
+}
+
+export default function FlagNFTManagementPage() {
+  const { tenantId } = useTenant();
+  const [view, setView] = useState<'list' | 'create'>('list');
+  const [createStep, setCreateStep] = useState<CreateStep>('category');
+  const [selectedCategory, setSelectedCategory] = useState<FlagNFTCategory | null>(null);
+  const [categoryFilter, setCategoryFilter] = useState<FlagNFTCategory | 'ALL'>('ALL');
+  const [isSaving, setIsSaving] = useState(false);
+
+  // NFTリスト管理用の状態
+  const [flagNFTs, setFlagNFTs] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  // ミントモーダル用の状態
+  const [showMintModal, setShowMintModal] = useState(false);
+  const [selectedNFTForMint, setSelectedNFTForMint] = useState<any | null>(null);
+  const [mintToAddress, setMintToAddress] = useState('');
+  const [isMinting, setIsMinting] = useState(false);
+
+  // ミント用フック
+  const { mint: mintNFT, isLoading: isMintLoading } = useMintFlagNFT();
+
+  // カテゴリ設定用フック
+  const { configure: configureCategory, isLoading: isConfiguringCategory } = useConfigureCategory();
+
+  // 基本情報フォームの状態
+  const [formData, setFormData] = useState<BasicFormData>({
+    name: '',
+    description: '',
+    image: '',
+    validFrom: new Date().toISOString().split('T')[0],
+    validUntil: '',
+    usageLimit: '-1',
+    maxSupply: '',
+    isTransferable: false,
+    isBurnable: false,
+    autoDistributionEnabled: false,
+    requiredTipAmount: '',
+    targetToken: 'both',
+  });
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // 特典NFT詳細設定フォームの状態
+  const [benefitData, setBenefitData] = useState<BenefitFormData>({
+    discountType: 'PERCENTAGE',
+    discountValue: '',
+    minTipAmount: '',
+    applicableGifts: '',
+    maxDiscountAmount: '',
+  });
+
+  // スタンプラリーNFT詳細設定フォームの状態
+  const [stampRallyData, setStampRallyData] = useState<StampRallyFormData>({
+    checkpoints: [],
+    completionReward: '',
+    requireSequential: false,
+    verificationMethod: 'BOTH',
+  });
+
+  // 会員証NFT詳細設定フォームの状態
+  const [membershipData, setMembershipData] = useState<MembershipFormData>({
+    membershipLevel: '',
+    accessAreas: '',
+    benefits: '',
+    renewalType: 'NONE',
+  });
+
+  // 実績バッジNFT詳細設定フォームの状態
+  const [achievementData, setAchievementData] = useState<AchievementFormData>({
+    triggerType: 'TIP_COUNT',
+    threshold: '',
+    autoDistribute: false,
+    additionalBenefits: '',
+  });
+
+  // コレクティブルNFT詳細設定フォームの状態
+  const [collectibleData, setCollectibleData] = useState<CollectibleFormData>({
+    seriesName: '',
+    seriesNumber: '',
+    totalInSeries: '',
+    collectionGoal: '',
+    progressReward: '',
+    distributionTrigger: 'MANUAL',
+    requiredCondition: '',
+    artist: '',
+    releaseDate: '',
+    description: '',
+  });
+
+  // 画像アップロード処理
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    try {
+      // 古い画像があれば削除
+      if (formData.image) {
+        console.log('🗑️ 古い画像を削除中:', formData.image);
+        await deleteFileFromUrl(formData.image);
+      }
+
+      // 新しい画像をアップロード
+      const imageUrl = await uploadImage(file, 'PUBLIC');
+      if (imageUrl) {
+        console.log('✅ 新しい画像をアップロード:', imageUrl);
+        setFormData((prev) => ({ ...prev, image: imageUrl }));
+      } else {
+        throw new Error('画像URLの取得に失敗しました');
+      }
+    } catch (error) {
+      console.error('画像アップロード失敗:', error);
+      alert('画像のアップロードに失敗しました');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  // フォームバリデーション
+  const isBasicFormValid = () => {
+    return (
+      formData.name.trim() !== '' &&
+      formData.description.trim() !== '' &&
+      formData.image !== ''
+    );
+  };
+
+  // フラグNFTリストをSupabaseから取得
+  useEffect(() => {
+    const loadFlagNFTs = async () => {
+      if (!adminSupabase || !tenantId) {
+        setIsLoading(false);
+        return;
+      }
+
+      setIsLoading(true);
+      try {
+        const { data, error } = await adminSupabase
+          .from('flag_nfts')
+          .select('*')
+          .eq('tenant_id', tenantId)
+          .eq('is_active', true)
+          .order('created_at', { ascending: false });
+
+        if (error) {
+          console.error('フラグNFT取得エラー:', error);
+          setFlagNFTs([]);
+        } else {
+          setFlagNFTs(data || []);
+        }
+      } catch (err) {
+        console.error('予期しないエラー:', err);
+        setFlagNFTs([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadFlagNFTs();
+  }, [tenantId, adminSupabase, refreshTrigger]);
+
+  // フラグNFTをSupabaseに保存する関数
+  const saveFlagNFT = async (categoryConfig: any) => {
+    if (!adminSupabase) {
+      alert('管理者Supabaseクライアントが初期化されていません');
+      return;
+    }
+
+    if (!tenantId) {
+      alert('テナントIDが取得できません');
+      return;
+    }
+
+    if (!selectedCategory) {
+      alert('カテゴリが選択されていません');
+      return;
+    }
+
+    setIsSaving(true);
+
+    try {
+      console.log('💾 FlagNFT作成ワークフロー開始:', {
+        category: selectedCategory,
+        name: formData.name,
+      });
+
+      // ガス代推定を表示
+      const gasCost = estimateGasCost('configure');
+      console.log('⛽ 推定ガス代:', gasCost);
+
+      // ワークフロー実行
+      const result = await executeSaveFlagNFTWorkflow({
+        tenantId,
+        category: selectedCategory,
+        name: formData.name,
+        description: formData.description,
+        image: formData.image,
+        categoryConfig: {
+          ...categoryConfig,
+          // formDataから基本設定も含める
+          maxSupply: formData.maxSupply ? parseInt(formData.maxSupply) : null,
+          autoDistribute: formData.autoDistributionEnabled,
+          requiredTipAmount: formData.requiredTipAmount ? parseFloat(formData.requiredTipAmount) : null,
+          targetToken: formData.targetToken,
+          isBurnable: formData.isBurnable,
+        },
+        supabaseClient: adminSupabase,
+        configureCategory: async (cat, usageLimit, validFrom, validUntil, isTransferable, metadataURI) => {
+          return await configureCategory(cat, usageLimit, validFrom, validUntil, isTransferable, metadataURI);
+        },
+      });
+
+      if (result.success) {
+        const successMsg = getSuccessMessage('configure', selectedCategory);
+        alert(`${successMsg}\n\nトランザクションハッシュ: ${result.transactionHash}`);
+
+        // リストビューに戻ってリロード
+        setView('list');
+        loadFlagNFTs(); // 既存のロード関数を呼ぶ
+      } else {
+        alert(`作成に失敗しました:\n${result.error}`);
+      }
+
+    } catch (err: any) {
+      console.error('❌ 予期しないエラー:', err);
+      alert(`エラーが発生しました: ${err.message || err}`);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // 手動ミント処理
+  const handleManualMint = async () => {
+    if (!selectedNFTForMint || !mintToAddress) {
+      alert('ミント先アドレスを入力してください');
+      return;
+    }
+
+    setIsMinting(true);
+    try {
+      // 1. コントラクトでNFTをミント
+      console.log('🎨 NFTミント開始:', {
+        category: selectedNFTForMint.category,
+        toAddress: mintToAddress,
+      });
+
+      const tx = await mintNFT(mintToAddress, selectedNFTForMint.category);
+      console.log('✅ NFTミント成功:', tx);
+
+      // 2. 配布履歴をSupabaseに保存
+      if (adminSupabase) {
+        const { error: historyError } = await adminSupabase
+          .from('flag_nft_distributions')
+          .insert({
+            flag_nft_id: selectedNFTForMint.id,
+            user_address: mintToAddress,
+            distribution_type: 'MANUAL',
+            distributed_at: new Date().toISOString(),
+          });
+
+        if (historyError) {
+          console.error('配布履歴保存エラー:', historyError);
+        }
+
+        // 3. total_mintedをインクリメント
+        const { error: updateError } = await adminSupabase
+          .from('flag_nfts')
+          .update({
+            total_minted: (selectedNFTForMint.total_minted || 0) + 1
+          })
+          .eq('id', selectedNFTForMint.id);
+
+        if (updateError) {
+          console.error('発行数更新エラー:', updateError);
+        }
+      }
+
+      alert(`✅ NFTをミントしました！\nアドレス: ${mintToAddress.slice(0, 6)}...${mintToAddress.slice(-4)}`);
+
+      // モーダルを閉じてリフレッシュ
+      setShowMintModal(false);
+      setMintToAddress('');
+      setSelectedNFTForMint(null);
+      setRefreshTrigger(prev => prev + 1);
+    } catch (error) {
+      console.error('❌ ミントエラー:', error);
+      alert(`ミントに失敗しました: ${error}`);
+    } finally {
+      setIsMinting(false);
+    }
+  };
+
+  // リスト表示
+  if (view === 'list') {
+    // フィルタリング処理
+    const filteredNFTs = categoryFilter === 'ALL'
+      ? flagNFTs
+      : flagNFTs.filter(nft => nft.category === categoryFilter);
+
+    return (
+      <div style={{ padding: 24 }}>
+        {/* ヘッダー */}
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: 32,
+        }}>
+          <div>
+            <h1 style={{ fontSize: 28, fontWeight: 700, color: '#fff', margin: 0 }}>
+              フラグNFT管理
+            </h1>
+            <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.7)', margin: '8px 0 0 0' }}>
+              特典NFT、スタンプラリー、会員証などを作成・管理
+            </p>
+          </div>
+          <button
+            onClick={() => {
+              setView('create');
+              setCreateStep('category');
+              setSelectedCategory(null);
+            }}
+            style={{
+              padding: '12px 24px',
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              border: 'none',
+              borderRadius: 8,
+              color: '#fff',
+              fontSize: 15,
+              fontWeight: 600,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              boxShadow: '0 4px 12px rgba(102, 126, 234, 0.4)',
+            }}
+          >
+            <span style={{ fontSize: 18 }}>➕</span>
+            新規作成
+          </button>
+        </div>
+
+        {/* カテゴリフィルター */}
+        <div style={{
+          display: 'flex',
+          gap: 8,
+          marginBottom: 24,
+          flexWrap: 'wrap',
+        }}>
+          <button
+            onClick={() => setCategoryFilter('ALL')}
+            style={{
+              padding: '8px 16px',
+              background: categoryFilter === 'ALL' ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.05)',
+              border: categoryFilter === 'ALL' ? '2px solid rgba(255,255,255,0.2)' : '1px solid rgba(255,255,255,0.1)',
+              borderRadius: 6,
+              color: categoryFilter === 'ALL' ? '#fff' : 'rgba(255,255,255,0.7)',
+              fontSize: 14,
+              fontWeight: categoryFilter === 'ALL' ? 600 : 500,
+              cursor: 'pointer',
+            }}
+          >
+            全て
+          </button>
+          {CATEGORY_OPTIONS.map((cat) => (
+            <button
+              key={cat.id}
+              onClick={() => setCategoryFilter(cat.id)}
+              style={{
+                padding: '8px 16px',
+                background: categoryFilter === cat.id ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.05)',
+                border: categoryFilter === cat.id ? '2px solid rgba(255,255,255,0.2)' : '1px solid rgba(255,255,255,0.1)',
+                borderRadius: 6,
+                color: categoryFilter === cat.id ? '#fff' : 'rgba(255,255,255,0.7)',
+                fontSize: 14,
+                fontWeight: categoryFilter === cat.id ? 600 : 500,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+              }}
+            >
+              <span>{cat.icon}</span>
+              <span>{cat.label}</span>
+            </button>
+          ))}
+        </div>
+
+        {/* NFTリスト */}
+        {isLoading ? (
+          <div style={{ textAlign: 'center', padding: 48, color: 'rgba(255,255,255,0.7)' }}>
+            読み込み中...
+          </div>
+        ) : filteredNFTs.length === 0 ? (
+          <div style={{
+            background: 'rgba(255,255,255,0.05)',
+            borderRadius: 12,
+            padding: 48,
+            textAlign: 'center',
+            border: '2px dashed rgba(255,255,255,0.2)',
+          }}>
+            <div style={{ fontSize: 48, marginBottom: 16 }}>🚩</div>
+            <p style={{ fontSize: 16, color: 'rgba(255,255,255,0.7)', margin: 0 }}>
+              {categoryFilter === 'ALL'
+                ? 'まだフラグNFTが作成されていません'
+                : `${CATEGORY_OPTIONS.find(c => c.id === categoryFilter)?.label}がありません`
+              }
+            </p>
+            <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)', margin: '8px 0 24px 0' }}>
+              「新規作成」ボタンから最初のフラグNFTを作成しましょう
+            </p>
+          </div>
+        ) : (
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
+            gap: 16,
+          }}>
+            {filteredNFTs.map((nft) => {
+              const categoryInfo = CATEGORY_OPTIONS.find(c => c.id === nft.category);
+              return (
+                <div
+                  key={nft.id}
+                  style={{
+                    background: 'rgba(255,255,255,0.05)',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    borderRadius: 12,
+                    overflow: 'hidden',
+                    transition: 'all 0.3s',
+                  }}
+                >
+                  {/* NFT画像 */}
+                  <div style={{
+                    width: '100%',
+                    height: 200,
+                    backgroundImage: `url(${nft.image})`,
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                    position: 'relative',
+                  }}>
+                    <div style={{
+                      position: 'absolute',
+                      top: 12,
+                      left: 12,
+                      padding: '6px 12px',
+                      background: categoryInfo?.color || '#666',
+                      borderRadius: 6,
+                      fontSize: 12,
+                      fontWeight: 600,
+                      color: '#fff',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                    }}>
+                      <span>{categoryInfo?.icon}</span>
+                      <span>{categoryInfo?.label}</span>
+                    </div>
+                  </div>
+
+                  {/* NFT情報 */}
+                  <div style={{ padding: 16 }}>
+                    <h3 style={{ fontSize: 18, fontWeight: 700, color: '#fff', margin: '0 0 8px 0' }}>
+                      {nft.name}
+                    </h3>
+                    <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)', margin: '0 0 16px 0', lineHeight: 1.5 }}>
+                      {nft.description.length > 80
+                        ? nft.description.substring(0, 80) + '...'
+                        : nft.description
+                      }
+                    </p>
+
+                    {/* 統計情報 */}
+                    <div style={{
+                      display: 'flex',
+                      gap: 16,
+                      marginBottom: 16,
+                      fontSize: 12,
+                      color: 'rgba(255,255,255,0.7)',
+                    }}>
+                      <div>
+                        <span style={{ opacity: 0.6 }}>発行数: </span>
+                        <span style={{ fontWeight: 600 }}>{nft.total_minted || 0}</span>
+                        {nft.max_supply && <span style={{ opacity: 0.6 }}> / {nft.max_supply}</span>}
+                      </div>
+                      <div>
+                        <span style={{ opacity: 0.6 }}>使用回数: </span>
+                        <span style={{ fontWeight: 600 }}>{nft.total_used || 0}</span>
+                      </div>
+                    </div>
+
+                    {/* ミントボタン */}
+                    <button
+                      onClick={() => {
+                        setSelectedNFTForMint(nft);
+                        setShowMintModal(true);
+                      }}
+                      style={{
+                        width: '100%',
+                        padding: '10px 16px',
+                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                        border: 'none',
+                        borderRadius: 8,
+                        color: '#fff',
+                        fontSize: 14,
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        transition: 'all 0.3s',
+                      }}
+                    >
+                      🎨 手動ミント
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* ミントモーダル */}
+        {showMintModal && selectedNFTForMint && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0,0,0,0.8)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999,
+          }}>
+            <div style={{
+              background: '#1a1a2e',
+              borderRadius: 16,
+              padding: 32,
+              maxWidth: 500,
+              width: '90%',
+              maxHeight: '90vh',
+              overflow: 'auto',
+            }}>
+              <h2 style={{ fontSize: 24, fontWeight: 700, color: '#fff', margin: '0 0 8px 0' }}>
+                NFTを手動ミント
+              </h2>
+              <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.6)', margin: '0 0 24px 0' }}>
+                {selectedNFTForMint.name}
+              </p>
+
+              <div style={{ marginBottom: 24 }}>
+                <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: '#fff', marginBottom: 8 }}>
+                  ミント先アドレス
+                </label>
+                <input
+                  type="text"
+                  value={mintToAddress}
+                  onChange={(e) => setMintToAddress(e.target.value)}
+                  placeholder="0x..."
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    background: 'rgba(255,255,255,0.05)',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    borderRadius: 8,
+                    color: '#fff',
+                    fontSize: 14,
+                  }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: 12 }}>
+                <button
+                  onClick={() => {
+                    setShowMintModal(false);
+                    setMintToAddress('');
+                    setSelectedNFTForMint(null);
+                  }}
+                  style={{
+                    flex: 1,
+                    padding: '12px 24px',
+                    background: 'rgba(255,255,255,0.1)',
+                    border: 'none',
+                    borderRadius: 8,
+                    color: '#fff',
+                    fontSize: 15,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                  }}
+                >
+                  キャンセル
+                </button>
+                <button
+                  onClick={handleManualMint}
+                  disabled={isMinting || !mintToAddress}
+                  style={{
+                    flex: 1,
+                    padding: '12px 24px',
+                    background: isMinting || !mintToAddress
+                      ? 'rgba(102, 126, 234, 0.3)'
+                      : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    border: 'none',
+                    borderRadius: 8,
+                    color: '#fff',
+                    fontSize: 15,
+                    fontWeight: 600,
+                    cursor: isMinting || !mintToAddress ? 'not-allowed' : 'pointer',
+                    opacity: isMinting || !mintToAddress ? 0.6 : 1,
+                  }}
+                >
+                  {isMinting ? 'ミント中...' : 'ミント実行'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // 作成フロー
+  return (
+    <div style={{ padding: 24 }}>
+      {/* ヘッダー */}
+      <div style={{ marginBottom: 32 }}>
+        <button
+          onClick={() => setView('list')}
+          style={{
+            padding: '8px 16px',
+            background: 'rgba(255,255,255,0.1)',
+            border: 'none',
+            borderRadius: 6,
+            color: '#fff',
+            fontSize: 14,
+            fontWeight: 600,
+            cursor: 'pointer',
+            marginBottom: 16,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+          }}
+        >
+          ← 戻る
+        </button>
+        <h1 style={{ fontSize: 28, fontWeight: 700, color: '#fff', margin: 0 }}>
+          新規フラグNFT作成
+        </h1>
+      </div>
+
+      {/* プログレスバー */}
+      <div style={{
+        display: 'flex',
+        gap: 16,
+        marginBottom: 32,
+        maxWidth: 600,
+      }}>
+        <div style={{ flex: 1 }}>
+          <div style={{
+            height: 4,
+            background: createStep === 'category' ? '#667eea' : 'rgba(255,255,255,0.1)',
+            borderRadius: 2,
+          }} />
+          <p style={{
+            fontSize: 12,
+            color: createStep === 'category' ? '#fff' : 'rgba(255,255,255,0.5)',
+            marginTop: 8,
+            fontWeight: 600,
+          }}>
+            1. カテゴリ選択
+          </p>
+        </div>
+        <div style={{ flex: 1 }}>
+          <div style={{
+            height: 4,
+            background: createStep === 'basic' ? '#667eea' : 'rgba(255,255,255,0.1)',
+            borderRadius: 2,
+          }} />
+          <p style={{
+            fontSize: 12,
+            color: createStep === 'basic' ? '#fff' : 'rgba(255,255,255,0.5)',
+            marginTop: 8,
+            fontWeight: 600,
+          }}>
+            2. 基本情報
+          </p>
+        </div>
+        <div style={{ flex: 1 }}>
+          <div style={{
+            height: 4,
+            background: createStep === 'detail' ? '#667eea' : 'rgba(255,255,255,0.1)',
+            borderRadius: 2,
+          }} />
+          <p style={{
+            fontSize: 12,
+            color: createStep === 'detail' ? '#fff' : 'rgba(255,255,255,0.5)',
+            marginTop: 8,
+            fontWeight: 600,
+          }}>
+            3. 詳細設定
+          </p>
+        </div>
+      </div>
+
+      {/* ステップ1: カテゴリ選択 */}
+      {createStep === 'category' && (
+        <div>
+          <h2 style={{ fontSize: 20, fontWeight: 700, color: '#fff', marginBottom: 16 }}>
+            どのような用途でNFTを発行しますか?
+          </h2>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+            gap: 16,
+            maxWidth: 1200,
+          }}>
+            {CATEGORY_OPTIONS.map((category) => (
+              <button
+                key={category.id}
+                onClick={() => {
+                  setSelectedCategory(category.id);
+                  setCreateStep('basic');
+                }}
+                style={{
+                  padding: 24,
+                  background: 'rgba(255,255,255,0.05)',
+                  border: '2px solid rgba(255,255,255,0.1)',
+                  borderRadius: 12,
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  transition: 'all 0.2s ease',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
+                  e.currentTarget.style.borderColor = category.color;
+                  e.currentTarget.style.transform = 'translateY(-4px)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                  e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                }}
+              >
+                <div style={{
+                  fontSize: 40,
+                  marginBottom: 12,
+                }}>
+                  {category.icon}
+                </div>
+                <h3 style={{
+                  fontSize: 18,
+                  fontWeight: 700,
+                  color: '#fff',
+                  margin: '0 0 8px 0',
+                }}>
+                  {category.label}
+                </h3>
+                <p style={{
+                  fontSize: 14,
+                  color: 'rgba(255,255,255,0.6)',
+                  margin: 0,
+                  lineHeight: 1.6,
+                }}>
+                  {category.description}
+                </p>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ステップ2: 基本情報 */}
+      {createStep === 'basic' && selectedCategory && (
+        <div style={{ maxWidth: 800 }}>
+          <h2 style={{ fontSize: 20, fontWeight: 700, color: '#fff', marginBottom: 24 }}>
+            基本情報を入力
+          </h2>
+          <div style={{
+            background: 'rgba(255,255,255,0.05)',
+            borderRadius: 12,
+            padding: 32,
+            border: '1px solid rgba(255,255,255,0.1)',
+          }}>
+            {/* NFT名 */}
+            <div style={{ marginBottom: 24 }}>
+              <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: '#fff', marginBottom: 8 }}>
+                NFT名 <span style={{ color: '#ef4444' }}>*</span>
+              </label>
+              <input
+                type="text"
+                value={formData.name}
+                onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                placeholder="例: 10%割引特典NFT"
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  background: 'rgba(255,255,255,0.1)',
+                  border: '1px solid rgba(255,255,255,0.2)',
+                  borderRadius: 8,
+                  color: '#fff',
+                  fontSize: 15,
+                  outline: 'none',
+                }}
+              />
+            </div>
+
+            {/* 説明 */}
+            <div style={{ marginBottom: 24 }}>
+              <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: '#fff', marginBottom: 8 }}>
+                説明 <span style={{ color: '#ef4444' }}>*</span>
+              </label>
+              <textarea
+                value={formData.description}
+                onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                placeholder="NFTの用途や特典内容を説明してください"
+                rows={4}
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  background: 'rgba(255,255,255,0.1)',
+                  border: '1px solid rgba(255,255,255,0.2)',
+                  borderRadius: 8,
+                  color: '#fff',
+                  fontSize: 15,
+                  outline: 'none',
+                  resize: 'vertical',
+                }}
+              />
+            </div>
+
+            {/* 画像アップロード */}
+            <div style={{ marginBottom: 24 }}>
+              <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: '#fff', marginBottom: 8 }}>
+                NFT画像 <span style={{ color: '#ef4444' }}>*</span>
+              </label>
+              <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+                {formData.image && (
+                  <img
+                    src={formData.image}
+                    alt="NFT preview"
+                    style={{
+                      width: 120,
+                      height: 120,
+                      objectFit: 'cover',
+                      borderRadius: 8,
+                      border: '2px solid rgba(255,255,255,0.2)',
+                    }}
+                  />
+                )}
+                <div style={{ flex: 1 }}>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    style={{ display: 'none' }}
+                  />
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploading}
+                    style={{
+                      padding: '12px 24px',
+                      background: 'rgba(255,255,255,0.1)',
+                      border: '1px solid rgba(255,255,255,0.2)',
+                      borderRadius: 8,
+                      color: '#fff',
+                      fontSize: 14,
+                      fontWeight: 600,
+                      cursor: isUploading ? 'not-allowed' : 'pointer',
+                      opacity: isUploading ? 0.6 : 1,
+                    }}
+                  >
+                    {isUploading ? 'アップロード中...' : formData.image ? '画像を変更' : '画像を選択'}
+                  </button>
+                  <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', marginTop: 8 }}>
+                    推奨: 正方形、1MB以下
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* 有効期間 */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
+              <div>
+                <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: '#fff', marginBottom: 8 }}>
+                  有効開始日
+                </label>
+                <input
+                  type="date"
+                  value={formData.validFrom}
+                  onChange={(e) => setFormData(prev => ({ ...prev, validFrom: e.target.value }))}
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    background: 'rgba(255,255,255,0.1)',
+                    border: '1px solid rgba(255,255,255,0.2)',
+                    borderRadius: 8,
+                    color: '#fff',
+                    fontSize: 15,
+                    outline: 'none',
+                  }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: '#fff', marginBottom: 8 }}>
+                  有効終了日（無期限の場合は空欄）
+                </label>
+                <input
+                  type="date"
+                  value={formData.validUntil}
+                  onChange={(e) => setFormData(prev => ({ ...prev, validUntil: e.target.value }))}
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    background: 'rgba(255,255,255,0.1)',
+                    border: '1px solid rgba(255,255,255,0.2)',
+                    borderRadius: 8,
+                    color: '#fff',
+                    fontSize: 15,
+                    outline: 'none',
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* 使用制限・発行上限 */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
+              <div>
+                <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: '#fff', marginBottom: 8 }}>
+                  使用制限回数
+                </label>
+                <select
+                  value={formData.usageLimit}
+                  onChange={(e) => setFormData(prev => ({ ...prev, usageLimit: e.target.value }))}
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    background: 'rgba(255,255,255,0.1)',
+                    border: '1px solid rgba(255,255,255,0.2)',
+                    borderRadius: 8,
+                    color: '#fff',
+                    fontSize: 15,
+                    outline: 'none',
+                  }}
+                >
+                  <option value="-1" style={{ background: '#1a1a1a' }}>無制限</option>
+                  <option value="0" style={{ background: '#1a1a1a' }}>表示のみ（使用不可）</option>
+                  <option value="1" style={{ background: '#1a1a1a' }}>1回まで</option>
+                  <option value="3" style={{ background: '#1a1a1a' }}>3回まで</option>
+                  <option value="5" style={{ background: '#1a1a1a' }}>5回まで</option>
+                  <option value="10" style={{ background: '#1a1a1a' }}>10回まで</option>
+                </select>
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: '#fff', marginBottom: 8 }}>
+                  発行上限数（無制限の場合は空欄）
+                </label>
+                <input
+                  type="number"
+                  value={formData.maxSupply}
+                  onChange={(e) => setFormData(prev => ({ ...prev, maxSupply: e.target.value }))}
+                  placeholder="例: 100"
+                  min="1"
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    background: 'rgba(255,255,255,0.1)',
+                    border: '1px solid rgba(255,255,255,0.2)',
+                    borderRadius: 8,
+                    color: '#fff',
+                    fontSize: 15,
+                    outline: 'none',
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* 譲渡可能設定 */}
+            <div style={{ marginBottom: 32 }}>
+              <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={formData.isTransferable}
+                  onChange={(e) => setFormData(prev => ({ ...prev, isTransferable: e.target.checked }))}
+                  style={{ marginRight: 8, width: 18, height: 18, cursor: 'pointer' }}
+                />
+                <span style={{ fontSize: 14, fontWeight: 600, color: '#fff' }}>
+                  NFTの譲渡を許可する
+                </span>
+              </label>
+              <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', marginTop: 6, marginLeft: 26 }}>
+                チェックを入れると、ユーザー間でNFTの譲渡が可能になります
+              </p>
+            </div>
+
+            {/* バーン機能設定 */}
+            <div style={{ marginBottom: 32 }}>
+              <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={formData.isBurnable}
+                  onChange={(e) => setFormData(prev => ({ ...prev, isBurnable: e.target.checked }))}
+                  style={{ marginRight: 8, width: 18, height: 18, cursor: 'pointer' }}
+                />
+                <span style={{ fontSize: 14, fontWeight: 600, color: '#fff' }}>
+                  NFTのバーン（焼却）を許可する
+                </span>
+              </label>
+              <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', marginTop: 6, marginLeft: 26 }}>
+                チェックを入れると、ユーザーがNFTをバーン（削除）できます。クーポン使用後の処理などに使用
+              </p>
+            </div>
+
+            {/* 自動配布設定 */}
+            <div style={{ marginBottom: 32, padding: 20, background: 'rgba(255,255,255,0.05)', borderRadius: 12, border: '1px solid rgba(255,255,255,0.1)' }}>
+              <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', marginBottom: 16 }}>
+                <input
+                  type="checkbox"
+                  checked={formData.autoDistributionEnabled}
+                  onChange={(e) => setFormData(prev => ({ ...prev, autoDistributionEnabled: e.target.checked }))}
+                  style={{ marginRight: 8, width: 18, height: 18, cursor: 'pointer' }}
+                />
+                <span style={{ fontSize: 14, fontWeight: 600, color: '#fff' }}>
+                  投げ銭累積による自動配布を有効化
+                </span>
+              </label>
+              <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', marginBottom: 16, marginLeft: 26 }}>
+                ユーザーの累積投げ銭額が条件を達成したとき、自動的にこのNFTを配布します
+              </p>
+
+              {formData.autoDistributionEnabled && (
+                <div style={{ marginLeft: 26 }}>
+                  <div style={{ marginBottom: 16 }}>
+                    <label style={{ fontSize: 13, fontWeight: 500, color: 'rgba(255,255,255,0.8)', display: 'block', marginBottom: 6 }}>
+                      必要な累積額
+                    </label>
+                    <input
+                      type="number"
+                      value={formData.requiredTipAmount}
+                      onChange={(e) => setFormData(prev => ({ ...prev, requiredTipAmount: e.target.value }))}
+                      placeholder="例: 1000"
+                      style={{
+                        width: '100%',
+                        padding: '10px 12px',
+                        background: 'rgba(255,255,255,0.05)',
+                        border: '1px solid rgba(255,255,255,0.2)',
+                        borderRadius: 8,
+                        color: '#fff',
+                        fontSize: 14,
+                      }}
+                    />
+                    <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginTop: 4 }}>
+                      トークン単位での累積額（JPYC: 1000 = 1000円相当）
+                    </p>
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: 13, fontWeight: 500, color: 'rgba(255,255,255,0.8)', display: 'block', marginBottom: 6 }}>
+                      対象トークン
+                    </label>
+                    <select
+                      value={formData.targetToken}
+                      onChange={(e) => setFormData(prev => ({ ...prev, targetToken: e.target.value as 'JPYC' | 'tNHT' | 'both' }))}
+                      style={{
+                        width: '100%',
+                        padding: '10px 12px',
+                        background: 'rgba(255,255,255,0.05)',
+                        border: '1px solid rgba(255,255,255,0.2)',
+                        borderRadius: 8,
+                        color: '#fff',
+                        fontSize: 14,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <option value="both">JPYC + tNHT（両方）</option>
+                      <option value="JPYC">JPYCのみ</option>
+                      <option value="tNHT">tNHTのみ</option>
+                    </select>
+                    <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginTop: 4 }}>
+                      どのトークンの累積額をカウントするか
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* ボタン */}
+            <div style={{ display: 'flex', gap: 12 }}>
+              <button
+                onClick={() => setCreateStep('category')}
+                style={{
+                  padding: '12px 24px',
+                  background: 'rgba(255,255,255,0.1)',
+                  border: 'none',
+                  borderRadius: 8,
+                  color: '#fff',
+                  fontSize: 15,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                ← 戻る
+              </button>
+              <button
+                onClick={() => setCreateStep('detail')}
+                disabled={!isBasicFormValid()}
+                style={{
+                  padding: '12px 24px',
+                  background: isBasicFormValid()
+                    ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+                    : 'rgba(255,255,255,0.1)',
+                  border: 'none',
+                  borderRadius: 8,
+                  color: '#fff',
+                  fontSize: 15,
+                  fontWeight: 600,
+                  cursor: isBasicFormValid() ? 'pointer' : 'not-allowed',
+                  opacity: isBasicFormValid() ? 1 : 0.5,
+                }}
+              >
+                次へ: 詳細設定 →
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ステップ3: 詳細設定 */}
+      {createStep === 'detail' && selectedCategory && (
+        <div style={{ maxWidth: 800 }}>
+          <h2 style={{ fontSize: 20, fontWeight: 700, color: '#fff', marginBottom: 24 }}>
+            詳細設定 - {CATEGORY_OPTIONS.find(c => c.id === selectedCategory)?.label}
+          </h2>
+
+          {/* 特典NFTの詳細設定 */}
+          {selectedCategory === 'BENEFIT' && (
+            <div style={{
+              background: 'rgba(255,255,255,0.05)',
+              borderRadius: 12,
+              padding: 32,
+              border: '1px solid rgba(255,255,255,0.1)',
+            }}>
+              {/* 割引タイプ */}
+              <div style={{ marginBottom: 24 }}>
+                <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: '#fff', marginBottom: 8 }}>
+                  割引タイプ <span style={{ color: '#ef4444' }}>*</span>
+                </label>
+                <select
+                  value={benefitData.discountType}
+                  onChange={(e) => setBenefitData(prev => ({ ...prev, discountType: e.target.value as any }))}
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    background: 'rgba(255,255,255,0.1)',
+                    border: '1px solid rgba(255,255,255,0.2)',
+                    borderRadius: 8,
+                    color: '#fff',
+                    fontSize: 15,
+                    outline: 'none',
+                  }}
+                >
+                  <option value="PERCENTAGE" style={{ background: '#1a1a1a' }}>パーセント割引 (例: 10%オフ)</option>
+                  <option value="FIXED_AMOUNT" style={{ background: '#1a1a1a' }}>固定額割引 (例: 500円オフ)</option>
+                  <option value="GIFT_ITEM" style={{ background: '#1a1a1a' }}>特典アイテム (例: ドリンク1杯無料)</option>
+                </select>
+              </div>
+
+              {/* 割引値 */}
+              <div style={{ marginBottom: 24 }}>
+                <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: '#fff', marginBottom: 8 }}>
+                  {benefitData.discountType === 'PERCENTAGE' ? '割引率 (%)' : benefitData.discountType === 'FIXED_AMOUNT' ? '割引額 (円)' : '特典内容'} <span style={{ color: '#ef4444' }}>*</span>
+                </label>
+                <input
+                  type={benefitData.discountType === 'GIFT_ITEM' ? 'text' : 'number'}
+                  value={benefitData.discountValue}
+                  onChange={(e) => setBenefitData(prev => ({ ...prev, discountValue: e.target.value }))}
+                  placeholder={benefitData.discountType === 'PERCENTAGE' ? '例: 10' : benefitData.discountType === 'FIXED_AMOUNT' ? '例: 500' : '例: ドリンク1杯無料'}
+                  min={benefitData.discountType !== 'GIFT_ITEM' ? '0' : undefined}
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    background: 'rgba(255,255,255,0.1)',
+                    border: '1px solid rgba(255,255,255,0.2)',
+                    borderRadius: 8,
+                    color: '#fff',
+                    fontSize: 15,
+                    outline: 'none',
+                  }}
+                />
+              </div>
+
+              {/* 最低チップ額 */}
+              <div style={{ marginBottom: 24 }}>
+                <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: '#fff', marginBottom: 8 }}>
+                  最低チップ額 (円)
+                </label>
+                <input
+                  type="number"
+                  value={benefitData.minTipAmount}
+                  onChange={(e) => setBenefitData(prev => ({ ...prev, minTipAmount: e.target.value }))}
+                  placeholder="例: 1000 (空欄の場合は制限なし)"
+                  min="0"
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    background: 'rgba(255,255,255,0.1)',
+                    border: '1px solid rgba(255,255,255,0.2)',
+                    borderRadius: 8,
+                    color: '#fff',
+                    fontSize: 15,
+                    outline: 'none',
+                  }}
+                />
+                <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', marginTop: 6 }}>
+                  この金額以上のチップに対してのみ特典が適用されます
+                </p>
+              </div>
+
+              {/* 最大割引額 (パーセンテージ割引の場合のみ) */}
+              {benefitData.discountType === 'PERCENTAGE' && (
+                <div style={{ marginBottom: 24 }}>
+                  <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: '#fff', marginBottom: 8 }}>
+                    最大割引額 (円)
+                  </label>
+                  <input
+                    type="number"
+                    value={benefitData.maxDiscountAmount}
+                    onChange={(e) => setBenefitData(prev => ({ ...prev, maxDiscountAmount: e.target.value }))}
+                    placeholder="例: 5000 (空欄の場合は上限なし)"
+                    min="0"
+                    style={{
+                      width: '100%',
+                      padding: '12px 16px',
+                      background: 'rgba(255,255,255,0.1)',
+                      border: '1px solid rgba(255,255,255,0.2)',
+                      borderRadius: 8,
+                      color: '#fff',
+                      fontSize: 15,
+                      outline: 'none',
+                    }}
+                  />
+                  <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', marginTop: 6 }}>
+                    パーセント割引の上限額を設定します
+                  </p>
+                </div>
+              )}
+
+              {/* 適用対象特典ID */}
+              <div style={{ marginBottom: 32 }}>
+                <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: '#fff', marginBottom: 8 }}>
+                  適用対象特典ID (カンマ区切り)
+                </label>
+                <input
+                  type="text"
+                  value={benefitData.applicableGifts}
+                  onChange={(e) => setBenefitData(prev => ({ ...prev, applicableGifts: e.target.value }))}
+                  placeholder="例: gift-001,gift-002 (空欄の場合は全特典に適用)"
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    background: 'rgba(255,255,255,0.1)',
+                    border: '1px solid rgba(255,255,255,0.2)',
+                    borderRadius: 8,
+                    color: '#fff',
+                    fontSize: 15,
+                    outline: 'none',
+                    fontFamily: 'monospace',
+                  }}
+                />
+                <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', marginTop: 6 }}>
+                  特定の特典にのみ適用したい場合は特典IDを入力してください
+                </p>
+              </div>
+
+              {/* ボタン */}
+              <div style={{ display: 'flex', gap: 12 }}>
+                <button
+                  onClick={() => setCreateStep('basic')}
+                  style={{
+                    padding: '12px 24px',
+                    background: 'rgba(255,255,255,0.1)',
+                    border: 'none',
+                    borderRadius: 8,
+                    color: '#fff',
+                    fontSize: 15,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                  }}
+                >
+                  ← 戻る
+                </button>
+                <button
+                  onClick={saveFlagNFT}
+                  disabled={isSaving || !benefitData.discountValue}
+                  style={{
+                    padding: '12px 24px',
+                    background: (benefitData.discountValue && !isSaving)
+                      ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
+                      : 'rgba(255,255,255,0.1)',
+                    border: 'none',
+                    borderRadius: 8,
+                    color: '#fff',
+                    fontSize: 15,
+                    fontWeight: 600,
+                    cursor: (benefitData.discountValue && !isSaving) ? 'pointer' : 'not-allowed',
+                    opacity: (benefitData.discountValue && !isSaving) ? 1 : 0.5,
+                  }}
+                >
+                  {isSaving ? '保存中...' : '作成して公開'}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* キャンペーン(スタンプラリー)NFTの詳細設定 */}
+          {selectedCategory === 'CAMPAIGN' && (
+            <div style={{
+              background: 'rgba(255,255,255,0.05)',
+              borderRadius: 12,
+              padding: 32,
+              border: '1px solid rgba(255,255,255,0.1)',
+            }}>
+              {/* 検証方法 */}
+              <div style={{ marginBottom: 24 }}>
+                <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: '#fff', marginBottom: 8 }}>
+                  検証方法 <span style={{ color: '#ef4444' }}>*</span>
+                </label>
+                <select
+                  value={stampRallyData.verificationMethod}
+                  onChange={(e) => setStampRallyData(prev => ({ ...prev, verificationMethod: e.target.value as any }))}
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    background: 'rgba(255,255,255,0.1)',
+                    border: '1px solid rgba(255,255,255,0.2)',
+                    borderRadius: 8,
+                    color: '#fff',
+                    fontSize: 15,
+                    outline: 'none',
+                  }}
+                >
+                  <option value="NFC" style={{ background: '#1a1a1a' }}>NFCタグのみ</option>
+                  <option value="QR" style={{ background: '#1a1a1a' }}>QRコードのみ</option>
+                  <option value="BOTH" style={{ background: '#1a1a1a' }}>NFC + QRコード両方</option>
+                </select>
+                <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', marginTop: 6 }}>
+                  NFCは物理的なタグタッチ、QRはカメラでスキャン。両方を有効にすると柔軟な運用が可能です
+                </p>
+              </div>
+
+              {/* 順番指定 */}
+              <div style={{ marginBottom: 24 }}>
+                <label style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  cursor: 'pointer',
+                  fontSize: 14,
+                  fontWeight: 600,
+                  color: '#fff'
+                }}>
+                  <input
+                    type="checkbox"
+                    checked={stampRallyData.requireSequential}
+                    onChange={(e) => setStampRallyData(prev => ({ ...prev, requireSequential: e.target.checked }))}
+                    style={{ marginRight: 8, width: 18, height: 18, cursor: 'pointer' }}
+                  />
+                  順番通りにチェックインを要求する
+                </label>
+                <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', marginTop: 6, marginLeft: 26 }}>
+                  有効にすると、チェックポイントを順番に回る必要があります
+                </p>
+              </div>
+
+              {/* 完走特典NFT */}
+              <div style={{ marginBottom: 32 }}>
+                <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: '#fff', marginBottom: 8 }}>
+                  完走特典NFT ID
+                </label>
+                <input
+                  type="text"
+                  value={stampRallyData.completionReward}
+                  onChange={(e) => setStampRallyData(prev => ({ ...prev, completionReward: e.target.value }))}
+                  placeholder="例: benefit-nft-001 (空欄の場合は特典なし)"
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    background: 'rgba(255,255,255,0.1)',
+                    border: '1px solid rgba(255,255,255,0.2)',
+                    borderRadius: 8,
+                    color: '#fff',
+                    fontSize: 15,
+                    outline: 'none',
+                  }}
+                />
+                <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', marginTop: 6 }}>
+                  全チェックポイント達成時に自動配布されるNFTのID
+                </p>
+              </div>
+
+              {/* チェックポイント管理 */}
+              <div style={{ marginBottom: 24 }}>
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginBottom: 16
+                }}>
+                  <label style={{ fontSize: 14, fontWeight: 600, color: '#fff' }}>
+                    チェックポイント <span style={{ color: '#ef4444' }}>*</span>
+                  </label>
+                  <button
+                    onClick={() => {
+                      const newCheckpoint: CheckpointFormData = {
+                        id: `checkpoint-${Date.now()}`,
+                        name: '',
+                        description: '',
+                        nfcTagId: '',
+                        nfcEnabled: stampRallyData.verificationMethod !== 'QR',
+                        qrCode: '',
+                        qrEnabled: stampRallyData.verificationMethod !== 'NFC',
+                        locationLat: '',
+                        locationLng: '',
+                        radiusMeters: '100',
+                      };
+                      setStampRallyData(prev => ({
+                        ...prev,
+                        checkpoints: [...prev.checkpoints, newCheckpoint]
+                      }));
+                    }}
+                    style={{
+                      padding: '8px 16px',
+                      background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                      border: 'none',
+                      borderRadius: 6,
+                      color: '#fff',
+                      fontSize: 13,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    + チェックポイントを追加
+                  </button>
+                </div>
+
+                {/* チェックポイントリスト */}
+                {stampRallyData.checkpoints.length === 0 ? (
+                  <div style={{
+                    padding: 32,
+                    textAlign: 'center',
+                    background: 'rgba(255,255,255,0.02)',
+                    borderRadius: 8,
+                    border: '1px dashed rgba(255,255,255,0.2)',
+                  }}>
+                    <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14 }}>
+                      チェックポイントがまだありません。「+ チェックポイントを追加」ボタンから追加してください
+                    </p>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                    {stampRallyData.checkpoints.map((checkpoint, index) => (
+                      <div
+                        key={checkpoint.id}
+                        style={{
+                          background: 'rgba(255,255,255,0.03)',
+                          borderRadius: 8,
+                          padding: 20,
+                          border: '1px solid rgba(255,255,255,0.15)',
+                        }}
+                      >
+                        <div style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          marginBottom: 16
+                        }}>
+                          <h4 style={{
+                            fontSize: 15,
+                            fontWeight: 600,
+                            color: '#fff',
+                            margin: 0
+                          }}>
+                            チェックポイント #{index + 1}
+                          </h4>
+                          <button
+                            onClick={() => {
+                              setStampRallyData(prev => ({
+                                ...prev,
+                                checkpoints: prev.checkpoints.filter((_, i) => i !== index)
+                              }));
+                            }}
+                            style={{
+                              padding: '6px 12px',
+                              background: 'rgba(239,68,68,0.2)',
+                              border: '1px solid rgba(239,68,68,0.3)',
+                              borderRadius: 4,
+                              color: '#ef4444',
+                              fontSize: 12,
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                            }}
+                          >
+                            削除
+                          </button>
+                        </div>
+
+                        {/* チェックポイント名 */}
+                        <div style={{ marginBottom: 12 }}>
+                          <label style={{
+                            display: 'block',
+                            fontSize: 13,
+                            fontWeight: 500,
+                            color: 'rgba(255,255,255,0.9)',
+                            marginBottom: 6
+                          }}>
+                            名前 <span style={{ color: '#ef4444' }}>*</span>
+                          </label>
+                          <input
+                            type="text"
+                            value={checkpoint.name}
+                            onChange={(e) => {
+                              const updated = [...stampRallyData.checkpoints];
+                              updated[index] = { ...updated[index], name: e.target.value };
+                              setStampRallyData(prev => ({ ...prev, checkpoints: updated }));
+                            }}
+                            placeholder="例: エントランス"
+                            style={{
+                              width: '100%',
+                              padding: '10px 12px',
+                              background: 'rgba(255,255,255,0.05)',
+                              border: '1px solid rgba(255,255,255,0.15)',
+                              borderRadius: 6,
+                              color: '#fff',
+                              fontSize: 14,
+                              outline: 'none',
+                            }}
+                          />
+                        </div>
+
+                        {/* チェックポイント説明 */}
+                        <div style={{ marginBottom: 12 }}>
+                          <label style={{
+                            display: 'block',
+                            fontSize: 13,
+                            fontWeight: 500,
+                            color: 'rgba(255,255,255,0.9)',
+                            marginBottom: 6
+                          }}>
+                            説明
+                          </label>
+                          <textarea
+                            value={checkpoint.description}
+                            onChange={(e) => {
+                              const updated = [...stampRallyData.checkpoints];
+                              updated[index] = { ...updated[index], description: e.target.value };
+                              setStampRallyData(prev => ({ ...prev, checkpoints: updated }));
+                            }}
+                            placeholder="例: 正面エントランスでスタンプを押してください"
+                            rows={2}
+                            style={{
+                              width: '100%',
+                              padding: '10px 12px',
+                              background: 'rgba(255,255,255,0.05)',
+                              border: '1px solid rgba(255,255,255,0.15)',
+                              borderRadius: 6,
+                              color: '#fff',
+                              fontSize: 14,
+                              outline: 'none',
+                              resize: 'vertical',
+                              fontFamily: 'inherit',
+                            }}
+                          />
+                        </div>
+
+                        {/* NFCタグID (NFCが有効な場合のみ) */}
+                        {checkpoint.nfcEnabled && (
+                          <div style={{ marginBottom: 12 }}>
+                            <label style={{
+                              display: 'block',
+                              fontSize: 13,
+                              fontWeight: 500,
+                              color: 'rgba(255,255,255,0.9)',
+                              marginBottom: 6
+                            }}>
+                              NFCタグID (UID)
+                            </label>
+                            <input
+                              type="text"
+                              value={checkpoint.nfcTagId}
+                              onChange={(e) => {
+                                const updated = [...stampRallyData.checkpoints];
+                                updated[index] = { ...updated[index], nfcTagId: e.target.value };
+                                setStampRallyData(prev => ({ ...prev, checkpoints: updated }));
+                              }}
+                              placeholder="例: 04:1A:2B:3C:4D:5E:6F"
+                              style={{
+                                width: '100%',
+                                padding: '10px 12px',
+                                background: 'rgba(255,255,255,0.05)',
+                                border: '1px solid rgba(255,255,255,0.15)',
+                                borderRadius: 6,
+                                color: '#fff',
+                                fontSize: 14,
+                                outline: 'none',
+                                fontFamily: 'monospace',
+                              }}
+                            />
+                            <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginTop: 4 }}>
+                              物理NFCタグの一意識別子
+                            </p>
+                          </div>
+                        )}
+
+                        {/* QRコード (QRが有効な場合のみ) */}
+                        {checkpoint.qrEnabled && (
+                          <div style={{ marginBottom: 12 }}>
+                            <label style={{
+                              display: 'block',
+                              fontSize: 13,
+                              fontWeight: 500,
+                              color: 'rgba(255,255,255,0.9)',
+                              marginBottom: 6
+                            }}>
+                              QRコード値
+                            </label>
+                            <input
+                              type="text"
+                              value={checkpoint.qrCode}
+                              onChange={(e) => {
+                                const updated = [...stampRallyData.checkpoints];
+                                updated[index] = { ...updated[index], qrCode: e.target.value };
+                                setStampRallyData(prev => ({ ...prev, checkpoints: updated }));
+                              }}
+                              placeholder="例: checkpoint-entrance-001"
+                              style={{
+                                width: '100%',
+                                padding: '10px 12px',
+                                background: 'rgba(255,255,255,0.05)',
+                                border: '1px solid rgba(255,255,255,0.15)',
+                                borderRadius: 6,
+                                color: '#fff',
+                                fontSize: 14,
+                                outline: 'none',
+                                fontFamily: 'monospace',
+                              }}
+                            />
+                            <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginTop: 4 }}>
+                              QRコードに埋め込む識別子
+                            </p>
+                          </div>
+                        )}
+
+                        {/* 位置情報 (オプション) */}
+                        <details style={{ marginTop: 12 }}>
+                          <summary style={{
+                            cursor: 'pointer',
+                            fontSize: 13,
+                            fontWeight: 500,
+                            color: 'rgba(255,255,255,0.7)',
+                            marginBottom: 8
+                          }}>
+                            位置情報設定 (オプション - 不正防止用)
+                          </summary>
+                          <div style={{
+                            display: 'grid',
+                            gridTemplateColumns: '1fr 1fr 1fr',
+                            gap: 8,
+                            marginTop: 12
+                          }}>
+                            <div>
+                              <label style={{
+                                display: 'block',
+                                fontSize: 12,
+                                color: 'rgba(255,255,255,0.7)',
+                                marginBottom: 4
+                              }}>
+                                緯度
+                              </label>
+                              <input
+                                type="number"
+                                step="0.000001"
+                                value={checkpoint.locationLat}
+                                onChange={(e) => {
+                                  const updated = [...stampRallyData.checkpoints];
+                                  updated[index] = { ...updated[index], locationLat: e.target.value };
+                                  setStampRallyData(prev => ({ ...prev, checkpoints: updated }));
+                                }}
+                                placeholder="35.681236"
+                                style={{
+                                  width: '100%',
+                                  padding: '8px',
+                                  background: 'rgba(255,255,255,0.05)',
+                                  border: '1px solid rgba(255,255,255,0.15)',
+                                  borderRadius: 4,
+                                  color: '#fff',
+                                  fontSize: 13,
+                                  outline: 'none',
+                                }}
+                              />
+                            </div>
+                            <div>
+                              <label style={{
+                                display: 'block',
+                                fontSize: 12,
+                                color: 'rgba(255,255,255,0.7)',
+                                marginBottom: 4
+                              }}>
+                                経度
+                              </label>
+                              <input
+                                type="number"
+                                step="0.000001"
+                                value={checkpoint.locationLng}
+                                onChange={(e) => {
+                                  const updated = [...stampRallyData.checkpoints];
+                                  updated[index] = { ...updated[index], locationLng: e.target.value };
+                                  setStampRallyData(prev => ({ ...prev, checkpoints: updated }));
+                                }}
+                                placeholder="139.767125"
+                                style={{
+                                  width: '100%',
+                                  padding: '8px',
+                                  background: 'rgba(255,255,255,0.05)',
+                                  border: '1px solid rgba(255,255,255,0.15)',
+                                  borderRadius: 4,
+                                  color: '#fff',
+                                  fontSize: 13,
+                                  outline: 'none',
+                                }}
+                              />
+                            </div>
+                            <div>
+                              <label style={{
+                                display: 'block',
+                                fontSize: 12,
+                                color: 'rgba(255,255,255,0.7)',
+                                marginBottom: 4
+                              }}>
+                                範囲(m)
+                              </label>
+                              <input
+                                type="number"
+                                value={checkpoint.radiusMeters}
+                                onChange={(e) => {
+                                  const updated = [...stampRallyData.checkpoints];
+                                  updated[index] = { ...updated[index], radiusMeters: e.target.value };
+                                  setStampRallyData(prev => ({ ...prev, checkpoints: updated }));
+                                }}
+                                placeholder="100"
+                                style={{
+                                  width: '100%',
+                                  padding: '8px',
+                                  background: 'rgba(255,255,255,0.05)',
+                                  border: '1px solid rgba(255,255,255,0.15)',
+                                  borderRadius: 4,
+                                  color: '#fff',
+                                  fontSize: 13,
+                                  outline: 'none',
+                                }}
+                              />
+                            </div>
+                          </div>
+                          <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginTop: 6 }}>
+                            チェックイン時にユーザーの位置情報を確認し、範囲内かどうかを検証します
+                          </p>
+                        </details>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* ボタン */}
+              <div style={{ display: 'flex', gap: 12 }}>
+                <button
+                  onClick={() => setCreateStep('basic')}
+                  style={{
+                    padding: '12px 24px',
+                    background: 'rgba(255,255,255,0.1)',
+                    border: 'none',
+                    borderRadius: 8,
+                    color: '#fff',
+                    fontSize: 15,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                  }}
+                >
+                  ← 戻る
+                </button>
+                <button
+                  onClick={() => {
+                    alert('作成処理は次のコミットで実装します');
+                    setView('list');
+                  }}
+                  disabled={stampRallyData.checkpoints.length === 0 || !stampRallyData.checkpoints.every(cp => cp.name.trim())}
+                  style={{
+                    padding: '12px 24px',
+                    background: (stampRallyData.checkpoints.length > 0 && stampRallyData.checkpoints.every(cp => cp.name.trim()))
+                      ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
+                      : 'rgba(255,255,255,0.1)',
+                    border: 'none',
+                    borderRadius: 8,
+                    color: '#fff',
+                    fontSize: 15,
+                    fontWeight: 600,
+                    cursor: (stampRallyData.checkpoints.length > 0 && stampRallyData.checkpoints.every(cp => cp.name.trim())) ? 'pointer' : 'not-allowed',
+                    opacity: (stampRallyData.checkpoints.length > 0 && stampRallyData.checkpoints.every(cp => cp.name.trim())) ? 1 : 0.5,
+                  }}
+                >
+                  作成して公開
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* 会員証NFTの詳細設定 */}
+          {selectedCategory === 'MEMBERSHIP' && (
+            <div style={{
+              background: 'rgba(255,255,255,0.05)',
+              borderRadius: 12,
+              padding: 32,
+              border: '1px solid rgba(255,255,255,0.1)',
+            }}>
+              {/* 会員レベル */}
+              <div style={{ marginBottom: 24 }}>
+                <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: '#fff', marginBottom: 8 }}>
+                  会員レベル <span style={{ color: '#ef4444' }}>*</span>
+                </label>
+                <input
+                  type="text"
+                  value={membershipData.membershipLevel}
+                  onChange={(e) => setMembershipData(prev => ({ ...prev, membershipLevel: e.target.value }))}
+                  placeholder="例: ゴールド"
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    background: 'rgba(255,255,255,0.1)',
+                    border: '1px solid rgba(255,255,255,0.2)',
+                    borderRadius: 8,
+                    color: '#fff',
+                    fontSize: 15,
+                    outline: 'none',
+                  }}
+                />
+              </div>
+
+              {/* アクセス可能エリア */}
+              <div style={{ marginBottom: 24 }}>
+                <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: '#fff', marginBottom: 8 }}>
+                  アクセス可能エリア (カンマ区切り)
+                </label>
+                <input
+                  type="text"
+                  value={membershipData.accessAreas}
+                  onChange={(e) => setMembershipData(prev => ({ ...prev, accessAreas: e.target.value }))}
+                  placeholder="例: VIPラウンジ,特別展示室,プレミアムイベント"
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    background: 'rgba(255,255,255,0.1)',
+                    border: '1px solid rgba(255,255,255,0.2)',
+                    borderRadius: 8,
+                    color: '#fff',
+                    fontSize: 15,
+                    outline: 'none',
+                  }}
+                />
+                <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', marginTop: 6 }}>
+                  この会員証で入場できるエリアをカンマ区切りで指定します
+                </p>
+              </div>
+
+              {/* 特典内容 */}
+              <div style={{ marginBottom: 24 }}>
+                <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: '#fff', marginBottom: 8 }}>
+                  特典内容 (カンマ区切り)
+                </label>
+                <textarea
+                  value={membershipData.benefits}
+                  onChange={(e) => setMembershipData(prev => ({ ...prev, benefits: e.target.value }))}
+                  placeholder="例: 10%割引,優先入場,限定グッズプレゼント"
+                  rows={3}
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    background: 'rgba(255,255,255,0.1)',
+                    border: '1px solid rgba(255,255,255,0.2)',
+                    borderRadius: 8,
+                    color: '#fff',
+                    fontSize: 15,
+                    outline: 'none',
+                    resize: 'vertical',
+                  }}
+                />
+                <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', marginTop: 6 }}>
+                  会員が受けられる特典をカンマ区切りで指定します
+                </p>
+              </div>
+
+              {/* 更新タイプ */}
+              <div style={{ marginBottom: 32 }}>
+                <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: '#fff', marginBottom: 8 }}>
+                  更新タイプ
+                </label>
+                <select
+                  value={membershipData.renewalType}
+                  onChange={(e) => setMembershipData(prev => ({ ...prev, renewalType: e.target.value as any }))}
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    background: 'rgba(255,255,255,0.1)',
+                    border: '1px solid rgba(255,255,255,0.2)',
+                    borderRadius: 8,
+                    color: '#fff',
+                    fontSize: 15,
+                    outline: 'none',
+                  }}
+                >
+                  <option value="NONE" style={{ background: '#1a1a1a' }}>更新なし（永続）</option>
+                  <option value="MANUAL" style={{ background: '#1a1a1a' }}>手動更新</option>
+                  <option value="AUTO" style={{ background: '#1a1a1a' }}>自動更新</option>
+                </select>
+              </div>
+
+              {/* ボタン */}
+              <div style={{ display: 'flex', gap: 12 }}>
+                <button
+                  onClick={() => setCreateStep('basic')}
+                  style={{
+                    padding: '12px 24px',
+                    background: 'rgba(255,255,255,0.1)',
+                    border: 'none',
+                    borderRadius: 8,
+                    color: '#fff',
+                    fontSize: 15,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                  }}
+                >
+                  ← 戻る
+                </button>
+                <button
+                  onClick={() => {
+                    alert('作成処理は次のコミットで実装します');
+                    setView('list');
+                  }}
+                  disabled={!membershipData.membershipLevel}
+                  style={{
+                    padding: '12px 24px',
+                    background: membershipData.membershipLevel
+                      ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
+                      : 'rgba(255,255,255,0.1)',
+                    border: 'none',
+                    borderRadius: 8,
+                    color: '#fff',
+                    fontSize: 15,
+                    fontWeight: 600,
+                    cursor: membershipData.membershipLevel ? 'pointer' : 'not-allowed',
+                    opacity: membershipData.membershipLevel ? 1 : 0.5,
+                  }}
+                >
+                  作成して公開
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* 実績バッジNFTの詳細設定 */}
+          {selectedCategory === 'ACHIEVEMENT' && (
+            <div style={{
+              background: 'rgba(255,255,255,0.05)',
+              borderRadius: 12,
+              padding: 32,
+              border: '1px solid rgba(255,255,255,0.1)',
+            }}>
+              {/* トリガータイプ */}
+              <div style={{ marginBottom: 24 }}>
+                <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: '#fff', marginBottom: 8 }}>
+                  達成条件タイプ <span style={{ color: '#ef4444' }}>*</span>
+                </label>
+                <select
+                  value={achievementData.triggerType}
+                  onChange={(e) => setAchievementData(prev => ({ ...prev, triggerType: e.target.value as any }))}
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    background: 'rgba(255,255,255,0.1)',
+                    border: '1px solid rgba(255,255,255,0.2)',
+                    borderRadius: 8,
+                    color: '#fff',
+                    fontSize: 15,
+                    outline: 'none',
+                  }}
+                >
+                  <option value="TIP_COUNT" style={{ background: '#1a1a1a' }}>チップ回数</option>
+                  <option value="TOTAL_TIPPED" style={{ background: '#1a1a1a' }}>累計チップ額</option>
+                  <option value="GIFT_COLLECTION" style={{ background: '#1a1a1a' }}>特典コレクション数</option>
+                  <option value="MANUAL" style={{ background: '#1a1a1a' }}>手動配布</option>
+                </select>
+                <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', marginTop: 6 }}>
+                  どの条件を達成したときにバッジを配布するかを選択します
+                </p>
+              </div>
+
+              {/* 閾値 */}
+              <div style={{ marginBottom: 24 }}>
+                <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: '#fff', marginBottom: 8 }}>
+                  達成閾値 {achievementData.triggerType !== 'MANUAL' && <span style={{ color: '#ef4444' }}>*</span>}
+                </label>
+                <input
+                  type="number"
+                  value={achievementData.threshold}
+                  onChange={(e) => setAchievementData(prev => ({ ...prev, threshold: e.target.value }))}
+                  placeholder={
+                    achievementData.triggerType === 'TIP_COUNT' ? '例: 10 (10回チップ)' :
+                    achievementData.triggerType === 'TOTAL_TIPPED' ? '例: 10000 (累計10,000円)' :
+                    achievementData.triggerType === 'GIFT_COLLECTION' ? '例: 5 (5個コレクション)' :
+                    '手動配布の場合は不要'
+                  }
+                  disabled={achievementData.triggerType === 'MANUAL'}
+                  min="1"
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    background: achievementData.triggerType === 'MANUAL' ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.1)',
+                    border: '1px solid rgba(255,255,255,0.2)',
+                    borderRadius: 8,
+                    color: '#fff',
+                    fontSize: 15,
+                    outline: 'none',
+                    opacity: achievementData.triggerType === 'MANUAL' ? 0.5 : 1,
+                  }}
+                />
+              </div>
+
+              {/* 自動配布 */}
+              <div style={{ marginBottom: 24 }}>
+                <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={achievementData.autoDistribute}
+                    onChange={(e) => setAchievementData(prev => ({ ...prev, autoDistribute: e.target.checked }))}
+                    disabled={achievementData.triggerType === 'MANUAL'}
+                    style={{ marginRight: 8, width: 18, height: 18, cursor: achievementData.triggerType === 'MANUAL' ? 'not-allowed' : 'pointer' }}
+                  />
+                  <span style={{ fontSize: 14, fontWeight: 600, color: '#fff' }}>
+                    条件達成時に自動配布する
+                  </span>
+                </label>
+                <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', marginTop: 6, marginLeft: 26 }}>
+                  有効にすると、ユーザーが条件を達成したタイミングで自動的にバッジが付与されます
+                </p>
+              </div>
+
+              {/* 追加特典 */}
+              <div style={{ marginBottom: 32 }}>
+                <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: '#fff', marginBottom: 8 }}>
+                  追加特典 (カンマ区切り)
+                </label>
+                <textarea
+                  value={achievementData.additionalBenefits}
+                  onChange={(e) => setAchievementData(prev => ({ ...prev, additionalBenefits: e.target.value }))}
+                  placeholder="例: 限定グッズ,次回10%割引,優先予約権"
+                  rows={3}
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    background: 'rgba(255,255,255,0.1)',
+                    border: '1px solid rgba(255,255,255,0.2)',
+                    borderRadius: 8,
+                    color: '#fff',
+                    fontSize: 15,
+                    outline: 'none',
+                    resize: 'vertical',
+                  }}
+                />
+                <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', marginTop: 6 }}>
+                  バッジ取得者への追加特典があれば記載してください
+                </p>
+              </div>
+
+              {/* ボタン */}
+              <div style={{ display: 'flex', gap: 12 }}>
+                <button
+                  onClick={() => setCreateStep('basic')}
+                  style={{
+                    padding: '12px 24px',
+                    background: 'rgba(255,255,255,0.1)',
+                    border: 'none',
+                    borderRadius: 8,
+                    color: '#fff',
+                    fontSize: 15,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                  }}
+                >
+                  ← 戻る
+                </button>
+                <button
+                  onClick={() => {
+                    alert('作成処理は次のコミットで実装します');
+                    setView('list');
+                  }}
+                  disabled={achievementData.triggerType !== 'MANUAL' && !achievementData.threshold}
+                  style={{
+                    padding: '12px 24px',
+                    background: (achievementData.triggerType === 'MANUAL' || achievementData.threshold)
+                      ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
+                      : 'rgba(255,255,255,0.1)',
+                    border: 'none',
+                    borderRadius: 8,
+                    color: '#fff',
+                    fontSize: 15,
+                    fontWeight: 600,
+                    cursor: (achievementData.triggerType === 'MANUAL' || achievementData.threshold) ? 'pointer' : 'not-allowed',
+                    opacity: (achievementData.triggerType === 'MANUAL' || achievementData.threshold) ? 1 : 0.5,
+                  }}
+                >
+                  作成して公開
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* アクセス権NFTの詳細設定 */}
+          {selectedCategory === 'ACCESS_PASS' && (
+            <div style={{
+              background: 'rgba(255,255,255,0.05)',
+              borderRadius: 12,
+              padding: 32,
+              border: '1px solid rgba(255,255,255,0.1)',
+            }}>
+              <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.7)', marginBottom: 24 }}>
+                アクセス権NFTは会員証NFTと同様の設定を使用します。<br />
+                基本情報で設定した内容がアクセス権の条件として機能します。
+              </p>
+              <div style={{
+                padding: 20,
+                background: 'rgba(16,185,129,0.1)',
+                border: '1px solid rgba(16,185,129,0.3)',
+                borderRadius: 8,
+                marginBottom: 24,
+              }}>
+                <h4 style={{ fontSize: 14, fontWeight: 600, color: '#10b981', margin: '0 0 8px 0' }}>
+                  💡 アクセス権NFTの用途
+                </h4>
+                <ul style={{ fontSize: 13, color: 'rgba(255,255,255,0.7)', margin: 0, paddingLeft: 20, lineHeight: 1.8 }}>
+                  <li>特定イベントやコンテンツへの入場権</li>
+                  <li>限定公開エリアへのアクセス</li>
+                  <li>オンラインコンテンツの視聴権</li>
+                  <li>物理的な場所への入場パス</li>
+                </ul>
+              </div>
+
+              {/* ボタン */}
+              <div style={{ display: 'flex', gap: 12 }}>
+                <button
+                  onClick={() => setCreateStep('basic')}
+                  style={{
+                    padding: '12px 24px',
+                    background: 'rgba(255,255,255,0.1)',
+                    border: 'none',
+                    borderRadius: 8,
+                    color: '#fff',
+                    fontSize: 15,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                  }}
+                >
+                  ← 戻る
+                </button>
+                <button
+                  onClick={() => {
+                    alert('作成処理は次のコミットで実装します');
+                    setView('list');
+                  }}
+                  style={{
+                    padding: '12px 24px',
+                    background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                    border: 'none',
+                    borderRadius: 8,
+                    color: '#fff',
+                    fontSize: 15,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                  }}
+                >
+                  作成して公開
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* コレクティブルNFTの詳細設定 */}
+          {selectedCategory === 'COLLECTIBLE' && (
+            <div style={{
+              background: 'rgba(255,255,255,0.05)',
+              borderRadius: 12,
+              padding: 32,
+              border: '1px solid rgba(255,255,255,0.1)',
+            }}>
+              {/* 法務警告 */}
+              <div style={{
+                padding: 16,
+                background: 'rgba(239,68,68,0.1)',
+                border: '1px solid rgba(239,68,68,0.3)',
+                borderRadius: 8,
+                marginBottom: 24,
+              }}>
+                <h4 style={{ fontSize: 14, fontWeight: 600, color: '#ef4444', margin: '0 0 8px 0' }}>
+                  ⚠️ 法務対応: レアリティ機能は実装しません
+                </h4>
+                <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', margin: 0, lineHeight: 1.6 }}>
+                  投げ銭（チップ）に対する配布特典でレアリティを設定すると、射幸心の煽り、ガチャ規制、賭博性などの法務リスクが発生します。<br />
+                  すべてのNFTは等価値として扱い、ランダム性や希少性を排除します。
+                </p>
+              </div>
+
+              {/* シリーズ名 */}
+              <div style={{ marginBottom: 24 }}>
+                <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: '#fff', marginBottom: 8 }}>
+                  シリーズ名 <span style={{ color: '#ef4444' }}>*</span>
+                </label>
+                <input
+                  type="text"
+                  value={collectibleData.seriesName}
+                  onChange={(e) => setCollectibleData(prev => ({ ...prev, seriesName: e.target.value }))}
+                  placeholder="例: 夏季限定コレクション"
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    background: 'rgba(255,255,255,0.1)',
+                    border: '1px solid rgba(255,255,255,0.2)',
+                    borderRadius: 8,
+                    color: '#fff',
+                    fontSize: 15,
+                    outline: 'none',
+                  }}
+                />
+              </div>
+
+              {/* シリーズ番号と総数 */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: '#fff', marginBottom: 8 }}>
+                    シリーズ内の番号
+                  </label>
+                  <input
+                    type="number"
+                    value={collectibleData.seriesNumber}
+                    onChange={(e) => setCollectibleData(prev => ({ ...prev, seriesNumber: e.target.value }))}
+                    placeholder="例: 1"
+                    min="1"
+                    style={{
+                      width: '100%',
+                      padding: '12px 16px',
+                      background: 'rgba(255,255,255,0.1)',
+                      border: '1px solid rgba(255,255,255,0.2)',
+                      borderRadius: 8,
+                      color: '#fff',
+                      fontSize: 15,
+                      outline: 'none',
+                    }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: '#fff', marginBottom: 8 }}>
+                    シリーズ総数
+                  </label>
+                  <input
+                    type="number"
+                    value={collectibleData.totalInSeries}
+                    onChange={(e) => setCollectibleData(prev => ({ ...prev, totalInSeries: e.target.value }))}
+                    placeholder="例: 10"
+                    min="1"
+                    style={{
+                      width: '100%',
+                      padding: '12px 16px',
+                      background: 'rgba(255,255,255,0.1)',
+                      border: '1px solid rgba(255,255,255,0.2)',
+                      borderRadius: 8,
+                      color: '#fff',
+                      fontSize: 15,
+                      outline: 'none',
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* 配布条件タイプ */}
+              <div style={{ marginBottom: 24 }}>
+                <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: '#fff', marginBottom: 8 }}>
+                  配布条件 <span style={{ color: '#ef4444' }}>*</span>
+                </label>
+                <select
+                  value={collectibleData.distributionTrigger}
+                  onChange={(e) => setCollectibleData(prev => ({ ...prev, distributionTrigger: e.target.value as any }))}
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    background: 'rgba(255,255,255,0.1)',
+                    border: '1px solid rgba(255,255,255,0.2)',
+                    borderRadius: 8,
+                    color: '#fff',
+                    fontSize: 15,
+                    outline: 'none',
+                  }}
+                >
+                  <option value="TIP_AMOUNT" style={{ background: '#1a1a1a' }}>チップ額による確定配布</option>
+                  <option value="EVENT_PARTICIPATION" style={{ background: '#1a1a1a' }}>イベント参加による配布</option>
+                  <option value="CAMPAIGN" style={{ background: '#1a1a1a' }}>キャンペーンによる配布</option>
+                  <option value="MANUAL" style={{ background: '#1a1a1a' }}>手動配布</option>
+                </select>
+                <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', marginTop: 6 }}>
+                  条件達成による確定配布のみ。ランダム配布・抽選は法務リスクのため使用できません。
+                </p>
+              </div>
+
+              {/* 配布条件の説明 */}
+              <div style={{ marginBottom: 24 }}>
+                <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: '#fff', marginBottom: 8 }}>
+                  配布条件の説明
+                </label>
+                <textarea
+                  value={collectibleData.requiredCondition}
+                  onChange={(e) => setCollectibleData(prev => ({ ...prev, requiredCondition: e.target.value }))}
+                  placeholder="例: 10,000円以上のチップで確定配布（先着100名限定）"
+                  rows={3}
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    background: 'rgba(255,255,255,0.1)',
+                    border: '1px solid rgba(255,255,255,0.2)',
+                    borderRadius: 8,
+                    color: '#fff',
+                    fontSize: 15,
+                    outline: 'none',
+                    resize: 'vertical',
+                  }}
+                />
+              </div>
+
+              {/* コレクション進捗 */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: '#fff', marginBottom: 8 }}>
+                    コレクション目標数
+                  </label>
+                  <input
+                    type="number"
+                    value={collectibleData.collectionGoal}
+                    onChange={(e) => setCollectibleData(prev => ({ ...prev, collectionGoal: e.target.value }))}
+                    placeholder="例: 10"
+                    min="1"
+                    style={{
+                      width: '100%',
+                      padding: '12px 16px',
+                      background: 'rgba(255,255,255,0.1)',
+                      border: '1px solid rgba(255,255,255,0.2)',
+                      borderRadius: 8,
+                      color: '#fff',
+                      fontSize: 15,
+                      outline: 'none',
+                    }}
+                  />
+                  <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', marginTop: 6 }}>
+                    全種類集めたときの目標数
+                  </p>
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: '#fff', marginBottom: 8 }}>
+                    コンプリート特典NFT ID
+                  </label>
+                  <input
+                    type="text"
+                    value={collectibleData.progressReward}
+                    onChange={(e) => setCollectibleData(prev => ({ ...prev, progressReward: e.target.value }))}
+                    placeholder="例: reward-nft-001"
+                    style={{
+                      width: '100%',
+                      padding: '12px 16px',
+                      background: 'rgba(255,255,255,0.1)',
+                      border: '1px solid rgba(255,255,255,0.2)',
+                      borderRadius: 8,
+                      color: '#fff',
+                      fontSize: 15,
+                      outline: 'none',
+                      fontFamily: 'monospace',
+                    }}
+                  />
+                  <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', marginTop: 6 }}>
+                    全部集めた人への特典NFT
+                  </p>
+                </div>
+              </div>
+
+              {/* メタデータ */}
+              <details style={{ marginBottom: 24 }}>
+                <summary style={{
+                  cursor: 'pointer',
+                  fontSize: 14,
+                  fontWeight: 600,
+                  color: '#fff',
+                  marginBottom: 16
+                }}>
+                  メタデータ (オプション)
+                </summary>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 16 }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: '#fff', marginBottom: 8 }}>
+                      アーティスト名
+                    </label>
+                    <input
+                      type="text"
+                      value={collectibleData.artist}
+                      onChange={(e) => setCollectibleData(prev => ({ ...prev, artist: e.target.value }))}
+                      placeholder="例: 山田太郎"
+                      style={{
+                        width: '100%',
+                        padding: '12px 16px',
+                        background: 'rgba(255,255,255,0.1)',
+                        border: '1px solid rgba(255,255,255,0.2)',
+                        borderRadius: 8,
+                        color: '#fff',
+                        fontSize: 15,
+                        outline: 'none',
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: '#fff', marginBottom: 8 }}>
+                      リリース日
+                    </label>
+                    <input
+                      type="date"
+                      value={collectibleData.releaseDate}
+                      onChange={(e) => setCollectibleData(prev => ({ ...prev, releaseDate: e.target.value }))}
+                      style={{
+                        width: '100%',
+                        padding: '12px 16px',
+                        background: 'rgba(255,255,255,0.1)',
+                        border: '1px solid rgba(255,255,255,0.2)',
+                        borderRadius: 8,
+                        color: '#fff',
+                        fontSize: 15,
+                        outline: 'none',
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: '#fff', marginBottom: 8 }}>
+                      コレクション説明
+                    </label>
+                    <textarea
+                      value={collectibleData.description}
+                      onChange={(e) => setCollectibleData(prev => ({ ...prev, description: e.target.value }))}
+                      placeholder="このコレクションの背景やストーリーを記載"
+                      rows={3}
+                      style={{
+                        width: '100%',
+                        padding: '12px 16px',
+                        background: 'rgba(255,255,255,0.1)',
+                        border: '1px solid rgba(255,255,255,0.2)',
+                        borderRadius: 8,
+                        color: '#fff',
+                        fontSize: 15,
+                        outline: 'none',
+                        resize: 'vertical',
+                      }}
+                    />
+                  </div>
+                </div>
+              </details>
+
+              {/* ボタン */}
+              <div style={{ display: 'flex', gap: 12 }}>
+                <button
+                  onClick={() => setCreateStep('basic')}
+                  style={{
+                    padding: '12px 24px',
+                    background: 'rgba(255,255,255,0.1)',
+                    border: 'none',
+                    borderRadius: 8,
+                    color: '#fff',
+                    fontSize: 15,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                  }}
+                >
+                  ← 戻る
+                </button>
+                <button
+                  onClick={() => {
+                    alert('作成処理は次のコミットで実装します');
+                    setView('list');
+                  }}
+                  disabled={!collectibleData.seriesName}
+                  style={{
+                    padding: '12px 24px',
+                    background: collectibleData.seriesName
+                      ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
+                      : 'rgba(255,255,255,0.1)',
+                    border: 'none',
+                    borderRadius: 8,
+                    color: '#fff',
+                    fontSize: 15,
+                    fontWeight: 600,
+                    cursor: collectibleData.seriesName ? 'pointer' : 'not-allowed',
+                    opacity: collectibleData.seriesName ? 1 : 0.5,
+                  }}
+                >
+                  作成して公開
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}

@@ -9,17 +9,21 @@ interface PaymentRecord {
   completed_by: string;
   message?: string;
   tenant_address: string;
+  payment_type?: 'invoice' | 'wallet'; // 決済方法
+  transaction_hash?: string; // トランザクションハッシュ
 }
 
 /**
  * 決済データをCSV形式に変換
  */
 export function generateCSV(payments: PaymentRecord[]): string {
-  // CSVヘッダー
+  // CSVヘッダー（決済方法とトランザクションハッシュを追加）
   const headers = [
     '決済日時',
+    '決済方法',
     '金額（円）',
     '支払者アドレス',
+    'トランザクションハッシュ',
     'リクエストID',
     '備考',
   ];
@@ -34,10 +38,14 @@ export function generateCSV(payments: PaymentRecord[]): string {
       minute: '2-digit',
     });
 
+    const paymentMethod = payment.payment_type === 'wallet' ? 'ウォレットQR' : '請求書QR';
+
     return [
       date,
+      paymentMethod,
       payment.amount,
-      payment.completed_by,
+      payment.completed_by || '-',
+      payment.transaction_hash || '-',
       payment.request_id,
       payment.message || '',
     ].map(field => `"${field}"`).join(',');
@@ -242,9 +250,21 @@ export function generateReceiptHTML(payment: PaymentRecord, storeName?: string):
       </div>
 
       <div class="detail-row">
-        <div class="detail-label">送信者アドレス</div>
-        <div class="detail-value">${payment.completed_by}</div>
+        <div class="detail-label">決済方法</div>
+        <div class="detail-value">${payment.payment_type === 'wallet' ? 'ウォレットQR（PayPay方式）' : '請求書QR'}</div>
       </div>
+
+      <div class="detail-row">
+        <div class="detail-label">送信者アドレス</div>
+        <div class="detail-value">${payment.completed_by || '非公開（プライバシー保護）'}</div>
+      </div>
+
+      ${payment.transaction_hash ? `
+      <div class="detail-row">
+        <div class="detail-label">トランザクション</div>
+        <div class="detail-value">${payment.transaction_hash}</div>
+      </div>
+      ` : ''}
 
       <div class="detail-row">
         <div class="detail-label">リクエストID</div>

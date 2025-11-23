@@ -7,7 +7,17 @@ import type { FlagNFTCategory } from '../../types/flagNFT';
 import { uploadImage, deleteFileFromUrl } from '../../lib/supabase';
 import { adminSupabase } from '../../lib/adminSupabase';
 import { useTenant } from '../contexts/TenantContext';
-import { useMintFlagNFT } from '../../hooks/useFlagNFTContract';
+import { useMintFlagNFT, useConfigureCategory } from '../../hooks/useFlagNFTContract';
+import {
+  BenefitConfigForm,
+  MembershipConfigForm,
+  AchievementConfigForm,
+  CampaignConfigForm,
+  AccessPassConfigForm,
+  CollectibleConfigForm,
+} from './FlagNFTCategoryForms';
+import { executeSaveFlagNFTWorkflow } from '../utils/flagNFTSaveWorkflow';
+import { estimateGasCost, getSuccessMessage } from '../utils/flagNFTContractIntegration';
 
 type CreateStep = 'category' | 'basic' | 'detail';
 
@@ -156,6 +166,9 @@ export default function FlagNFTManagementPage() {
   // ミント用フック
   const { mint: mintNFT, isLoading: isMintLoading } = useMintFlagNFT();
 
+  // カテゴリ設定用フック
+  const { configure: configureCategory, isLoading: isConfiguringCategory } = useConfigureCategory();
+
   // 基本情報フォームの状態
   const [formData, setFormData] = useState<BasicFormData>({
     name: '',
@@ -294,7 +307,7 @@ export default function FlagNFTManagementPage() {
   }, [tenantId, adminSupabase, refreshTrigger]);
 
   // フラグNFTをSupabaseに保存する関数
-  const saveFlagNFT = async () => {
+  const saveFlagNFT = async (categoryConfig: any) => {
     if (!adminSupabase) {
       alert('管理者Supabaseクライアントが初期化されていません');
       return;
@@ -305,127 +318,59 @@ export default function FlagNFTManagementPage() {
       return;
     }
 
+    if (!selectedCategory) {
+      alert('カテゴリが選択されていません');
+      return;
+    }
+
     setIsSaving(true);
 
     try {
-      // カテゴリ別の設定をJSON化
-      let benefitConfig = null;
-      let stampRallyConfig = null;
-      let membershipConfig = null;
-      let achievementConfig = null;
-      let collectibleConfig = null;
+      console.log('💾 FlagNFT作成ワークフロー開始:', {
+        category: selectedCategory,
+        name: formData.name,
+      });
 
-      if (selectedCategory === 'BENEFIT') {
-        benefitConfig = {
-          discountType: benefitData.discountType,
-          discountValue: parseFloat(benefitData.discountValue),
-          minTipAmount: benefitData.minTipAmount ? parseFloat(benefitData.minTipAmount) : undefined,
-          applicableGifts: benefitData.applicableGifts ? benefitData.applicableGifts.split(',').map(s => s.trim()) : undefined,
-          maxDiscountAmount: benefitData.maxDiscountAmount ? parseFloat(benefitData.maxDiscountAmount) : undefined,
-        };
-      } else if (selectedCategory === 'CAMPAIGN') {
-        // CAMPAIGNはスタンプラリー設定を使用
-        stampRallyConfig = {
-          checkpoints: stampRallyData.checkpoints.map(cp => ({
-            id: cp.id,
-            name: cp.name,
-            description: cp.description,
-            order: parseInt(cp.id.split('-')[1] || '0'),
-            nfcTagId: cp.nfcTagId || undefined,
-            nfcEnabled: cp.nfcEnabled,
-            qrCode: cp.qrCode || undefined,
-            qrEnabled: cp.qrEnabled,
-            location: (cp.locationLat && cp.locationLng) ? {
-              lat: parseFloat(cp.locationLat),
-              lng: parseFloat(cp.locationLng),
-              radiusMeters: cp.radiusMeters ? parseFloat(cp.radiusMeters) : undefined,
-            } : undefined,
-            checkInCount: 0,
-          })),
-          completionReward: stampRallyData.completionReward || undefined,
-          requireSequential: stampRallyData.requireSequential,
-          verificationMethod: stampRallyData.verificationMethod,
-        };
-      } else if (selectedCategory === 'MEMBERSHIP') {
-        membershipConfig = {
-          membershipLevel: membershipData.membershipLevel,
-          accessAreas: membershipData.accessAreas.split(',').map(s => s.trim()),
-          benefits: membershipData.benefits.split(',').map(s => s.trim()),
-          renewalType: membershipData.renewalType,
-        };
-      } else if (selectedCategory === 'ACHIEVEMENT') {
-        achievementConfig = {
-          triggerType: achievementData.triggerType,
-          threshold: parseFloat(achievementData.threshold),
-          autoDistribute: achievementData.autoDistribute,
-          additionalBenefits: achievementData.additionalBenefits ? achievementData.additionalBenefits.split(',').map(s => s.trim()) : undefined,
-        };
-      } else if (selectedCategory === 'COLLECTIBLE') {
-        collectibleConfig = {
-          seriesName: collectibleData.seriesName,
-          seriesNumber: collectibleData.seriesNumber ? parseInt(collectibleData.seriesNumber) : undefined,
-          totalInSeries: collectibleData.totalInSeries ? parseInt(collectibleData.totalInSeries) : undefined,
-          collectionGoal: collectibleData.collectionGoal ? parseInt(collectibleData.collectionGoal) : undefined,
-          progressReward: collectibleData.progressReward || undefined,
-          distributionTrigger: collectibleData.distributionTrigger,
-          requiredCondition: collectibleData.requiredCondition || undefined,
-          artist: collectibleData.artist || undefined,
-          releaseDate: collectibleData.releaseDate || undefined,
-          description: collectibleData.description || undefined,
-        };
-      } else if (selectedCategory === 'ACCESS_PASS') {
-        // ACCESS_PASSはメンバーシップ設定を使用
-        membershipConfig = {
-          membershipLevel: membershipData.membershipLevel,
-          accessAreas: membershipData.accessAreas.split(',').map(s => s.trim()),
-          benefits: membershipData.benefits.split(',').map(s => s.trim()),
-          renewalType: membershipData.renewalType,
-        };
-      }
+      // ガス代推定を表示
+      const gasCost = estimateGasCost('configure');
+      console.log('⛽ 推定ガス代:', gasCost);
 
-      // Supabaseに保存するデータ
-      const flagNFTData = {
-        tenant_id: tenantId,
+      // ワークフロー実行
+      const result = await executeSaveFlagNFTWorkflow({
+        tenantId,
+        category: selectedCategory,
         name: formData.name,
         description: formData.description,
         image: formData.image,
-        category: selectedCategory,
-        usage_limit: parseInt(formData.usageLimit),
-        valid_from: formData.validFrom,
-        valid_until: formData.validUntil || null,
-        is_active: true,
-        is_transferable: formData.isTransferable,
-        is_burnable: formData.isBurnable,
-        auto_distribution_enabled: formData.autoDistributionEnabled,
-        required_tip_amount: formData.requiredTipAmount ? parseFloat(formData.requiredTipAmount) : null,
-        target_token: formData.targetToken,
-        flags: [],
-        total_minted: 0,
-        total_used: 0,
-        max_supply: formData.maxSupply ? parseInt(formData.maxSupply) : null,
-        benefit_config: benefitConfig,
-        stamp_rally_config: stampRallyConfig,
-        membership_config: membershipConfig,
-        achievement_config: achievementConfig,
-        collectible_config: collectibleConfig,
-      };
+        categoryConfig: {
+          ...categoryConfig,
+          // formDataから基本設定も含める
+          maxSupply: formData.maxSupply ? parseInt(formData.maxSupply) : null,
+          autoDistribute: formData.autoDistributionEnabled,
+          requiredTipAmount: formData.requiredTipAmount ? parseFloat(formData.requiredTipAmount) : null,
+          targetToken: formData.targetToken,
+          isBurnable: formData.isBurnable,
+        },
+        supabaseClient: adminSupabase,
+        configureCategory: async (cat, usageLimit, validFrom, validUntil, isTransferable, metadataURI) => {
+          return await configureCategory(cat, usageLimit, validFrom, validUntil, isTransferable, metadataURI);
+        },
+      });
 
-      const { data, error } = await adminSupabase
-        .from('flag_nfts')
-        .insert(flagNFTData)
-        .select();
+      if (result.success) {
+        const successMsg = getSuccessMessage('configure', selectedCategory);
+        alert(`${successMsg}\n\nトランザクションハッシュ: ${result.transactionHash}`);
 
-      if (error) {
-        console.error('Supabase保存エラー:', error);
-        alert(`保存に失敗しました: ${error.message}`);
-        return;
+        // リストビューに戻ってリロード
+        setView('list');
+        loadFlagNFTs(); // 既存のロード関数を呼ぶ
+      } else {
+        alert(`作成に失敗しました:\n${result.error}`);
       }
 
-      alert('フラグNFTを作成しました！');
-      setView('list');
-    } catch (err) {
-      console.error('保存処理でエラーが発生しました:', err);
-      alert(`エラーが発生しました: ${err}`);
+    } catch (err: any) {
+      console.error('❌ 予期しないエラー:', err);
+      alert(`エラーが発生しました: ${err.message || err}`);
     } finally {
       setIsSaving(false);
     }
@@ -989,7 +934,15 @@ export default function FlagNFTManagementPage() {
                 type="text"
                 value={formData.name}
                 onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                placeholder="例: 10%割引特典NFT"
+                placeholder={
+                  selectedCategory === 'BENEFIT' ? '例: 10%割引特典NFT' :
+                  selectedCategory === 'MEMBERSHIP' ? '例: ゴールド会員証NFT' :
+                  selectedCategory === 'ACHIEVEMENT' ? '例: 100回投げ銭達成バッジ' :
+                  selectedCategory === 'CAMPAIGN' ? '例: 夏季限定スタンプラリー' :
+                  selectedCategory === 'ACCESS_PASS' ? '例: VIPラウンジ入場パス' :
+                  selectedCategory === 'COLLECTIBLE' ? '例: 限定アートコレクション #1' :
+                  '例: 10%割引特典NFT'
+                }
                 style={{
                   width: '100%',
                   padding: '12px 16px',
@@ -1011,7 +964,15 @@ export default function FlagNFTManagementPage() {
               <textarea
                 value={formData.description}
                 onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                placeholder="NFTの用途や特典内容を説明してください"
+                placeholder={
+                  selectedCategory === 'BENEFIT' ? 'この特典NFTで受けられる割引や特典内容を詳しく説明してください（例: カフェメニュー全品10%オフ）' :
+                  selectedCategory === 'MEMBERSHIP' ? '会員証の特典内容や利用できるサービスを説明してください（例: VIPエリアアクセス、限定イベント招待）' :
+                  selectedCategory === 'ACHIEVEMENT' ? 'この実績バッジの達成条件と獲得時の特典を説明してください（例: 累計100回投げ銭で獲得、特別称号付与）' :
+                  selectedCategory === 'CAMPAIGN' ? 'キャンペーンの内容、参加方法、達成報酬を説明してください（例: 店舗5箇所を巡るスタンプラリー、完走で限定グッズ）' :
+                  selectedCategory === 'ACCESS_PASS' ? 'アクセス権の利用可能範囲と有効期限を説明してください（例: VIPラウンジ入場権、イベント当日のみ有効）' :
+                  selectedCategory === 'COLLECTIBLE' ? 'コレクションの背景やアーティスト情報を説明してください（例: 限定100枚のデジタルアート、著名イラストレーター作）' :
+                  'NFTの用途や特典内容を説明してください'
+                }
                 rows={4}
                 style={{
                   width: '100%',
@@ -1331,1387 +1292,78 @@ export default function FlagNFTManagementPage() {
             詳細設定 - {CATEGORY_OPTIONS.find(c => c.id === selectedCategory)?.label}
           </h2>
 
-          {/* 特典NFTの詳細設定 */}
-          {selectedCategory === 'BENEFIT' && (
-            <div style={{
-              background: 'rgba(255,255,255,0.05)',
-              borderRadius: 12,
-              padding: 32,
-              border: '1px solid rgba(255,255,255,0.1)',
-            }}>
-              {/* 割引タイプ */}
-              <div style={{ marginBottom: 24 }}>
-                <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: '#fff', marginBottom: 8 }}>
-                  割引タイプ <span style={{ color: '#ef4444' }}>*</span>
-                </label>
-                <select
-                  value={benefitData.discountType}
-                  onChange={(e) => setBenefitData(prev => ({ ...prev, discountType: e.target.value as any }))}
-                  style={{
-                    width: '100%',
-                    padding: '12px 16px',
-                    background: 'rgba(255,255,255,0.1)',
-                    border: '1px solid rgba(255,255,255,0.2)',
-                    borderRadius: 8,
-                    color: '#fff',
-                    fontSize: 15,
-                    outline: 'none',
-                  }}
-                >
-                  <option value="PERCENTAGE" style={{ background: '#1a1a1a' }}>パーセント割引 (例: 10%オフ)</option>
-                  <option value="FIXED_AMOUNT" style={{ background: '#1a1a1a' }}>固定額割引 (例: 500円オフ)</option>
-                  <option value="GIFT_ITEM" style={{ background: '#1a1a1a' }}>特典アイテム (例: ドリンク1杯無料)</option>
-                </select>
-              </div>
 
-              {/* 割引値 */}
-              <div style={{ marginBottom: 24 }}>
-                <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: '#fff', marginBottom: 8 }}>
-                  {benefitData.discountType === 'PERCENTAGE' ? '割引率 (%)' : benefitData.discountType === 'FIXED_AMOUNT' ? '割引額 (円)' : '特典内容'} <span style={{ color: '#ef4444' }}>*</span>
-                </label>
-                <input
-                  type={benefitData.discountType === 'GIFT_ITEM' ? 'text' : 'number'}
-                  value={benefitData.discountValue}
-                  onChange={(e) => setBenefitData(prev => ({ ...prev, discountValue: e.target.value }))}
-                  placeholder={benefitData.discountType === 'PERCENTAGE' ? '例: 10' : benefitData.discountType === 'FIXED_AMOUNT' ? '例: 500' : '例: ドリンク1杯無料'}
-                  min={benefitData.discountType !== 'GIFT_ITEM' ? '0' : undefined}
-                  style={{
-                    width: '100%',
-                    padding: '12px 16px',
-                    background: 'rgba(255,255,255,0.1)',
-                    border: '1px solid rgba(255,255,255,0.2)',
-                    borderRadius: 8,
-                    color: '#fff',
-                    fontSize: 15,
-                    outline: 'none',
-                  }}
-                />
-              </div>
+          {/* ガス代推定表示 */}
+          <div style={{
+            background: 'rgba(16, 185, 129, 0.1)',
+            border: '1px solid rgba(16, 185, 129, 0.3)',
+            borderRadius: 8,
+            padding: 16,
+            marginBottom: 24,
+          }}>
+            <p style={{ fontSize: 14, color: '#10b981', marginBottom: 4 }}>
+              ⛽ 推定ガス代: {estimateGasCost('configure')}
+            </p>
+            <p style={{ fontSize: 12, color: 'rgba(16, 185, 129, 0.7)' }}>
+              カテゴリ設定をブロックチェーンに登録します
+            </p>
+          </div>
 
-              {/* 最低チップ額 */}
-              <div style={{ marginBottom: 24 }}>
-                <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: '#fff', marginBottom: 8 }}>
-                  最低チップ額 (円)
-                </label>
-                <input
-                  type="number"
-                  value={benefitData.minTipAmount}
-                  onChange={(e) => setBenefitData(prev => ({ ...prev, minTipAmount: e.target.value }))}
-                  placeholder="例: 1000 (空欄の場合は制限なし)"
-                  min="0"
-                  style={{
-                    width: '100%',
-                    padding: '12px 16px',
-                    background: 'rgba(255,255,255,0.1)',
-                    border: '1px solid rgba(255,255,255,0.2)',
-                    borderRadius: 8,
-                    color: '#fff',
-                    fontSize: 15,
-                    outline: 'none',
-                  }}
-                />
-                <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', marginTop: 6 }}>
-                  この金額以上のチップに対してのみ特典が適用されます
-                </p>
-              </div>
+          <div style={{
+            background: 'rgba(255,255,255,0.05)',
+            borderRadius: 12,
+            padding: 32,
+            border: '1px solid rgba(255,255,255,0.1)',
+          }}>
+            {/* カテゴリ別フォーム */}
+            {selectedCategory === 'BENEFIT' && (
+              <BenefitConfigForm
+                onSubmit={saveFlagNFT}
+                onCancel={() => setCreateStep('basic')}
+                isLoading={isSaving || isConfiguringCategory}
+              />
+            )}
 
-              {/* 最大割引額 (パーセンテージ割引の場合のみ) */}
-              {benefitData.discountType === 'PERCENTAGE' && (
-                <div style={{ marginBottom: 24 }}>
-                  <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: '#fff', marginBottom: 8 }}>
-                    最大割引額 (円)
-                  </label>
-                  <input
-                    type="number"
-                    value={benefitData.maxDiscountAmount}
-                    onChange={(e) => setBenefitData(prev => ({ ...prev, maxDiscountAmount: e.target.value }))}
-                    placeholder="例: 5000 (空欄の場合は上限なし)"
-                    min="0"
-                    style={{
-                      width: '100%',
-                      padding: '12px 16px',
-                      background: 'rgba(255,255,255,0.1)',
-                      border: '1px solid rgba(255,255,255,0.2)',
-                      borderRadius: 8,
-                      color: '#fff',
-                      fontSize: 15,
-                      outline: 'none',
-                    }}
-                  />
-                  <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', marginTop: 6 }}>
-                    パーセント割引の上限額を設定します
-                  </p>
-                </div>
-              )}
+            {selectedCategory === 'MEMBERSHIP' && (
+              <MembershipConfigForm
+                onSubmit={saveFlagNFT}
+                onCancel={() => setCreateStep('basic')}
+                isLoading={isSaving || isConfiguringCategory}
+              />
+            )}
 
-              {/* 適用対象特典ID */}
-              <div style={{ marginBottom: 32 }}>
-                <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: '#fff', marginBottom: 8 }}>
-                  適用対象特典ID (カンマ区切り)
-                </label>
-                <input
-                  type="text"
-                  value={benefitData.applicableGifts}
-                  onChange={(e) => setBenefitData(prev => ({ ...prev, applicableGifts: e.target.value }))}
-                  placeholder="例: gift-001,gift-002 (空欄の場合は全特典に適用)"
-                  style={{
-                    width: '100%',
-                    padding: '12px 16px',
-                    background: 'rgba(255,255,255,0.1)',
-                    border: '1px solid rgba(255,255,255,0.2)',
-                    borderRadius: 8,
-                    color: '#fff',
-                    fontSize: 15,
-                    outline: 'none',
-                    fontFamily: 'monospace',
-                  }}
-                />
-                <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', marginTop: 6 }}>
-                  特定の特典にのみ適用したい場合は特典IDを入力してください
-                </p>
-              </div>
+            {selectedCategory === 'ACHIEVEMENT' && (
+              <AchievementConfigForm
+                onSubmit={saveFlagNFT}
+                onCancel={() => setCreateStep('basic')}
+                isLoading={isSaving || isConfiguringCategory}
+              />
+            )}
 
-              {/* ボタン */}
-              <div style={{ display: 'flex', gap: 12 }}>
-                <button
-                  onClick={() => setCreateStep('basic')}
-                  style={{
-                    padding: '12px 24px',
-                    background: 'rgba(255,255,255,0.1)',
-                    border: 'none',
-                    borderRadius: 8,
-                    color: '#fff',
-                    fontSize: 15,
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                  }}
-                >
-                  ← 戻る
-                </button>
-                <button
-                  onClick={saveFlagNFT}
-                  disabled={isSaving || !benefitData.discountValue}
-                  style={{
-                    padding: '12px 24px',
-                    background: (benefitData.discountValue && !isSaving)
-                      ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
-                      : 'rgba(255,255,255,0.1)',
-                    border: 'none',
-                    borderRadius: 8,
-                    color: '#fff',
-                    fontSize: 15,
-                    fontWeight: 600,
-                    cursor: (benefitData.discountValue && !isSaving) ? 'pointer' : 'not-allowed',
-                    opacity: (benefitData.discountValue && !isSaving) ? 1 : 0.5,
-                  }}
-                >
-                  {isSaving ? '保存中...' : '作成して公開'}
-                </button>
-              </div>
-            </div>
-          )}
+            {selectedCategory === 'CAMPAIGN' && (
+              <CampaignConfigForm
+                onSubmit={saveFlagNFT}
+                onCancel={() => setCreateStep('basic')}
+                isLoading={isSaving || isConfiguringCategory}
+              />
+            )}
 
-          {/* キャンペーン(スタンプラリー)NFTの詳細設定 */}
-          {selectedCategory === 'CAMPAIGN' && (
-            <div style={{
-              background: 'rgba(255,255,255,0.05)',
-              borderRadius: 12,
-              padding: 32,
-              border: '1px solid rgba(255,255,255,0.1)',
-            }}>
-              {/* 検証方法 */}
-              <div style={{ marginBottom: 24 }}>
-                <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: '#fff', marginBottom: 8 }}>
-                  検証方法 <span style={{ color: '#ef4444' }}>*</span>
-                </label>
-                <select
-                  value={stampRallyData.verificationMethod}
-                  onChange={(e) => setStampRallyData(prev => ({ ...prev, verificationMethod: e.target.value as any }))}
-                  style={{
-                    width: '100%',
-                    padding: '12px 16px',
-                    background: 'rgba(255,255,255,0.1)',
-                    border: '1px solid rgba(255,255,255,0.2)',
-                    borderRadius: 8,
-                    color: '#fff',
-                    fontSize: 15,
-                    outline: 'none',
-                  }}
-                >
-                  <option value="NFC" style={{ background: '#1a1a1a' }}>NFCタグのみ</option>
-                  <option value="QR" style={{ background: '#1a1a1a' }}>QRコードのみ</option>
-                  <option value="BOTH" style={{ background: '#1a1a1a' }}>NFC + QRコード両方</option>
-                </select>
-                <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', marginTop: 6 }}>
-                  NFCは物理的なタグタッチ、QRはカメラでスキャン。両方を有効にすると柔軟な運用が可能です
-                </p>
-              </div>
+            {selectedCategory === 'ACCESS_PASS' && (
+              <AccessPassConfigForm
+                onSubmit={saveFlagNFT}
+                onCancel={() => setCreateStep('basic')}
+                isLoading={isSaving || isConfiguringCategory}
+              />
+            )}
 
-              {/* 順番指定 */}
-              <div style={{ marginBottom: 24 }}>
-                <label style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  cursor: 'pointer',
-                  fontSize: 14,
-                  fontWeight: 600,
-                  color: '#fff'
-                }}>
-                  <input
-                    type="checkbox"
-                    checked={stampRallyData.requireSequential}
-                    onChange={(e) => setStampRallyData(prev => ({ ...prev, requireSequential: e.target.checked }))}
-                    style={{ marginRight: 8, width: 18, height: 18, cursor: 'pointer' }}
-                  />
-                  順番通りにチェックインを要求する
-                </label>
-                <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', marginTop: 6, marginLeft: 26 }}>
-                  有効にすると、チェックポイントを順番に回る必要があります
-                </p>
-              </div>
-
-              {/* 完走特典NFT */}
-              <div style={{ marginBottom: 32 }}>
-                <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: '#fff', marginBottom: 8 }}>
-                  完走特典NFT ID
-                </label>
-                <input
-                  type="text"
-                  value={stampRallyData.completionReward}
-                  onChange={(e) => setStampRallyData(prev => ({ ...prev, completionReward: e.target.value }))}
-                  placeholder="例: benefit-nft-001 (空欄の場合は特典なし)"
-                  style={{
-                    width: '100%',
-                    padding: '12px 16px',
-                    background: 'rgba(255,255,255,0.1)',
-                    border: '1px solid rgba(255,255,255,0.2)',
-                    borderRadius: 8,
-                    color: '#fff',
-                    fontSize: 15,
-                    outline: 'none',
-                  }}
-                />
-                <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', marginTop: 6 }}>
-                  全チェックポイント達成時に自動配布されるNFTのID
-                </p>
-              </div>
-
-              {/* チェックポイント管理 */}
-              <div style={{ marginBottom: 24 }}>
-                <div style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  marginBottom: 16
-                }}>
-                  <label style={{ fontSize: 14, fontWeight: 600, color: '#fff' }}>
-                    チェックポイント <span style={{ color: '#ef4444' }}>*</span>
-                  </label>
-                  <button
-                    onClick={() => {
-                      const newCheckpoint: CheckpointFormData = {
-                        id: `checkpoint-${Date.now()}`,
-                        name: '',
-                        description: '',
-                        nfcTagId: '',
-                        nfcEnabled: stampRallyData.verificationMethod !== 'QR',
-                        qrCode: '',
-                        qrEnabled: stampRallyData.verificationMethod !== 'NFC',
-                        locationLat: '',
-                        locationLng: '',
-                        radiusMeters: '100',
-                      };
-                      setStampRallyData(prev => ({
-                        ...prev,
-                        checkpoints: [...prev.checkpoints, newCheckpoint]
-                      }));
-                    }}
-                    style={{
-                      padding: '8px 16px',
-                      background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
-                      border: 'none',
-                      borderRadius: 6,
-                      color: '#fff',
-                      fontSize: 13,
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                    }}
-                  >
-                    + チェックポイントを追加
-                  </button>
-                </div>
-
-                {/* チェックポイントリスト */}
-                {stampRallyData.checkpoints.length === 0 ? (
-                  <div style={{
-                    padding: 32,
-                    textAlign: 'center',
-                    background: 'rgba(255,255,255,0.02)',
-                    borderRadius: 8,
-                    border: '1px dashed rgba(255,255,255,0.2)',
-                  }}>
-                    <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14 }}>
-                      チェックポイントがまだありません。「+ チェックポイントを追加」ボタンから追加してください
-                    </p>
-                  </div>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                    {stampRallyData.checkpoints.map((checkpoint, index) => (
-                      <div
-                        key={checkpoint.id}
-                        style={{
-                          background: 'rgba(255,255,255,0.03)',
-                          borderRadius: 8,
-                          padding: 20,
-                          border: '1px solid rgba(255,255,255,0.15)',
-                        }}
-                      >
-                        <div style={{
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'center',
-                          marginBottom: 16
-                        }}>
-                          <h4 style={{
-                            fontSize: 15,
-                            fontWeight: 600,
-                            color: '#fff',
-                            margin: 0
-                          }}>
-                            チェックポイント #{index + 1}
-                          </h4>
-                          <button
-                            onClick={() => {
-                              setStampRallyData(prev => ({
-                                ...prev,
-                                checkpoints: prev.checkpoints.filter((_, i) => i !== index)
-                              }));
-                            }}
-                            style={{
-                              padding: '6px 12px',
-                              background: 'rgba(239,68,68,0.2)',
-                              border: '1px solid rgba(239,68,68,0.3)',
-                              borderRadius: 4,
-                              color: '#ef4444',
-                              fontSize: 12,
-                              fontWeight: 600,
-                              cursor: 'pointer',
-                            }}
-                          >
-                            削除
-                          </button>
-                        </div>
-
-                        {/* チェックポイント名 */}
-                        <div style={{ marginBottom: 12 }}>
-                          <label style={{
-                            display: 'block',
-                            fontSize: 13,
-                            fontWeight: 500,
-                            color: 'rgba(255,255,255,0.9)',
-                            marginBottom: 6
-                          }}>
-                            名前 <span style={{ color: '#ef4444' }}>*</span>
-                          </label>
-                          <input
-                            type="text"
-                            value={checkpoint.name}
-                            onChange={(e) => {
-                              const updated = [...stampRallyData.checkpoints];
-                              updated[index] = { ...updated[index], name: e.target.value };
-                              setStampRallyData(prev => ({ ...prev, checkpoints: updated }));
-                            }}
-                            placeholder="例: エントランス"
-                            style={{
-                              width: '100%',
-                              padding: '10px 12px',
-                              background: 'rgba(255,255,255,0.05)',
-                              border: '1px solid rgba(255,255,255,0.15)',
-                              borderRadius: 6,
-                              color: '#fff',
-                              fontSize: 14,
-                              outline: 'none',
-                            }}
-                          />
-                        </div>
-
-                        {/* チェックポイント説明 */}
-                        <div style={{ marginBottom: 12 }}>
-                          <label style={{
-                            display: 'block',
-                            fontSize: 13,
-                            fontWeight: 500,
-                            color: 'rgba(255,255,255,0.9)',
-                            marginBottom: 6
-                          }}>
-                            説明
-                          </label>
-                          <textarea
-                            value={checkpoint.description}
-                            onChange={(e) => {
-                              const updated = [...stampRallyData.checkpoints];
-                              updated[index] = { ...updated[index], description: e.target.value };
-                              setStampRallyData(prev => ({ ...prev, checkpoints: updated }));
-                            }}
-                            placeholder="例: 正面エントランスでスタンプを押してください"
-                            rows={2}
-                            style={{
-                              width: '100%',
-                              padding: '10px 12px',
-                              background: 'rgba(255,255,255,0.05)',
-                              border: '1px solid rgba(255,255,255,0.15)',
-                              borderRadius: 6,
-                              color: '#fff',
-                              fontSize: 14,
-                              outline: 'none',
-                              resize: 'vertical',
-                              fontFamily: 'inherit',
-                            }}
-                          />
-                        </div>
-
-                        {/* NFCタグID (NFCが有効な場合のみ) */}
-                        {checkpoint.nfcEnabled && (
-                          <div style={{ marginBottom: 12 }}>
-                            <label style={{
-                              display: 'block',
-                              fontSize: 13,
-                              fontWeight: 500,
-                              color: 'rgba(255,255,255,0.9)',
-                              marginBottom: 6
-                            }}>
-                              NFCタグID (UID)
-                            </label>
-                            <input
-                              type="text"
-                              value={checkpoint.nfcTagId}
-                              onChange={(e) => {
-                                const updated = [...stampRallyData.checkpoints];
-                                updated[index] = { ...updated[index], nfcTagId: e.target.value };
-                                setStampRallyData(prev => ({ ...prev, checkpoints: updated }));
-                              }}
-                              placeholder="例: 04:1A:2B:3C:4D:5E:6F"
-                              style={{
-                                width: '100%',
-                                padding: '10px 12px',
-                                background: 'rgba(255,255,255,0.05)',
-                                border: '1px solid rgba(255,255,255,0.15)',
-                                borderRadius: 6,
-                                color: '#fff',
-                                fontSize: 14,
-                                outline: 'none',
-                                fontFamily: 'monospace',
-                              }}
-                            />
-                            <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginTop: 4 }}>
-                              物理NFCタグの一意識別子
-                            </p>
-                          </div>
-                        )}
-
-                        {/* QRコード (QRが有効な場合のみ) */}
-                        {checkpoint.qrEnabled && (
-                          <div style={{ marginBottom: 12 }}>
-                            <label style={{
-                              display: 'block',
-                              fontSize: 13,
-                              fontWeight: 500,
-                              color: 'rgba(255,255,255,0.9)',
-                              marginBottom: 6
-                            }}>
-                              QRコード値
-                            </label>
-                            <input
-                              type="text"
-                              value={checkpoint.qrCode}
-                              onChange={(e) => {
-                                const updated = [...stampRallyData.checkpoints];
-                                updated[index] = { ...updated[index], qrCode: e.target.value };
-                                setStampRallyData(prev => ({ ...prev, checkpoints: updated }));
-                              }}
-                              placeholder="例: checkpoint-entrance-001"
-                              style={{
-                                width: '100%',
-                                padding: '10px 12px',
-                                background: 'rgba(255,255,255,0.05)',
-                                border: '1px solid rgba(255,255,255,0.15)',
-                                borderRadius: 6,
-                                color: '#fff',
-                                fontSize: 14,
-                                outline: 'none',
-                                fontFamily: 'monospace',
-                              }}
-                            />
-                            <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginTop: 4 }}>
-                              QRコードに埋め込む識別子
-                            </p>
-                          </div>
-                        )}
-
-                        {/* 位置情報 (オプション) */}
-                        <details style={{ marginTop: 12 }}>
-                          <summary style={{
-                            cursor: 'pointer',
-                            fontSize: 13,
-                            fontWeight: 500,
-                            color: 'rgba(255,255,255,0.7)',
-                            marginBottom: 8
-                          }}>
-                            位置情報設定 (オプション - 不正防止用)
-                          </summary>
-                          <div style={{
-                            display: 'grid',
-                            gridTemplateColumns: '1fr 1fr 1fr',
-                            gap: 8,
-                            marginTop: 12
-                          }}>
-                            <div>
-                              <label style={{
-                                display: 'block',
-                                fontSize: 12,
-                                color: 'rgba(255,255,255,0.7)',
-                                marginBottom: 4
-                              }}>
-                                緯度
-                              </label>
-                              <input
-                                type="number"
-                                step="0.000001"
-                                value={checkpoint.locationLat}
-                                onChange={(e) => {
-                                  const updated = [...stampRallyData.checkpoints];
-                                  updated[index] = { ...updated[index], locationLat: e.target.value };
-                                  setStampRallyData(prev => ({ ...prev, checkpoints: updated }));
-                                }}
-                                placeholder="35.681236"
-                                style={{
-                                  width: '100%',
-                                  padding: '8px',
-                                  background: 'rgba(255,255,255,0.05)',
-                                  border: '1px solid rgba(255,255,255,0.15)',
-                                  borderRadius: 4,
-                                  color: '#fff',
-                                  fontSize: 13,
-                                  outline: 'none',
-                                }}
-                              />
-                            </div>
-                            <div>
-                              <label style={{
-                                display: 'block',
-                                fontSize: 12,
-                                color: 'rgba(255,255,255,0.7)',
-                                marginBottom: 4
-                              }}>
-                                経度
-                              </label>
-                              <input
-                                type="number"
-                                step="0.000001"
-                                value={checkpoint.locationLng}
-                                onChange={(e) => {
-                                  const updated = [...stampRallyData.checkpoints];
-                                  updated[index] = { ...updated[index], locationLng: e.target.value };
-                                  setStampRallyData(prev => ({ ...prev, checkpoints: updated }));
-                                }}
-                                placeholder="139.767125"
-                                style={{
-                                  width: '100%',
-                                  padding: '8px',
-                                  background: 'rgba(255,255,255,0.05)',
-                                  border: '1px solid rgba(255,255,255,0.15)',
-                                  borderRadius: 4,
-                                  color: '#fff',
-                                  fontSize: 13,
-                                  outline: 'none',
-                                }}
-                              />
-                            </div>
-                            <div>
-                              <label style={{
-                                display: 'block',
-                                fontSize: 12,
-                                color: 'rgba(255,255,255,0.7)',
-                                marginBottom: 4
-                              }}>
-                                範囲(m)
-                              </label>
-                              <input
-                                type="number"
-                                value={checkpoint.radiusMeters}
-                                onChange={(e) => {
-                                  const updated = [...stampRallyData.checkpoints];
-                                  updated[index] = { ...updated[index], radiusMeters: e.target.value };
-                                  setStampRallyData(prev => ({ ...prev, checkpoints: updated }));
-                                }}
-                                placeholder="100"
-                                style={{
-                                  width: '100%',
-                                  padding: '8px',
-                                  background: 'rgba(255,255,255,0.05)',
-                                  border: '1px solid rgba(255,255,255,0.15)',
-                                  borderRadius: 4,
-                                  color: '#fff',
-                                  fontSize: 13,
-                                  outline: 'none',
-                                }}
-                              />
-                            </div>
-                          </div>
-                          <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginTop: 6 }}>
-                            チェックイン時にユーザーの位置情報を確認し、範囲内かどうかを検証します
-                          </p>
-                        </details>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* ボタン */}
-              <div style={{ display: 'flex', gap: 12 }}>
-                <button
-                  onClick={() => setCreateStep('basic')}
-                  style={{
-                    padding: '12px 24px',
-                    background: 'rgba(255,255,255,0.1)',
-                    border: 'none',
-                    borderRadius: 8,
-                    color: '#fff',
-                    fontSize: 15,
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                  }}
-                >
-                  ← 戻る
-                </button>
-                <button
-                  onClick={() => {
-                    alert('作成処理は次のコミットで実装します');
-                    setView('list');
-                  }}
-                  disabled={stampRallyData.checkpoints.length === 0 || !stampRallyData.checkpoints.every(cp => cp.name.trim())}
-                  style={{
-                    padding: '12px 24px',
-                    background: (stampRallyData.checkpoints.length > 0 && stampRallyData.checkpoints.every(cp => cp.name.trim()))
-                      ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
-                      : 'rgba(255,255,255,0.1)',
-                    border: 'none',
-                    borderRadius: 8,
-                    color: '#fff',
-                    fontSize: 15,
-                    fontWeight: 600,
-                    cursor: (stampRallyData.checkpoints.length > 0 && stampRallyData.checkpoints.every(cp => cp.name.trim())) ? 'pointer' : 'not-allowed',
-                    opacity: (stampRallyData.checkpoints.length > 0 && stampRallyData.checkpoints.every(cp => cp.name.trim())) ? 1 : 0.5,
-                  }}
-                >
-                  作成して公開
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* 会員証NFTの詳細設定 */}
-          {selectedCategory === 'MEMBERSHIP' && (
-            <div style={{
-              background: 'rgba(255,255,255,0.05)',
-              borderRadius: 12,
-              padding: 32,
-              border: '1px solid rgba(255,255,255,0.1)',
-            }}>
-              {/* 会員レベル */}
-              <div style={{ marginBottom: 24 }}>
-                <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: '#fff', marginBottom: 8 }}>
-                  会員レベル <span style={{ color: '#ef4444' }}>*</span>
-                </label>
-                <input
-                  type="text"
-                  value={membershipData.membershipLevel}
-                  onChange={(e) => setMembershipData(prev => ({ ...prev, membershipLevel: e.target.value }))}
-                  placeholder="例: ゴールド"
-                  style={{
-                    width: '100%',
-                    padding: '12px 16px',
-                    background: 'rgba(255,255,255,0.1)',
-                    border: '1px solid rgba(255,255,255,0.2)',
-                    borderRadius: 8,
-                    color: '#fff',
-                    fontSize: 15,
-                    outline: 'none',
-                  }}
-                />
-              </div>
-
-              {/* アクセス可能エリア */}
-              <div style={{ marginBottom: 24 }}>
-                <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: '#fff', marginBottom: 8 }}>
-                  アクセス可能エリア (カンマ区切り)
-                </label>
-                <input
-                  type="text"
-                  value={membershipData.accessAreas}
-                  onChange={(e) => setMembershipData(prev => ({ ...prev, accessAreas: e.target.value }))}
-                  placeholder="例: VIPラウンジ,特別展示室,プレミアムイベント"
-                  style={{
-                    width: '100%',
-                    padding: '12px 16px',
-                    background: 'rgba(255,255,255,0.1)',
-                    border: '1px solid rgba(255,255,255,0.2)',
-                    borderRadius: 8,
-                    color: '#fff',
-                    fontSize: 15,
-                    outline: 'none',
-                  }}
-                />
-                <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', marginTop: 6 }}>
-                  この会員証で入場できるエリアをカンマ区切りで指定します
-                </p>
-              </div>
-
-              {/* 特典内容 */}
-              <div style={{ marginBottom: 24 }}>
-                <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: '#fff', marginBottom: 8 }}>
-                  特典内容 (カンマ区切り)
-                </label>
-                <textarea
-                  value={membershipData.benefits}
-                  onChange={(e) => setMembershipData(prev => ({ ...prev, benefits: e.target.value }))}
-                  placeholder="例: 10%割引,優先入場,限定グッズプレゼント"
-                  rows={3}
-                  style={{
-                    width: '100%',
-                    padding: '12px 16px',
-                    background: 'rgba(255,255,255,0.1)',
-                    border: '1px solid rgba(255,255,255,0.2)',
-                    borderRadius: 8,
-                    color: '#fff',
-                    fontSize: 15,
-                    outline: 'none',
-                    resize: 'vertical',
-                  }}
-                />
-                <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', marginTop: 6 }}>
-                  会員が受けられる特典をカンマ区切りで指定します
-                </p>
-              </div>
-
-              {/* 更新タイプ */}
-              <div style={{ marginBottom: 32 }}>
-                <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: '#fff', marginBottom: 8 }}>
-                  更新タイプ
-                </label>
-                <select
-                  value={membershipData.renewalType}
-                  onChange={(e) => setMembershipData(prev => ({ ...prev, renewalType: e.target.value as any }))}
-                  style={{
-                    width: '100%',
-                    padding: '12px 16px',
-                    background: 'rgba(255,255,255,0.1)',
-                    border: '1px solid rgba(255,255,255,0.2)',
-                    borderRadius: 8,
-                    color: '#fff',
-                    fontSize: 15,
-                    outline: 'none',
-                  }}
-                >
-                  <option value="NONE" style={{ background: '#1a1a1a' }}>更新なし（永続）</option>
-                  <option value="MANUAL" style={{ background: '#1a1a1a' }}>手動更新</option>
-                  <option value="AUTO" style={{ background: '#1a1a1a' }}>自動更新</option>
-                </select>
-              </div>
-
-              {/* ボタン */}
-              <div style={{ display: 'flex', gap: 12 }}>
-                <button
-                  onClick={() => setCreateStep('basic')}
-                  style={{
-                    padding: '12px 24px',
-                    background: 'rgba(255,255,255,0.1)',
-                    border: 'none',
-                    borderRadius: 8,
-                    color: '#fff',
-                    fontSize: 15,
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                  }}
-                >
-                  ← 戻る
-                </button>
-                <button
-                  onClick={() => {
-                    alert('作成処理は次のコミットで実装します');
-                    setView('list');
-                  }}
-                  disabled={!membershipData.membershipLevel}
-                  style={{
-                    padding: '12px 24px',
-                    background: membershipData.membershipLevel
-                      ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
-                      : 'rgba(255,255,255,0.1)',
-                    border: 'none',
-                    borderRadius: 8,
-                    color: '#fff',
-                    fontSize: 15,
-                    fontWeight: 600,
-                    cursor: membershipData.membershipLevel ? 'pointer' : 'not-allowed',
-                    opacity: membershipData.membershipLevel ? 1 : 0.5,
-                  }}
-                >
-                  作成して公開
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* 実績バッジNFTの詳細設定 */}
-          {selectedCategory === 'ACHIEVEMENT' && (
-            <div style={{
-              background: 'rgba(255,255,255,0.05)',
-              borderRadius: 12,
-              padding: 32,
-              border: '1px solid rgba(255,255,255,0.1)',
-            }}>
-              {/* トリガータイプ */}
-              <div style={{ marginBottom: 24 }}>
-                <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: '#fff', marginBottom: 8 }}>
-                  達成条件タイプ <span style={{ color: '#ef4444' }}>*</span>
-                </label>
-                <select
-                  value={achievementData.triggerType}
-                  onChange={(e) => setAchievementData(prev => ({ ...prev, triggerType: e.target.value as any }))}
-                  style={{
-                    width: '100%',
-                    padding: '12px 16px',
-                    background: 'rgba(255,255,255,0.1)',
-                    border: '1px solid rgba(255,255,255,0.2)',
-                    borderRadius: 8,
-                    color: '#fff',
-                    fontSize: 15,
-                    outline: 'none',
-                  }}
-                >
-                  <option value="TIP_COUNT" style={{ background: '#1a1a1a' }}>チップ回数</option>
-                  <option value="TOTAL_TIPPED" style={{ background: '#1a1a1a' }}>累計チップ額</option>
-                  <option value="GIFT_COLLECTION" style={{ background: '#1a1a1a' }}>特典コレクション数</option>
-                  <option value="MANUAL" style={{ background: '#1a1a1a' }}>手動配布</option>
-                </select>
-                <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', marginTop: 6 }}>
-                  どの条件を達成したときにバッジを配布するかを選択します
-                </p>
-              </div>
-
-              {/* 閾値 */}
-              <div style={{ marginBottom: 24 }}>
-                <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: '#fff', marginBottom: 8 }}>
-                  達成閾値 {achievementData.triggerType !== 'MANUAL' && <span style={{ color: '#ef4444' }}>*</span>}
-                </label>
-                <input
-                  type="number"
-                  value={achievementData.threshold}
-                  onChange={(e) => setAchievementData(prev => ({ ...prev, threshold: e.target.value }))}
-                  placeholder={
-                    achievementData.triggerType === 'TIP_COUNT' ? '例: 10 (10回チップ)' :
-                    achievementData.triggerType === 'TOTAL_TIPPED' ? '例: 10000 (累計10,000円)' :
-                    achievementData.triggerType === 'GIFT_COLLECTION' ? '例: 5 (5個コレクション)' :
-                    '手動配布の場合は不要'
-                  }
-                  disabled={achievementData.triggerType === 'MANUAL'}
-                  min="1"
-                  style={{
-                    width: '100%',
-                    padding: '12px 16px',
-                    background: achievementData.triggerType === 'MANUAL' ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.1)',
-                    border: '1px solid rgba(255,255,255,0.2)',
-                    borderRadius: 8,
-                    color: '#fff',
-                    fontSize: 15,
-                    outline: 'none',
-                    opacity: achievementData.triggerType === 'MANUAL' ? 0.5 : 1,
-                  }}
-                />
-              </div>
-
-              {/* 自動配布 */}
-              <div style={{ marginBottom: 24 }}>
-                <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
-                  <input
-                    type="checkbox"
-                    checked={achievementData.autoDistribute}
-                    onChange={(e) => setAchievementData(prev => ({ ...prev, autoDistribute: e.target.checked }))}
-                    disabled={achievementData.triggerType === 'MANUAL'}
-                    style={{ marginRight: 8, width: 18, height: 18, cursor: achievementData.triggerType === 'MANUAL' ? 'not-allowed' : 'pointer' }}
-                  />
-                  <span style={{ fontSize: 14, fontWeight: 600, color: '#fff' }}>
-                    条件達成時に自動配布する
-                  </span>
-                </label>
-                <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', marginTop: 6, marginLeft: 26 }}>
-                  有効にすると、ユーザーが条件を達成したタイミングで自動的にバッジが付与されます
-                </p>
-              </div>
-
-              {/* 追加特典 */}
-              <div style={{ marginBottom: 32 }}>
-                <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: '#fff', marginBottom: 8 }}>
-                  追加特典 (カンマ区切り)
-                </label>
-                <textarea
-                  value={achievementData.additionalBenefits}
-                  onChange={(e) => setAchievementData(prev => ({ ...prev, additionalBenefits: e.target.value }))}
-                  placeholder="例: 限定グッズ,次回10%割引,優先予約権"
-                  rows={3}
-                  style={{
-                    width: '100%',
-                    padding: '12px 16px',
-                    background: 'rgba(255,255,255,0.1)',
-                    border: '1px solid rgba(255,255,255,0.2)',
-                    borderRadius: 8,
-                    color: '#fff',
-                    fontSize: 15,
-                    outline: 'none',
-                    resize: 'vertical',
-                  }}
-                />
-                <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', marginTop: 6 }}>
-                  バッジ取得者への追加特典があれば記載してください
-                </p>
-              </div>
-
-              {/* ボタン */}
-              <div style={{ display: 'flex', gap: 12 }}>
-                <button
-                  onClick={() => setCreateStep('basic')}
-                  style={{
-                    padding: '12px 24px',
-                    background: 'rgba(255,255,255,0.1)',
-                    border: 'none',
-                    borderRadius: 8,
-                    color: '#fff',
-                    fontSize: 15,
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                  }}
-                >
-                  ← 戻る
-                </button>
-                <button
-                  onClick={() => {
-                    alert('作成処理は次のコミットで実装します');
-                    setView('list');
-                  }}
-                  disabled={achievementData.triggerType !== 'MANUAL' && !achievementData.threshold}
-                  style={{
-                    padding: '12px 24px',
-                    background: (achievementData.triggerType === 'MANUAL' || achievementData.threshold)
-                      ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
-                      : 'rgba(255,255,255,0.1)',
-                    border: 'none',
-                    borderRadius: 8,
-                    color: '#fff',
-                    fontSize: 15,
-                    fontWeight: 600,
-                    cursor: (achievementData.triggerType === 'MANUAL' || achievementData.threshold) ? 'pointer' : 'not-allowed',
-                    opacity: (achievementData.triggerType === 'MANUAL' || achievementData.threshold) ? 1 : 0.5,
-                  }}
-                >
-                  作成して公開
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* アクセス権NFTの詳細設定 */}
-          {selectedCategory === 'ACCESS_PASS' && (
-            <div style={{
-              background: 'rgba(255,255,255,0.05)',
-              borderRadius: 12,
-              padding: 32,
-              border: '1px solid rgba(255,255,255,0.1)',
-            }}>
-              <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.7)', marginBottom: 24 }}>
-                アクセス権NFTは会員証NFTと同様の設定を使用します。<br />
-                基本情報で設定した内容がアクセス権の条件として機能します。
-              </p>
-              <div style={{
-                padding: 20,
-                background: 'rgba(16,185,129,0.1)',
-                border: '1px solid rgba(16,185,129,0.3)',
-                borderRadius: 8,
-                marginBottom: 24,
-              }}>
-                <h4 style={{ fontSize: 14, fontWeight: 600, color: '#10b981', margin: '0 0 8px 0' }}>
-                  💡 アクセス権NFTの用途
-                </h4>
-                <ul style={{ fontSize: 13, color: 'rgba(255,255,255,0.7)', margin: 0, paddingLeft: 20, lineHeight: 1.8 }}>
-                  <li>特定イベントやコンテンツへの入場権</li>
-                  <li>限定公開エリアへのアクセス</li>
-                  <li>オンラインコンテンツの視聴権</li>
-                  <li>物理的な場所への入場パス</li>
-                </ul>
-              </div>
-
-              {/* ボタン */}
-              <div style={{ display: 'flex', gap: 12 }}>
-                <button
-                  onClick={() => setCreateStep('basic')}
-                  style={{
-                    padding: '12px 24px',
-                    background: 'rgba(255,255,255,0.1)',
-                    border: 'none',
-                    borderRadius: 8,
-                    color: '#fff',
-                    fontSize: 15,
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                  }}
-                >
-                  ← 戻る
-                </button>
-                <button
-                  onClick={() => {
-                    alert('作成処理は次のコミットで実装します');
-                    setView('list');
-                  }}
-                  style={{
-                    padding: '12px 24px',
-                    background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                    border: 'none',
-                    borderRadius: 8,
-                    color: '#fff',
-                    fontSize: 15,
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                  }}
-                >
-                  作成して公開
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* コレクティブルNFTの詳細設定 */}
-          {selectedCategory === 'COLLECTIBLE' && (
-            <div style={{
-              background: 'rgba(255,255,255,0.05)',
-              borderRadius: 12,
-              padding: 32,
-              border: '1px solid rgba(255,255,255,0.1)',
-            }}>
-              {/* 法務警告 */}
-              <div style={{
-                padding: 16,
-                background: 'rgba(239,68,68,0.1)',
-                border: '1px solid rgba(239,68,68,0.3)',
-                borderRadius: 8,
-                marginBottom: 24,
-              }}>
-                <h4 style={{ fontSize: 14, fontWeight: 600, color: '#ef4444', margin: '0 0 8px 0' }}>
-                  ⚠️ 法務対応: レアリティ機能は実装しません
-                </h4>
-                <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', margin: 0, lineHeight: 1.6 }}>
-                  投げ銭（チップ）に対する配布特典でレアリティを設定すると、射幸心の煽り、ガチャ規制、賭博性などの法務リスクが発生します。<br />
-                  すべてのNFTは等価値として扱い、ランダム性や希少性を排除します。
-                </p>
-              </div>
-
-              {/* シリーズ名 */}
-              <div style={{ marginBottom: 24 }}>
-                <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: '#fff', marginBottom: 8 }}>
-                  シリーズ名 <span style={{ color: '#ef4444' }}>*</span>
-                </label>
-                <input
-                  type="text"
-                  value={collectibleData.seriesName}
-                  onChange={(e) => setCollectibleData(prev => ({ ...prev, seriesName: e.target.value }))}
-                  placeholder="例: 夏季限定コレクション"
-                  style={{
-                    width: '100%',
-                    padding: '12px 16px',
-                    background: 'rgba(255,255,255,0.1)',
-                    border: '1px solid rgba(255,255,255,0.2)',
-                    borderRadius: 8,
-                    color: '#fff',
-                    fontSize: 15,
-                    outline: 'none',
-                  }}
-                />
-              </div>
-
-              {/* シリーズ番号と総数 */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: '#fff', marginBottom: 8 }}>
-                    シリーズ内の番号
-                  </label>
-                  <input
-                    type="number"
-                    value={collectibleData.seriesNumber}
-                    onChange={(e) => setCollectibleData(prev => ({ ...prev, seriesNumber: e.target.value }))}
-                    placeholder="例: 1"
-                    min="1"
-                    style={{
-                      width: '100%',
-                      padding: '12px 16px',
-                      background: 'rgba(255,255,255,0.1)',
-                      border: '1px solid rgba(255,255,255,0.2)',
-                      borderRadius: 8,
-                      color: '#fff',
-                      fontSize: 15,
-                      outline: 'none',
-                    }}
-                  />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: '#fff', marginBottom: 8 }}>
-                    シリーズ総数
-                  </label>
-                  <input
-                    type="number"
-                    value={collectibleData.totalInSeries}
-                    onChange={(e) => setCollectibleData(prev => ({ ...prev, totalInSeries: e.target.value }))}
-                    placeholder="例: 10"
-                    min="1"
-                    style={{
-                      width: '100%',
-                      padding: '12px 16px',
-                      background: 'rgba(255,255,255,0.1)',
-                      border: '1px solid rgba(255,255,255,0.2)',
-                      borderRadius: 8,
-                      color: '#fff',
-                      fontSize: 15,
-                      outline: 'none',
-                    }}
-                  />
-                </div>
-              </div>
-
-              {/* 配布条件タイプ */}
-              <div style={{ marginBottom: 24 }}>
-                <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: '#fff', marginBottom: 8 }}>
-                  配布条件 <span style={{ color: '#ef4444' }}>*</span>
-                </label>
-                <select
-                  value={collectibleData.distributionTrigger}
-                  onChange={(e) => setCollectibleData(prev => ({ ...prev, distributionTrigger: e.target.value as any }))}
-                  style={{
-                    width: '100%',
-                    padding: '12px 16px',
-                    background: 'rgba(255,255,255,0.1)',
-                    border: '1px solid rgba(255,255,255,0.2)',
-                    borderRadius: 8,
-                    color: '#fff',
-                    fontSize: 15,
-                    outline: 'none',
-                  }}
-                >
-                  <option value="TIP_AMOUNT" style={{ background: '#1a1a1a' }}>チップ額による確定配布</option>
-                  <option value="EVENT_PARTICIPATION" style={{ background: '#1a1a1a' }}>イベント参加による配布</option>
-                  <option value="CAMPAIGN" style={{ background: '#1a1a1a' }}>キャンペーンによる配布</option>
-                  <option value="MANUAL" style={{ background: '#1a1a1a' }}>手動配布</option>
-                </select>
-                <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', marginTop: 6 }}>
-                  条件達成による確定配布のみ。ランダム配布・抽選は法務リスクのため使用できません。
-                </p>
-              </div>
-
-              {/* 配布条件の説明 */}
-              <div style={{ marginBottom: 24 }}>
-                <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: '#fff', marginBottom: 8 }}>
-                  配布条件の説明
-                </label>
-                <textarea
-                  value={collectibleData.requiredCondition}
-                  onChange={(e) => setCollectibleData(prev => ({ ...prev, requiredCondition: e.target.value }))}
-                  placeholder="例: 10,000円以上のチップで確定配布（先着100名限定）"
-                  rows={3}
-                  style={{
-                    width: '100%',
-                    padding: '12px 16px',
-                    background: 'rgba(255,255,255,0.1)',
-                    border: '1px solid rgba(255,255,255,0.2)',
-                    borderRadius: 8,
-                    color: '#fff',
-                    fontSize: 15,
-                    outline: 'none',
-                    resize: 'vertical',
-                  }}
-                />
-              </div>
-
-              {/* コレクション進捗 */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: '#fff', marginBottom: 8 }}>
-                    コレクション目標数
-                  </label>
-                  <input
-                    type="number"
-                    value={collectibleData.collectionGoal}
-                    onChange={(e) => setCollectibleData(prev => ({ ...prev, collectionGoal: e.target.value }))}
-                    placeholder="例: 10"
-                    min="1"
-                    style={{
-                      width: '100%',
-                      padding: '12px 16px',
-                      background: 'rgba(255,255,255,0.1)',
-                      border: '1px solid rgba(255,255,255,0.2)',
-                      borderRadius: 8,
-                      color: '#fff',
-                      fontSize: 15,
-                      outline: 'none',
-                    }}
-                  />
-                  <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', marginTop: 6 }}>
-                    全種類集めたときの目標数
-                  </p>
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: '#fff', marginBottom: 8 }}>
-                    コンプリート特典NFT ID
-                  </label>
-                  <input
-                    type="text"
-                    value={collectibleData.progressReward}
-                    onChange={(e) => setCollectibleData(prev => ({ ...prev, progressReward: e.target.value }))}
-                    placeholder="例: reward-nft-001"
-                    style={{
-                      width: '100%',
-                      padding: '12px 16px',
-                      background: 'rgba(255,255,255,0.1)',
-                      border: '1px solid rgba(255,255,255,0.2)',
-                      borderRadius: 8,
-                      color: '#fff',
-                      fontSize: 15,
-                      outline: 'none',
-                      fontFamily: 'monospace',
-                    }}
-                  />
-                  <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', marginTop: 6 }}>
-                    全部集めた人への特典NFT
-                  </p>
-                </div>
-              </div>
-
-              {/* メタデータ */}
-              <details style={{ marginBottom: 24 }}>
-                <summary style={{
-                  cursor: 'pointer',
-                  fontSize: 14,
-                  fontWeight: 600,
-                  color: '#fff',
-                  marginBottom: 16
-                }}>
-                  メタデータ (オプション)
-                </summary>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 16 }}>
-                  <div>
-                    <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: '#fff', marginBottom: 8 }}>
-                      アーティスト名
-                    </label>
-                    <input
-                      type="text"
-                      value={collectibleData.artist}
-                      onChange={(e) => setCollectibleData(prev => ({ ...prev, artist: e.target.value }))}
-                      placeholder="例: 山田太郎"
-                      style={{
-                        width: '100%',
-                        padding: '12px 16px',
-                        background: 'rgba(255,255,255,0.1)',
-                        border: '1px solid rgba(255,255,255,0.2)',
-                        borderRadius: 8,
-                        color: '#fff',
-                        fontSize: 15,
-                        outline: 'none',
-                      }}
-                    />
-                  </div>
-                  <div>
-                    <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: '#fff', marginBottom: 8 }}>
-                      リリース日
-                    </label>
-                    <input
-                      type="date"
-                      value={collectibleData.releaseDate}
-                      onChange={(e) => setCollectibleData(prev => ({ ...prev, releaseDate: e.target.value }))}
-                      style={{
-                        width: '100%',
-                        padding: '12px 16px',
-                        background: 'rgba(255,255,255,0.1)',
-                        border: '1px solid rgba(255,255,255,0.2)',
-                        borderRadius: 8,
-                        color: '#fff',
-                        fontSize: 15,
-                        outline: 'none',
-                      }}
-                    />
-                  </div>
-                  <div>
-                    <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: '#fff', marginBottom: 8 }}>
-                      コレクション説明
-                    </label>
-                    <textarea
-                      value={collectibleData.description}
-                      onChange={(e) => setCollectibleData(prev => ({ ...prev, description: e.target.value }))}
-                      placeholder="このコレクションの背景やストーリーを記載"
-                      rows={3}
-                      style={{
-                        width: '100%',
-                        padding: '12px 16px',
-                        background: 'rgba(255,255,255,0.1)',
-                        border: '1px solid rgba(255,255,255,0.2)',
-                        borderRadius: 8,
-                        color: '#fff',
-                        fontSize: 15,
-                        outline: 'none',
-                        resize: 'vertical',
-                      }}
-                    />
-                  </div>
-                </div>
-              </details>
-
-              {/* ボタン */}
-              <div style={{ display: 'flex', gap: 12 }}>
-                <button
-                  onClick={() => setCreateStep('basic')}
-                  style={{
-                    padding: '12px 24px',
-                    background: 'rgba(255,255,255,0.1)',
-                    border: 'none',
-                    borderRadius: 8,
-                    color: '#fff',
-                    fontSize: 15,
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                  }}
-                >
-                  ← 戻る
-                </button>
-                <button
-                  onClick={() => {
-                    alert('作成処理は次のコミットで実装します');
-                    setView('list');
-                  }}
-                  disabled={!collectibleData.seriesName}
-                  style={{
-                    padding: '12px 24px',
-                    background: collectibleData.seriesName
-                      ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
-                      : 'rgba(255,255,255,0.1)',
-                    border: 'none',
-                    borderRadius: 8,
-                    color: '#fff',
-                    fontSize: 15,
-                    fontWeight: 600,
-                    cursor: collectibleData.seriesName ? 'pointer' : 'not-allowed',
-                    opacity: collectibleData.seriesName ? 1 : 0.5,
-                  }}
-                >
-                  作成して公開
-                </button>
-              </div>
-            </div>
-          )}
+            {selectedCategory === 'COLLECTIBLE' && (
+              <CollectibleConfigForm
+                onSubmit={saveFlagNFT}
+                onCancel={() => setCreateStep('basic')}
+                isLoading={isSaving || isConfiguringCategory}
+              />
+            )}
+          </div>
         </div>
       )}
     </div>

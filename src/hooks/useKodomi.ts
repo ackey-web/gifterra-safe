@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { useAddress, useContract } from '@thirdweb-dev/react';
-import { SBT_CONTRACT, CONTRACT_ABI } from '../contract';
+import { SBT_CONTRACT, CONTRACT_ABI, getGifterraAddress } from '../contract';
 
 /**
  * kodomiランク定義
@@ -62,7 +62,8 @@ export function calculateKodomiRank(totalTips: number): {
  */
 export function useKodomi() {
   const address = useAddress();
-  const { contract } = useContract(SBT_CONTRACT.ADDRESS, CONTRACT_ABI);
+  const gifterraAddress = getGifterraAddress();
+  const { contract } = useContract(gifterraAddress, CONTRACT_ABI);
   const [kodomi, setKodomi] = useState<number>(0);
   const [rank, setRank] = useState<string>('Bronze');
   const [color, setColor] = useState<string>('#cd7f32');

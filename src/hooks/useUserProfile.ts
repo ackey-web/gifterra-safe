@@ -3,7 +3,7 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import { useAddress, useContractRead, useContract } from '@thirdweb-dev/react';
-import { SBT_CONTRACT, READ_ABI } from '../contract';
+import { SBT_CONTRACT, READ_ABI, getGifterraAddress } from '../contract';
 import { calculateRank } from '../utils/userProfile';
 import type { UserProfile, Activity, SBT, UserStats } from '../types/user';
 
@@ -17,7 +17,8 @@ export function useUserProfile(targetAddress?: string) {
   const address = targetAddress || connectedAddress;
 
   // コントラクト接続
-  const { contract } = useContract(SBT_CONTRACT.ADDRESS, READ_ABI);
+  const gifterraAddress = getGifterraAddress();
+  const { contract } = useContract(gifterraAddress, READ_ABI);
 
   // ユーザーの基本情報を取得
   const { data: userInfo, isLoading: isLoadingUserInfo } = useContractRead(

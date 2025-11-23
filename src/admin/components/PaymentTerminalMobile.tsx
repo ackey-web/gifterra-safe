@@ -20,6 +20,7 @@ import {
   filterPaymentsByPeriod,
   calculateSummary,
 } from '../../utils/paymentExport';
+import { generateWalletQRData } from '../../types/qrPayment';
 
 interface PaymentHistory {
   id: string;
@@ -52,6 +53,7 @@ export function PaymentTerminalMobile() {
 
   // QRコード
   const [qrData, setQrData] = useState<string | null>(null);
+  const [qrMode, setQrMode] = useState<'invoice' | 'wallet'>('invoice'); // 請求書 or ウォレット
   const [expiryMinutes, setExpiryMinutes] = useState(5);
   const qrRef = useRef<HTMLDivElement>(null);
 
@@ -128,10 +130,10 @@ export function PaymentTerminalMobile() {
     if (!walletAddress) return;
 
     const fetchPayments = async () => {
-      // 最近の決済5件を取得
+      // 最近の決済5件を取得（請求書QR & ウォレットQR両方）
       const { data: recentData } = await supabase
         .from('payment_requests')
-        .select('id, request_id, amount, completed_at, completed_by, message, tenant_address')
+        .select('id, request_id, amount, completed_at, completed_by, message, tenant_address, payment_type, transaction_hash')
         .eq('tenant_address', walletAddress.toLowerCase())
         .eq('status', 'completed')
         .order('completed_at', { ascending: false })
@@ -144,10 +146,10 @@ export function PaymentTerminalMobile() {
         }
       }
 
-      // エクスポート用に全決済履歴を取得
+      // エクスポート用に全決済履歴を取得（請求書QR & ウォレットQR両方）
       const { data: allData } = await supabase
         .from('payment_requests')
-        .select('id, request_id, amount, completed_at, completed_by, message, tenant_address')
+        .select('id, request_id, amount, completed_at, completed_by, message, tenant_address, payment_type, transaction_hash')
         .eq('tenant_address', walletAddress.toLowerCase())
         .eq('status', 'completed')
         .order('completed_at', { ascending: false });
@@ -159,13 +161,25 @@ export function PaymentTerminalMobile() {
 
     fetchPayments();
 
-    // リアルタイム更新
+    // リアルタイム更新（請求書QR = UPDATE、ウォレットQR = INSERT）
     const channel = supabase
       .channel('mobile_payment_updates')
       .on(
         'postgres_changes',
         {
-          event: 'UPDATE',
+          event: 'UPDATE', // 請求書QR決済完了
+          schema: 'public',
+          table: 'payment_requests',
+          filter: `tenant_address=eq.${walletAddress.toLowerCase()}`,
+        },
+        () => {
+          fetchPayments();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT', // ウォレットQR決済完了
           schema: 'public',
           table: 'payment_requests',
           filter: `tenant_address=eq.${walletAddress.toLowerCase()}`,
@@ -327,6 +341,39 @@ export function PaymentTerminalMobile() {
       setTimeout(() => setMessage(null), 3000);
     } catch (error) {
       console.error('QR生成エラー:', error);
+      setMessage({ type: 'error', text: '生成に失敗しました' });
+    }
+  };
+
+  // ウォレットQR生成（PayPay方式）
+  const handleGenerateWalletQR = () => {
+    try {
+      if (!walletAddress) {
+        setMessage({ type: 'error', text: 'ウォレット未接続' });
+        return;
+      }
+
+      // EIP-55アドレス検証
+      const walletValidation = validateAddress(walletAddress);
+      if (!walletValidation.valid) {
+        setMessage({ type: 'error', text: walletValidation.error || '受取アドレスが無効です' });
+        return;
+      }
+
+      // ウォレットQRデータ生成
+      const walletQRData = generateWalletQRData({
+        address: walletValidation.checksumAddress!,
+        name: storeName,
+        description: storeName ? `${storeName}への支払い` : 'JPYC支払い',
+      });
+
+      setQrData(walletQRData);
+      setQrMode('wallet');
+      setMessage({ type: 'success', text: 'ウォレットQR生成完了' });
+
+      setTimeout(() => setMessage(null), 3000);
+    } catch (error) {
+      console.error('ウォレットQR生成エラー:', error);
       setMessage({ type: 'error', text: '生成に失敗しました' });
     }
   };
@@ -697,7 +744,7 @@ export function PaymentTerminalMobile() {
                   ))}
                 </div>
 
-                {/* QR生成ボタン */}
+                {/* QR生成ボタン（請求書方式） */}
                 <button
                   onClick={handleGenerateQR}
                   style={{
@@ -714,8 +761,40 @@ export function PaymentTerminalMobile() {
                     touchAction: 'manipulation',
                   }}
                 >
-                  QRコード生成
+                  📄 請求書QR生成
                 </button>
+
+                {/* ウォレットQRボタン（PayPay方式） */}
+                <button
+                  onClick={handleGenerateWalletQR}
+                  disabled={!walletAddress}
+                  style={{
+                    width: '100%',
+                    marginTop: '12px',
+                    padding: '18px',
+                    fontSize: '18px',
+                    fontWeight: 'bold',
+                    background: walletAddress
+                      ? 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)'
+                      : 'rgba(148, 163, 184, 0.3)',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '12px',
+                    cursor: walletAddress ? 'pointer' : 'not-allowed',
+                    touchAction: 'manipulation',
+                    opacity: walletAddress ? 1 : 0.5,
+                  }}
+                >
+                  💳 ウォレットQR表示
+                </button>
+                <p style={{
+                  fontSize: '12px',
+                  color: 'rgba(255,255,255,0.6)',
+                  margin: '8px 0 0 0',
+                  textAlign: 'center',
+                }}>
+                  ウォレットQR: 客が金額を入力（PayPay方式）
+                </p>
               </div>
 
               {/* 最近の決済 */}
@@ -919,27 +998,54 @@ export function PaymentTerminalMobile() {
                 marginBottom: '16px',
                 lineHeight: '1.5',
                 padding: '8px 16px',
-                background: 'rgba(59, 130, 246, 0.1)',
+                background: qrMode === 'wallet'
+                  ? 'rgba(59, 130, 246, 0.1)'
+                  : 'rgba(34, 197, 94, 0.1)',
                 borderRadius: '8px',
-                border: '1px solid rgba(59, 130, 246, 0.2)',
+                border: qrMode === 'wallet'
+                  ? '1px solid rgba(59, 130, 246, 0.2)'
+                  : '1px solid rgba(34, 197, 94, 0.2)',
               }}>
-                このQRは、GIFTERRA Pay で読み取り・お支払いできます。<br />
-                GIFTERRAマイページの「スキャンして支払う」からご利用ください。
+                {qrMode === 'wallet' ? (
+                  <>
+                    💳 <strong>ウォレットQR（PayPay方式）</strong><br />
+                    お客様がGIFTERRAマイページでスキャンして金額を入力します。<br />
+                    このQRコードは常に有効で、印刷してレジ横に設置できます。
+                  </>
+                ) : (
+                  <>
+                    📄 <strong>請求書QR</strong><br />
+                    このQRは、GIFTERRA Pay で読み取り・お支払いできます。<br />
+                    GIFTERRAマイページの「スキャンして支払う」からご利用ください。
+                  </>
+                )}
               </div>
 
-              <div style={{ fontSize: '36px', fontWeight: 'bold', color: '#22c55e', marginBottom: '8px' }}>
-                {amount.replace(/\B(?=(\d{3})+(?!\d))/g, ',')} JPYC
-              </div>
+              {/* 請求書モードの場合のみ金額と有効期限を表示 */}
+              {qrMode === 'invoice' && (
+                <>
+                  <div style={{ fontSize: '36px', fontWeight: 'bold', color: '#22c55e', marginBottom: '8px' }}>
+                    {amount.replace(/\B(?=(\d{3})+(?!\d))/g, ',')} JPYC
+                  </div>
 
-              <div style={{ fontSize: '13px', opacity: 0.7, marginBottom: '16px' }}>
-                有効期限: {
-                  expiryMinutes >= 1440
-                    ? `${Math.floor(expiryMinutes / 1440)}日`
-                    : expiryMinutes >= 60
-                      ? `${Math.floor(expiryMinutes / 60)}時間`
-                      : `${expiryMinutes}分`
-                }
-              </div>
+                  <div style={{ fontSize: '13px', opacity: 0.7, marginBottom: '16px' }}>
+                    有効期限: {
+                      expiryMinutes >= 1440
+                        ? `${Math.floor(expiryMinutes / 1440)}日`
+                        : expiryMinutes >= 60
+                          ? `${Math.floor(expiryMinutes / 60)}時間`
+                          : `${expiryMinutes}分`
+                    }
+                  </div>
+                </>
+              )}
+
+              {/* ウォレットモードの場合は店舗名を表示 */}
+              {qrMode === 'wallet' && (
+                <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#3b82f6', marginBottom: '16px' }}>
+                  {storeName || 'GIFTERRA店舗'}
+                </div>
+              )}
 
               {/* QRコードダウンロード・共有ボタン（1つにまとめる） */}
               <button

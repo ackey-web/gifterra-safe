@@ -1,12 +1,15 @@
 // src/admin/TenantProfilePage.tsx
 import { useState, useEffect } from 'react';
 import { uploadImage, deleteFileFromUrl } from '../lib/supabase';
+import PaymentSplitterManagement from './components/PaymentSplitterManagement';
+import PaymentSplitterDeployWizard from './components/PaymentSplitterDeployWizard';
 
 interface TenantProfile {
   tenantId: string;
   tenantName: string;
   description: string;
   thumbnail: string; // Supabase URL
+  gifterraAddress: string; // Gifterra SBT contract address (デイリーリワード用)
   paymentSplitterAddress: string; // PaymentSplitter contract address
   adminAddresses: string[]; // テナント管理者のウォレットアドレス一覧
 }
@@ -17,6 +20,7 @@ export default function TenantProfilePage() {
     tenantName: '',
     description: '',
     thumbnail: '',
+    gifterraAddress: '',
     paymentSplitterAddress: '',
     adminAddresses: [],
   });
@@ -26,6 +30,7 @@ export default function TenantProfilePage() {
   const [imagePreview, setImagePreview] = useState<string>('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [newAdminAddress, setNewAdminAddress] = useState('');
+  const [showDeployWizard, setShowDeployWizard] = useState(false);
 
   // ローカルストレージから読み込み
   useEffect(() => {
@@ -80,6 +85,11 @@ export default function TenantProfilePage() {
 
     if (profile.description.length > 500) {
       setMessage({ type: 'error', text: '説明は500文字以内にしてください' });
+      return;
+    }
+
+    if (profile.gifterraAddress && !/^0x[a-fA-F0-9]{40}$/.test(profile.gifterraAddress)) {
+      setMessage({ type: 'error', text: '有効なGifterraコントラクトアドレスを入力してください (0x... 形式)' });
       return;
     }
 
@@ -189,6 +199,16 @@ export default function TenantProfilePage() {
       setMessage({ type: 'success', text: '管理者アドレスを削除しました' });
       setTimeout(() => setMessage(null), 3000);
     }
+  };
+
+  // PaymentSplitterデプロイ成功時のハンドラ
+  const handleDeploySuccess = (contractAddress: string) => {
+    setProfile({
+      ...profile,
+      paymentSplitterAddress: contractAddress,
+    });
+    setShowDeployWizard(false);
+    setMessage({ type: 'success', text: 'PaymentSplitterをデプロイしました！アドレスを自動入力しました。保存してください。' });
   };
 
   return (
@@ -392,6 +412,39 @@ export default function TenantProfilePage() {
           </p>
         </div>
 
+        {/* Gifterra SBT コントラクトアドレス */}
+        <div style={{ marginBottom: 24 }}>
+          <label style={{
+            display: 'block',
+            fontSize: 14,
+            fontWeight: 700,
+            color: '#374151',
+            marginBottom: 8,
+          }}>
+            Gifterra SBT コントラクトアドレス
+          </label>
+          <input
+            type="text"
+            value={profile.gifterraAddress}
+            onChange={(e) => setProfile({ ...profile, gifterraAddress: e.target.value })}
+            placeholder="0x..."
+            style={{
+              width: '100%',
+              padding: '10px 12px',
+              background: '#ffffff',
+              border: '2px solid #d1d5db',
+              borderRadius: 6,
+              fontSize: 14,
+              color: '#1a1a1a',
+              fontFamily: 'monospace',
+              marginBottom: 8,
+            }}
+          />
+          <p style={{ margin: '8px 0 0 0', fontSize: 12, color: '#9ca3af' }}>
+            デイリーリワード機能を持つGifterraコントラクトのアドレスです
+          </p>
+        </div>
+
         {/* PaymentSplitter アドレス */}
         <div style={{ marginBottom: 24 }}>
           <label style={{
@@ -403,22 +456,40 @@ export default function TenantProfilePage() {
           }}>
             PaymentSplitter コントラクトアドレス
           </label>
-          <input
-            type="text"
-            value={profile.paymentSplitterAddress}
-            onChange={(e) => setProfile({ ...profile, paymentSplitterAddress: e.target.value })}
-            placeholder="0x..."
-            style={{
-              width: '100%',
-              padding: '10px 12px',
-              background: '#ffffff',
-              border: '2px solid #d1d5db',
-              borderRadius: 6,
-              fontSize: 14,
-              color: '#1a1a1a',
-              fontFamily: 'monospace',
-            }}
-          />
+          <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+            <input
+              type="text"
+              value={profile.paymentSplitterAddress}
+              onChange={(e) => setProfile({ ...profile, paymentSplitterAddress: e.target.value })}
+              placeholder="0x..."
+              style={{
+                flex: 1,
+                padding: '10px 12px',
+                background: '#ffffff',
+                border: '2px solid #d1d5db',
+                borderRadius: 6,
+                fontSize: 14,
+                color: '#1a1a1a',
+                fontFamily: 'monospace',
+              }}
+            />
+            <button
+              onClick={() => setShowDeployWizard(true)}
+              style={{
+                padding: '10px 16px',
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                border: 'none',
+                borderRadius: 6,
+                color: '#ffffff',
+                fontSize: 14,
+                fontWeight: 600,
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              🚀 新規デプロイ
+            </button>
+          </div>
           <p style={{ margin: '8px 0 0 0', fontSize: 12, color: '#9ca3af' }}>
             GIFT HUB購入時の収益分配を管理するスマートコントラクトのアドレスです
           </p>
@@ -579,6 +650,53 @@ export default function TenantProfilePage() {
           {isUploading ? '📤 アップロード中...' : isSaving ? '💾 保存中...' : '💾 保存する'}
         </button>
       </div>
+
+      {/* PaymentSplitterデプロイウィザード（モーダル） */}
+      {showDeployWizard && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0,0,0,0.8)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999,
+          padding: 24,
+        }}>
+          <div style={{
+            background: '#0b1620',
+            borderRadius: 16,
+            padding: 32,
+            maxWidth: 900,
+            width: '100%',
+            maxHeight: '90vh',
+            overflow: 'auto',
+            border: '1px solid rgba(255,255,255,0.1)',
+          }}>
+            <PaymentSplitterDeployWizard
+              onDeploySuccess={handleDeploySuccess}
+              onCancel={() => setShowDeployWizard(false)}
+              existingAddress={profile.paymentSplitterAddress}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* PaymentSplitter 管理セクション */}
+      {profile.paymentSplitterAddress && profile.paymentSplitterAddress !== '0x0000000000000000000000000000000000000000' && (
+        <div style={{
+          background: '#0b1620',
+          border: '1px solid rgba(255,255,255,0.1)',
+          borderRadius: 12,
+          padding: 32,
+          marginTop: 32,
+        }}>
+          <PaymentSplitterManagement contractAddress={profile.paymentSplitterAddress} />
+        </div>
+      )}
     </div>
   );
 }

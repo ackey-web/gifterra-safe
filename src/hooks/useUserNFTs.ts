@@ -1,7 +1,7 @@
 // src/hooks/useUserNFTs.ts
 import { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
-import { SBT_CONTRACT, CONTRACT_ABI } from '../contract';
+import { SBT_CONTRACT, CONTRACT_ABI, getGifterraAddress } from '../contract';
 
 export interface NFTItem {
   tokenId: string;
@@ -28,7 +28,8 @@ export function useUserNFTs(address: string | undefined, signer: ethers.Signer |
         const provider = signer.provider;
         if (!provider) return;
 
-        const sbtContract = new ethers.Contract(SBT_CONTRACT.ADDRESS, CONTRACT_ABI, provider);
+        const gifterraAddress = getGifterraAddress();
+        const sbtContract = new ethers.Contract(gifterraAddress, CONTRACT_ABI, provider);
 
         // ユーザーのSBTレベルを取得
         const userLevel = await sbtContract.userNFTLevel(address);
