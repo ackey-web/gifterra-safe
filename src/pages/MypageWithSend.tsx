@@ -6,7 +6,7 @@ import { usePrivy, useWallets } from '@privy-io/react-auth';
 import { ethers } from 'ethers';
 import { useTokenBalances } from '../hooks/useTokenBalances';
 import { useTransactionHistory } from '../hooks/useTransactionHistory';
-import { QRScannerSimple } from '../components/QRScannerSimple';
+import { QRScannerCamera } from '../components/QRScannerCamera';
 import { WalletQRPaymentModal } from '../components/WalletQRPaymentModal';
 import { JPYC_TOKEN, ERC20_MIN_ABI } from '../contract';
 import { analyzeSentiment } from '../lib/ai_analysis';
@@ -1352,10 +1352,10 @@ export function MypageWithSend() {
 
       {/* QRスキャナー */}
       {showQRScanner && (
-        <QRScannerSimple
+        <QRScannerCamera
           onScan={handleQRScan}
           onClose={() => setShowQRScanner(false)}
-          placeholder="送金先アドレスを入力"
+          placeholder="QRコードをスキャンまたはアドレスを入力"
         />
       )}
 
