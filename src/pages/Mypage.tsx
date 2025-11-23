@@ -1904,9 +1904,14 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
             <div style={{ fontSize: 10, opacity: 0.85, marginBottom: 2 }}>JPYC</div>
             <div style={{ fontSize: isMobile ? 14 : 16, fontWeight: 700 }}>
               {balanceVisible
-                ? (balances.jpyc.loading ? '...' : balances.jpyc.formatted)
+                ? (balances.jpyc.loading ? '...' : balances.jpyc.error ? '⚠️' : balances.jpyc.formatted)
                 : '****'}
             </div>
+            {balanceVisible && balances.jpyc.error && (
+              <div style={{ fontSize: 8, color: '#fecaca', marginTop: 2 }}>
+                {balances.jpyc.error}
+              </div>
+            )}
             <img
               src="/JPYC-logo.png"
               alt="JPYC"

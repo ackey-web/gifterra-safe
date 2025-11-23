@@ -668,8 +668,8 @@ export function MypageWithSend() {
               alignItems: 'center',
             }}>
               <span style={{ fontSize: 16, fontWeight: 600, color: '#2d3748' }}>JPYC</span>
-              <span style={{ fontSize: 18, fontWeight: 700, color: '#2563eb' }}>
-                {balances.jpyc.loading ? '読込中...' : `${balances.jpyc.formatted} JPYC`}
+              <span style={{ fontSize: 18, fontWeight: 700, color: balances.jpyc.error ? '#dc2626' : '#2563eb' }}>
+                {balances.jpyc.loading ? '読込中...' : balances.jpyc.error ? `⚠️ ${balances.jpyc.error}` : `${balances.jpyc.formatted} JPYC`}
               </span>
             </div>
           </div>

@@ -367,12 +367,26 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
 
       // Androidデバッグ用: 接続状態を確認
       if (typeof window !== 'undefined' && window.ethereum) {
-        console.log('📱 window.ethereum 状態:', {
+        const debugInfo = {
           isMetaMask: window.ethereum.isMetaMask,
           isConnected: window.ethereum.isConnected?.(),
           chainId: window.ethereum.chainId,
           selectedAddress: window.ethereum.selectedAddress,
+        };
+        console.log('📱 window.ethereum 状態:', debugInfo);
+
+        // Androidでコンソールが見れない場合のため、画面にも表示
+        setMessage({
+          type: 'info',
+          text: `デバッグ: MetaMask=${debugInfo.isMetaMask}, 接続=${debugInfo.isConnected}, チェーンID=${debugInfo.chainId}`
         });
+
+        // 2秒後にメッセージをクリア
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      } else if (typeof window !== 'undefined') {
+        console.error('❌ window.ethereum が存在しません');
+        setMessage({ type: 'error', text: 'デバッグ: window.ethereumが見つかりません。MetaMaskブラウザを使用していますか？' });
+        await new Promise(resolve => setTimeout(resolve, 3000));
       }
 
       // Privy埋め込みウォレットの場合はPrivy sendTransactionを使用
@@ -398,6 +412,12 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
           setMessage({ type: 'info', text: 'MetaMaskアプリで承認してください...' });
 
           try {
+            console.log('📤 eth_sendTransaction リクエスト送信中...', {
+              from: walletAddress,
+              to: paymentData.token,
+              dataLength: transferData.length,
+            });
+
             // eth_sendTransaction を直接呼び出し
             const txHashResult = await window.ethereum.request({
               method: 'eth_sendTransaction',
@@ -420,6 +440,18 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
             console.log('✅ トランザクション完了:', receipt);
           } catch (mmError: any) {
             console.error('❌ MetaMask直接呼び出しエラー:', mmError);
+            console.error('エラー詳細:', {
+              code: mmError.code,
+              message: mmError.message,
+              data: mmError.data,
+            });
+
+            // Androidでも見れるようにエラー情報を画面に表示
+            setMessage({
+              type: 'error',
+              text: `MetaMaskエラー: ${mmError.message || mmError.code || '不明なエラー'}`
+            });
+
             throw mmError;
           }
         } else {
