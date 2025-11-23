@@ -73,16 +73,25 @@ export function QRScannerCamera({ onScan, onClose, placeholder = 'QRコードを
         const scanner = new Html5Qrcode(scannerId);
         scannerRef.current = scanner;
 
+        console.log('📷 カメラスキャナー初期化中...');
+
         // カメラの起動
         await scanner.start(
           { facingMode: 'environment' }, // 背面カメラを使用
           {
             fps: 10,
             qrbox: { width: 250, height: 250 },
+            // JSON形式のウォレットQRは通常のアドレスQRよりデータ量が多いため
+            // より高い解像度でスキャン
+            aspectRatio: 1.0,
+            disableFlip: false,
           },
           (decodedText) => {
+            console.log('📸 QRコード読み取り成功:', decodedText.substring(0, 200));
+
             // 二重呼び出し防止
             if (isStoppingRef.current) {
+              console.log('⏭️ 停止処理中のためスキップ');
               return;
             }
 
@@ -93,19 +102,21 @@ export function QRScannerCamera({ onScan, onClose, placeholder = 'QRコードを
               const validation = validateAndProcessScan(decodedText);
 
               if (validation.isValid) {
+                console.log('✅ バリデーション成功 - コールバック実行');
                 // コールバック実行
                 try {
                   onScan(decodedText);
                 } catch (e: any) {
-                  console.error('QRスキャンエラー:', e.message);
+                  console.error('❌ QRスキャンコールバックエラー:', e.message);
                 }
 
                 try {
                   onClose();
                 } catch (e: any) {
-                  console.error('QRスキャナークローズエラー:', e.message);
+                  console.error('❌ QRスキャナークローズエラー:', e.message);
                 }
               } else {
+                console.log('❌ バリデーション失敗:', validation.error);
                 setCameraError(validation.error || '無効なQRコードです');
                 setIsScanning(false);
                 setShowManualInput(true);
@@ -114,10 +125,15 @@ export function QRScannerCamera({ onScan, onClose, placeholder = 'QRコードを
             }
           },
           (errorMessage) => {
-            // スキャンエラー（無視 - 読み取り中は頻繁に発生）
+            // スキャンエラー（読み取り中は頻繁に発生するため通常は無視）
+            // デバッグ用: 特定のエラーのみログ出力
+            if (errorMessage && !errorMessage.includes('No MultiFormat Readers')) {
+              console.log('⚠️ QRスキャンエラー:', errorMessage);
+            }
           }
         );
       } catch (err) {
+        console.error('❌ カメラ初期化エラー:', err);
         if (isMounted.current) {
           setCameraError('カメラの起動に失敗しました。手動入力をご利用ください。');
           setIsScanning(false);
