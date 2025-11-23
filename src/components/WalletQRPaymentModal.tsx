@@ -1,5 +1,5 @@
 // src/components/WalletQRPaymentModal.tsx
-// ウォレットQR決済用の金額入力モーダル（PayPay方式）
+// ウォレットQR決済用の金額入力モーダル
 
 import { useState } from 'react';
 import type { WalletQRData } from '../types/qrPayment';

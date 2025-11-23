@@ -1,5 +1,5 @@
 -- Add payment_type column to payment_requests table
--- Supports both invoice QR (従来方式) and wallet QR (PayPay方式)
+-- Supports both invoice QR (従来方式) and wallet QR
 
 -- Add payment_type column
 ALTER TABLE payment_requests
@@ -24,6 +24,6 @@ SET payment_type = 'invoice'
 WHERE payment_type IS NULL;
 
 -- Add comment
-COMMENT ON COLUMN payment_requests.payment_type IS 'Payment method: invoice (請求書QR) or wallet (ウォレットQR - PayPay方式)';
+COMMENT ON COLUMN payment_requests.payment_type IS 'Payment method: invoice (請求書QR) or wallet (ウォレットQR)';
 COMMENT ON COLUMN payment_requests.paid_from_address IS 'Customer wallet address (NULL for wallet QR to protect privacy)';
 COMMENT ON COLUMN payment_requests.transaction_hash IS 'Blockchain transaction hash for verification';

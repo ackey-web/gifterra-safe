@@ -1,5 +1,5 @@
 // src/components/QRScannerCamera.tsx
-// カメラベースのQRコードスキャナー（PayPay風）
+// カメラベースのQRコードスキャナー
 
 import { useState, useEffect, useRef } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';

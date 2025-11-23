@@ -345,7 +345,7 @@ export function PaymentTerminalMobile() {
     }
   };
 
-  // ウォレットQR生成（PayPay方式）
+  // ウォレットQR生成
   const handleGenerateWalletQR = () => {
     try {
       if (!walletAddress) {
@@ -764,7 +764,7 @@ export function PaymentTerminalMobile() {
                   📄 請求書QR生成
                 </button>
 
-                {/* ウォレットQRボタン（PayPay方式） */}
+                {/* ウォレットQRボタン */}
                 <button
                   onClick={handleGenerateWalletQR}
                   disabled={!walletAddress}
@@ -793,7 +793,7 @@ export function PaymentTerminalMobile() {
                   margin: '8px 0 0 0',
                   textAlign: 'center',
                 }}>
-                  ウォレットQR: 客が金額を入力（PayPay方式）
+                  ウォレットQR: 客が金額を入力
                 </p>
               </div>
 
@@ -1008,7 +1008,7 @@ export function PaymentTerminalMobile() {
               }}>
                 {qrMode === 'wallet' ? (
                   <>
-                    💳 <strong>ウォレットQR（PayPay方式）</strong><br />
+                    💳 <strong>ウォレットQR</strong><br />
                     お客様がGIFTERRAマイページでスキャンして金額を入力します。<br />
                     このQRコードは常に有効で、印刷してレジ横に設置できます。
                   </>

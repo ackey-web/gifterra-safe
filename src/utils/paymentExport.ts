@@ -251,7 +251,7 @@ export function generateReceiptHTML(payment: PaymentRecord, storeName?: string):
 
       <div class="detail-row">
         <div class="detail-label">決済方法</div>
-        <div class="detail-value">${payment.payment_type === 'wallet' ? 'ウォレットQR（PayPay方式）' : '請求書QR'}</div>
+        <div class="detail-value">${payment.payment_type === 'wallet' ? 'ウォレットQR' : '請求書QR'}</div>
       </div>
 
       <div class="detail-row">

@@ -19,7 +19,7 @@ export interface InvoiceQRData {
 }
 
 /**
- * ウォレットQRコード（PayPay方式）
+ * ウォレットQRコード
  * アドレスのみ含まれ、ユーザーが金額を入力
  */
 export interface WalletQRData {
