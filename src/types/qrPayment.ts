@@ -112,19 +112,22 @@ export function isInvoiceQR(qrString: string): boolean {
 
 /**
  * ウォレットQRコードを生成
+ * QRコードのスキャン成功率を上げるため、データを最小化
  */
 export function generateWalletQRData(params: {
   address: string;
   name?: string;
   description?: string;
 }): string {
+  // 必須フィールドのみのコンパクトな形式
   const qrData: WalletQRData = {
     type: 'wallet',
     address: params.address,
     name: params.name,
     chainId: 137, // Polygon Mainnet
-    description: params.description,
+    // descriptionは含めない（QRコードのデータ量削減のため）
   };
 
+  // 不要なスペースを削除したコンパクトなJSON
   return JSON.stringify(qrData);
 }

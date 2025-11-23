@@ -337,11 +337,10 @@ export function PaymentTerminal() {
         return;
       }
 
-      // ウォレットQRデータ生成
+      // ウォレットQRデータ生成（データ量を最小化してスキャン成功率を上げる）
       const walletQRData = generateWalletQRData({
         address: walletValidation.checksumAddress!,
-        name: storeName,
-        description: storeName ? `${storeName}への支払い` : 'JPYC支払い',
+        name: storeName || undefined, // 店舗名が空の場合はundefinedにして省略
       });
 
       console.log('💳 ウォレットQR生成:', walletQRData);
