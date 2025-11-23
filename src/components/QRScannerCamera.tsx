@@ -86,7 +86,7 @@ export function QRScannerCamera({ onScan, onClose, placeholder = 'QRコードを
             aspectRatio: 1.0,
             disableFlip: false,
           },
-          (decodedText) => {
+          async (decodedText) => {
             console.log('📸 QRコード読み取り成功:', decodedText.substring(0, 200));
 
             // 二重呼び出し防止
@@ -102,7 +102,18 @@ export function QRScannerCamera({ onScan, onClose, placeholder = 'QRコードを
               const validation = validateAndProcessScan(decodedText);
 
               if (validation.isValid) {
-                console.log('✅ バリデーション成功 - コールバック実行');
+                console.log('✅ バリデーション成功 - スキャナー停止処理開始');
+
+                // スキャナーを明示的に停止
+                try {
+                  if (scannerRef.current) {
+                    await scannerRef.current.stop();
+                    console.log('✅ スキャナー停止成功');
+                  }
+                } catch (e: any) {
+                  console.error('❌ スキャナー停止エラー:', e.message);
+                }
+
                 // コールバック実行
                 try {
                   onScan(decodedText);
