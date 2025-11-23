@@ -10,7 +10,7 @@ interface QRScannerCameraProps {
   placeholder?: string;
 }
 
-export function QRScannerCamera({ onScan, onClose, placeholder = 'X402決済コードまたはウォレットアドレスを入力' }: QRScannerCameraProps) {
+export function QRScannerCamera({ onScan, onClose, placeholder = 'QRコードをスキャンまたはアドレスを入力' }: QRScannerCameraProps) {
   const [manualInput, setManualInput] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [showManualInput, setShowManualInput] = useState(false);
@@ -20,33 +20,47 @@ export function QRScannerCamera({ onScan, onClose, placeholder = 'X402決済コ�
   const isMounted = useRef(true);
   const isStoppingRef = useRef(false); // 停止処理中フラグ
 
-  // X402形式かウォレットアドレスかを判定してバリデーション
+  // X402形式、ウォレットQR、または通常のアドレスかを判定してバリデーション
   const validateAndProcessScan = (data: string): { isValid: boolean; error?: string } => {
     console.log('🔎 QRScannerCamera - バリデーション開始:', data);
 
-    // まずX402形式のJSONかどうかを確認
+    // まずJSON形式かどうかを確認
     try {
       const parsed = JSON.parse(data);
       console.log('📋 JSONパース成功:', parsed);
-      // X402形式の必須フィールドをチェック
+
+      // ウォレットQR形式（type: 'wallet'）をチェック
+      if (parsed.type === 'wallet' && parsed.address && parsed.chainId) {
+        console.log('✅ ウォレットQR形式として認識');
+        return { isValid: true };
+      }
+
+      // X402形式（請求書QR）の必須フィールドをチェック
       if (parsed.to && parsed.token && parsed.amount) {
         console.log('✅ X402形式として認識');
         return { isValid: true };
       }
-      console.log('⚠️ X402必須フィールドが不足');
+
+      console.log('⚠️ 認識できるJSON形式ではない:', parsed);
     } catch (e) {
       console.log('⚠️ JSONパースエラー - ウォレットアドレスかチェック');
-      // JSONパースエラー - ウォレットアドレスかもしれない
+      // JSONパースエラー - 通常のウォレットアドレスかもしれない
     }
 
-    // ウォレットアドレス形式をチェック (0xで始まる42文字の16進数)
+    // 通常のウォレットアドレス形式をチェック (0xで始まる42文字の16進数)
     if (/^0x[a-fA-F0-9]{40}$/.test(data)) {
       console.log('✅ ウォレットアドレスとして認識');
       return { isValid: true };
     }
 
+    // ethereum: プレフィックス形式もサポート
+    if (data.startsWith('ethereum:')) {
+      console.log('✅ Ethereum URI形式として認識');
+      return { isValid: true };
+    }
+
     console.log('❌ バリデーション失敗');
-    return { isValid: false, error: '無効なQRコードです。X402決済コードまたはウォレットアドレスを使用してください。' };
+    return { isValid: false, error: '無効なQRコードです。ウォレットQR、X402決済コード、またはウォレットアドレスを使用してください。' };
   };
 
   // カメラスキャナーの初期化
@@ -127,7 +141,7 @@ export function QRScannerCamera({ onScan, onClose, placeholder = 'X402決済コ�
     const trimmed = manualInput.trim();
 
     if (!trimmed) {
-      setError('X402決済コードまたはアドレスを入力してください');
+      setError('アドレスまたは決済コードを入力してください');
       return;
     }
 
