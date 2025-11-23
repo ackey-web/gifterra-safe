@@ -379,18 +379,53 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
       } else if (signer) {
         // 通常のsigner (MetaMask等)
         console.log('🟠 通常のsigner (MetaMask等)を使用');
-        const tokenContractWithSigner = new ethers.Contract(paymentData.token, ERC20_ABI, signer);
 
-        setMessage({ type: 'info', text: 'ウォレットで承認してください...' });
-        console.log('⏳ ウォレット承認待ち...');
+        // モバイルMetaMask対応: window.ethereumを直接使用する方法を優先
+        if (typeof window !== 'undefined' && window.ethereum && window.ethereum.isMetaMask) {
+          console.log('📱 モバイルMetaMask検出 - 直接リクエスト方式を使用');
+          setMessage({ type: 'info', text: 'MetaMaskアプリで承認してください...' });
 
-        const tx = await tokenContractWithSigner.transfer(paymentData.to, paymentData.amount);
-        txHash = tx.hash;
-        console.log('✅ トランザクション送信成功:', txHash);
+          try {
+            // eth_sendTransaction を直接呼び出し
+            const txHashResult = await window.ethereum.request({
+              method: 'eth_sendTransaction',
+              params: [{
+                from: walletAddress,
+                to: paymentData.token,
+                data: transferData,
+                value: '0x0',
+              }],
+            });
 
-        setMessage({ type: 'info', text: 'トランザクション処理中...' });
-        await tx.wait();
-        console.log('✅ トランザクション完了:', txHash);
+            txHash = txHashResult as string;
+            console.log('✅ MetaMask トランザクション送信成功:', txHash);
+
+            setMessage({ type: 'info', text: 'トランザクション処理中...' });
+
+            // トランザクション完了を待つ
+            const provider = new ethers.providers.Web3Provider(window.ethereum);
+            const receipt = await provider.waitForTransaction(txHash);
+            console.log('✅ トランザクション完了:', receipt);
+          } catch (mmError: any) {
+            console.error('❌ MetaMask直接呼び出しエラー:', mmError);
+            throw mmError;
+          }
+        } else {
+          // 通常のethers.js経由
+          console.log('🔵 通常のethers.js signerを使用');
+          const tokenContractWithSigner = new ethers.Contract(paymentData.token, ERC20_ABI, signer);
+
+          setMessage({ type: 'info', text: 'ウォレットで承認してください...' });
+          console.log('⏳ ウォレット承認待ち...');
+
+          const tx = await tokenContractWithSigner.transfer(paymentData.to, paymentData.amount);
+          txHash = tx.hash;
+          console.log('✅ トランザクション送信成功:', txHash);
+
+          setMessage({ type: 'info', text: 'トランザクション処理中...' });
+          await tx.wait();
+          console.log('✅ トランザクション完了:', txHash);
+        }
       } else {
         throw new Error('署名方法が利用できません');
       }
