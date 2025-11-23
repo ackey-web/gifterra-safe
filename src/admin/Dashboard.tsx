@@ -12,7 +12,7 @@ import {
   CartesianGrid,
   ResponsiveContainer,
 } from "recharts";
-import { CONTRACT_ADDRESS, CONTRACT_ABI, RANK_PLAN_REGISTRY_CONTRACT } from "../contract";
+import { CONTRACT_ADDRESS, CONTRACT_ABI, RANK_PLAN_REGISTRY_CONTRACT, getGifterraAddress } from "../contract";
 import { getActiveTokens, getDefaultToken, formatTokenShort, TOKEN } from "../config/tokenHelpers";
 import RANK_PLAN_REGISTRY_ABI from "../abis/RankPlanRegistry.json";
 import { getNetworkEnv } from "../config/tokens";
@@ -361,7 +361,8 @@ export default function AdminDashboard() {
   const networkEnv = getNetworkEnv();
 
   const address = useAddress();
-  const { contract } = useContract(CONTRACT_ADDRESS, CONTRACT_ABI);
+  const gifterraAddress = useMemo(() => getGifterraAddress(), []);
+  const { contract } = useContract(gifterraAddress, CONTRACT_ABI);
   const { contract: rankPlanRegistryContract } = useContract(
     RANK_PLAN_REGISTRY_CONTRACT.ADDRESS,
     RANK_PLAN_REGISTRY_ABI
@@ -379,7 +380,7 @@ export default function AdminDashboard() {
   const { data: contractBalance, error: contractBalanceError } = useContractRead(
     contract,
     "balanceOf",
-    [CONTRACT_ADDRESS]
+    [gifterraAddress]
   );
   
   const { data: currentDailyReward, error: dailyRewardError } = useContractRead(
@@ -523,7 +524,7 @@ export default function AdminDashboard() {
           console.log(`📊 差分取得: ブロック ${fromBlockNum} → ${latest} (${latest - fromBlockNum + 1}個)`);
 
           const logs: any[] = await getLogsInChunks(
-            CONTRACT_ADDRESS,
+            gifterraAddress,
             fromBlockNum,
             latest,
             [TOPIC_TIPPED]
@@ -583,7 +584,7 @@ export default function AdminDashboard() {
 
         // 10ブロックずつに分割してログを取得
         const logs: any[] = await getLogsInChunks(
-          CONTRACT_ADDRESS,
+          gifterraAddress,
           Number(fromBlock),
           latestBlock,
           [TOPIC_TIPPED],
@@ -644,7 +645,7 @@ export default function AdminDashboard() {
             message: errorMsg,
             stack: e?.stack,
             primaryRPC: ALCHEMY_RPC || PUBLIC_RPC,
-            CONTRACT_ADDRESS,
+            CONTRACT_ADDRESS: gifterraAddress,
             fromBlock: fromBlock.toString(),
             period
           });
@@ -901,7 +902,7 @@ export default function AdminDashboard() {
         exportTime: new Date().toISOString(),
         period: periodLabel,
         totalUsers: ranking.length,
-        contractAddress: CONTRACT_ADDRESS
+        contractAddress: gifterraAddress
       },
       ranking: ranking.map((u, i) => ({
         rank: i + 1,
@@ -933,7 +934,7 @@ export default function AdminDashboard() {
         exportTime: new Date().toISOString(),
         period: periodLabel,
         totalTips: filtered.length,
-        contractAddress: CONTRACT_ADDRESS
+        contractAddress: gifterraAddress
       },
       tips: filtered.map(t => ({
         timestamp: t.timestamp ? new Date(t.timestamp * 1000).toISOString() : null,
@@ -969,7 +970,7 @@ export default function AdminDashboard() {
         exportTime: new Date().toISOString(),
         period: periodLabel,
         totalAnalyzed: heatResults.length,
-        contractAddress: CONTRACT_ADDRESS
+        contractAddress: gifterraAddress
       },
       analysis: heatResults.map((r, i) => ({
         rank: i + 1,
@@ -1477,7 +1478,7 @@ export default function AdminDashboard() {
         const amountWei = ethers.utils.parseEther(amount.toString());
         
         // コントラクトに直接トークンを転送
-        const tx = await (contract as any).call("transfer", [CONTRACT_ADDRESS, amountWei]);
+        const tx = await (contract as any).call("transfer", [gifterraAddress, amountWei]);
         
         alert(`✅ ${amount} ${defaultToken.symbol} をコントラクトにチャージしました！\nTxHash: ${tx.hash || 'N/A'}`);
         setChargeAmount("");
@@ -1682,17 +1683,6 @@ export default function AdminDashboard() {
     const [rankThresholdInputs, setRankThresholdInputs] = useState<Record<number, string>>({});
     const [rankURIInputs, setRankURIInputs] = useState<Record<number, string>>({});
 
-    // プラン情報のstate（RankPlanRegistryから取得）
-    const [planStages, setPlanStages] = useState<{
-      STUDIO: number;
-      STUDIO_PRO: number;
-      STUDIO_PRO_MAX: number;
-    }>({
-      STUDIO: 3,
-      STUDIO_PRO: 5,
-      STUDIO_PRO_MAX: 10,
-    });
-
     // ランクラベルのstate（UI表示用）
     const [rankLabels, setRankLabels] = useState<Record<number, RankInfo>>(() => {
       try {
@@ -1797,98 +1787,6 @@ export default function AdminDashboard() {
       }
     };
 
-    // Super Admin: RankPlanRegistryからプラン情報を読み込む
-    const loadPlanStages = async () => {
-      if (!rankPlanRegistryContract) return;
-
-      try {
-        // STUDIO (0), STUDIO_PRO (1), STUDIO_PRO_MAX (2)
-        const studioPlan = await rankPlanRegistryContract.call("getPlan", [0]);
-        const studioProPlan = await rankPlanRegistryContract.call("getPlan", [1]);
-        const studioProMaxPlan = await rankPlanRegistryContract.call("getPlan", [2]);
-
-        setPlanStages({
-          STUDIO: Number(studioPlan.stages),
-          STUDIO_PRO: Number(studioProPlan.stages),
-          STUDIO_PRO_MAX: Number(studioProMaxPlan.stages),
-        });
-      } catch (error) {
-        console.error("プラン情報の読み込みエラー:", error);
-        // エラー時はデフォルト値を維持
-      }
-    };
-
-    // Super Admin: プラン段階数変更（RankPlanRegistryコントラクト呼び出し）
-    const handleUpdatePlanStages = async (
-      planType: 0 | 1 | 2, // 0=STUDIO, 1=STUDIO_PRO, 2=STUDIO_PRO_MAX
-      planName: string,
-      currentStages: number
-    ) => {
-      if (!rankPlanRegistryContract) {
-        alert("❌ RankPlanRegistryコントラクトが初期化されていません");
-        return;
-      }
-
-      const newStages = prompt(
-        `${planName} プランの段階数を入力してください（現在: ${currentStages}段階）\n\n推奨範囲: 3-20段階`,
-        currentStages.toString()
-      );
-      if (!newStages) return;
-
-      const stages = parseInt(newStages);
-
-      // 入力値の検証
-      if (isNaN(stages) || stages < 1) {
-        alert("❌ 1以上の数値を入力してください");
-        return;
-      }
-
-      if (stages > 20) {
-        alert("❌ 段階数は20以下にすることを推奨します");
-        return;
-      }
-
-      // デフォルトの閾値、ランク名、URIテンプレートを生成
-      const thresholds: string[] = [];
-      const rankNames: string[] = [];
-      const uriTemplates: string[] = [];
-
-      const baseThreshold = ethers.utils.parseUnits("1000", 18); // 1000トークン
-      for (let i = 0; i < stages; i++) {
-        // 指数的に増加する閾値（0, 1000, 3000, 7000, 15000, ...）
-        const threshold = i === 0 ? "0" : baseThreshold.mul(Math.pow(2, i) - 1).toString();
-        thresholds.push(threshold);
-
-        // デフォルトランク名
-        rankNames.push(`Rank ${i + 1}`);
-
-        // デフォルトURIテンプレート
-        uriTemplates.push(`https://api.gifterra.com/nft/rank/${i + 1}`);
-      }
-
-      try {
-        // RankPlanRegistry.updatePlan() を呼び出し
-        const tx = await rankPlanRegistryContract.call("updatePlan", [
-          planType,
-          planName,
-          `${planName} plan with ${stages} stages`,
-          thresholds,
-          rankNames,
-          uriTemplates
-        ]);
-
-        await tx.wait?.();
-
-        alert(`✅ ${planName} プランの段階数を ${stages} に変更しました\n\n変更は全テナントに反映されます。`);
-
-        // プラン情報を再読み込み
-        await loadPlanStages();
-      } catch (error: any) {
-        console.error("updatePlan error:", error);
-        alert(`❌ プラン段階数の変更に失敗しました\n${error?.message || error}`);
-      }
-    };
-
     // ランク数変更（テナント管理者用）
     const handleSetMaxRankLevel = async () => {
       if (!contract) return;
@@ -1978,13 +1876,6 @@ export default function AdminDashboard() {
         loadRankConfig();
       }
     }, [contract, activeTab]);
-
-    // Super Admin: RankPlanRegistryからプラン情報を読み込む
-    useEffect(() => {
-      if (activeTab === 'ranks' && rankPlanRegistryContract && isDevSuperAdmin) {
-        loadPlanStages();
-      }
-    }, [rankPlanRegistryContract, activeTab, isDevSuperAdmin]);
 
     return (
       <div style={{
@@ -2186,141 +2077,6 @@ export default function AdminDashboard() {
 
           {activeTab === 'ranks' && (
             <div>
-        {/* Super Admin専用: プラン管理セクション */}
-        {isDevSuperAdmin && (
-          <div style={{
-            marginTop: 32,
-            padding: 20,
-            background: "rgba(139, 92, 246, 0.1)",
-            border: "2px solid rgba(139, 92, 246, 0.3)",
-            borderRadius: 12
-          }}>
-            <h3 style={{ margin: "0 0 16px 0", fontSize: 20, fontWeight: 800, color: "#8B5CF6" }}>
-              👑 プラン管理（Super Admin専用）
-            </h3>
-            <p style={{ margin: "0 0 20px 0", fontSize: 13, opacity: 0.8, lineHeight: 1.6 }}>
-              各ランクプランの段階数を変更できます。変更は全テナントに影響します。
-            </p>
-
-            <div style={{ display: "grid", gap: 16 }}>
-              {/* STUDIO プラン */}
-              <div style={{
-                padding: 16,
-                background: "rgba(255,255,255,0.05)",
-                borderRadius: 8,
-                border: "1px solid rgba(255,255,255,0.1)"
-              }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <div>
-                    <h4 style={{ margin: "0 0 4px 0", fontSize: 16, fontWeight: 700 }}>
-                      STUDIO プラン
-                    </h4>
-                    <p style={{ margin: 0, fontSize: 12, opacity: 0.7 }}>
-                      現在: {planStages.STUDIO}段階
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => handleUpdatePlanStages(0, "STUDIO", planStages.STUDIO)}
-                    style={{
-                      padding: "8px 16px",
-                      background: "#8B5CF6",
-                      color: "#fff",
-                      border: "none",
-                      borderRadius: 6,
-                      fontSize: 13,
-                      fontWeight: 600,
-                      cursor: "pointer"
-                    }}
-                  >
-                    段階数変更
-                  </button>
-                </div>
-              </div>
-
-              {/* STUDIO PRO プラン */}
-              <div style={{
-                padding: 16,
-                background: "rgba(255,255,255,0.05)",
-                borderRadius: 8,
-                border: "1px solid rgba(255,255,255,0.1)"
-              }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <div>
-                    <h4 style={{ margin: "0 0 4px 0", fontSize: 16, fontWeight: 700 }}>
-                      STUDIO PRO プラン
-                    </h4>
-                    <p style={{ margin: 0, fontSize: 12, opacity: 0.7 }}>
-                      現在: {planStages.STUDIO_PRO}段階
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => handleUpdatePlanStages(1, "STUDIO PRO", planStages.STUDIO_PRO)}
-                    style={{
-                      padding: "8px 16px",
-                      background: "#8B5CF6",
-                      color: "#fff",
-                      border: "none",
-                      borderRadius: 6,
-                      fontSize: 13,
-                      fontWeight: 600,
-                      cursor: "pointer"
-                    }}
-                  >
-                    段階数変更
-                  </button>
-                </div>
-              </div>
-
-              {/* STUDIO PRO MAX プラン */}
-              <div style={{
-                padding: 16,
-                background: "rgba(255,255,255,0.05)",
-                borderRadius: 8,
-                border: "1px solid rgba(255,255,255,0.1)"
-              }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <div>
-                    <h4 style={{ margin: "0 0 4px 0", fontSize: 16, fontWeight: 700 }}>
-                      STUDIO PRO MAX プラン
-                    </h4>
-                    <p style={{ margin: 0, fontSize: 12, opacity: 0.7 }}>
-                      現在: {planStages.STUDIO_PRO_MAX}段階
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => handleUpdatePlanStages(2, "STUDIO PRO MAX", planStages.STUDIO_PRO_MAX)}
-                    style={{
-                      padding: "8px 16px",
-                      background: "#8B5CF6",
-                      color: "#fff",
-                      border: "none",
-                      borderRadius: 6,
-                      fontSize: 13,
-                      fontWeight: 600,
-                      cursor: "pointer"
-                    }}
-                  >
-                    段階数変更
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <div style={{
-              marginTop: 16,
-              padding: 12,
-              background: "rgba(251, 191, 36, 0.1)",
-              border: "1px solid rgba(251, 191, 36, 0.3)",
-              borderRadius: 6
-            }}>
-              <p style={{ margin: 0, fontSize: 12, opacity: 0.9, lineHeight: 1.6 }}>
-                ⚠️ プラン段階数を変更すると、該当プランを使用している全テナントに影響します。<br />
-                変更後、各テナントは新しい段階数に合わせて閾値を再設定する必要があります。
-              </p>
-            </div>
-          </div>
-        )}
-
         {/* プロトタイプ版の警告 */}
         <div style={{
           marginTop: 32,
