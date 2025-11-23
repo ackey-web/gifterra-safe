@@ -310,11 +310,34 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
       let currentChainId: number | null = null;
       let chainIdSource = '';
 
-      // 両方から取得してログ出力
+      // 複数のソースから取得してログ出力
+      let privyWalletChainId: number | null = null;
       let windowChainId: number | null = null;
       let signerChainId: number | null = null;
 
-      // window.ethereumから取得
+      // 1. Privyのwalletsから取得（最優先）
+      if (wallets && wallets.length > 0) {
+        try {
+          // MetaMaskまたは外部ウォレットを検索
+          const externalWallet = wallets.find((w: any) => w.walletClientType !== 'privy');
+          if (externalWallet && externalWallet.chainId) {
+            // chainIdは16進数文字列の場合と数値の場合がある
+            const chainIdValue = externalWallet.chainId;
+            if (typeof chainIdValue === 'string') {
+              privyWalletChainId = chainIdValue.startsWith('0x')
+                ? parseInt(chainIdValue, 16)
+                : parseInt(chainIdValue, 10);
+            } else {
+              privyWalletChainId = chainIdValue;
+            }
+            console.log('🟣 Privy walletから取得したChainID:', privyWalletChainId, '(type:', externalWallet.walletClientType, ')');
+          }
+        } catch (e: any) {
+          console.warn('Privy wallet ChainID取得エラー:', e.message);
+        }
+      }
+
+      // 2. window.ethereumから取得
       if (typeof window !== 'undefined' && window.ethereum) {
         const chainIdHex = window.ethereum.chainId;
         console.log('🔍 window.ethereum.chainId (生値):', chainIdHex);
@@ -326,18 +349,21 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
         }
       }
 
-      // signer.providerからも取得
+      // 3. signer.providerから取得
       if (signer && signer.provider) {
         try {
           signerChainId = await getCurrentChainId(signer.provider as ethers.providers.Provider);
-          console.log('🟣 Signerから取得したChainID:', signerChainId);
+          console.log('🟠 Signerから取得したChainID:', signerChainId);
         } catch (chainError: any) {
           console.warn('ChainID確認エラー（続行）:', chainError.message);
         }
       }
 
-      // window.ethereumの値を優先（MetaMaskの実際の接続状態）
-      if (windowChainId !== null) {
+      // 優先順位: Privy wallet > window.ethereum > signer.provider
+      if (privyWalletChainId !== null) {
+        currentChainId = privyWalletChainId;
+        chainIdSource = 'privy.wallets';
+      } else if (windowChainId !== null) {
         currentChainId = windowChainId;
         chainIdSource = 'window.ethereum';
       } else if (signerChainId !== null) {
@@ -346,11 +372,11 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
       }
 
       console.log('🔍 ChainID取得結果:', {
+        privyWalletChainId,
         windowChainId,
         signerChainId,
         currentChainId,
         chainIdSource,
-        注意: windowChainId !== signerChainId ? '⚠️ window.ethereumとsigner.providerで値が異なります!' : '✅ 一致'
       });
 
       // ChainIDが取得できた場合はバリデーション
@@ -360,12 +386,13 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
         if (!chainValidation.valid) {
           setMessage({
             type: 'error',
-            text: `ネットワークをPolygon Mainnetに切り替えてください。\n現在: ${chainValidation.chainName} (ChainID: ${currentChainId})\n取得元: ${chainIdSource}\n\nデバッグ:\nwindow.ethereum: ${windowChainId ?? 'null'}\nsigner.provider: ${signerChainId ?? 'null'}`
+            text: `ネットワークをPolygon Mainnetに切り替えてください。\n現在: ${chainValidation.chainName} (ChainID: ${currentChainId})\n取得元: ${chainIdSource}\n\nデバッグ:\nprivy.wallets: ${privyWalletChainId ?? 'null'}\nwindow.ethereum: ${windowChainId ?? 'null'}\nsigner.provider: ${signerChainId ?? 'null'}`
           });
           console.error('🔴 接続中のChainID検証失敗:', {
             error: chainValidation.error,
             currentChainId,
             chainIdSource,
+            privyWalletChainId,
             windowChainId,
             signerChainId,
           });
