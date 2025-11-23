@@ -2837,6 +2837,10 @@ function RankPlansTab() {
   const [editingPriceFor, setEditingPriceFor] = useState<string | null>(null);
   const [priceFormData, setPriceFormData] = useState<{[key: string]: number}>({});
 
+  // 段階数編集状態
+  const [editingStagesFor, setEditingStagesFor] = useState<string | null>(null);
+  const [stagesFormData, setStagesFormData] = useState<{[key: string]: number}>({});
+
   // テナントIDからテナント名を取得
   const getTenantName = (tenantId: number) => {
     const tenant = tenants.find(t => t.id === String(tenantId));
@@ -2914,6 +2918,33 @@ function RankPlansTab() {
   // 価格編集キャンセル
   const handleCancelPriceEdit = () => {
     setEditingPriceFor(null);
+  };
+
+  // 段階数編集開始
+  const handleEditStages = (rankPlan: string) => {
+    setEditingStagesFor(rankPlan);
+    const plan = RANK_PLANS[rankPlan as keyof typeof RANK_PLANS];
+    const currentStages = plan?.sbtRanks || 3;
+    setStagesFormData({ ...stagesFormData, [rankPlan]: currentStages });
+  };
+
+  // 段階数保存
+  const handleSaveStages = async (rankPlan: string) => {
+    const newStages = stagesFormData[rankPlan];
+    if (newStages === undefined || newStages < 1 || newStages > 20) {
+      alert('段階数は1〜20の範囲で入力してください');
+      return;
+    }
+
+    // TODO: コントラクトのupdatePlan関数を呼び出して段階数を更新
+    // 現在はフロントエンドのみの実装のため、将来的にコントラクト連携が必要
+    alert(`段階数の更新機能は開発中です。\n\nプラン: ${rankPlan}\n新しい段階数: ${newStages}\n\nコントラクトのupdatePlan関数を実装する必要があります。`);
+    setEditingStagesFor(null);
+  };
+
+  // 段階数編集キャンセル
+  const handleCancelStagesEdit = () => {
+    setEditingStagesFor(null);
   };
 
   if (loading) {
@@ -3273,7 +3304,88 @@ function RankPlansTab() {
                 <div style={{ fontSize: 13, opacity: 0.9, marginBottom: 12 }}>{plan.description}</div>
                 <div style={{ fontSize: 12, opacity: 0.8, display: 'flex', flexDirection: 'column', gap: 4 }}>
                   <div>最大HUB数: {plan.maxHubs}個</div>
-                  <div>SBTランク数: {plan.sbtRanks}段階</div>
+
+                  {/* 段階数編集UI */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+                    {editingStagesFor === key ? (
+                      <>
+                        <span>SBTランク数:</span>
+                        <input
+                          type="number"
+                          min="1"
+                          max="20"
+                          value={stagesFormData[key] !== undefined ? stagesFormData[key] : plan.sbtRanks}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            if (val === '') {
+                              setStagesFormData({ ...stagesFormData, [key]: 1 });
+                            } else {
+                              const numVal = parseInt(val, 10);
+                              setStagesFormData({ ...stagesFormData, [key]: isNaN(numVal) ? 1 : Math.min(20, Math.max(1, numVal)) });
+                            }
+                          }}
+                          style={{
+                            padding: '4px 8px',
+                            background: 'rgba(0,0,0,0.3)',
+                            border: '1px solid rgba(255,255,255,0.2)',
+                            borderRadius: 4,
+                            color: '#fff',
+                            fontSize: 13,
+                            width: 60,
+                          }}
+                        />
+                        <span>段階</span>
+                        <button
+                          onClick={() => handleSaveStages(key)}
+                          style={{
+                            padding: '4px 8px',
+                            background: 'rgba(34, 197, 94, 0.8)',
+                            border: 'none',
+                            borderRadius: 4,
+                            color: '#fff',
+                            fontSize: 11,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          保存
+                        </button>
+                        <button
+                          onClick={handleCancelStagesEdit}
+                          style={{
+                            padding: '4px 8px',
+                            background: 'rgba(156, 163, 175, 0.8)',
+                            border: 'none',
+                            borderRadius: 4,
+                            color: '#fff',
+                            fontSize: 11,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          キャンセル
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <span>SBTランク数: {plan.sbtRanks}段階</span>
+                        <button
+                          onClick={() => handleEditStages(key)}
+                          style={{
+                            padding: '4px 8px',
+                            background: 'rgba(102, 126, 234, 0.8)',
+                            border: 'none',
+                            borderRadius: 4,
+                            color: '#fff',
+                            fontSize: 11,
+                            cursor: 'pointer',
+                            marginLeft: 'auto',
+                          }}
+                        >
+                          ✏️ 編集
+                        </button>
+                      </>
+                    )}
+                  </div>
+
                   <div>カスタムトークン: {plan.customTokenEnabled ? '可' : '不可'}</div>
 
                   {/* 価格編集UI */}
