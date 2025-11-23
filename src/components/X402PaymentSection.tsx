@@ -360,12 +360,14 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
         if (!chainValidation.valid) {
           setMessage({
             type: 'error',
-            text: `ネットワークをPolygon Mainnetに切り替えてください。\n現在: ${chainValidation.chainName} (ChainID: ${currentChainId})\n取得元: ${chainIdSource}`
+            text: `ネットワークをPolygon Mainnetに切り替えてください。\n現在: ${chainValidation.chainName} (ChainID: ${currentChainId})\n取得元: ${chainIdSource}\n\nデバッグ:\nwindow.ethereum: ${windowChainId ?? 'null'}\nsigner.provider: ${signerChainId ?? 'null'}`
           });
           console.error('🔴 接続中のChainID検証失敗:', {
             error: chainValidation.error,
             currentChainId,
             chainIdSource,
+            windowChainId,
+            signerChainId,
           });
           setIsProcessing(false);
           return;
