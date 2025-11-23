@@ -310,31 +310,48 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
       let currentChainId: number | null = null;
       let chainIdSource = '';
 
-      // window.ethereumから取得を試みる（MetaMask優先）
+      // 両方から取得してログ出力
+      let windowChainId: number | null = null;
+      let signerChainId: number | null = null;
+
+      // window.ethereumから取得
       if (typeof window !== 'undefined' && window.ethereum) {
         const chainIdHex = window.ethereum.chainId;
         console.log('🔍 window.ethereum.chainId (生値):', chainIdHex);
         console.log('🔍 window.ethereum.isMetaMask:', window.ethereum.isMetaMask);
 
         if (chainIdHex) {
-          currentChainId = parseInt(chainIdHex, 16);
-          chainIdSource = 'window.ethereum';
-          console.log('📱 window.ethereumから取得したChainID:', currentChainId, `(${chainIdHex})`);
+          windowChainId = parseInt(chainIdHex, 16);
+          console.log('📱 window.ethereumから取得したChainID:', windowChainId, `(${chainIdHex})`);
         }
       }
 
-      // window.ethereumから取得できなかった場合、signerから取得
-      if (currentChainId === null && signer && signer.provider) {
+      // signer.providerからも取得
+      if (signer && signer.provider) {
         try {
-          currentChainId = await getCurrentChainId(signer.provider as ethers.providers.Provider);
-          chainIdSource = 'signer.provider';
-          console.log('🟣 Signerから取得したChainID:', currentChainId);
+          signerChainId = await getCurrentChainId(signer.provider as ethers.providers.Provider);
+          console.log('🟣 Signerから取得したChainID:', signerChainId);
         } catch (chainError: any) {
           console.warn('ChainID確認エラー（続行）:', chainError.message);
         }
       }
 
-      console.log('🔍 ChainID取得結果:', { currentChainId, chainIdSource });
+      // window.ethereumの値を優先（MetaMaskの実際の接続状態）
+      if (windowChainId !== null) {
+        currentChainId = windowChainId;
+        chainIdSource = 'window.ethereum';
+      } else if (signerChainId !== null) {
+        currentChainId = signerChainId;
+        chainIdSource = 'signer.provider';
+      }
+
+      console.log('🔍 ChainID取得結果:', {
+        windowChainId,
+        signerChainId,
+        currentChainId,
+        chainIdSource,
+        注意: windowChainId !== signerChainId ? '⚠️ window.ethereumとsigner.providerで値が異なります!' : '✅ 一致'
+      });
 
       // ChainIDが取得できた場合はバリデーション
       if (currentChainId !== null) {
