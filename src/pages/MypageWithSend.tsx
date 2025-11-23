@@ -104,6 +104,7 @@ export function MypageWithSend() {
   // ウォレットQR決済用の状態
   const [showWalletQRPayment, setShowWalletQRPayment] = useState(false);
   const [walletQRData, setWalletQRData] = useState<WalletQRData | null>(null);
+  const [qrDebugLogs, setQrDebugLogs] = useState<string[]>([]);
 
   // Privyウォレットからsignerを取得
   useEffect(() => {
@@ -262,8 +263,13 @@ export function MypageWithSend() {
   };
 
   // QRスキャン結果を受け取る（請求書 & ウォレット両対応）
-  const handleQRScan = (data: string) => {
+  const handleQRScan = (data: string, debugLogs?: string[]) => {
     console.log('🔍 QRスキャン:', data);
+
+    // デバッグログを保存
+    if (debugLogs) {
+      setQrDebugLogs(debugLogs);
+    }
 
     // 1. ethereum: URI形式のウォレットQRかチェック
     // 形式: ethereum:0xAddress@137 (金額なし = ウォレットQR)
@@ -1427,7 +1433,9 @@ export function MypageWithSend() {
           onCancel={() => {
             setShowWalletQRPayment(false);
             setWalletQRData(null);
+            setQrDebugLogs([]);
           }}
+          debugLogs={qrDebugLogs}
         />
       )}
 

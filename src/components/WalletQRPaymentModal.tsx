@@ -8,15 +8,18 @@ interface WalletQRPaymentModalProps {
   walletData: WalletQRData;
   onConfirm: (amount: string, message: string) => void;
   onCancel: () => void;
+  debugLogs?: string[];
 }
 
 export function WalletQRPaymentModal({
   walletData,
   onConfirm,
   onCancel,
+  debugLogs = [],
 }: WalletQRPaymentModalProps) {
   const [amount, setAmount] = useState('');
   const [message, setMessage] = useState('');
+  const [showDebugPanel, setShowDebugPanel] = useState(true);
 
   const handleAmountClick = (digit: string) => {
     if (digit === 'C') {
@@ -75,6 +78,71 @@ export function WalletQRPaymentModal({
           >
             💳 お支払い金額を入力
           </h2>
+
+          {/* デバッグパネル */}
+          {debugLogs.length > 0 && (
+            <>
+              {showDebugPanel ? (
+                <div style={{
+                  background: '#1a1a1a',
+                  borderRadius: 8,
+                  padding: 12,
+                  marginBottom: 16,
+                  maxHeight: 150,
+                  overflow: 'auto',
+                  fontSize: 10,
+                  fontFamily: 'monospace',
+                  color: '#00ff00',
+                  textAlign: 'left',
+                  position: 'relative',
+                }}>
+                  <button
+                    onClick={() => setShowDebugPanel(false)}
+                    style={{
+                      position: 'absolute',
+                      top: 4,
+                      right: 4,
+                      background: '#333',
+                      border: 'none',
+                      color: '#fff',
+                      fontSize: 9,
+                      padding: '3px 6px',
+                      borderRadius: 4,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    非表示
+                  </button>
+                  <div style={{ marginTop: 20 }}>
+                    {debugLogs.map((log, index) => (
+                      <div key={index} style={{ marginBottom: 3, lineHeight: 1.3 }}>
+                        {log}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setShowDebugPanel(true)}
+                  style={{
+                    width: '100%',
+                    padding: '6px',
+                    background: '#1a1a1a',
+                    border: 'none',
+                    borderRadius: '8px',
+                    color: '#00ff00',
+                    fontSize: 11,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    marginBottom: 12,
+                    fontFamily: 'monospace',
+                  }}
+                >
+                  🔍 デバッグログ ({debugLogs.length}件)
+                </button>
+              )}
+            </>
+          )}
           <div
             style={{
               background: 'rgba(59, 130, 246, 0.1)',

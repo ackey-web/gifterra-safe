@@ -5,7 +5,7 @@ import { useState, useEffect, useRef } from 'react';
 import { BrowserQRCodeReader } from '@zxing/browser';
 
 interface QRScannerCameraProps {
-  onScan: (data: string) => void;
+  onScan: (data: string, debugLogs?: string[]) => void;
   onClose: () => void;
   placeholder?: string;
 }
@@ -133,7 +133,9 @@ export function QRScannerCamera({ onScan, onClose, placeholder = 'QRコードを
                     const stopAndCallback = async () => {
                       try {
                         if (readerRef.current) {
-                          readerRef.current.reset();
+                          // ZXingのBrowserQRCodeReaderはreset()メソッドを持たないため、
+                          // 単にrefをnullにしてクリーンアップ
+                          readerRef.current = null;
                           console.log('✅ ZXing スキャナー停止成功');
                         }
                       } catch (e: any) {
@@ -143,7 +145,8 @@ export function QRScannerCamera({ onScan, onClose, placeholder = 'QRコードを
                       // コールバックを実行（親の状態を更新）
                       try {
                         console.log('✅ コールバック実行:', decodedText.substring(0, 50));
-                        onScan(decodedText);
+                        addDebugLog('✅ コールバック実行 - 親コンポーネントに送信');
+                        onScan(decodedText, debugLogs);
                       } catch (e: any) {
                         console.error('❌ QRスキャンコールバックエラー:', e.message);
                       }
@@ -192,7 +195,8 @@ export function QRScannerCamera({ onScan, onClose, placeholder = 'QRコードを
       isMounted.current = false;
       if (readerRef.current) {
         try {
-          readerRef.current.reset();
+          // ZXingのBrowserQRCodeReaderはreset()メソッドを持たない
+          readerRef.current = null;
           console.log('クリーンアップ: ZXing スキャナー停止');
         } catch (e) {
           console.log('クリーンアップエラー（無視）');
@@ -216,14 +220,16 @@ export function QRScannerCamera({ onScan, onClose, placeholder = 'QRコードを
       return;
     }
 
-    onScan(trimmed);
+    addDebugLog('✅ 手動入力完了 - 親コンポーネントに送信');
+    onScan(trimmed, debugLogs);
     onClose();
   };
 
   // 手動入力モードに切り替え
   const switchToManualInput = () => {
     if (readerRef.current) {
-      readerRef.current.reset();
+      // ZXingのBrowserQRCodeReaderはreset()メソッドを持たない
+      readerRef.current = null;
     }
     setIsScanning(false);
     setShowManualInput(true);
