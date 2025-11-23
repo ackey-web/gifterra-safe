@@ -356,6 +356,13 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
 
       let txHash: string;
 
+      console.log('🔵 トランザクション送信開始:', {
+        hasPrivyWallet: !!privyEmbeddedWalletAddress,
+        hasSendTransaction: !!sendTransaction,
+        hasSigner: !!signer,
+        walletAddress,
+      });
+
       // Privy埋め込みウォレットの場合はPrivy sendTransactionを使用
       if (privyEmbeddedWalletAddress && sendTransaction) {
         const txRequest = {
@@ -365,16 +372,25 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
           chainId: 137, // Polygon Mainnet
         };
 
+        console.log('🟣 Privy sendTransactionを使用:', txRequest);
         const result = await sendTransaction(txRequest);
-        txHash = result.transactionHash;
+        txHash = result.hash;
+        console.log('✅ Privy トランザクション成功:', txHash);
       } else if (signer) {
         // 通常のsigner (MetaMask等)
+        console.log('🟠 通常のsigner (MetaMask等)を使用');
         const tokenContractWithSigner = new ethers.Contract(paymentData.token, ERC20_ABI, signer);
+
+        setMessage({ type: 'info', text: 'ウォレットで承認してください...' });
+        console.log('⏳ ウォレット承認待ち...');
+
         const tx = await tokenContractWithSigner.transfer(paymentData.to, paymentData.amount);
         txHash = tx.hash;
+        console.log('✅ トランザクション送信成功:', txHash);
 
-        setMessage({ type: 'info', text: 'トランザクション送信中...' });
+        setMessage({ type: 'info', text: 'トランザクション処理中...' });
         await tx.wait();
+        console.log('✅ トランザクション完了:', txHash);
       } else {
         throw new Error('署名方法が利用できません');
       }
@@ -404,11 +420,25 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
       }, 3000);
 
     } catch (error: any) {
+      console.error('❌ 支払いエラー:', error);
+      console.error('エラー詳細:', {
+        code: error.code,
+        message: error.message,
+        data: error.data,
+        reason: error.reason,
+      });
+
       let errorMessage = '支払いに失敗しました';
-      if (error.code === 4001) {
+      if (error.code === 4001 || error.code === 'ACTION_REJECTED') {
         errorMessage = 'トランザクションがキャンセルされました';
       } else if (error.message?.includes('insufficient funds')) {
         errorMessage = 'ガス代が不足しています';
+      } else if (error.message?.includes('user rejected')) {
+        errorMessage = 'トランザクションが拒否されました';
+      } else if (error.code === -32603) {
+        errorMessage = 'ウォレット接続エラー。アプリを再起動してください。';
+      } else if (error.message) {
+        errorMessage = `エラー: ${error.message.substring(0, 100)}`;
       }
 
       setMessage({ type: 'error', text: errorMessage });
@@ -744,10 +774,6 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
           overflow: 'auto',
         }}>
           <div
-            onClick={(e) => {
-              e.stopPropagation();
-              alert('確認モーダル本体がクリックされました');
-            }}
             style={{
             position: 'relative',
             background: '#ffffff',
