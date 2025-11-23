@@ -54,9 +54,12 @@ export interface QRScanResult {
  */
 export function parseWalletQR(qrString: string): QRScanResult {
   try {
+    console.log('🔍 parseWalletQR 入力:', qrString.substring(0, 100));
     const parsed = JSON.parse(qrString);
+    console.log('📦 JSON parse成功:', parsed);
 
     if (parsed.type !== 'wallet') {
+      console.log('❌ typeがwalletではない:', parsed.type);
       return {
         success: false,
         error: 'ウォレットQRコードではありません',
@@ -64,6 +67,7 @@ export function parseWalletQR(qrString: string): QRScanResult {
     }
 
     if (!parsed.address || typeof parsed.address !== 'string') {
+      console.log('❌ addressが不正:', parsed.address);
       return {
         success: false,
         error: 'アドレスが含まれていません',
@@ -71,12 +75,14 @@ export function parseWalletQR(qrString: string): QRScanResult {
     }
 
     if (!parsed.chainId || parsed.chainId !== 137) {
+      console.log('❌ chainIdが不正:', parsed.chainId);
       return {
         success: false,
         error: 'サポートされていないチェーンです（Polygon Mainnetのみ対応）',
       };
     }
 
+    console.log('✅ ウォレットQR parse成功');
     return {
       success: true,
       type: 'wallet',
@@ -89,6 +95,7 @@ export function parseWalletQR(qrString: string): QRScanResult {
       },
     };
   } catch (error) {
+    console.log('❌ JSON parseエラー:', error);
     return {
       success: false,
       error: 'QRコードの解析に失敗しました',

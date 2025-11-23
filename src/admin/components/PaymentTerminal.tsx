@@ -344,6 +344,8 @@ export function PaymentTerminal() {
         description: storeName ? `${storeName}への支払い` : 'JPYC支払い',
       });
 
+      console.log('💳 ウォレットQR生成:', walletQRData);
+
       setQrData(walletQRData);
       setQrMode('wallet');
       setMessage({ type: 'success', text: 'ウォレットQR生成完了' });

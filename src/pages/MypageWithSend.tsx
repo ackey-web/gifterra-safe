@@ -263,19 +263,33 @@ export function MypageWithSend() {
 
   // QRスキャン結果を受け取る（請求書 & ウォレット両対応）
   const handleQRScan = (data: string) => {
-    // ウォレットQRコードかチェック
-    if (!isInvoiceQR(data)) {
+    console.log('🔍 QRスキャン:', data);
+
+    // 1. ウォレットQRコードかチェック（JSON形式）
+    try {
       const walletResult = parseWalletQR(data);
       if (walletResult.success && walletResult.data) {
+        console.log('💳 ウォレットQR検出:', walletResult.data);
         // ウォレットQR: 金額入力モーダルを表示
         setWalletQRData(walletResult.data as WalletQRData);
         setShowQRScanner(false);
         setShowWalletQRPayment(true);
         return;
       }
+    } catch (e) {
+      // JSON parseエラーは無視して次へ
     }
 
-    // 請求書QR or 通常アドレス: 従来通りの処理
+    // 2. 請求書QRコードかチェック（ethereum: or x402://）
+    if (isInvoiceQR(data)) {
+      console.log('📄 請求書QR検出:', data);
+      setSendTo(data);
+      setShowQRScanner(false);
+      return;
+    }
+
+    // 3. 通常のアドレス
+    console.log('🔗 通常アドレス検出:', data);
     setSendTo(data);
     setShowQRScanner(false);
   };
