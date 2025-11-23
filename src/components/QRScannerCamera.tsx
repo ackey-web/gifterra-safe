@@ -1,8 +1,8 @@
 // src/components/QRScannerCamera.tsx
-// カメラベースのQRコードスキャナー
+// カメラベースのQRコードスキャナー (zxing-js版)
 
 import { useState, useEffect, useRef } from 'react';
-import { Html5Qrcode } from 'html5-qrcode';
+import { BrowserQRCodeReader } from '@zxing/browser';
 
 interface QRScannerCameraProps {
   onScan: (data: string) => void;
@@ -16,7 +16,8 @@ export function QRScannerCamera({ onScan, onClose, placeholder = 'QRコードを
   const [showManualInput, setShowManualInput] = useState(false);
   const [isScanning, setIsScanning] = useState(true);
   const [cameraError, setCameraError] = useState<string | null>(null);
-  const scannerRef = useRef<Html5Qrcode | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const readerRef = useRef<BrowserQRCodeReader | null>(null);
   const isMounted = useRef(true);
   const isStoppingRef = useRef(false); // 停止処理中フラグ
 
@@ -69,88 +70,102 @@ export function QRScannerCamera({ onScan, onClose, placeholder = 'QRコードを
 
     const initScanner = async () => {
       try {
-        const scannerId = 'qr-reader';
-        const scanner = new Html5Qrcode(scannerId);
-        scannerRef.current = scanner;
+        console.log('📷 ZXing QRスキャナー初期化中...');
 
-        console.log('📷 カメラスキャナー初期化中...');
+        const codeReader = new BrowserQRCodeReader();
+        readerRef.current = codeReader;
 
-        // カメラの起動
-        await scanner.start(
-          { facingMode: 'environment' }, // 背面カメラを使用
-          {
-            fps: 10,
-            qrbox: { width: 250, height: 250 },
-            // JSON形式のウォレットQRは通常のアドレスQRよりデータ量が多いため
-            // より高い解像度でスキャン
-            aspectRatio: 1.0,
-            disableFlip: false,
-          },
-          async (decodedText) => {
-            console.log('📸 QRコード読み取り成功:', decodedText.substring(0, 200));
+        // ビデオデバイスを取得
+        const videoInputDevices = await BrowserQRCodeReader.listVideoInputDevices();
+        console.log('📷 利用可能なカメラ数:', videoInputDevices.length);
 
-            // 二重呼び出し防止
-            if (isStoppingRef.current) {
-              console.log('⏭️ 停止処理中のためスキップ');
-              return;
-            }
+        if (videoInputDevices.length === 0) {
+          throw new Error('カメラが見つかりません');
+        }
 
-            if (isMounted.current) {
-              isStoppingRef.current = true;
+        // 背面カメラを優先的に選択
+        const selectedDevice = videoInputDevices.find(device =>
+          device.label.toLowerCase().includes('back') ||
+          device.label.toLowerCase().includes('rear') ||
+          device.label.toLowerCase().includes('environment')
+        ) || videoInputDevices[0];
 
-              // バリデーション処理
-              const validation = validateAndProcessScan(decodedText);
+        console.log('📷 使用するカメラ:', selectedDevice.label);
 
-              if (validation.isValid) {
-                console.log('✅ バリデーション成功 - スキャナー停止処理開始');
+        // QRコード読み取り開始
+        if (videoRef.current) {
+          codeReader.decodeFromVideoDevice(
+            selectedDevice.deviceId,
+            videoRef.current,
+            (result, error) => {
+              if (result) {
+                const decodedText = result.getText();
+                console.log('📸 QRコード読み取り成功 (ZXing):', decodedText.substring(0, 200));
 
-                // スキャナーを停止してコールバック実行
-                const stopAndCallback = async () => {
-                  try {
-                    if (scannerRef.current) {
-                      await scannerRef.current.stop();
-                      console.log('✅ スキャナー停止成功');
-                    }
-                  } catch (e: any) {
-                    console.error('❌ スキャナー停止エラー:', e.message);
+                // 二重呼び出し防止
+                if (isStoppingRef.current) {
+                  console.log('⏭️ 停止処理中のためスキップ');
+                  return;
+                }
+
+                if (isMounted.current) {
+                  isStoppingRef.current = true;
+
+                  // バリデーション処理
+                  const validation = validateAndProcessScan(decodedText);
+
+                  if (validation.isValid) {
+                    console.log('✅ バリデーション成功 - スキャナー停止処理開始');
+
+                    // スキャナーを停止してコールバック実行
+                    const stopAndCallback = async () => {
+                      try {
+                        if (readerRef.current) {
+                          readerRef.current.reset();
+                          console.log('✅ ZXing スキャナー停止成功');
+                        }
+                      } catch (e: any) {
+                        console.error('❌ スキャナー停止エラー:', e.message);
+                      }
+
+                      // コールバックを実行（親の状態を更新）
+                      try {
+                        console.log('✅ コールバック実行:', decodedText.substring(0, 50));
+                        onScan(decodedText);
+                      } catch (e: any) {
+                        console.error('❌ QRスキャンコールバックエラー:', e.message);
+                      }
+
+                      // クローズ
+                      try {
+                        onClose();
+                      } catch (e: any) {
+                        console.error('❌ QRスキャナークローズエラー:', e.message);
+                      }
+                    };
+
+                    stopAndCallback();
+                  } else {
+                    console.log('❌ バリデーション失敗:', validation.error);
+                    setCameraError(validation.error || '無効なQRコードです');
+                    setIsScanning(false);
+                    setShowManualInput(true);
+                    isStoppingRef.current = false;
                   }
+                }
+              }
 
-                  // コールバックを先に実行（親の状態を更新）
-                  try {
-                    console.log('✅ コールバック実行:', decodedText.substring(0, 50));
-                    onScan(decodedText);
-                  } catch (e: any) {
-                    console.error('❌ QRスキャンコールバックエラー:', e.message);
-                  }
-
-                  // すぐにクローズ（遅延なし）
-                  try {
-                    onClose();
-                  } catch (e: any) {
-                    console.error('❌ QRスキャナークローズエラー:', e.message);
-                  }
-                };
-
-                stopAndCallback();
-              } else {
-                console.log('❌ バリデーション失敗:', validation.error);
-                setCameraError(validation.error || '無効なQRコードです');
-                setIsScanning(false);
-                setShowManualInput(true);
-                isStoppingRef.current = false;
+              // エラーは頻繁に発生するので通常は無視
+              if (error && !error.message?.includes('NotFoundException')) {
+                console.log('⚠️ ZXing スキャンエラー:', error.message);
               }
             }
-          },
-          (errorMessage) => {
-            // スキャンエラー（読み取り中は頻繁に発生するため通常は無視）
-            // デバッグ用: 特定のエラーのみログ出力
-            if (errorMessage && !errorMessage.includes('No MultiFormat Readers')) {
-              console.log('⚠️ QRスキャンエラー:', errorMessage);
-            }
-          }
-        );
-      } catch (err) {
-        console.error('❌ カメラ初期化エラー:', err);
+          );
+
+          console.log('✅ ZXing カメラ起動成功');
+        }
+      } catch (err: any) {
+        console.error('❌ ZXing カメラ初期化エラー:', err);
         if (isMounted.current) {
           setCameraError('カメラの起動に失敗しました。手動入力をご利用ください。');
           setIsScanning(false);
@@ -163,11 +178,10 @@ export function QRScannerCamera({ onScan, onClose, placeholder = 'QRコードを
 
     return () => {
       isMounted.current = false;
-      if (scannerRef.current) {
+      if (readerRef.current) {
         try {
-          scannerRef.current.stop().catch(() => {
-            console.log('クリーンアップ: スキャナー停止');
-          });
+          readerRef.current.reset();
+          console.log('クリーンアップ: ZXing スキャナー停止');
         } catch (e) {
           console.log('クリーンアップエラー（無視）');
         }
@@ -196,8 +210,8 @@ export function QRScannerCamera({ onScan, onClose, placeholder = 'QRコードを
 
   // 手動入力モードに切り替え
   const switchToManualInput = () => {
-    if (scannerRef.current) {
-      scannerRef.current.stop().catch(() => {});
+    if (readerRef.current) {
+      readerRef.current.reset();
     }
     setIsScanning(false);
     setShowManualInput(true);
@@ -268,13 +282,16 @@ export function QRScannerCamera({ onScan, onClose, placeholder = 'QRコードを
         {/* カメラスキャナー */}
         {isScanning && (
           <>
-            <div
-              id="qr-reader"
+            <video
+              ref={videoRef}
               style={{
                 width: '100%',
+                maxWidth: '400px',
+                height: 'auto',
                 borderRadius: 12,
-                overflow: 'hidden',
                 marginBottom: 16,
+                display: 'block',
+                margin: '0 auto 16px auto',
               }}
             />
             <p style={{

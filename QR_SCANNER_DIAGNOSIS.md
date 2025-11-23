@@ -257,4 +257,33 @@ const response = await fetch('/api/decode-qr', {
 ---
 
 **作成日**: 2025-11-24
-**ステータス**: 🔴 調査中 - テストページでの診断待ち
+**最終更新**: 2025-11-24
+
+## 🎯 根本原因の特定 (2025-11-24)
+
+Safari Web Inspectorでの診断結果:
+- **症状**: ウォレットQRスキャン時、コンソールに何もログが表示されない
+- **原因**: html5-qrcode@2.3.8 がiPhone SafariでQRコードをデコードできない
+- **対策**: QRスキャンライブラリを zxing-js/browser に変更
+
+### 実施した修正:
+
+1. **ライブラリ変更**:
+   - ❌ 削除: `html5-qrcode@2.3.8`
+   - ✅ 追加: `@zxing/browser` + `@zxing/library`
+
+2. **コンポーネント書き換え**:
+   - [src/components/QRScannerCamera.tsx](src/components/QRScannerCamera.tsx)
+   - `Html5Qrcode` → `BrowserQRCodeReader` (ZXing)
+   - より信頼性の高いJava版ZXingの公式JavaScriptポート
+
+3. **期待される効果**:
+   - ZXingはJava版の実績があり、モバイルブラウザでの互換性が高い
+   - iPhone Safariでも正常にQRデコードが動作するはず
+
+### 次のテスト:
+1. デプロイ後、iPhoneでウォレットQRスキャンを試す
+2. コンソールに `📸 QRコード読み取り成功 (ZXing):` が表示されることを確認
+3. 金額入力モーダルが正常に開くことを確認
+
+**ステータス**: 🟡 修正完了 - デプロイ・テスト待ち
