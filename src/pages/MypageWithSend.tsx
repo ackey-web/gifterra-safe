@@ -1279,6 +1279,37 @@ export function MypageWithSend() {
                       📷
                     </button>
                   </div>
+                  {/* ウォレットQR支払いボタン */}
+                  <button
+                    onClick={() => {
+                      if (!sendTo || !/^0x[a-fA-F0-9]{40}$/.test(sendTo)) {
+                        alert('有効なウォレットアドレスを入力してください');
+                        return;
+                      }
+                      // 入力されたアドレスをウォレットQRとして扱う
+                      const walletData: WalletQRData = {
+                        type: 'wallet',
+                        address: sendTo,
+                        chainId: 137,
+                      };
+                      setWalletQRData(walletData);
+                      setShowWalletQRPayment(true);
+                    }}
+                    style={{
+                      marginTop: '8px',
+                      width: '100%',
+                      padding: '10px',
+                      background: '#3b82f6',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '8px',
+                      fontSize: '14px',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    💳 このアドレスへウォレットQR支払い
+                  </button>
                 </div>
 
                 <div style={{ marginBottom: 16 }}>
