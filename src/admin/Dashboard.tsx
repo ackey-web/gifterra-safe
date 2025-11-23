@@ -2077,20 +2077,28 @@ export default function AdminDashboard() {
 
           {activeTab === 'ranks' && (
             <div>
-        {/* プロトタイプ版の警告 */}
+        {/* コントラクト接続情報 */}
         <div style={{
           marginTop: 32,
           padding: 16,
-          background: "rgba(251, 191, 36, 0.1)",
-          border: "1px solid rgba(251, 191, 36, 0.3)",
+          background: "rgba(34, 197, 94, 0.1)",
+          border: "1px solid rgba(34, 197, 94, 0.3)",
           borderRadius: 8
         }}>
-          <h4 style={{ margin: "0 0 8px 0", fontSize: 15, fontWeight: 600, color: "#fbbf24" }}>
-            ⚠️ プロトタイプ版コントラクト接続中
+          <h4 style={{ margin: "0 0 8px 0", fontSize: 15, fontWeight: 600, color: "#22c55e" }}>
+            ✅ 本番用コントラクト接続中
           </h4>
-          <p style={{ margin: 0, fontSize: 13, opacity: 0.9, lineHeight: 1.6 }}>
-            現在接続されているコントラクトは可変ランク機能が未実装のプロトタイプです。<br />
-            本番用コントラクトに切り替えると、ランク設定機能が利用可能になります。
+          <p style={{ margin: "0 0 8px 0", fontSize: 13, opacity: 0.9, lineHeight: 1.6 }}>
+            Gifterra契約アドレス: <code style={{
+              background: "rgba(255,255,255,0.1)",
+              padding: "2px 6px",
+              borderRadius: 4,
+              fontFamily: "monospace",
+              fontSize: 12
+            }}>{getGifterraAddress()}</code>
+          </p>
+          <p style={{ margin: 0, fontSize: 12, opacity: 0.7 }}>
+            環境変数 VITE_GIFTERRA_CONTRACT_ADDRESS で変更可能
           </p>
         </div>
 

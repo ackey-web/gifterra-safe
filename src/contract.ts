@@ -36,9 +36,13 @@ export const NHT_TOKEN = {
        - 導入ユーザー別オーナー権限
 ========================================= */
 
-// 🎯 SBTコントラクト (現在の主力)
+// 🎯 SBTコントラクト (本番用)
+// 環境変数でオーバーライド可能: VITE_GIFTERRA_CONTRACT_ADDRESS
 export const SBT_CONTRACT = {
-  ADDRESS: getAddress("0x0174477A1FCEb9dE25289Cd1CA48b6998C9cD7FC"),
+  ADDRESS: getAddress(
+    (import.meta as any)?.env?.VITE_GIFTERRA_CONTRACT_ADDRESS ||
+    "0x0174477A1FCEb9dE25289Cd1CA48b6998C9cD7FC" // デフォルト: 本番用コントラクト
+  ),
   TYPE: "SBT" as const,
   FEATURES: ["dailyReward", "tip", "soulbound"] as const,
 } as const;
