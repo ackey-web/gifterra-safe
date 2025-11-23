@@ -286,11 +286,22 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
 
   // 支払い実行
   const handlePayment = async () => {
+    console.log('🚀 handlePayment呼び出し開始');
+    console.log('📊 初期状態:', {
+      hasPaymentData: !!paymentData,
+      hasWalletAddress: !!walletAddress,
+      walletAddress,
+      hasPrivyWallet: !!privyEmbeddedWalletAddress,
+      hasSigner: !!signer,
+    });
+
     if (!paymentData || !walletAddress) {
+      console.error('❌ paymentDataまたはwalletAddressが未設定');
       setMessage({ type: 'error', text: 'ウォレットを接続してください' });
       return;
     }
 
+    console.log('✅ 処理開始 - isProcessing=true');
     setIsProcessing(true);
     setMessage(null);
 
@@ -423,23 +434,29 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
           setMessage({ type: 'info', text: 'MetaMaskアプリで承認してください...' });
 
           try {
-            console.log('📤 eth_sendTransaction リクエスト送信中...', {
+            const txParams = {
               from: walletAddress,
               to: paymentData.token,
-              dataLength: transferData.length,
+              data: transferData,
+              value: '0x0',
+            };
+
+            console.log('📤 eth_sendTransaction 呼び出し直前');
+            console.log('📤 パラメータ:', {
+              from: txParams.from,
+              to: txParams.to,
+              dataLength: txParams.data.length,
+              value: txParams.value,
             });
+            console.log('📤 window.ethereum.request() を呼び出します...');
 
             // eth_sendTransaction を直接呼び出し
             const txHashResult = await window.ethereum.request({
               method: 'eth_sendTransaction',
-              params: [{
-                from: walletAddress,
-                to: paymentData.token,
-                data: transferData,
-                value: '0x0',
-              }],
+              params: [txParams],
             });
 
+            console.log('📤 window.ethereum.request() から返却:', txHashResult);
             txHash = txHashResult as string;
             console.log('✅ MetaMask トランザクション送信成功:', txHash);
 
@@ -899,6 +916,24 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
             }}>
               🔍 診断: デバッグログ {qrDebugLogs.length} 件
             </div>
+
+            {/* メッセージ表示エリア（エラー・情報） */}
+            {message && (
+              <div style={{
+                background: message.type === 'error' ? '#fee2e2' : message.type === 'success' ? '#d1fae5' : '#dbeafe',
+                border: `2px solid ${message.type === 'error' ? '#ef4444' : message.type === 'success' ? '#10b981' : '#3b82f6'}`,
+                borderRadius: 8,
+                padding: 12,
+                marginBottom: 12,
+                fontSize: 13,
+                color: message.type === 'error' ? '#b91c1c' : message.type === 'success' ? '#065f46' : '#1e40af',
+                fontWeight: 600,
+                textAlign: 'center',
+                wordBreak: 'break-word',
+              }}>
+                {message.text}
+              </div>
+            )}
 
             {/* デバッグパネル */}
             {qrDebugLogs.length > 0 && (
