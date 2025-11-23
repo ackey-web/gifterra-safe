@@ -104,28 +104,37 @@ export function QRScannerCamera({ onScan, onClose, placeholder = 'QRコードを
               if (validation.isValid) {
                 console.log('✅ バリデーション成功 - スキャナー停止処理開始');
 
-                // スキャナーを明示的に停止
-                try {
-                  if (scannerRef.current) {
-                    await scannerRef.current.stop();
-                    console.log('✅ スキャナー停止成功');
+                // スキャナーを明示的に停止してからコールバック実行
+                const stopAndCallback = async () => {
+                  try {
+                    if (scannerRef.current) {
+                      await scannerRef.current.stop();
+                      console.log('✅ スキャナー停止成功');
+                    }
+                  } catch (e: any) {
+                    console.error('❌ スキャナー停止エラー:', e.message);
                   }
-                } catch (e: any) {
-                  console.error('❌ スキャナー停止エラー:', e.message);
-                }
 
-                // コールバック実行
-                try {
-                  onScan(decodedText);
-                } catch (e: any) {
-                  console.error('❌ QRスキャンコールバックエラー:', e.message);
-                }
+                  // 停止完了を待ってから、先にコールバック実行
+                  try {
+                    console.log('✅ コールバック実行:', decodedText.substring(0, 50));
+                    onScan(decodedText);
+                  } catch (e: any) {
+                    console.error('❌ QRスキャンコールバックエラー:', e.message);
+                  }
 
-                try {
-                  onClose();
-                } catch (e: any) {
-                  console.error('❌ QRスキャナークローズエラー:', e.message);
-                }
+                  // コールバック完了後、わずかな遅延を入れてからクローズ
+                  // これにより、親コンポーネントの状態更新が完了する
+                  setTimeout(() => {
+                    try {
+                      onClose();
+                    } catch (e: any) {
+                      console.error('❌ QRスキャナークローズエラー:', e.message);
+                    }
+                  }, 100);
+                };
+
+                stopAndCallback();
               } else {
                 console.log('❌ バリデーション失敗:', validation.error);
                 setCameraError(validation.error || '無効なQRコードです');

@@ -282,7 +282,7 @@ export function MypageWithSend() {
           };
           console.log('✅ ウォレットQRパース成功:', walletData);
           setWalletQRData(walletData);
-          setShowQRScanner(false);
+          // setShowQRScanner(false); は onClose() で処理されるため削除
           setShowWalletQRPayment(true);
           return;
         }
@@ -295,7 +295,7 @@ export function MypageWithSend() {
       if (walletResult.success && walletResult.data) {
         console.log('💳 JSON形式のウォレットQR検出:', walletResult.data);
         setWalletQRData(walletResult.data as WalletQRData);
-        setShowQRScanner(false);
+        // setShowQRScanner(false); は onClose() で処理されるため削除
         setShowWalletQRPayment(true);
         return;
       }
@@ -307,20 +307,20 @@ export function MypageWithSend() {
     if (data.startsWith('ethereum:') && data.includes('?')) {
       console.log('📄 請求書QR検出（ethereum: URI with params）:', data);
       setSendTo(data);
-      setShowQRScanner(false);
+      // setShowQRScanner(false); は onClose() で処理されるため削除
       return;
     }
     if (data.startsWith('x402://')) {
       console.log('📄 請求書QR検出（x402）:', data);
       setSendTo(data);
-      setShowQRScanner(false);
+      // setShowQRScanner(false); は onClose() で処理されるため削除
       return;
     }
 
     // 4. 通常のアドレス
     console.log('🔗 通常アドレス検出:', data);
     setSendTo(data);
-    setShowQRScanner(false);
+    // setShowQRScanner(false); は onClose() で処理されるため削除
   };
 
   // ウォレットQR決済の確定
