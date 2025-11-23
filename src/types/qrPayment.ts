@@ -112,22 +112,32 @@ export function isInvoiceQR(qrString: string): boolean {
 
 /**
  * ウォレットQRコードを生成
- * QRコードのスキャン成功率を上げるため、データを最小化
+ *
+ * スキャン成功率を最大化するため、2つの形式を試す:
+ * 1. ethereum: URI形式（EIP-681準拠、最もシンプル）- 推奨
+ * 2. JSON形式（店舗名などのメタデータが必要な場合）
  */
 export function generateWalletQRData(params: {
   address: string;
   name?: string;
   description?: string;
+  useSimpleFormat?: boolean; // true = ethereum: URI, false = JSON
 }): string {
-  // 必須フィールドのみのコンパクトな形式
-  const qrData: WalletQRData = {
-    type: 'wallet',
-    address: params.address,
-    name: params.name,
-    chainId: 137, // Polygon Mainnet
-    // descriptionは含めない（QRコードのデータ量削減のため）
-  };
+  // デフォルトは ethereum: URI形式を使用（スキャン成功率が高い）
+  const useSimple = params.useSimpleFormat !== false;
 
-  // 不要なスペースを削除したコンパクトなJSON
-  return JSON.stringify(qrData);
+  if (useSimple) {
+    // ethereum: URI形式 - 最もシンプルでスキャンしやすい
+    // 例: ethereum:0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb@137
+    return `ethereum:${params.address}@137`;
+  } else {
+    // JSON形式 - メタデータが必要な場合
+    const qrData: WalletQRData = {
+      type: 'wallet',
+      address: params.address,
+      name: params.name,
+      chainId: 137,
+    };
+    return JSON.stringify(qrData);
+  }
 }

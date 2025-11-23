@@ -11,7 +11,7 @@ import { WalletQRPaymentModal } from '../components/WalletQRPaymentModal';
 import { JPYC_TOKEN, ERC20_MIN_ABI } from '../contract';
 import { analyzeSentiment } from '../lib/ai_analysis';
 import { saveTipMessageToSupabase } from '../lib/saveTipMessage';
-import { parseWalletQR, isInvoiceQR, type WalletQRData } from '../types/qrPayment';
+import { parseWalletQR, type WalletQRData } from '../types/qrPayment';
 import { saveWalletQRPayment } from '../lib/saveWalletQRPayment';
 
 // 送金タイプ定義
@@ -265,12 +265,35 @@ export function MypageWithSend() {
   const handleQRScan = (data: string) => {
     console.log('🔍 QRスキャン:', data);
 
-    // 1. ウォレットQRコードかチェック（JSON形式）
+    // 1. ethereum: URI形式のウォレットQRかチェック
+    // 形式: ethereum:0xAddress@137 (金額なし = ウォレットQR)
+    if (data.startsWith('ethereum:') && !data.includes('?')) {
+      console.log('💳 ethereum: URI形式のウォレットQR検出');
+      // ethereum:0xAddress@137 から address を抽出
+      const match = data.match(/^ethereum:([0-9a-fA-Fx]+)@(\d+)$/);
+      if (match) {
+        const [, address, chainIdStr] = match;
+        const chainId = parseInt(chainIdStr);
+        if (chainId === 137) {
+          const walletData: WalletQRData = {
+            type: 'wallet',
+            address,
+            chainId: 137,
+          };
+          console.log('✅ ウォレットQRパース成功:', walletData);
+          setWalletQRData(walletData);
+          setShowQRScanner(false);
+          setShowWalletQRPayment(true);
+          return;
+        }
+      }
+    }
+
+    // 2. JSON形式のウォレットQRコードかチェック
     try {
       const walletResult = parseWalletQR(data);
       if (walletResult.success && walletResult.data) {
-        console.log('💳 ウォレットQR検出:', walletResult.data);
-        // ウォレットQR: 金額入力モーダルを表示
+        console.log('💳 JSON形式のウォレットQR検出:', walletResult.data);
         setWalletQRData(walletResult.data as WalletQRData);
         setShowQRScanner(false);
         setShowWalletQRPayment(true);
@@ -280,15 +303,21 @@ export function MypageWithSend() {
       // JSON parseエラーは無視して次へ
     }
 
-    // 2. 請求書QRコードかチェック（ethereum: or x402://）
-    if (isInvoiceQR(data)) {
-      console.log('📄 請求書QR検出:', data);
+    // 3. 請求書QRコードかチェック（ethereum:...?amount=... or x402://）
+    if (data.startsWith('ethereum:') && data.includes('?')) {
+      console.log('📄 請求書QR検出（ethereum: URI with params）:', data);
+      setSendTo(data);
+      setShowQRScanner(false);
+      return;
+    }
+    if (data.startsWith('x402://')) {
+      console.log('📄 請求書QR検出（x402）:', data);
       setSendTo(data);
       setShowQRScanner(false);
       return;
     }
 
-    // 3. 通常のアドレス
+    // 4. 通常のアドレス
     console.log('🔗 通常アドレス検出:', data);
     setSendTo(data);
     setShowQRScanner(false);
