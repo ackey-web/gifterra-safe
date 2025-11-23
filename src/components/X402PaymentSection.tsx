@@ -173,12 +173,19 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
   const [showConsentModal, setShowConsentModal] = useState(false);
   const [consentAccepted, setConsentAccepted] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
+  const [qrDebugLogs, setQrDebugLogs] = useState<string[]>([]);
+  const [showDebugPanel, setShowDebugPanel] = useState(true);
 
   const jpycConfig = getTokenConfig('JPYC');
 
 
   // QRコードスキャン処理
-  const handleScan = async (data: string) => {
+  const handleScan = async (data: string, debugLogs?: string[]) => {
+    // デバッグログを保存
+    if (debugLogs) {
+      setQrDebugLogs(debugLogs);
+    }
+
     try {
       const decoded = decodeX402(data);
 
@@ -874,6 +881,71 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
             }}>
               送信内容の確認
             </h2>
+
+            {/* デバッグパネル */}
+            {qrDebugLogs.length > 0 && (
+              <>
+                {showDebugPanel ? (
+                  <div style={{
+                    background: '#1a1a1a',
+                    borderRadius: 8,
+                    padding: 12,
+                    marginBottom: 16,
+                    maxHeight: 150,
+                    overflow: 'auto',
+                    fontSize: 10,
+                    fontFamily: 'monospace',
+                    color: '#00ff00',
+                    textAlign: 'left',
+                    position: 'relative',
+                  }}>
+                    <button
+                      onClick={() => setShowDebugPanel(false)}
+                      style={{
+                        position: 'absolute',
+                        top: 4,
+                        right: 4,
+                        background: '#333',
+                        border: 'none',
+                        color: '#fff',
+                        fontSize: 9,
+                        padding: '3px 6px',
+                        borderRadius: 4,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      非表示
+                    </button>
+                    <div style={{ marginTop: 20 }}>
+                      {qrDebugLogs.map((log, index) => (
+                        <div key={index} style={{ marginBottom: 3, lineHeight: 1.3 }}>
+                          {log}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setShowDebugPanel(true)}
+                    style={{
+                      width: '100%',
+                      padding: '6px',
+                      background: '#1a1a1a',
+                      border: 'none',
+                      borderRadius: '8px',
+                      color: '#00ff00',
+                      fontSize: 11,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      marginBottom: 12,
+                      fontFamily: 'monospace',
+                    }}
+                  >
+                    🔍 デバッグログ ({qrDebugLogs.length}件)
+                  </button>
+                )}
+              </>
+            )}
 
             {/* 金額表示 */}
             <div style={{
