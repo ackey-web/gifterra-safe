@@ -114,21 +114,16 @@ async function getPrivyEthersSigner(privyWallet: any): Promise<ethers.Signer | n
 
     // MetaMask接続を検出してPrivyをバイパス（モバイル対応の最優先処理）
     if (privyWallet.walletClientType === 'metamask' && typeof window !== 'undefined' && window.ethereum) {
-      console.log('✅ [Mypage] MetaMask検出 - 直接window.ethereumを使用してPrivyをバイパス');
-
       try {
         // MetaMask 7.59.0対応: selectedAddressがnullの場合は明示的に接続をリクエスト
         if (!window.ethereum.selectedAddress) {
-          console.log('⚠️ [Mypage] selectedAddress is null - requesting accounts (MetaMask 7.59.0対応)');
           await window.ethereum.request({ method: 'eth_requestAccounts' });
-          console.log('✅ [Mypage] eth_requestAccounts成功:', window.ethereum.selectedAddress);
         }
 
         const directProvider = new ethers.providers.Web3Provider(window.ethereum as any, 'any');
         const directSigner = directProvider.getSigner();
-        const signerAddress = await directSigner.getAddress();
+        await directSigner.getAddress();
 
-        console.log('✅ [Mypage] MetaMask直接接続成功:', signerAddress);
         return directSigner;
       } catch (error: any) {
         console.warn('⚠️ [Mypage] MetaMask直接接続失敗:', error.message);
@@ -1365,14 +1360,11 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
     const getSigner = async () => {
       // MetaMaskブラウザを最優先で検出（Privy完全バイパス - モバイル対応）
       if (typeof window !== 'undefined' && window.ethereum?.isMetaMask) {
-        console.log('🔍 [Mypage getSigner] MetaMask直接検出 - Privyをバイパス');
 
         try {
           // MetaMask 7.59.0対応: selectedAddressがnullの場合は明示的に接続をリクエスト
           if (!window.ethereum.selectedAddress) {
-            console.log('⚠️ [Mypage getSigner] selectedAddress is null - requesting accounts (MetaMask 7.59.0対応)');
             await window.ethereum.request({ method: 'eth_requestAccounts' });
-            console.log('✅ [Mypage getSigner] eth_requestAccounts成功:', window.ethereum.selectedAddress);
           }
 
           const directProvider = new ethers.providers.Web3Provider(window.ethereum as any, 'any');
@@ -1381,7 +1373,6 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
 
           setSigner(directSigner);
           setActualAddress(addr);
-          console.log('✅ [Mypage getSigner] MetaMask直接接続成功:', addr);
           return;
         } catch (error: any) {
           console.warn('⚠️ [Mypage getSigner] MetaMask直接接続失敗:', error.message);
@@ -1459,7 +1450,6 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
 
     if (to && mode === 'bookmark') {
       // ブックマークユーザー選択の場合
-      console.log('📌 URLパラメータからブックマークユーザー情報を読み込み:', { to, userName });
       setAddress(to);
       setSendMode('bookmark');
       if (userName) {
@@ -1690,7 +1680,6 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
         }
 
         // POL(ネイティブトークン)を直接送信
-        console.log('💸 POL送金開始:', {
           to: normalizedAddress,
           amount: ethers.utils.formatEther(amountWei),
           balance: ethers.utils.formatEther(maticBalance)
@@ -1702,12 +1691,9 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
           gasLimit: 21000, // POL/MATIC送金の標準ガスリミット
         });
 
-        console.log('📡 トランザクション送信完了:', tx.hash);
-        console.log('⏳ トランザクション確認待ち...');
 
         const receipt = await tx.wait();
 
-        console.log('✅ トランザクション確認完了:', receipt.transactionHash);
 
         // トランザクション成功後、Supabaseに送金メッセージを保存
         try {
@@ -1799,7 +1785,6 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
         const maticBalance = await signer.getBalance();
 
         // トランザクション送信前の診断情報
-        console.log('📱 [送金] トランザクション送信前の状態:', {
           hasWindowEthereum: typeof window !== 'undefined' && !!window.ethereum,
           isMetaMask: typeof window !== 'undefined' && window.ethereum?.isMetaMask,
           isIPhone: /iPhone|iPad|iPod/i.test(navigator.userAgent),
@@ -1810,14 +1795,12 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
 
         // トランザクション送信
         // モバイルでもデスクトップでも同じsigner.sendTransaction()を使用
-        console.log('💰 [送金] signer.sendTransaction経由でトランザクション送信');
         const tx = await signer.sendTransaction({
           to: tokenAddress,
           data: transferData,
           gasLimit: 100000, // 余裕を持ったガスリミット
         });
 
-        console.log('✅ [送金] トランザクション送信成功:', tx.hash);
         const receipt = await tx.wait();
 
         // 残高は10秒ごとに自動更新されます
@@ -1836,7 +1819,6 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
             isAnonymous: isAnonymous, // 匿名送金フラグ
           });
           saveSuccess = true;
-          console.log('✅ Transfer message saved successfully');
         } catch (saveError: any) {
           console.error('❌ 送金メッセージの保存に失敗:', saveError);
           // 保存失敗をユーザーに通知（トランザクション自体は成功）
@@ -2715,7 +2697,6 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
             }
           }}
           onSelectUser={(userAddress, userName) => {
-            console.log('📌 ブックマークユーザー選択:', { userAddress, userName });
 
             // モーダルを閉じる前に状態を更新
             setShowBookmarkSelectModal(false);
@@ -4402,14 +4383,11 @@ function WalletInfo({ isMobile }: { isMobile: boolean }) {
     const getSigner = async () => {
       // MetaMaskブラウザを最優先で検出（Privy完全バイパス - モバイル対応）
       if (typeof window !== 'undefined' && window.ethereum?.isMetaMask) {
-        console.log('🔍 [WalletInfo getSigner] MetaMask直接検出 - Privyをバイパス');
 
         try {
           // MetaMask 7.59.0対応: selectedAddressがnullの場合は明示的に接続をリクエスト
           if (!window.ethereum.selectedAddress) {
-            console.log('⚠️ [WalletInfo getSigner] selectedAddress is null - requesting accounts (MetaMask 7.59.0対応)');
             await window.ethereum.request({ method: 'eth_requestAccounts' });
-            console.log('✅ [WalletInfo getSigner] eth_requestAccounts成功:', window.ethereum.selectedAddress);
           }
 
           const directProvider = new ethers.providers.Web3Provider(window.ethereum as any, 'any');
@@ -4418,7 +4396,6 @@ function WalletInfo({ isMobile }: { isMobile: boolean }) {
 
           setSigner(directSigner);
           setActualAddress(addr);
-          console.log('✅ [WalletInfo getSigner] MetaMask直接接続成功:', addr);
           return;
         } catch (error: any) {
           console.warn('⚠️ [WalletInfo getSigner] MetaMask直接接続失敗:', error.message);

@@ -57,7 +57,6 @@ function getConsentRecord(): ConsentRecord | null {
 
     // 旧形式の互換性チェック (stored === 'true')
     if (stored === 'true') {
-      console.log('⚠️ 旧形式の同意記録を検出 - 再同意が必要です');
       return null;
     }
 
@@ -65,11 +64,9 @@ function getConsentRecord(): ConsentRecord | null {
 
     // バージョンチェック
     if (record.version !== X402_CONSENT_VERSION) {
-      console.log(`⚠️ 同意バージョンが古い (${record.version} → ${X402_CONSENT_VERSION}) - 再同意が必要です`);
       return null;
     }
 
-    console.log('✅ 有効な同意記録を確認:', record);
     return record;
   } catch (error) {
     console.error('❌ 同意記録の読み取りエラー:', error);
@@ -88,7 +85,6 @@ function saveConsentRecord(walletAddress: string): ConsentRecord {
   };
 
   localStorage.setItem(X402_CONSENT_KEY, JSON.stringify(record));
-  console.log('✅ 同意記録を保存:', record);
 
   return record;
 }
@@ -115,27 +111,17 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
       if (typeof window !== 'undefined' && window.ethereum) {
         // MetaMask mobileまたはデスクトップブラウザの検出
         const isMetaMask = window.ethereum.isMetaMask;
-        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
         if (isMetaMask) {
-          console.log('🔍 [請求QR] MetaMask直接検出:', {
-            isMetaMask,
-            isMobile,
-            selectedAddress: window.ethereum.selectedAddress,
-          });
-
           try {
             // MetaMask 7.59.0対応: selectedAddressがnullの場合は明示的に接続をリクエスト
             if (!window.ethereum.selectedAddress) {
-              console.log('⚠️ [請求QR] selectedAddress is null - requesting accounts (MetaMask 7.59.0対応)');
               await window.ethereum.request({ method: 'eth_requestAccounts' });
-              console.log('✅ [請求QR] eth_requestAccounts成功:', window.ethereum.selectedAddress);
             }
 
             const directProvider = new ethers.providers.Web3Provider(window.ethereum as any, 'any');
             const directSigner = directProvider.getSigner();
             setPrivySigner(directSigner);
-            console.log('✅ [請求QR] MetaMask直接接続成功 - Privyをバイパス');
             return;
           } catch (error: any) {
             console.warn('⚠️ [請求QR] MetaMask直接接続失敗:', error.message);
@@ -152,28 +138,20 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
 
       try {
         const wallet = wallets[0];
-        console.log('🔍 [請求QR] Privyウォレット情報:', {
-          walletType: wallet.walletClientType,
-          connectorType: wallet.connectorType,
-        });
 
         // Privy経由のMetaMask検出（2次チェック）
         if (wallet.walletClientType === 'metamask' && typeof window !== 'undefined' && window.ethereum) {
-          console.log('✅ [請求QR] Privy経由でMetaMask検出 - 直接window.ethereumを使用');
           const directProvider = new ethers.providers.Web3Provider(window.ethereum as any, 'any');
           const directSigner = directProvider.getSigner();
           setPrivySigner(directSigner);
-          console.log('✅ [請求QR] MetaMask直接接続成功');
           return;
         }
 
         // Privyウォレットなど他のウォレットの場合は通常通り
-        console.log('✅ [請求QR] Privy経由でウォレット接続');
         const provider = await wallet.getEthereumProvider();
         const ethersProvider = new ethers.providers.Web3Provider(provider, 'any');
         const ethersSigner = ethersProvider.getSigner();
         setPrivySigner(ethersSigner);
-        console.log('✅ [請求QR] Signer取得成功');
       } catch (error: any) {
         console.error('[請求QR] Failed to setup signer:', error);
         setPrivySigner(null);
@@ -202,39 +180,21 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
   const [showConsentModal, setShowConsentModal] = useState(false);
   const [consentAccepted, setConsentAccepted] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
-  const [qrDebugLogs, setQrDebugLogs] = useState<string[]>([]);
-  const [showDebugPanel, setShowDebugPanel] = useState(true);
 
   const jpycConfig = getTokenConfig('JPYC');
 
 
   // QRコードスキャン処理
-  const handleScan = async (data: string, debugLogs?: string[]) => {
+  const handleScan = async (data: string) => {
     // デバッグログを保存＋追加用の関数
-    const logs: string[] = debugLogs ? [...debugLogs] : [];
-    const addLog = (log: string) => {
-      logs.push(log);
-      console.log(log);
-    };
 
-    console.log('📊 X402PaymentSection handleScan - debugLogs受信:', debugLogs?.length || 0, '件');
-    if (debugLogs) {
-      setQrDebugLogs(debugLogs);
-      console.log('📊 qrDebugLogs状態更新完了:', debugLogs.length, '件');
-    } else {
-      console.log('⚠️ debugLogsが渡されていません');
-    }
 
     try {
-      addLog(`🔍 QRコード生データ (長さ: ${data.length}文字)`);
-      addLog(`📄 データ内容: ${data.substring(0, 100)}...`);
 
       // ウォレットQRかどうかを判定
       try {
         const parsed = JSON.parse(data);
         if (parsed.type === 'wallet') {
-          addLog(`⚠️ ウォレットQRを検出 - このコンポーネントは請求QR専用です`);
-          setQrDebugLogs(logs);
           setMessage({ type: 'error', text: 'これはウォレットQRです。請求QRをスキャンしてください。' });
           return;
         }
@@ -243,19 +203,7 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
       }
 
       const decoded = decodeX402(data);
-      addLog(`✅ デコード成功`);
-      addLog(`  to: ${decoded.to}`);
-      addLog(`  token: ${decoded.token}`);
-      addLog(`  amount: ${decoded.amount}`);
-      addLog(`  chainId: ${decoded.chainId} (型: ${typeof decoded.chainId})`);
-      addLog(`  message: ${decoded.message || 'なし'}`);
 
-      setQrDebugLogs(logs); // ここで更新
-
-      console.log('🔍 QRコード生データ:', data);
-      const _ = decoded; // 既に取得済み
-      console.log('🔍 デコード結果:', decoded);
-      console.log('🔍 decoded.chainId:', decoded.chainId, 'typeof:', typeof decoded.chainId);
 
       // EIP-55アドレス検証
       const recipientValidation = validateAddress(decoded.to);
@@ -272,28 +220,14 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
         return;
       }
 
-      console.log('✅ QRコード内アドレス検証成功:', {
-        recipient: recipientValidation.checksumAddress,
-        token: tokenValidation.checksumAddress,
-      });
-
       // ChainID検証
       const chainValidation = validateChainId(decoded.chainId, 137);
       if (!chainValidation.valid) {
-        addLog(`🔴 QR内ChainID検証失敗: ${chainValidation.error}`);
-        addLog(`  decoded.chainId = ${decoded.chainId}`);
-        addLog(`  期待値 = 137 (Polygon Mainnet)`);
-        setQrDebugLogs(logs);
         setMessage({ type: 'error', text: chainValidation.error || 'チェーンIDが一致しません' });
         console.error('🔴 ChainID検証失敗:', chainValidation.error);
         return;
       }
 
-      addLog(`✅ QR内ChainID検証成功: ${decoded.chainId} (${chainValidation.chainName})`);
-      console.log('✅ ChainID検証成功:', {
-        chainId: decoded.chainId,
-        chainName: chainValidation.chainName,
-      });
 
       // 有効期限チェック
       if (isPaymentExpired(decoded.expires)) {
@@ -305,8 +239,6 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
       let userBalance = '0';
 
       try {
-        addLog('🔍 残高確認中...');
-        setQrDebugLogs(logs);
 
         const readOnlyProvider = new ethers.providers.JsonRpcProvider('https://rpc.ankr.com/polygon');
         const tokenContract = new ethers.Contract(decoded.token, ERC20_ABI, readOnlyProvider);
@@ -315,29 +247,14 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
         const decimals = await tokenContract.decimals();
 
         userBalance = ethers.utils.formatUnits(balance, decimals);
-        addLog(`✅ 残高取得成功: ${userBalance} JPYC`);
-        setQrDebugLogs(logs);
       } catch (balanceError: any) {
         console.error('残高取得エラー:', balanceError.message);
-        addLog(`⚠️ 残高取得失敗: ${balanceError.message}`);
-        addLog(`💡 残高確認をスキップして続行`);
-        setQrDebugLogs(logs);
         userBalance = '0';
       }
 
       // X402形式のQRコードを検知 - バージョン付き同意チェック
       const consentRecord = getConsentRecord();
       const hasValidConsent = consentRecord !== null;
-
-      if (consentRecord) {
-        console.log('✅ 有効な同意記録あり:', {
-          version: consentRecord.version,
-          timestamp: new Date(consentRecord.timestamp).toISOString(),
-          walletAddress: consentRecord.walletAddress,
-        });
-      } else {
-        console.log('⚠️ 同意記録なし、または無効 - 同意モーダルを表示');
-      }
 
       // paymentDataとbalanceを設定
       setPaymentData(decoded);
@@ -363,44 +280,11 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
 
   // 支払い実行
   const handlePayment = async () => {
-    // デバッグログ管理
-    const logs = [...qrDebugLogs];
-    const addLog = (log: string) => {
-      logs.push(log);
-      console.log(log);
-    };
-
-    console.log('🚀 handlePayment呼び出し開始');
-    console.log('📊 初期状態:', {
-      hasPaymentData: !!paymentData,
-      hasWalletAddress: !!walletAddress,
-      walletAddress,
-      hasPrivyWallet: !!privyEmbeddedWalletAddress,
-      hasSigner: !!signer,
-    });
-
-    // 🔍 診断: window.ethereumの存在確認
-    console.log('🔍 window.ethereum診断:', {
-      exists: typeof window !== 'undefined' && !!window.ethereum,
-      isMetaMask: typeof window !== 'undefined' && window.ethereum?.isMetaMask,
-      selectedAddress: typeof window !== 'undefined' && window.ethereum?.selectedAddress,
-      chainId: typeof window !== 'undefined' && window.ethereum?.chainId,
-    });
-
-    // 🔍 診断: Privy walletsの詳細
-    console.log('🔍 Privy wallets診断:', {
-      walletsExists: !!wallets,
-      walletsCount: wallets?.length || 0,
-      wallets: wallets,
-    });
-
     if (!paymentData || !walletAddress) {
       console.error('❌ paymentDataまたはwalletAddressが未設定');
       setMessage({ type: 'error', text: 'ウォレットを接続してください' });
       return;
     }
-
-    console.log('✅ 処理開始 - isProcessing=true');
     setIsProcessing(true);
     setMessage(null);
 
@@ -415,30 +299,14 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
       let signerChainId: number | null = null;
 
       // 1. Privyのwalletsから取得（最優先）
-      console.log('🔍 Privy wallets 配列:', wallets);
-      console.log('🔍 Privy wallets 件数:', wallets?.length || 0);
-
       if (wallets && wallets.length > 0) {
         try {
-          // 全てのウォレットをログ出力
-          wallets.forEach((w: any, index: number) => {
-            console.log(`🔍 Wallet[${index}]:`, {
-              walletClientType: w.walletClientType,
-              chainId: w.chainId,
-              address: w.address,
-              connectorType: w.connectorType,
-            });
-          });
-
           // まず外部ウォレット(MetaMask等)を優先的に検索
           let targetWallet = wallets.find((w: any) => w.walletClientType !== 'privy');
 
           // 外部ウォレットがない場合、Privy Embedded Walletを使用
           if (!targetWallet) {
-            console.log('🔍 外部ウォレットなし - Privy Embedded Walletを使用');
             targetWallet = wallets[0]; // 最初のウォレット（通常はPrivy Embedded Wallet）
-          } else {
-            console.log('🔍 外部ウォレット検出:', targetWallet.walletClientType);
           }
 
           if (targetWallet && targetWallet.chainId) {
@@ -451,7 +319,6 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
             } else {
               privyWalletChainId = chainIdValue;
             }
-            console.log('🟣 Privy walletから取得したChainID:', privyWalletChainId, '(type:', targetWallet.walletClientType, ')');
           } else if (targetWallet) {
             console.warn('⚠️ ウォレットは見つかったが chainId が未設定 - providerから取得を試みる');
 
@@ -461,40 +328,27 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
               const web3Provider = new ethers.providers.Web3Provider(walletProvider as any);
               const network = await web3Provider.getNetwork();
               privyWalletChainId = network.chainId;
-              console.log('🟣 Privy wallet providerから取得したChainID:', privyWalletChainId);
             } catch (providerError: any) {
               console.error('❌ Privy wallet provider ChainID取得エラー:', providerError.message);
             }
-          } else {
-            console.warn('⚠️ 有効なウォレットが見つからない');
           }
         } catch (e: any) {
           console.warn('Privy wallet ChainID取得エラー:', e.message);
         }
-      } else {
-        console.warn('⚠️ Privy wallets が空またはnull');
       }
 
       // 2. window.ethereumから取得（最優先）
       if (typeof window !== 'undefined' && window.ethereum) {
-        addLog(`📱 window.ethereum検出: ${window.ethereum.isMetaMask ? 'MetaMask' : '不明'}`);
 
         // MetaMask接続を確認・リクエスト
         try {
           const accounts = await window.ethereum.request({ method: 'eth_accounts' });
-          console.log('🔍 現在の接続アカウント:', accounts);
-          addLog(`🔍 接続アカウント数: ${accounts?.length || 0}`);
 
           // アカウントが接続されていない場合、接続をリクエスト
           if (!accounts || accounts.length === 0) {
-            console.log('⚠️ MetaMaskが接続されていません - 接続リクエスト送信');
-            addLog('⚠️ MetaMask未接続 - 接続リクエスト中...');
-            setQrDebugLogs(logs);
             setMessage({ type: 'info', text: 'MetaMaskアプリで接続を許可してください...' });
 
             const requestedAccounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-            console.log('✅ MetaMask接続成功:', requestedAccounts);
-            addLog(`✅ MetaMask接続成功: ${requestedAccounts?.length}件`);
 
             // 2秒待って接続完了を確認
             await new Promise(resolve => setTimeout(resolve, 2000));
@@ -503,33 +357,22 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
           // eth_chainIdメソッドで直接取得（より確実）
           try {
             const chainIdHexFromMethod = await window.ethereum.request({ method: 'eth_chainId' });
-            console.log('🔍 eth_chainId メソッドの結果:', chainIdHexFromMethod);
-            addLog(`🔍 eth_chainId: ${chainIdHexFromMethod}`);
 
             if (chainIdHexFromMethod) {
               windowChainId = parseInt(chainIdHexFromMethod, 16);
-              addLog(`✅ window.ethereumからChainID取得成功: ${windowChainId}`);
-              console.log('📱 window.ethereumから取得したChainID:', windowChainId, `(${chainIdHexFromMethod})`);
             }
           } catch (chainIdError: any) {
             console.error('❌ eth_chainId取得エラー:', chainIdError);
-            addLog(`❌ eth_chainId取得失敗: ${chainIdError.message}`);
 
             // フォールバック: プロパティから直接取得
             const chainIdHex = window.ethereum.chainId;
-            console.log('🔍 window.ethereum.chainId (プロパティ):', chainIdHex);
-            addLog(`🔍 chainIdプロパティ: ${chainIdHex || 'null'}`);
 
             if (chainIdHex) {
               windowChainId = parseInt(chainIdHex, 16);
-              addLog(`✅ プロパティからChainID取得: ${windowChainId}`);
-              console.log('📱 window.ethereumプロパティから取得したChainID:', windowChainId, `(${chainIdHex})`);
             }
           }
         } catch (connectError: any) {
           console.error('❌ MetaMask接続エラー:', connectError.message);
-          addLog(`❌ MetaMask接続エラー: ${connectError.message}`);
-          setQrDebugLogs(logs);
           setMessage({
             type: 'error',
             text: `MetaMask接続エラー: ${connectError.message}\n\nMetaMaskブラウザを使用していますか？`
@@ -538,19 +381,14 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
           return;
         }
       } else {
-        console.warn('⚠️ window.ethereum が存在しません - MetaMaskブラウザを使用してください');
-        addLog('⚠️ window.ethereum不在');
       }
 
       // 3. signer.providerから取得
       if (signer && signer.provider) {
         try {
           signerChainId = await getCurrentChainId(signer.provider as ethers.providers.Provider);
-          console.log('🟠 Signerから取得したChainID:', signerChainId);
-          addLog(`🟠 signer.provider ChainID: ${signerChainId}`);
         } catch (chainError: any) {
           console.warn('ChainID確認エラー（続行）:', chainError.message);
-          addLog(`⚠️ signer.provider取得失敗: ${chainError.message}`);
         }
       }
 
@@ -567,37 +405,16 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
         chainIdSource = 'signer.provider';
       }
 
-      addLog(`🔍 現在の接続ChainID取得結果:`);
-      addLog(`  privy.wallets: ${privyWalletChainId ?? 'null'}`);
-      addLog(`  window.ethereum: ${windowChainId ?? 'null'}`);
-      addLog(`  signer.provider: ${signerChainId ?? 'null'}`);
-      addLog(`  ➡️ 採用: ${currentChainId ?? 'null'} (from ${chainIdSource})`);
-      setQrDebugLogs(logs);
-
-      console.log('🔍 ChainID取得結果:', {
-        privyWalletChainId,
-        windowChainId,
-        signerChainId,
-        currentChainId,
-        chainIdSource,
-      });
 
       // ChainID検証を完全にスキップ
       // トランザクションパラメータで chainId: 0x89 を指定するため、
       // ここでの検証は不要。MetaMaskが間違ったネットワークなら自動的にエラーを出す
-      addLog('💡 ChainID検証スキップ - トランザクションで直接Polygon指定');
-      setQrDebugLogs(logs);
 
       const SKIP_CHAINID_VALIDATION = true;
       if (currentChainId !== null && !SKIP_CHAINID_VALIDATION) {
         const chainValidation = validateChainId(currentChainId, 137);
 
         if (!chainValidation.valid) {
-          addLog(`🔴 接続中ChainID検証失敗!`);
-          addLog(`  現在の接続: ${chainValidation.chainName} (ChainID: ${currentChainId})`);
-          addLog(`  期待値: Polygon Mainnet (ChainID: 137)`);
-          addLog(`  取得元: ${chainIdSource}`);
-          setQrDebugLogs(logs);
 
           console.error('🔴 接続中のChainID検証失敗:', {
             error: chainValidation.error,
@@ -609,62 +426,38 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
           });
 
           // 自動的にPolygon Mainnetへの切り替えを試みる
-          console.log('🔄 Polygon Mainnet (137) への自動切り替えを試みます...');
-          addLog('🔄 ネットワーク切り替え試行中...');
-          setQrDebugLogs(logs);
 
           try {
             // Privy wallet経由で切り替え（MetaMask Mobile対応）
             if (wallets && wallets.length > 0) {
-              console.log('📱 Privy wallet経由で switchChain を試みます');
-              addLog('📱 Privy wallet.switchChain(137)呼び出し');
 
               // 外部ウォレット（MetaMask）を優先的に検索
               const targetWallet = wallets.find((w: any) => w.walletClientType !== 'privy') || wallets[0];
 
-              console.log('🔍 対象ウォレット:', {
-                walletClientType: targetWallet?.walletClientType,
-                address: targetWallet?.address,
-                hasSwitchChain: typeof targetWallet?.switchChain === 'function'
-              });
-              addLog(`🔍 対象: ${targetWallet?.walletClientType || 'unknown'}`);
 
               if (targetWallet && typeof targetWallet.switchChain === 'function') {
                 await targetWallet.switchChain(137);
-                console.log('✅ Privy wallet経由でネットワーク切り替え成功');
-                addLog('✅ ネットワーク切り替え成功!');
-                setQrDebugLogs(logs);
 
                 // 切り替え後、再度ChainIDを取得
                 await new Promise(resolve => setTimeout(resolve, 1000));
 
                 // 再検証せずに処理を続行
-                console.log('✅ ネットワーク切り替え完了 - 処理続行');
               } else {
                 throw new Error('switchChain メソッドが利用できません');
               }
             } else if (typeof window !== 'undefined' && window.ethereum) {
               // フォールバック: window.ethereum
-              console.log('📱 window.ethereum.request で wallet_switchEthereumChain を呼び出し');
-              addLog('📱 window.ethereum経由で切り替え');
 
               await window.ethereum.request({
                 method: 'wallet_switchEthereumChain',
                 params: [{ chainId: '0x89' }], // Polygon Mainnet = 0x89 (137)
               });
 
-              console.log('✅ ネットワーク切り替え成功 - 処理を続行します');
-              addLog('✅ window.ethereum切り替え成功');
-              setQrDebugLogs(logs);
             } else {
               throw new Error('ネットワーク切り替え手段がありません');
             }
           } catch (switchError: any) {
             console.error('❌ ネットワーク自動切り替え失敗:', switchError);
-            addLog(`❌ 切り替え失敗: ${switchError.message}`);
-            addLog(`⚠️ ChainID検証をスキップして続行します`);
-            addLog(`💡 MetaMaskが自動的に正しいネットワークを要求します`);
-            setQrDebugLogs(logs);
 
             // 警告メッセージを表示するが処理は続行
             console.warn('⚠️ ChainID検証失敗 - MetaMaskに委ねて続行');
@@ -674,18 +467,9 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
           }
         } else {
           // ChainID検証成功
-          addLog(`✅ ChainID検証成功: ${currentChainId} (${chainValidation.chainName})`);
-          setQrDebugLogs(logs);
-          console.log('✅ 接続中のChainID検証成功:', {
-            chainId: currentChainId,
-            chainName: chainValidation.chainName,
-            chainIdSource,
-          });
         }
       } else {
         // ChainIDが取得できなかった場合も続行
-        addLog(`⚠️ ChainID取得失敗 - トランザクション送信時にMetaMaskが検証`);
-        setQrDebugLogs(logs);
         console.warn('⚠️ ChainID取得失敗 - 続行');
       }
 
@@ -708,8 +492,6 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
           setIsProcessing(false);
           return;
         }
-
-        console.log('✅ RequestID重複チェック成功:', paymentData.requestId);
       }
 
       // 残高確認用のread-only provider
@@ -718,102 +500,34 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
       const tokenContract = new ethers.Contract(paymentData.token, ERC20_ABI, readOnlyProvider);
 
       try {
-        addLog('💰 残高確認中...');
-        setQrDebugLogs(logs);
 
         // 残高確認
         const userBalance = await tokenContract.balanceOf(walletAddress);
 
         if (userBalance.lt(paymentData.amount)) {
-          addLog(`❌ 残高不足: 必要 ${ethers.utils.formatUnits(paymentData.amount, 18)} JPYC`);
-          setQrDebugLogs(logs);
           setMessage({ type: 'error', text: '残高不足です' });
           setIsProcessing(false);
           return;
         }
 
-        addLog(`✅ 残高確認OK: ${ethers.utils.formatUnits(userBalance, 18)} JPYC`);
-        setQrDebugLogs(logs);
       } catch (balanceCheckError: any) {
         console.warn('⚠️ 残高確認エラー - スキップして続行:', balanceCheckError.message);
-        addLog(`⚠️ 残高確認失敗: ${balanceCheckError.message}`);
-        addLog(`💡 残高確認をスキップ - MetaMaskで確認します`);
-        setQrDebugLogs(logs);
         // エラーでも続行（MetaMaskが残高不足を検出する）
       }
 
       let txHash: string;
-
-      console.log('🔵 トランザクション送信開始:', {
-        hasPrivyWallet: !!privyEmbeddedWalletAddress,
-        hasSigner: !!signer,
-        walletAddress,
-        hasWindowEthereum: typeof window !== 'undefined' && !!window.ethereum,
-        isMetaMask: typeof window !== 'undefined' && window.ethereum?.isMetaMask,
-      });
-
-      // Androidデバッグ用: 接続状態を確認
-      if (typeof window !== 'undefined' && window.ethereum) {
-        const debugInfo = {
-          isMetaMask: window.ethereum.isMetaMask,
-          isConnected: window.ethereum.isConnected?.(),
-          chainId: window.ethereum.chainId,
-          selectedAddress: window.ethereum.selectedAddress,
-        };
-        console.log('📱 window.ethereum 状態:', debugInfo);
-
-        // Androidでコンソールが見れない場合のため、画面にも表示
-        setMessage({
-          type: 'info',
-          text: `デバッグ: MetaMask=${debugInfo.isMetaMask}, 接続=${debugInfo.isConnected}, チェーンID=${debugInfo.chainId}`
-        });
-
-        // 2秒後にメッセージをクリア
-        await new Promise(resolve => setTimeout(resolve, 2000));
-      } else if (typeof window !== 'undefined') {
-        console.error('❌ window.ethereum が存在しません');
-        setMessage({ type: 'error', text: 'デバッグ: window.ethereumが見つかりません。MetaMaskブラウザを使用していますか？' });
-        await new Promise(resolve => setTimeout(resolve, 3000));
-      }
 
       // 送金セクションと完全に同じ実装: contract.transfer()を直接呼び出し
       if (!signer) {
         throw new Error('ウォレットが接続されていません');
       }
 
-      console.log('🔵 contract.transfer()を使用（送金セクションと同じ）');
-      addLog(`🔍 Signer情報:`);
-      addLog(`  privySigner: ${!!privySigner}`);
-      addLog(`  thirdwebSigner: ${!!thirdwebSigner}`);
-      addLog(`  採用: ${privySigner ? 'privy' : 'thirdweb'}`);
-      addLog(`📤 MetaMask承認リクエスト送信中...`);
-      addLog(`  to: ${paymentData.to}`);
-      addLog(`  amount: ${paymentData.amount}`);
-      setQrDebugLogs(logs);
 
       const tokenContractWithSigner = new ethers.Contract(paymentData.token, ERC20_ABI, signer);
 
       const signerAddress = await signer.getAddress();
-      console.log('🚀 contract.transfer()を呼び出します:', {
-        token: paymentData.token,
-        to: paymentData.to,
-        amount: paymentData.amount,
-        signerAddress,
-      });
-
-      // MetaMask Mobile診断用
-      console.log('📱 [診断] トランザクション送信前の状態:', {
-        hasWindowEthereum: typeof window !== 'undefined' && !!window.ethereum,
-        isMetaMask: typeof window !== 'undefined' && window.ethereum?.isMetaMask,
-        selectedAddress: typeof window !== 'undefined' && window.ethereum?.selectedAddress,
-        signerType: signer.constructor.name,
-        currentUrl: typeof window !== 'undefined' ? window.location.href : 'N/A',
-      });
 
       setMessage({ type: 'info', text: 'MetaMaskで承認してください...' });
-      console.log('⏳ ウォレット承認待ち...');
-      addLog('📤 トランザクション送信開始...');
-      setQrDebugLogs(logs);
 
       // スマホ PWA + MetaMask mobile対応 (iPhone & Android両対応):
       // contract.transfer()の代わりに、populateTransaction + sendTransactionを使用
@@ -821,17 +535,12 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
       let tx;
       const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
       if (typeof window !== 'undefined' && window.ethereum?.isMetaMask && isMobile) {
-        console.log('📱 [モバイル PWA] populateTransaction経由でトランザクション送信');
-        addLog('📱 モバイル PWA検出 - 特殊フロー使用');
-        setQrDebugLogs(logs);
 
         // トランザクションデータを構築
         const unsignedTx = await tokenContractWithSigner.populateTransaction.transfer(
           paymentData.to,
           paymentData.amount
         );
-
-        console.log('📝 Unsigned transaction:', unsignedTx);
 
         // window.ethereumを直接使用してトランザクション送信
         const txHash = await window.ethereum.request({
@@ -844,29 +553,19 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
           }],
         });
 
-        console.log('✅ [モバイル PWA] eth_sendTransaction成功:', txHash);
-        addLog(`✅ トランザクションハッシュ: ${txHash}`);
-        setQrDebugLogs(logs);
 
         // トランザクションレシートを待つ
         const directProvider = new ethers.providers.Web3Provider(window.ethereum as any, 'any');
         tx = await directProvider.getTransaction(txHash);
       } else {
         // 通常フロー (デスクトップのみ)
-        console.log('💻 デスクトップフロー: contract.transfer()使用');
         tx = await tokenContractWithSigner.transfer(paymentData.to, paymentData.amount);
       }
 
       txHash = tx.hash;
-      console.log('✅ トランザクション送信成功:', txHash);
-      addLog(`✅ トランザクション送信: ${txHash}`);
-      setQrDebugLogs(logs);
 
       setMessage({ type: 'info', text: 'トランザクション処理中...' });
       await tx.wait();
-      console.log('✅ トランザクション完了:', txHash);
-      addLog(`✅ トランザクション完了`);
-      setQrDebugLogs(logs);
 
       // Supabaseの支払いリクエストを更新
       if (paymentData.requestId) {
@@ -1269,20 +968,6 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
               送信内容の確認
             </h2>
 
-            {/* 診断用: デバッグログ件数表示 */}
-            <div style={{
-              background: '#fff3cd',
-              border: '1px solid #ffc107',
-              borderRadius: 8,
-              padding: 8,
-              marginBottom: 12,
-              fontSize: 12,
-              color: '#856404',
-              textAlign: 'center',
-            }}>
-              🔍 診断: デバッグログ {qrDebugLogs.length} 件
-            </div>
-
             {/* メッセージ表示エリア（エラー・情報） */}
             {message && (
               <div style={{
@@ -1299,71 +984,6 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
               }}>
                 {message.text}
               </div>
-            )}
-
-            {/* デバッグパネル */}
-            {qrDebugLogs.length > 0 && (
-              <>
-                {showDebugPanel ? (
-                  <div style={{
-                    background: '#1a1a1a',
-                    borderRadius: 8,
-                    padding: 12,
-                    marginBottom: 16,
-                    maxHeight: 150,
-                    overflow: 'auto',
-                    fontSize: 10,
-                    fontFamily: 'monospace',
-                    color: '#00ff00',
-                    textAlign: 'left',
-                    position: 'relative',
-                  }}>
-                    <button
-                      onClick={() => setShowDebugPanel(false)}
-                      style={{
-                        position: 'absolute',
-                        top: 4,
-                        right: 4,
-                        background: '#333',
-                        border: 'none',
-                        color: '#fff',
-                        fontSize: 9,
-                        padding: '3px 6px',
-                        borderRadius: 4,
-                        cursor: 'pointer',
-                      }}
-                    >
-                      非表示
-                    </button>
-                    <div style={{ marginTop: 20 }}>
-                      {qrDebugLogs.map((log, index) => (
-                        <div key={index} style={{ marginBottom: 3, lineHeight: 1.3 }}>
-                          {log}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => setShowDebugPanel(true)}
-                    style={{
-                      width: '100%',
-                      padding: '6px',
-                      background: '#1a1a1a',
-                      border: 'none',
-                      borderRadius: '8px',
-                      color: '#00ff00',
-                      fontSize: 11,
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      marginBottom: 12,
-                      fontFamily: 'monospace',
-                    }}
-                  >
-                    🔍 デバッグログ ({qrDebugLogs.length}件)
-                  </button>
-                )}
-              </>
             )}
 
             {/* 金額表示 */}

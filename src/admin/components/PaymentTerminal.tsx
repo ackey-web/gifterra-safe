@@ -20,7 +20,6 @@ import {
   filterPaymentsByPeriod,
   calculateSummary,
 } from '../../utils/paymentExport';
-import { generateWalletQRData } from '../../types/qrPayment';
 
 interface PaymentHistory {
   id: string;
@@ -322,39 +321,6 @@ export function PaymentTerminal() {
     }
   };
 
-  // ウォレットQR生成
-  const handleGenerateWalletQR = () => {
-    try {
-      if (!walletAddress) {
-        setMessage({ type: 'error', text: 'ウォレット未接続' });
-        return;
-      }
-
-      // EIP-55アドレス検証
-      const walletValidation = validateAddress(walletAddress);
-      if (!walletValidation.valid) {
-        setMessage({ type: 'error', text: walletValidation.error || '受取アドレスが無効です' });
-        return;
-      }
-
-      // ウォレットQRデータ生成（データ量を最小化してスキャン成功率を上げる）
-      const walletQRData = generateWalletQRData({
-        address: walletValidation.checksumAddress!,
-        name: storeName || undefined, // 店舗名が空の場合はundefinedにして省略
-      });
-
-      console.log('💳 ウォレットQR生成:', walletQRData);
-
-      setQrData(walletQRData);
-      setQrMode('wallet');
-      setMessage({ type: 'success', text: 'ウォレットQR生成完了' });
-
-      setTimeout(() => setMessage(null), 3000);
-    } catch (error) {
-      console.error('ウォレットQR生成エラー:', error);
-      setMessage({ type: 'error', text: '生成に失敗しました' });
-    }
-  };
 
   // QRコードダウンロード
   const handleDownloadQR = () => {
@@ -889,43 +855,6 @@ export function PaymentTerminal() {
                   📄 請求書QR生成
                 </button>
 
-                <button
-                  onClick={handleGenerateWalletQR}
-                  disabled={!walletAddress}
-                  style={{
-                    width: '100%',
-                    padding: '20px',
-                    fontSize: '20px',
-                    fontWeight: 'bold',
-                    background: walletAddress
-                      ? 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)'
-                      : 'rgba(148, 163, 184, 0.3)',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '12px',
-                    cursor: walletAddress ? 'pointer' : 'not-allowed',
-                    boxShadow: walletAddress ? '0 4px 15px rgba(59, 130, 246, 0.3)' : 'none',
-                    transition: 'all 0.2s',
-                    opacity: walletAddress ? 1 : 0.5,
-                  }}
-                  onMouseEnter={(e) => {
-                    if (walletAddress) {
-                      e.currentTarget.style.transform = 'translateY(-2px)';
-                      e.currentTarget.style.boxShadow = '0 6px 20px rgba(59, 130, 246, 0.4)';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (walletAddress) {
-                      e.currentTarget.style.transform = 'translateY(0)';
-                      e.currentTarget.style.boxShadow = '0 4px 15px rgba(59, 130, 246, 0.3)';
-                    }
-                  }}
-                >
-                  💳 ウォレットQR表示
-                </button>
-                <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)', margin: '0', textAlign: 'center' }}>
-                  ウォレットQR: 客が金額を入力
-                </p>
               </div>
 
               {/* メッセージ */}
@@ -984,19 +913,9 @@ export function PaymentTerminal() {
                       maxWidth: '400px',
                     }}
                   >
-                    {qrMode === 'wallet' ? (
-                      <>
-                        💳 <strong>ウォレットQR</strong><br />
-                        お客様がGIFTERRAマイページでスキャンして金額を入力します。<br />
-                        このQRコードは常に有効で、印刷してレジ横に設置できます。
-                      </>
-                    ) : (
-                      <>
-                        📄 <strong>請求書QR</strong><br />
-                        このQRは、GIFTERRA Pay で読み取り・お支払いできます。<br />
-                        GIFTERRAマイページの「スキャンして支払う」からご利用ください。
-                      </>
-                    )}
+                    📄 <strong>請求書QR</strong><br />
+                    このQRは、GIFTERRA Pay で読み取り・お支払いできます。<br />
+                    GIFTERRAマイページの「スキャンして支払う」からご利用ください。
                   </div>
 
                   <div

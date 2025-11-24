@@ -90,7 +90,7 @@ export default defineConfig(() => {
     minify: 'terser',
     terserOptions: {
       compress: {
-        drop_console: false, // デバッグ用に一時的に有効化
+        drop_console: true,
         drop_debugger: true,
       },
     },
