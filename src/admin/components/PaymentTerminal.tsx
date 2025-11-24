@@ -554,6 +554,11 @@ export function PaymentTerminal() {
 
         if (error) {
           console.error('❌ [Desktop] Supabase insert error:', error);
+          console.error('❌ [Desktop] Error code:', error.code);
+          console.error('❌ [Desktop] Error message:', error.message);
+          console.error('❌ [Desktop] Error details:', error.details);
+          console.error('❌ [Desktop] Error hint:', error.hint);
+          setMessage({ type: 'error', text: `生成失敗: ${error.message}` });
           throw error;
         }
 

@@ -576,6 +576,11 @@ export function PaymentTerminalMobile() {
 
         if (error) {
           console.error('❌ [Mobile] Supabase insert error:', error);
+          console.error('❌ [Mobile] Error code:', error.code);
+          console.error('❌ [Mobile] Error message:', error.message);
+          console.error('❌ [Mobile] Error details:', error.details);
+          console.error('❌ [Mobile] Error hint:', error.hint);
+          setMessage({ type: 'error', text: `生成失敗: ${error.message}` });
           throw error;
         }
 
