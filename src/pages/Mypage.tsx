@@ -1680,11 +1680,6 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
         }
 
         // POL(ネイティブトークン)を直接送信
-          to: normalizedAddress,
-          amount: ethers.utils.formatEther(amountWei),
-          balance: ethers.utils.formatEther(maticBalance)
-        });
-
         const tx = await signer.sendTransaction({
           to: normalizedAddress,
           value: amountWei,
@@ -1783,15 +1778,6 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
 
         // MATICバランスチェック
         const maticBalance = await signer.getBalance();
-
-        // トランザクション送信前の診断情報
-          hasWindowEthereum: typeof window !== 'undefined' && !!window.ethereum,
-          isMetaMask: typeof window !== 'undefined' && window.ethereum?.isMetaMask,
-          isIPhone: /iPhone|iPad|iPod/i.test(navigator.userAgent),
-          selectedAddress: typeof window !== 'undefined' && window.ethereum?.selectedAddress,
-          signerAddress: await signer.getAddress(),
-          currentUrl: typeof window !== 'undefined' ? window.location.href : 'N/A',
-        });
 
         // トランザクション送信
         // モバイルでもデスクトップでも同じsigner.sendTransaction()を使用
