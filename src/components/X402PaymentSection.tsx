@@ -192,6 +192,7 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
   const [showConsentModal, setShowConsentModal] = useState(false);
   const [consentAccepted, setConsentAccepted] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
+  const [lastScannedQR, setLastScannedQR] = useState<string>(''); // 重複スキャン防止
 
   const jpycConfig = getTokenConfig('JPYC');
 
@@ -297,25 +298,45 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
 
   // QRコードスキャン処理
   const handleScan = async (data: string) => {
-    // デバッグログを保存＋追加用の関数
+    // 重複スキャン防止: 同じQRが連続で読み取られるのを防ぐ
+    if (data === lastScannedQR) {
+      console.log('⏭️ [Scanner] Duplicate QR detected, skipping...');
+      return;
+    }
 
+    // 処理中は新しいスキャンを受け付けない
+    if (isProcessing) {
+      console.log('⏳ [Scanner] Already processing, skipping new scan...');
+      return;
+    }
+
+    console.log('📸 [Scanner] QR code scanned, raw data:', data);
+    setLastScannedQR(data);
 
     try {
 
       // QRコードのタイプを判定
       try {
         const parsed = JSON.parse(data);
+        console.log('🔍 [Scanner] Parsed JSON:', parsed);
+
         if (parsed.type === 'wallet') {
           setMessage({ type: 'error', text: 'これはウォレットQRです。請求QRをスキャンしてください。' });
+          setLastScannedQR(''); // リセットして再スキャン可能に
           return;
         }
         if (parsed.type === 'gasless') {
+          console.log('⚡ [Scanner] Gasless QR detected, calling handleGaslessPayment...');
           // ガスレス決済QRの処理
           await handleGaslessPayment(parsed);
+          console.log('✅ [Scanner] handleGaslessPayment completed successfully');
+          // 成功後にリセット（同じQRの再スキャンを許可）
+          setTimeout(() => setLastScannedQR(''), 3000);
           return;
         }
       } catch (e) {
         // JSON parseエラーは無視（通常のアドレスかX402形式）
+        console.log('ℹ️ [Scanner] Not a JSON QR, trying X402 decode...');
       }
 
       const decoded = decodeX402(data);
@@ -397,9 +418,12 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
       }, 50);
 
     } catch (error: any) {
-      console.error('QRコード読み取りエラー:', error.message);
-      setMessage({ type: 'error', text: 'QRコードの読み取りに失敗しました' });
+      console.error('❌ [Scanner] QR scan error:', error);
+      console.error('❌ [Scanner] Error message:', error.message);
+      console.error('❌ [Scanner] Error stack:', error.stack);
+      setMessage({ type: 'error', text: `QRコード読み取りエラー: ${error.message}` });
       setShowScanner(false);
+      setLastScannedQR(''); // エラー時もリセット
     }
   };
 
