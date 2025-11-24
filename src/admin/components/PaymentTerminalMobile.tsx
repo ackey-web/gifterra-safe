@@ -596,7 +596,7 @@ export function PaymentTerminalMobile() {
         return;
       }
 
-      // 通常の請求書QR生成
+      // 通常の決済QR生成
       const paymentData = encodeX402({
         to: walletValidation.checksumAddress!,
         token: tokenValidation.checksumAddress!,
@@ -1205,7 +1205,7 @@ export function PaymentTerminalMobile() {
                     touchAction: 'manipulation',
                   }}
                 >
-                  {useGasless ? '⚡ ガスレスQR生成' : '📄 請求書QR生成'}
+                  {useGasless ? '⚡ ガスレスQR生成' : '📄 決済QR生成'}
                 </button>
 
               </div>

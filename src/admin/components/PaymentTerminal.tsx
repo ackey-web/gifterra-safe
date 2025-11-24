@@ -573,7 +573,7 @@ export function PaymentTerminal() {
         return;
       }
 
-      // 通常の請求書QR生成（X402）
+      // 通常の決済QR生成（X402）
       const paymentData = encodeX402({
         to: walletValidation.checksumAddress!,
         token: tokenValidation.checksumAddress!,
@@ -1366,7 +1366,7 @@ export function PaymentTerminal() {
                     e.currentTarget.style.boxShadow = '0 4px 15px rgba(34, 197, 94, 0.3)';
                   }}
                 >
-                  📄 請求書QR生成
+                  📄 決済QR生成
                 </button>
 
               </div>
