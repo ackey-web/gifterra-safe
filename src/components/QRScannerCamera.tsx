@@ -23,6 +23,8 @@ export function QRScannerCamera({ onScan, onClose, placeholder = 'QRコードを
   const isMounted = useRef(true);
   const isStoppingRef = useRef(false); // 停止処理中フラグ
   const debugLogsRef = useRef<string[]>([]); // 最新のログ配列を保持
+  const lastProcessedQR = useRef<string>(''); // 最後に処理したQRコード
+  const lastProcessedTime = useRef<number>(0); // 最後に処理した時刻
 
   // デバッグログを追加する関数
   const addDebugLog = (message: string) => {
@@ -119,10 +121,23 @@ export function QRScannerCamera({ onScan, onClose, placeholder = 'QRコードを
                   return; // ログも出さずに即座にreturn
                 }
 
+                const decodedText = result.getText();
+                const now = Date.now();
+
+                // 同じQRコードを1秒以内に処理しない（デバウンス）
+                if (
+                  lastProcessedQR.current === decodedText &&
+                  now - lastProcessedTime.current < 1000
+                ) {
+                  addDebugLog('⏭️ デバウンス: 同じQRを1秒以内に検出、スキップ');
+                  return;
+                }
+
                 // 即座にフラグを立てる
                 isStoppingRef.current = true;
+                lastProcessedQR.current = decodedText;
+                lastProcessedTime.current = now;
 
-                const decodedText = result.getText();
                 addDebugLog(`📸 QRコード読み取り成功: ${decodedText.substring(0, 50)}...`);
 
                 if (isMounted.current) {
