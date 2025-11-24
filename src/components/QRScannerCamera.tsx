@@ -114,17 +114,18 @@ export function QRScannerCamera({ onScan, onClose, placeholder = 'QRコードを
             videoRef.current,
             (result, error) => {
               if (result) {
+                // 二重呼び出し防止 - 最初にチェック
+                if (isStoppingRef.current) {
+                  return; // ログも出さずに即座にreturn
+                }
+
+                // 即座にフラグを立てる
+                isStoppingRef.current = true;
+
                 const decodedText = result.getText();
                 addDebugLog(`📸 QRコード読み取り成功: ${decodedText.substring(0, 50)}...`);
 
-                // 二重呼び出し防止
-                if (isStoppingRef.current) {
-                  addDebugLog('⏭️ 停止処理中のためスキップ');
-                  return;
-                }
-
                 if (isMounted.current) {
-                  isStoppingRef.current = true;
 
                   // バリデーション処理
                   const validation = validateAndProcessScan(decodedText);
