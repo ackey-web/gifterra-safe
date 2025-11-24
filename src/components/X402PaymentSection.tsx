@@ -96,7 +96,8 @@ function saveConsentRecord(walletAddress: string): ConsentRecord {
 export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps) {
   const thirdwebAddress = useAddress();
   const thirdwebSigner = useSigner();
-  const { user, getEthersProvider, wallets, sendTransaction, ready } = usePrivy();
+  const privyContext = usePrivy() as any; // 型定義が古いため any で回避
+  const { user, getEthersProvider, wallets, sendTransaction, ready } = privyContext;
 
   // Privyの埋め込みウォレットアドレスを正しく取得
   // Privyの新しいバージョンでは user.wallet に直接格納されている
@@ -295,6 +296,21 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
       hasSigner: !!signer,
     });
 
+    // 🔍 診断: window.ethereumの存在確認
+    console.log('🔍 window.ethereum診断:', {
+      exists: typeof window !== 'undefined' && !!window.ethereum,
+      isMetaMask: typeof window !== 'undefined' && window.ethereum?.isMetaMask,
+      selectedAddress: typeof window !== 'undefined' && window.ethereum?.selectedAddress,
+      chainId: typeof window !== 'undefined' && window.ethereum?.chainId,
+    });
+
+    // 🔍 診断: Privy walletsの詳細
+    console.log('🔍 Privy wallets診断:', {
+      walletsExists: !!wallets,
+      walletsCount: wallets?.length || 0,
+      wallets: wallets,
+    });
+
     if (!paymentData || !walletAddress) {
       console.error('❌ paymentDataまたはwalletAddressが未設定');
       setMessage({ type: 'error', text: 'ウォレットを接続してください' });
@@ -354,7 +370,18 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
             }
             console.log('🟣 Privy walletから取得したChainID:', privyWalletChainId, '(type:', targetWallet.walletClientType, ')');
           } else if (targetWallet) {
-            console.warn('⚠️ ウォレットは見つかったが chainId が未設定:', targetWallet);
+            console.warn('⚠️ ウォレットは見つかったが chainId が未設定 - providerから取得を試みる');
+
+            // chainIdプロパティがない場合、providerから直接取得
+            try {
+              const walletProvider = await targetWallet.getEthersProvider();
+              const web3Provider = new ethers.providers.Web3Provider(walletProvider as any);
+              const network = await web3Provider.getNetwork();
+              privyWalletChainId = network.chainId;
+              console.log('🟣 Privy wallet providerから取得したChainID:', privyWalletChainId);
+            } catch (providerError: any) {
+              console.error('❌ Privy wallet provider ChainID取得エラー:', providerError.message);
+            }
           } else {
             console.warn('⚠️ 有効なウォレットが見つからない');
           }
@@ -440,10 +467,6 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
         const chainValidation = validateChainId(currentChainId, 137);
 
         if (!chainValidation.valid) {
-          setMessage({
-            type: 'error',
-            text: `ネットワークをPolygon Mainnetに切り替えてください。\n現在: ${chainValidation.chainName} (ChainID: ${currentChainId})\n取得元: ${chainIdSource}\n\nデバッグ:\nprivy.wallets: ${privyWalletChainId ?? 'null'}\nwindow.ethereum: ${windowChainId ?? 'null'}\nsigner.provider: ${signerChainId ?? 'null'}`
-          });
           console.error('🔴 接続中のChainID検証失敗:', {
             error: chainValidation.error,
             currentChainId,
@@ -452,8 +475,48 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
             windowChainId,
             signerChainId,
           });
-          setIsProcessing(false);
-          return;
+
+          // 自動的にPolygon Mainnetへの切り替えを試みる
+          console.log('🔄 Polygon Mainnet (137) への自動切り替えを試みます...');
+
+          try {
+            // まずwindow.ethereumが利用可能か確認
+            if (typeof window !== 'undefined' && window.ethereum) {
+              console.log('📱 window.ethereum.request で wallet_switchEthereumChain を呼び出し');
+
+              await window.ethereum.request({
+                method: 'wallet_switchEthereumChain',
+                params: [{ chainId: '0x89' }], // Polygon Mainnet = 0x89 (137)
+              });
+
+              console.log('✅ ネットワーク切り替え成功 - 処理を続行します');
+              // 切り替え成功したら処理を続行（returnしない）
+            } else if (wallets && wallets.length > 0) {
+              // window.ethereumがない場合、Privy wallet経由で切り替え
+              console.log('📱 Privy wallet経由で switchChain を試みます');
+
+              const targetWallet = wallets.find((w: any) => w.walletClientType !== 'privy') || wallets[0];
+
+              if (targetWallet && typeof targetWallet.switchChain === 'function') {
+                await targetWallet.switchChain(137);
+                console.log('✅ Privy wallet経由でネットワーク切り替え成功');
+              } else {
+                throw new Error('switchChain メソッドが利用できません');
+              }
+            } else {
+              throw new Error('ネットワーク切り替え手段がありません');
+            }
+          } catch (switchError: any) {
+            console.error('❌ ネットワーク自動切り替え失敗:', switchError);
+
+            // 手動切り替えのメッセージを表示
+            setMessage({
+              type: 'error',
+              text: `ネットワークをPolygon Mainnetに切り替えてください。\n\n現在: ${chainValidation.chainName} (ChainID: ${currentChainId})\n取得元: ${chainIdSource}\n\nMetaMaskアプリで手動で切り替えてから再試行してください。\n\nデバッグ:\nprivy.wallets: ${privyWalletChainId ?? 'null'}\nwindow.ethereum: ${windowChainId ?? 'null'}\nsigner.provider: ${signerChainId ?? 'null'}`
+            });
+            setIsProcessing(false);
+            return;
+          }
         }
 
         console.log('✅ 接続中のChainID検証成功:', {
