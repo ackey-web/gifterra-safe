@@ -105,12 +105,12 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
   const walletAddress = privyEmbeddedWalletAddress || thirdwebAddress || '';
 
 
-  // signerの取得: Privyの埋め込みウォレットを使用している場合はPrivyのsignerを使用
+  // signerの取得
+  // MetaMask接続時は直接window.ethereumを使用（Privyのリダイレクト回避）
   const [privySigner, setPrivySigner] = useState<ethers.Signer | null>(null);
 
   useEffect(() => {
     const getSigner = async () => {
-      // 送金セクションと同じ方法でsignerを取得
       if (!wallets || wallets.length === 0) {
         setPrivySigner(null);
         return;
@@ -118,18 +118,35 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
 
       try {
         const wallet = wallets[0];
+        console.log('🔍 [請求QR] ウォレット情報:', {
+          walletType: wallet.walletClientType,
+          connectorType: wallet.connectorType,
+        });
+
+        // MetaMask接続の場合は直接window.ethereumを使用
+        if (wallet.walletClientType === 'metamask' && typeof window !== 'undefined' && window.ethereum) {
+          console.log('✅ [請求QR] MetaMask検出 - 直接window.ethereumを使用');
+          const directProvider = new ethers.providers.Web3Provider(window.ethereum as any, 'any');
+          const directSigner = directProvider.getSigner();
+          setPrivySigner(directSigner);
+          console.log('✅ [請求QR] MetaMask直接接続成功');
+          return;
+        }
+
+        // Privyウォレットなど他のウォレットの場合は通常通り
+        console.log('✅ [請求QR] Privy経由でウォレット接続');
         const provider = await wallet.getEthereumProvider();
-        const ethersProvider = new ethers.providers.Web3Provider(provider, 'any'); // 'any' が重要
+        const ethersProvider = new ethers.providers.Web3Provider(provider, 'any');
         const ethersSigner = ethersProvider.getSigner();
         setPrivySigner(ethersSigner);
-        console.log('✅ Signer取得成功（送金セクション方式）');
+        console.log('✅ [請求QR] Signer取得成功');
       } catch (error: any) {
-        console.error('Failed to setup signer:', error);
+        console.error('[請求QR] Failed to setup signer:', error);
         setPrivySigner(null);
       }
     };
 
-    // 送金セクションと同じ: authenticatedの場合のみsigner取得
+    // authenticatedの場合のみsigner取得
     if (authenticated) {
       getSigner();
     }

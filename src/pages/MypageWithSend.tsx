@@ -106,7 +106,8 @@ export function MypageWithSend() {
   const [walletQRData, setWalletQRData] = useState<WalletQRData | null>(null);
   const [qrDebugLogs, setQrDebugLogs] = useState<string[]>([]);
 
-  // Privyウォレットからsignerを取得
+  // ウォレットからsignerを取得
+  // MetaMask接続時は直接window.ethereumを使用（Privyのリダイレクト回避）
   useEffect(() => {
     async function setupSigner() {
       if (!wallets || wallets.length === 0) {
@@ -117,6 +118,26 @@ export function MypageWithSend() {
 
       try {
         const wallet = wallets[0];
+        console.log('🔍 ウォレット情報:', {
+          walletType: wallet.walletClientType,
+          connectorType: wallet.connectorType,
+        });
+
+        // MetaMask接続の場合は直接window.ethereumを使用
+        if (wallet.walletClientType === 'metamask' && typeof window !== 'undefined' && window.ethereum) {
+          console.log('✅ MetaMask検出 - 直接window.ethereumを使用');
+          const directProvider = new ethers.providers.Web3Provider(window.ethereum as any, 'any');
+          const directSigner = directProvider.getSigner();
+          const addr = await directSigner.getAddress();
+
+          setSigner(directSigner);
+          setAddress(addr);
+          console.log('✅ MetaMask直接接続成功:', addr);
+          return;
+        }
+
+        // Privyウォレットなど他のウォレットの場合は通常通り
+        console.log('✅ Privy経由でウォレット接続');
         const provider = await wallet.getEthereumProvider();
         const ethersProvider = new ethers.providers.Web3Provider(provider, 'any');
         const ethersSigner = ethersProvider.getSigner();
