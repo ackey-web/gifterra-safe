@@ -426,26 +426,61 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
         console.warn('⚠️ Privy wallets が空またはnull');
       }
 
-      // 2. window.ethereumから取得
+      // 2. window.ethereumから取得（最優先）
       if (typeof window !== 'undefined' && window.ethereum) {
+        addLog(`📱 window.ethereum検出: ${window.ethereum.isMetaMask ? 'MetaMask' : '不明'}`);
+
         // MetaMask接続を確認・リクエスト
         try {
           const accounts = await window.ethereum.request({ method: 'eth_accounts' });
           console.log('🔍 現在の接続アカウント:', accounts);
+          addLog(`🔍 接続アカウント数: ${accounts?.length || 0}`);
 
           // アカウントが接続されていない場合、接続をリクエスト
           if (!accounts || accounts.length === 0) {
             console.log('⚠️ MetaMaskが接続されていません - 接続リクエスト送信');
+            addLog('⚠️ MetaMask未接続 - 接続リクエスト中...');
+            setQrDebugLogs(logs);
             setMessage({ type: 'info', text: 'MetaMaskアプリで接続を許可してください...' });
 
             const requestedAccounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
             console.log('✅ MetaMask接続成功:', requestedAccounts);
+            addLog(`✅ MetaMask接続成功: ${requestedAccounts?.length}件`);
 
             // 2秒待って接続完了を確認
             await new Promise(resolve => setTimeout(resolve, 2000));
           }
+
+          // eth_chainIdメソッドで直接取得（より確実）
+          try {
+            const chainIdHexFromMethod = await window.ethereum.request({ method: 'eth_chainId' });
+            console.log('🔍 eth_chainId メソッドの結果:', chainIdHexFromMethod);
+            addLog(`🔍 eth_chainId: ${chainIdHexFromMethod}`);
+
+            if (chainIdHexFromMethod) {
+              windowChainId = parseInt(chainIdHexFromMethod, 16);
+              addLog(`✅ window.ethereumからChainID取得成功: ${windowChainId}`);
+              console.log('📱 window.ethereumから取得したChainID:', windowChainId, `(${chainIdHexFromMethod})`);
+            }
+          } catch (chainIdError: any) {
+            console.error('❌ eth_chainId取得エラー:', chainIdError);
+            addLog(`❌ eth_chainId取得失敗: ${chainIdError.message}`);
+
+            // フォールバック: プロパティから直接取得
+            const chainIdHex = window.ethereum.chainId;
+            console.log('🔍 window.ethereum.chainId (プロパティ):', chainIdHex);
+            addLog(`🔍 chainIdプロパティ: ${chainIdHex || 'null'}`);
+
+            if (chainIdHex) {
+              windowChainId = parseInt(chainIdHex, 16);
+              addLog(`✅ プロパティからChainID取得: ${windowChainId}`);
+              console.log('📱 window.ethereumプロパティから取得したChainID:', windowChainId, `(${chainIdHex})`);
+            }
+          }
         } catch (connectError: any) {
           console.error('❌ MetaMask接続エラー:', connectError.message);
+          addLog(`❌ MetaMask接続エラー: ${connectError.message}`);
+          setQrDebugLogs(logs);
           setMessage({
             type: 'error',
             text: `MetaMask接続エラー: ${connectError.message}\n\nMetaMaskブラウザを使用していますか？`
@@ -453,17 +488,9 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
           setIsProcessing(false);
           return;
         }
-
-        const chainIdHex = window.ethereum.chainId;
-        console.log('🔍 window.ethereum.chainId (生値):', chainIdHex);
-        console.log('🔍 window.ethereum.isMetaMask:', window.ethereum.isMetaMask);
-
-        if (chainIdHex) {
-          windowChainId = parseInt(chainIdHex, 16);
-          console.log('📱 window.ethereumから取得したChainID:', windowChainId, `(${chainIdHex})`);
-        }
       } else {
         console.warn('⚠️ window.ethereum が存在しません - MetaMaskブラウザを使用してください');
+        addLog('⚠️ window.ethereum不在');
       }
 
       // 3. signer.providerから取得
@@ -476,13 +503,14 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
         }
       }
 
-      // 優先順位: Privy wallet > window.ethereum > signer.provider
-      if (privyWalletChainId !== null) {
-        currentChainId = privyWalletChainId;
-        chainIdSource = 'privy.wallets';
-      } else if (windowChainId !== null) {
+      // 優先順位: window.ethereum > Privy wallet > signer.provider
+      // MetaMaskブラウザでは window.ethereum が最も信頼できる
+      if (windowChainId !== null) {
         currentChainId = windowChainId;
         chainIdSource = 'window.ethereum';
+      } else if (privyWalletChainId !== null) {
+        currentChainId = privyWalletChainId;
+        chainIdSource = 'privy.wallets';
       } else if (signerChainId !== null) {
         currentChainId = signerChainId;
         chainIdSource = 'signer.provider';
