@@ -182,7 +182,13 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
 
   // QRコードスキャン処理
   const handleScan = async (data: string, debugLogs?: string[]) => {
-    // デバッグログを保存
+    // デバッグログを保存＋追加用の関数
+    const logs: string[] = debugLogs ? [...debugLogs] : [];
+    const addLog = (log: string) => {
+      logs.push(log);
+      console.log(log);
+    };
+
     console.log('📊 X402PaymentSection handleScan - debugLogs受信:', debugLogs?.length || 0, '件');
     if (debugLogs) {
       setQrDebugLogs(debugLogs);
@@ -192,7 +198,23 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
     }
 
     try {
+      addLog(`🔍 QRコード生データ (長さ: ${data.length}文字)`);
+      addLog(`📄 データ内容: ${data.substring(0, 100)}...`);
+
       const decoded = decodeX402(data);
+      addLog(`✅ デコード成功`);
+      addLog(`  to: ${decoded.to}`);
+      addLog(`  token: ${decoded.token}`);
+      addLog(`  amount: ${decoded.amount}`);
+      addLog(`  chainId: ${decoded.chainId} (型: ${typeof decoded.chainId})`);
+      addLog(`  message: ${decoded.message || 'なし'}`);
+
+      setQrDebugLogs(logs); // ここで更新
+
+      console.log('🔍 QRコード生データ:', data);
+      const _ = decoded; // 既に取得済み
+      console.log('🔍 デコード結果:', decoded);
+      console.log('🔍 decoded.chainId:', decoded.chainId, 'typeof:', typeof decoded.chainId);
 
       // EIP-55アドレス検証
       const recipientValidation = validateAddress(decoded.to);
@@ -217,11 +239,16 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
       // ChainID検証
       const chainValidation = validateChainId(decoded.chainId, 137);
       if (!chainValidation.valid) {
+        addLog(`🔴 QR内ChainID検証失敗: ${chainValidation.error}`);
+        addLog(`  decoded.chainId = ${decoded.chainId}`);
+        addLog(`  期待値 = 137 (Polygon Mainnet)`);
+        setQrDebugLogs(logs);
         setMessage({ type: 'error', text: chainValidation.error || 'チェーンIDが一致しません' });
         console.error('🔴 ChainID検証失敗:', chainValidation.error);
         return;
       }
 
+      addLog(`✅ QR内ChainID検証成功: ${decoded.chainId} (${chainValidation.chainName})`);
       console.log('✅ ChainID検証成功:', {
         chainId: decoded.chainId,
         chainName: chainValidation.chainName,
@@ -287,6 +314,13 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
 
   // 支払い実行
   const handlePayment = async () => {
+    // デバッグログ管理
+    const logs = [...qrDebugLogs];
+    const addLog = (log: string) => {
+      logs.push(log);
+      console.log(log);
+    };
+
     console.log('🚀 handlePayment呼び出し開始');
     console.log('📊 初期状態:', {
       hasPaymentData: !!paymentData,
@@ -454,6 +488,13 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
         chainIdSource = 'signer.provider';
       }
 
+      addLog(`🔍 現在の接続ChainID取得結果:`);
+      addLog(`  privy.wallets: ${privyWalletChainId ?? 'null'}`);
+      addLog(`  window.ethereum: ${windowChainId ?? 'null'}`);
+      addLog(`  signer.provider: ${signerChainId ?? 'null'}`);
+      addLog(`  ➡️ 採用: ${currentChainId ?? 'null'} (from ${chainIdSource})`);
+      setQrDebugLogs(logs);
+
       console.log('🔍 ChainID取得結果:', {
         privyWalletChainId,
         windowChainId,
@@ -467,6 +508,12 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
         const chainValidation = validateChainId(currentChainId, 137);
 
         if (!chainValidation.valid) {
+          addLog(`🔴 接続中ChainID検証失敗!`);
+          addLog(`  現在の接続: ${chainValidation.chainName} (ChainID: ${currentChainId})`);
+          addLog(`  期待値: Polygon Mainnet (ChainID: 137)`);
+          addLog(`  取得元: ${chainIdSource}`);
+          setQrDebugLogs(logs);
+
           console.error('🔴 接続中のChainID検証失敗:', {
             error: chainValidation.error,
             currentChainId,
