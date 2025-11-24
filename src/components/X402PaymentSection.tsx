@@ -757,8 +757,9 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
         await new Promise(resolve => setTimeout(resolve, 3000));
       }
 
-      // Privy埋め込みウォレットの場合はPrivy sendTransactionを使用
-      if (privyEmbeddedWalletAddress && sendTransaction) {
+      // MetaMask Mobile対応: Privy sendTransactionを優先使用
+      // ethers.jsのsignerは「このページは存在しません」エラーを引き起こす
+      if (sendTransaction) {
         const txRequest = {
           to: paymentData.token,
           data: transferData,
@@ -767,9 +768,16 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
         };
 
         console.log('🟣 Privy sendTransactionを使用:', txRequest);
+        addLog(`📤 Privy sendTransaction使用`);
+        addLog(`  to: ${paymentData.token}`);
+        addLog(`  chainId: 137`);
+        setQrDebugLogs(logs);
+
         const result = await sendTransaction(txRequest);
         txHash = result.hash;
         console.log('✅ Privy トランザクション成功:', txHash);
+        addLog(`✅ トランザクション成功: ${txHash}`);
+        setQrDebugLogs(logs);
       } else if (signer) {
         // 通常のsigner (MetaMask等)
         console.log('🟠 通常のsigner (MetaMask等)を使用');
