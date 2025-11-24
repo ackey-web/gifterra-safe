@@ -201,6 +201,19 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
       addLog(`🔍 QRコード生データ (長さ: ${data.length}文字)`);
       addLog(`📄 データ内容: ${data.substring(0, 100)}...`);
 
+      // ウォレットQRかどうかを判定
+      try {
+        const parsed = JSON.parse(data);
+        if (parsed.type === 'wallet') {
+          addLog(`⚠️ ウォレットQRを検出 - このコンポーネントは請求QR専用です`);
+          setQrDebugLogs(logs);
+          setMessage({ type: 'error', text: 'これはウォレットQRです。請求QRをスキャンしてください。' });
+          return;
+        }
+      } catch (e) {
+        // JSON parseエラーは無視（通常のアドレスかX402形式）
+      }
+
       const decoded = decodeX402(data);
       addLog(`✅ デコード成功`);
       addLog(`  to: ${decoded.to}`);
@@ -764,7 +777,14 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
               to: paymentData.token,
               data: transferData,
               value: '0x0',
+              chainId: '0x89', // Polygon Mainnet = 137 (0x89)
             };
+
+            addLog(`📤 MetaMask承認リクエスト送信中...`);
+            addLog(`  to: ${paymentData.token}`);
+            addLog(`  from: ${walletAddress}`);
+            addLog(`  chainId: 0x89 (137 - Polygon Mainnet)`);
+            setQrDebugLogs(logs);
 
             console.log('📤 eth_sendTransaction 呼び出し直前');
             console.log('📤 パラメータ:', {
@@ -772,6 +792,7 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
               to: txParams.to,
               dataLength: txParams.data.length,
               value: txParams.value,
+              chainId: txParams.chainId,
             });
             console.log('📤 window.ethereum.request() を呼び出します...');
 
