@@ -772,87 +772,30 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
         // 通常のsigner (MetaMask等)
         console.log('🟠 通常のsigner (MetaMask等)を使用');
 
-        // モバイルMetaMask対応: window.ethereumを直接使用する方法を優先
-        if (typeof window !== 'undefined' && window.ethereum && window.ethereum.isMetaMask) {
-          console.log('📱 モバイルMetaMask検出 - 直接リクエスト方式を使用');
-          setMessage({ type: 'info', text: 'MetaMaskアプリで承認してください...' });
+        // ethers.jsのcontract.transfer()を使用（送金セクションと同じ方法）
+        console.log('🔵 ethers.js contract.transfer()を使用');
+        addLog(`📤 MetaMask承認リクエスト送信中...`);
+        addLog(`  method: contract.transfer()`);
+        addLog(`  to: ${paymentData.to}`);
+        addLog(`  amount: ${paymentData.amount}`);
+        setQrDebugLogs(logs);
 
-          try {
-            const txParams = {
-              from: walletAddress,
-              to: paymentData.token,
-              data: transferData,
-              value: '0x0',
-              chainId: '0x89', // Polygon Mainnet = 137 (0x89)
-              gas: '0x186A0', // 100,000 ガスリミット（ERC20 transferは十分）
-            };
+        const tokenContractWithSigner = new ethers.Contract(paymentData.token, ERC20_ABI, signer);
 
-            addLog(`📤 MetaMask承認リクエスト送信中...`);
-            addLog(`  to: ${paymentData.token}`);
-            addLog(`  from: ${walletAddress}`);
-            addLog(`  chainId: 0x89 (137 - Polygon Mainnet)`);
-            addLog(`  gas: 100000 (手動指定でガス見積もりスキップ)`);
-            setQrDebugLogs(logs);
+        setMessage({ type: 'info', text: 'MetaMaskで承認してください...' });
+        console.log('⏳ ウォレット承認待ち...');
 
-            console.log('📤 eth_sendTransaction 呼び出し直前');
-            console.log('📤 パラメータ:', {
-              from: txParams.from,
-              to: txParams.to,
-              dataLength: txParams.data.length,
-              value: txParams.value,
-              chainId: txParams.chainId,
-              gas: txParams.gas,
-            });
-            console.log('📤 window.ethereum.request() を呼び出します...');
+        const tx = await tokenContractWithSigner.transfer(paymentData.to, paymentData.amount);
+        txHash = tx.hash;
+        console.log('✅ トランザクション送信成功:', txHash);
+        addLog(`✅ トランザクション送信: ${txHash}`);
+        setQrDebugLogs(logs);
 
-            // eth_sendTransaction を直接呼び出し
-            const txHashResult = await window.ethereum.request({
-              method: 'eth_sendTransaction',
-              params: [txParams],
-            });
-
-            console.log('📤 window.ethereum.request() から返却:', txHashResult);
-            txHash = txHashResult as string;
-            console.log('✅ MetaMask トランザクション送信成功:', txHash);
-
-            setMessage({ type: 'info', text: 'トランザクション処理中...' });
-
-            // トランザクション完了を待つ
-            const provider = new ethers.providers.Web3Provider(window.ethereum);
-            const receipt = await provider.waitForTransaction(txHash);
-            console.log('✅ トランザクション完了:', receipt);
-          } catch (mmError: any) {
-            console.error('❌ MetaMask直接呼び出しエラー:', mmError);
-            console.error('エラー詳細:', {
-              code: mmError.code,
-              message: mmError.message,
-              data: mmError.data,
-            });
-
-            // Androidでも見れるようにエラー情報を画面に表示
-            setMessage({
-              type: 'error',
-              text: `MetaMaskエラー: ${mmError.message || mmError.code || '不明なエラー'}`
-            });
-
-            throw mmError;
-          }
-        } else {
-          // 通常のethers.js経由
-          console.log('🔵 通常のethers.js signerを使用');
-          const tokenContractWithSigner = new ethers.Contract(paymentData.token, ERC20_ABI, signer);
-
-          setMessage({ type: 'info', text: 'ウォレットで承認してください...' });
-          console.log('⏳ ウォレット承認待ち...');
-
-          const tx = await tokenContractWithSigner.transfer(paymentData.to, paymentData.amount);
-          txHash = tx.hash;
-          console.log('✅ トランザクション送信成功:', txHash);
-
-          setMessage({ type: 'info', text: 'トランザクション処理中...' });
-          await tx.wait();
-          console.log('✅ トランザクション完了:', txHash);
-        }
+        setMessage({ type: 'info', text: 'トランザクション処理中...' });
+        await tx.wait();
+        console.log('✅ トランザクション完了:', txHash);
+        addLog(`✅ トランザクション完了`);
+        setQrDebugLogs(logs);
       } else {
         throw new Error('署名方法が利用できません');
       }
