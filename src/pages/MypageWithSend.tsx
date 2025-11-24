@@ -210,6 +210,13 @@ export function MypageWithSend() {
       // 金額をWei単位に変換（18 decimals）
       const amountWei = ethers.utils.parseUnits(sendAmount, 18);
 
+      console.log('🚀 [送金セクション] contract.transfer()を呼び出します:', {
+        token: JPYC_TOKEN.ADDRESS,
+        to: sendTo,
+        amount: amountWei.toString(),
+        signerAddress: await signer.getAddress(),
+      });
+
       // 送金トランザクション
       const tx = await jpycContract.transfer(sendTo, amountWei);
 

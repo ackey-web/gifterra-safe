@@ -97,7 +97,7 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
   const thirdwebAddress = useAddress();
   const thirdwebSigner = useSigner();
   const privyContext = usePrivy() as any; // 型定義が古いため any で回避
-  const { user, getEthersProvider, wallets, sendTransaction, ready } = privyContext;
+  const { user, authenticated, wallets } = privyContext;
 
   // Privyの埋め込みウォレットアドレスを正しく取得
   // Privyの新しいバージョンでは user.wallet に直接格納されている
@@ -129,8 +129,11 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
       }
     };
 
-    getSigner();
-  }, [wallets]);
+    // 送金セクションと同じ: authenticatedの場合のみsigner取得
+    if (authenticated) {
+      getSigner();
+    }
+  }, [authenticated, wallets]);
 
   // 送金セクションと同じ: privySignerのみ使用
   const signer = privySigner || thirdwebSigner;
@@ -734,6 +737,13 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
       setQrDebugLogs(logs);
 
       const tokenContractWithSigner = new ethers.Contract(paymentData.token, ERC20_ABI, signer);
+
+      console.log('🚀 contract.transfer()を呼び出します:', {
+        token: paymentData.token,
+        to: paymentData.to,
+        amount: paymentData.amount,
+        signerAddress: await signer.getAddress(),
+      });
 
       setMessage({ type: 'info', text: 'MetaMaskで承認してください...' });
       console.log('⏳ ウォレット承認待ち...');
