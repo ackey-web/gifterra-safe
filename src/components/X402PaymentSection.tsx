@@ -111,6 +111,33 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
 
   useEffect(() => {
     const getSigner = async () => {
+      // MetaMaskブラウザを最優先で検出（Privy完全バイパス）
+      if (typeof window !== 'undefined' && window.ethereum) {
+        // MetaMask mobileまたはデスクトップブラウザの検出
+        const isMetaMask = window.ethereum.isMetaMask;
+        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+        if (isMetaMask) {
+          console.log('🔍 [請求QR] MetaMask直接検出:', {
+            isMetaMask,
+            isMobile,
+            selectedAddress: window.ethereum.selectedAddress,
+          });
+
+          try {
+            const directProvider = new ethers.providers.Web3Provider(window.ethereum as any, 'any');
+            const directSigner = directProvider.getSigner();
+            setPrivySigner(directSigner);
+            console.log('✅ [請求QR] MetaMask直接接続成功 - Privyをバイパス');
+            return;
+          } catch (error: any) {
+            console.warn('⚠️ [請求QR] MetaMask直接接続失敗:', error.message);
+            // フォールバックとしてPrivy経由を試行
+          }
+        }
+      }
+
+      // Privyウォレット経由でのフォールバック
       if (!wallets || wallets.length === 0) {
         setPrivySigner(null);
         return;
@@ -118,14 +145,14 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
 
       try {
         const wallet = wallets[0];
-        console.log('🔍 [請求QR] ウォレット情報:', {
+        console.log('🔍 [請求QR] Privyウォレット情報:', {
           walletType: wallet.walletClientType,
           connectorType: wallet.connectorType,
         });
 
-        // MetaMask接続の場合は直接window.ethereumを使用
+        // Privy経由のMetaMask検出（2次チェック）
         if (wallet.walletClientType === 'metamask' && typeof window !== 'undefined' && window.ethereum) {
-          console.log('✅ [請求QR] MetaMask検出 - 直接window.ethereumを使用');
+          console.log('✅ [請求QR] Privy経由でMetaMask検出 - 直接window.ethereumを使用');
           const directProvider = new ethers.providers.Web3Provider(window.ethereum as any, 'any');
           const directSigner = directProvider.getSigner();
           setPrivySigner(directSigner);
@@ -149,6 +176,11 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
     // authenticatedの場合のみsigner取得
     if (authenticated) {
       getSigner();
+    } else {
+      // 未認証でもMetaMaskが利用可能なら設定（MetaMask mobileで重要）
+      if (typeof window !== 'undefined' && window.ethereum?.isMetaMask) {
+        getSigner();
+      }
     }
   }, [authenticated, wallets]);
 

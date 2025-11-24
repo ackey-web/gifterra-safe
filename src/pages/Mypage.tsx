@@ -112,6 +112,23 @@ async function getPrivyEthersSigner(privyWallet: any): Promise<ethers.Signer | n
       return null;
     }
 
+    // MetaMask接続を検出してPrivyをバイパス（モバイル対応の最優先処理）
+    if (privyWallet.walletClientType === 'metamask' && typeof window !== 'undefined' && window.ethereum) {
+      console.log('✅ [Mypage] MetaMask検出 - 直接window.ethereumを使用してPrivyをバイパス');
+
+      try {
+        const directProvider = new ethers.providers.Web3Provider(window.ethereum as any, 'any');
+        const directSigner = directProvider.getSigner();
+        const signerAddress = await directSigner.getAddress();
+
+        console.log('✅ [Mypage] MetaMask直接接続成功:', signerAddress);
+        return directSigner;
+      } catch (error: any) {
+        console.warn('⚠️ [Mypage] MetaMask直接接続失敗:', error.message);
+        // フォールバックとしてPrivy経由を試行
+      }
+    }
+
     // Safeラッパーを経由せず、直接EOAプロバイダーを取得
     const provider = await privyWallet.getEthereumProvider();
 
@@ -1339,6 +1356,25 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
   // Signerを取得し、実際のアドレスを取得
   useEffect(() => {
     const getSigner = async () => {
+      // MetaMaskブラウザを最優先で検出（Privy完全バイパス - モバイル対応）
+      if (typeof window !== 'undefined' && window.ethereum?.isMetaMask) {
+        console.log('🔍 [Mypage getSigner] MetaMask直接検出 - Privyをバイパス');
+
+        try {
+          const directProvider = new ethers.providers.Web3Provider(window.ethereum as any, 'any');
+          const directSigner = directProvider.getSigner();
+          const addr = await directSigner.getAddress();
+
+          setSigner(directSigner);
+          setActualAddress(addr);
+          console.log('✅ [Mypage getSigner] MetaMask直接接続成功:', addr);
+          return;
+        } catch (error: any) {
+          console.warn('⚠️ [Mypage getSigner] MetaMask直接接続失敗:', error.message);
+          // フォールバックとしてPrivy経由を試行
+        }
+      }
+
       // walletsReadyがfalseの場合は待機
       if (!walletsReady) {
         return;
@@ -4337,6 +4373,25 @@ function WalletInfo({ isMobile }: { isMobile: boolean }) {
 
   useEffect(() => {
     const getSigner = async () => {
+      // MetaMaskブラウザを最優先で検出（Privy完全バイパス - モバイル対応）
+      if (typeof window !== 'undefined' && window.ethereum?.isMetaMask) {
+        console.log('🔍 [WalletInfo getSigner] MetaMask直接検出 - Privyをバイパス');
+
+        try {
+          const directProvider = new ethers.providers.Web3Provider(window.ethereum as any, 'any');
+          const directSigner = directProvider.getSigner();
+          const addr = await directSigner.getAddress();
+
+          setSigner(directSigner);
+          setActualAddress(addr);
+          console.log('✅ [WalletInfo getSigner] MetaMask直接接続成功:', addr);
+          return;
+        } catch (error: any) {
+          console.warn('⚠️ [WalletInfo getSigner] MetaMask直接接続失敗:', error.message);
+          // フォールバックとしてPrivy経由を試行
+        }
+      }
+
       // Privyの埋め込みウォレットを最優先
       // user.wallet にはアドレス情報のみ、実際のプロバイダーは wallets 配列から取得
       if (user?.wallet?.address) {
