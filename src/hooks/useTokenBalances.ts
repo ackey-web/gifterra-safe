@@ -4,10 +4,9 @@ import { ethers } from 'ethers';
 import { JPYC_TOKEN, NHT_TOKEN, ERC20_MIN_ABI } from '../contract';
 
 // Polygon Mainnet用の公開RPC（CORS対応）- フォールバック付き
-// レート制限が緩く、CORS制限のない、信頼性の高い順に並べています
+// 実績のある、CORS制限のない、信頼性の高い順に並べています
 const POLYGON_RPC_ENDPOINTS = [
-  'https://polygon.llamarpc.com', // Llama Nodes - CORS対応・高速・安定
-  'https://rpc.ankr.com/polygon', // Ankr - 高速・安定
+  'https://rpc.ankr.com/polygon', // Ankr - CORS対応・高速・実績あり
   'https://polygon-bor-rpc.publicnode.com', // PublicNode - CORS対応
   'https://polygon.drpc.org', // dRPC - CORS対応
   'https://polygon-rpc.com', // 最後のフォールバック（レート制限あり）
