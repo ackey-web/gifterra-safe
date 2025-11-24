@@ -164,7 +164,9 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
     getFallbackSigner();
   }, [privySigner, thirdwebSigner]);
 
-  const signer = privySigner || thirdwebSigner || fallbackSigner;
+  // MetaMask Mobile対応: fallbackSigner（window.ethereum直接）を最優先
+  // PrivySignerは「このページは存在しません」エラーを引き起こす
+  const signer = fallbackSigner || privySigner || thirdwebSigner;
 
   const [showScanner, setShowScanner] = useState(false);
   const [paymentData, setPaymentData] = useState<X402PaymentData | null>(null);
