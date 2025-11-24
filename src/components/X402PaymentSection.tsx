@@ -367,6 +367,32 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
 
       // 2. window.ethereumから取得
       if (typeof window !== 'undefined' && window.ethereum) {
+        // MetaMask接続を確認・リクエスト
+        try {
+          const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+          console.log('🔍 現在の接続アカウント:', accounts);
+
+          // アカウントが接続されていない場合、接続をリクエスト
+          if (!accounts || accounts.length === 0) {
+            console.log('⚠️ MetaMaskが接続されていません - 接続リクエスト送信');
+            setMessage({ type: 'info', text: 'MetaMaskアプリで接続を許可してください...' });
+
+            const requestedAccounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+            console.log('✅ MetaMask接続成功:', requestedAccounts);
+
+            // 2秒待って接続完了を確認
+            await new Promise(resolve => setTimeout(resolve, 2000));
+          }
+        } catch (connectError: any) {
+          console.error('❌ MetaMask接続エラー:', connectError.message);
+          setMessage({
+            type: 'error',
+            text: `MetaMask接続エラー: ${connectError.message}\n\nMetaMaskブラウザを使用していますか？`
+          });
+          setIsProcessing(false);
+          return;
+        }
+
         const chainIdHex = window.ethereum.chainId;
         console.log('🔍 window.ethereum.chainId (生値):', chainIdHex);
         console.log('🔍 window.ethereum.isMetaMask:', window.ethereum.isMetaMask);
@@ -375,6 +401,8 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
           windowChainId = parseInt(chainIdHex, 16);
           console.log('📱 window.ethereumから取得したChainID:', windowChainId, `(${chainIdHex})`);
         }
+      } else {
+        console.warn('⚠️ window.ethereum が存在しません - MetaMaskブラウザを使用してください');
       }
 
       // 3. signer.providerから取得
