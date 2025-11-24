@@ -1808,11 +1808,12 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
           currentUrl: typeof window !== 'undefined' ? window.location.href : 'N/A',
         });
 
-        // iPhone PWA + MetaMask mobile対応
+        // スマホ PWA + MetaMask mobile対応 (iPhone & Android両対応)
         let tx;
         let receipt;
-        if (typeof window !== 'undefined' && window.ethereum?.isMetaMask && /iPhone|iPad|iPod/i.test(navigator.userAgent)) {
-          console.log('🍎 [iPhone PWA 送金] window.ethereum.request経由でトランザクション送信');
+        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+        if (typeof window !== 'undefined' && window.ethereum?.isMetaMask && isMobile) {
+          console.log('📱 [モバイル PWA 送金] window.ethereum.request経由でトランザクション送信');
 
           const signerAddress = await signer.getAddress();
 
@@ -1827,15 +1828,15 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
             }],
           });
 
-          console.log('✅ [iPhone PWA 送金] トランザクションハッシュ:', txHash);
+          console.log('✅ [モバイル PWA 送金] トランザクションハッシュ:', txHash);
 
           // トランザクションレシートを待つ
           const directProvider = new ethers.providers.Web3Provider(window.ethereum as any, 'any');
           tx = await directProvider.getTransaction(txHash);
           receipt = await tx.wait();
         } else {
-          // 通常フロー (Androidやデスクトップ)
-          console.log('💻 [通常送金] signer.sendTransaction経由でトランザクション送信');
+          // 通常フロー (デスクトップのみ)
+          console.log('💻 [デスクトップ送金] signer.sendTransaction経由でトランザクション送信');
           tx = await signer.sendTransaction({
             to: tokenAddress,
             data: transferData,

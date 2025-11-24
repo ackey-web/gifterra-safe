@@ -815,13 +815,14 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
       addLog('📤 トランザクション送信開始...');
       setQrDebugLogs(logs);
 
-      // iPhone PWA + MetaMask mobile対応:
+      // スマホ PWA + MetaMask mobile対応 (iPhone & Android両対応):
       // contract.transfer()の代わりに、populateTransaction + sendTransactionを使用
       // これにより、MetaMaskが正しいreturn URLを認識できる
       let tx;
-      if (typeof window !== 'undefined' && window.ethereum?.isMetaMask && /iPhone|iPad|iPod/i.test(navigator.userAgent)) {
-        console.log('🍎 [iPhone PWA] populateTransaction経由でトランザクション送信');
-        addLog('🍎 iPhone PWA検出 - 特殊フロー使用');
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      if (typeof window !== 'undefined' && window.ethereum?.isMetaMask && isMobile) {
+        console.log('📱 [モバイル PWA] populateTransaction経由でトランザクション送信');
+        addLog('📱 モバイル PWA検出 - 特殊フロー使用');
         setQrDebugLogs(logs);
 
         // トランザクションデータを構築
@@ -843,7 +844,7 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
           }],
         });
 
-        console.log('✅ [iPhone PWA] eth_sendTransaction成功:', txHash);
+        console.log('✅ [モバイル PWA] eth_sendTransaction成功:', txHash);
         addLog(`✅ トランザクションハッシュ: ${txHash}`);
         setQrDebugLogs(logs);
 
@@ -851,8 +852,8 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
         const directProvider = new ethers.providers.Web3Provider(window.ethereum as any, 'any');
         tx = await directProvider.getTransaction(txHash);
       } else {
-        // 通常フロー (Androidやデスクトップ)
-        console.log('📱 通常フロー: contract.transfer()使用');
+        // 通常フロー (デスクトップのみ)
+        console.log('💻 デスクトップフロー: contract.transfer()使用');
         tx = await tokenContractWithSigner.transfer(paymentData.to, paymentData.amount);
       }
 
