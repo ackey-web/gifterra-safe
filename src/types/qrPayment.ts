@@ -3,8 +3,12 @@
 
 /**
  * QRコード決済のタイプ
+ *
+ * - 'invoice': 請求書QR（X402形式、金額固定）
+ * - 'wallet': ウォレットQR（アドレスのみ、金額は手入力）
+ * - 'authorization': ガスレス決済QR（EIP-3009、署名のみ）
  */
-export type QRPaymentType = 'invoice' | 'wallet';
+export type QRPaymentType = 'invoice' | 'wallet' | 'authorization';
 
 /**
  * 請求書QRコード（従来方式）
@@ -35,9 +39,36 @@ export interface WalletQRData {
 }
 
 /**
+ * ガスレス決済QRコード（新規追加）
+ * EIP-3009 transferWithAuthorization を使用
+ *
+ * 特徴:
+ * - ユーザーはオフチェーン署名のみ（ガス代不要）
+ * - 店舗側がtransferWithAuthorizationを実行（店舗がガス代負担）
+ * - JPYCのみ対応
+ */
+export interface AuthorizationQRData {
+  type: 'authorization';
+  /** 店舗アドレス（受取先） */
+  to: string;
+  /** 金額（wei単位） */
+  value: string;
+  /** 有効期限終了（Unix timestamp） */
+  validBefore: number;
+  /** 一意のnonce（32 bytes hex） */
+  nonce: string;
+  /** チェーンID（137 = Polygon Mainnet） */
+  chainId: number;
+  /** 店舗名（オプション） */
+  storeName?: string;
+  /** リクエストID（トラッキング用） */
+  requestId: string;
+}
+
+/**
  * QRコードデータの統合型
  */
-export type QRPaymentData = InvoiceQRData | WalletQRData;
+export type QRPaymentData = InvoiceQRData | WalletQRData | AuthorizationQRData;
 
 /**
  * QRスキャン結果
@@ -45,7 +76,7 @@ export type QRPaymentData = InvoiceQRData | WalletQRData;
 export interface QRScanResult {
   success: boolean;
   type?: QRPaymentType;
-  data?: InvoiceQRData | WalletQRData;
+  data?: InvoiceQRData | WalletQRData | AuthorizationQRData;
   error?: string;
 }
 
@@ -108,6 +139,69 @@ export function parseWalletQR(qrString: string): QRScanResult {
  */
 export function isInvoiceQR(qrString: string): boolean {
   return qrString.startsWith('ethereum:') || qrString.startsWith('x402://');
+}
+
+/**
+ * ガスレス決済QRコードのJSON文字列をパース
+ */
+export function parseAuthorizationQR(qrString: string): QRScanResult {
+  try {
+    console.log('🔍 parseAuthorizationQR 入力:', qrString.substring(0, 100));
+    const parsed = JSON.parse(qrString);
+    console.log('📦 JSON parse成功:', parsed);
+
+    if (parsed.type !== 'authorization') {
+      console.log('❌ typeがauthorizationではない:', parsed.type);
+      return {
+        success: false,
+        error: 'ガスレス決済QRコードではありません',
+      };
+    }
+
+    // 必須フィールドの検証
+    if (!parsed.to || !parsed.value || !parsed.nonce || !parsed.requestId) {
+      console.log('❌ 必須フィールドが不足:', {
+        to: !!parsed.to,
+        value: !!parsed.value,
+        nonce: !!parsed.nonce,
+        requestId: !!parsed.requestId,
+      });
+      return {
+        success: false,
+        error: 'QRコードの形式が不正です',
+      };
+    }
+
+    if (!parsed.chainId || parsed.chainId !== 137) {
+      console.log('❌ chainIdが不正:', parsed.chainId);
+      return {
+        success: false,
+        error: 'サポートされていないチェーンです（Polygon Mainnetのみ対応）',
+      };
+    }
+
+    console.log('✅ ガスレス決済QR parse成功');
+    return {
+      success: true,
+      type: 'authorization',
+      data: {
+        type: 'authorization',
+        to: parsed.to,
+        value: parsed.value,
+        validBefore: parsed.validBefore,
+        nonce: parsed.nonce,
+        chainId: parsed.chainId,
+        storeName: parsed.storeName,
+        requestId: parsed.requestId,
+      },
+    };
+  } catch (error) {
+    console.log('❌ JSON parseエラー:', error);
+    return {
+      success: false,
+      error: 'QRコードの解析に失敗しました',
+    };
+  }
 }
 
 /**
