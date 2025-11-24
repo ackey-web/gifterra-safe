@@ -4,11 +4,13 @@ import { ethers } from 'ethers';
 import { JPYC_TOKEN, NHT_TOKEN, ERC20_MIN_ABI } from '../contract';
 
 // Polygon Mainnet用の公開RPC（CORS対応）- フォールバック付き
+// レート制限が緩く、信頼性の高い順に並べています
 const POLYGON_RPC_ENDPOINTS = [
-  'https://polygon-rpc.com',
-  'https://rpc-mainnet.matic.network',
-  'https://polygon-mainnet.public.blastapi.io',
-  'https://rpc.ankr.com/polygon'
+  'https://rpc.ankr.com/polygon', // Ankr - 高速・安定
+  'https://polygon-mainnet.public.blastapi.io', // BlastAPI - 高速
+  'https://rpc-mainnet.matic.network', // Matic公式
+  'https://polygon-bor-rpc.publicnode.com', // PublicNode
+  'https://polygon-rpc.com', // 最後のフォールバック（レート制限あり）
 ];
 
 export interface TokenBalance {
