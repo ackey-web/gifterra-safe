@@ -100,6 +100,17 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
   const privyEmbeddedWalletAddress = user?.wallet?.address;
   const walletAddress = privyEmbeddedWalletAddress || thirdwebAddress || '';
 
+  // Debug logging for wallet address
+  useEffect(() => {
+    console.log('🔍 [Wallet] Wallet addresses:', {
+      privyEmbeddedWalletAddress,
+      thirdwebAddress,
+      finalWalletAddress: walletAddress,
+      authenticated,
+      hasUser: !!user,
+      walletsCount: wallets?.length || 0,
+    });
+  }, [walletAddress, privyEmbeddedWalletAddress, thirdwebAddress, authenticated, user, wallets]);
 
   // signerの取得
   // MetaMask接続時は直接window.ethereumを使用（Privyのリダイレクト回避）
@@ -239,6 +250,13 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
       let userBalance = '0';
 
       try {
+        console.log('🔍 [Balance] Retrieving balance for wallet:', walletAddress);
+        console.log('🔍 [Balance] Token address:', decoded.token);
+
+        if (!walletAddress) {
+          console.error('❌ [Balance] walletAddress is empty!');
+          throw new Error('ウォレットアドレスが取得できません');
+        }
 
         const readOnlyProvider = new ethers.providers.JsonRpcProvider('https://rpc.ankr.com/polygon');
         const tokenContract = new ethers.Contract(decoded.token, ERC20_ABI, readOnlyProvider);
@@ -247,8 +265,10 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
         const decimals = await tokenContract.decimals();
 
         userBalance = ethers.utils.formatUnits(balance, decimals);
+        console.log('✅ [Balance] Retrieved balance:', userBalance, 'JPYC');
       } catch (balanceError: any) {
-        console.error('残高取得エラー:', balanceError.message);
+        console.error('❌ [Balance] 残高取得エラー:', balanceError.message);
+        console.error('❌ [Balance] Error details:', balanceError);
         userBalance = '0';
       }
 
