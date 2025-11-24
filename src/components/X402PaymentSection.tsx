@@ -110,63 +110,30 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
 
   useEffect(() => {
     const getSigner = async () => {
-      // Privy walletsから直接signerを取得（推奨方法）
-      if (wallets && wallets.length > 0 && privyEmbeddedWalletAddress) {
-        try {
-          const embeddedWallet = wallets[0];
-          const provider = await embeddedWallet.getEthersProvider();
-          const web3Provider = new ethers.providers.Web3Provider(provider as any);
-          const s = web3Provider.getSigner();
-          setPrivySigner(s);
-          return;
-        } catch (e: any) {
-          console.error('Privy signer取得エラー:', e.message);
-        }
-      }
-
-      // フォールバック: 従来のgetEthersProvider方式
-      if (getEthersProvider && privyEmbeddedWalletAddress) {
-        try {
-          const provider = await getEthersProvider();
-          if (provider) {
-            const web3Provider = new ethers.providers.Web3Provider(provider as any);
-            const s = web3Provider.getSigner();
-            setPrivySigner(s);
-          }
-        } catch (e: any) {
-          console.error('getEthersProvider signer取得エラー:', e.message);
-        }
-      }
-    };
-    getSigner();
-  }, [privyEmbeddedWalletAddress, getEthersProvider, user, wallets]);
-
-  // signerの優先順位: Privy signer > Thirdweb signer > window.ethereum
-  const [fallbackSigner, setFallbackSigner] = useState<ethers.Signer | null>(null);
-
-  // フォールバック: window.ethereumから直接signerを取得
-  useEffect(() => {
-    const getFallbackSigner = async () => {
-      if (privySigner || thirdwebSigner) {
+      // 送金セクションと同じ方法でsignerを取得
+      if (!wallets || wallets.length === 0) {
+        setPrivySigner(null);
         return;
       }
 
-      if (typeof window !== 'undefined' && window.ethereum) {
-        try {
-          const provider = new ethers.providers.Web3Provider(window.ethereum as any);
-          const s = provider.getSigner();
-          setFallbackSigner(s);
-        } catch (e: any) {
-          console.error('window.ethereum signer取得エラー:', e.message);
-        }
+      try {
+        const wallet = wallets[0];
+        const provider = await wallet.getEthereumProvider();
+        const ethersProvider = new ethers.providers.Web3Provider(provider, 'any'); // 'any' が重要
+        const ethersSigner = ethersProvider.getSigner();
+        setPrivySigner(ethersSigner);
+        console.log('✅ Signer取得成功（送金セクション方式）');
+      } catch (error: any) {
+        console.error('Failed to setup signer:', error);
+        setPrivySigner(null);
       }
     };
-    getFallbackSigner();
-  }, [privySigner, thirdwebSigner]);
 
-  // MetaMask Mobile対応: fallbackSigner（window.ethereum直接）を最優先
-  // PrivySignerは「このページは存在しません」エラーを引き起こす
-  const signer = fallbackSigner || privySigner || thirdwebSigner;
+    getSigner();
+  }, [wallets]);
+
+  // 送金セクションと同じ: privySignerのみ使用
+  const signer = privySigner || thirdwebSigner;
 
   const [showScanner, setShowScanner] = useState(false);
   const [paymentData, setPaymentData] = useState<X402PaymentData | null>(null);
@@ -716,12 +683,6 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
         // エラーでも続行（MetaMaskが残高不足を検出する）
       }
 
-      // トランザクションデータを構築
-      const transferData = tokenContract.interface.encodeFunctionData('transfer', [
-        paymentData.to,
-        paymentData.amount
-      ]);
-
       let txHash: string;
 
       console.log('🔵 トランザクション送信開始:', {
@@ -757,71 +718,37 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
         await new Promise(resolve => setTimeout(resolve, 3000));
       }
 
-      // MetaMask Mobile対応: Privy sendTransactionを優先使用
-      // ethers.jsのsignerは「このページは存在しません」エラーを引き起こす
-      if (sendTransaction) {
-        const txRequest = {
-          to: paymentData.token,
-          data: transferData,
-          value: '0x0',
-          chainId: 137, // Polygon Mainnet
-        };
-
-        console.log('🟣 Privy sendTransactionを使用:', txRequest);
-        addLog(`📤 Privy sendTransaction使用`);
-        addLog(`  to: ${paymentData.token}`);
-        addLog(`  chainId: 137`);
-        setQrDebugLogs(logs);
-
-        const result = await sendTransaction(txRequest);
-        txHash = result.hash;
-        console.log('✅ Privy トランザクション成功:', txHash);
-        addLog(`✅ トランザクション成功: ${txHash}`);
-        setQrDebugLogs(logs);
-      } else if (signer) {
-        // 通常のsigner (MetaMask等)
-        console.log('🟠 通常のsigner (MetaMask等)を使用');
-        addLog(`🔍 Signer情報:`);
-        addLog(`  privySigner: ${!!privySigner}`);
-        addLog(`  thirdwebSigner: ${!!thirdwebSigner}`);
-        addLog(`  fallbackSigner: ${!!fallbackSigner}`);
-        addLog(`  採用: ${privySigner ? 'privy' : thirdwebSigner ? 'thirdweb' : 'fallback'}`);
-        setQrDebugLogs(logs);
-
-        // ethers.jsのcontract.transfer()を使用（送金セクションと同じ方法）
-        console.log('🔵 ethers.js contract.transfer()を使用');
-        addLog(`📤 MetaMask承認リクエスト送信中...`);
-        addLog(`  method: contract.transfer()`);
-        addLog(`  to: ${paymentData.to}`);
-        addLog(`  amount: ${paymentData.amount}`);
-        setQrDebugLogs(logs);
-
-        try {
-          const tokenContractWithSigner = new ethers.Contract(paymentData.token, ERC20_ABI, signer);
-
-          setMessage({ type: 'info', text: 'MetaMaskで承認してください...' });
-          console.log('⏳ ウォレット承認待ち...');
-
-          const tx = await tokenContractWithSigner.transfer(paymentData.to, paymentData.amount);
-          txHash = tx.hash;
-          console.log('✅ トランザクション送信成功:', txHash);
-          addLog(`✅ トランザクション送信: ${txHash}`);
-          setQrDebugLogs(logs);
-
-          setMessage({ type: 'info', text: 'トランザクション処理中...' });
-          await tx.wait();
-          console.log('✅ トランザクション完了:', txHash);
-          addLog(`✅ トランザクション完了`);
-          setQrDebugLogs(logs);
-        } catch (transferError: any) {
-          console.error('❌ contract.transfer()エラー:', transferError);
-          addLog(`❌ transfer失敗: ${transferError.message}`);
-          setQrDebugLogs(logs);
-          throw transferError;
-        }
-      } else {
-        throw new Error('署名方法が利用できません');
+      // 送金セクションと完全に同じ実装: contract.transfer()を直接呼び出し
+      if (!signer) {
+        throw new Error('ウォレットが接続されていません');
       }
+
+      console.log('🔵 contract.transfer()を使用（送金セクションと同じ）');
+      addLog(`🔍 Signer情報:`);
+      addLog(`  privySigner: ${!!privySigner}`);
+      addLog(`  thirdwebSigner: ${!!thirdwebSigner}`);
+      addLog(`  採用: ${privySigner ? 'privy' : 'thirdweb'}`);
+      addLog(`📤 MetaMask承認リクエスト送信中...`);
+      addLog(`  to: ${paymentData.to}`);
+      addLog(`  amount: ${paymentData.amount}`);
+      setQrDebugLogs(logs);
+
+      const tokenContractWithSigner = new ethers.Contract(paymentData.token, ERC20_ABI, signer);
+
+      setMessage({ type: 'info', text: 'MetaMaskで承認してください...' });
+      console.log('⏳ ウォレット承認待ち...');
+
+      const tx = await tokenContractWithSigner.transfer(paymentData.to, paymentData.amount);
+      txHash = tx.hash;
+      console.log('✅ トランザクション送信成功:', txHash);
+      addLog(`✅ トランザクション送信: ${txHash}`);
+      setQrDebugLogs(logs);
+
+      setMessage({ type: 'info', text: 'トランザクション処理中...' });
+      await tx.wait();
+      console.log('✅ トランザクション完了:', txHash);
+      addLog(`✅ トランザクション完了`);
+      setQrDebugLogs(logs);
 
       // Supabaseの支払いリクエストを更新
       if (paymentData.requestId) {

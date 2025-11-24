@@ -1097,21 +1097,32 @@ function UsersTab() {
         debouncedAddressQuery
       });
 
-      let query = supabase
-        .from('user_profiles')
-        .select('*', { count: 'exact' })
-        .eq('tenant_id', 'default')
-        .order('created_at', { ascending: false });
+      // ステップ1: 全ウォレットアドレスを取得（ログイン履歴から）
+      const { data: loginHistory } = await supabase
+        .from('user_login_history')
+        .select('wallet_address, login_at')
+        .order('login_at', { ascending: false });
 
-      // AND条件で両方のフィルターを適用
-      const filters = [];
-
-      // ウォレットアドレスで検索
-      if (debouncedAddressQuery.trim()) {
-        const addressFilter = debouncedAddressQuery.trim().toLowerCase();
-        // 部分一致検索（前方一致）
-        query = query.ilike('wallet_address', `${addressFilter}%`);
+      // 重複を除外してユニークなウォレットアドレスのリストを作成
+      const uniqueWallets = new Map<string, string>(); // wallet_address -> latest login_at
+      if (loginHistory) {
+        loginHistory.forEach(item => {
+          if (item.wallet_address) {
+            const addr = item.wallet_address.toLowerCase();
+            if (!uniqueWallets.has(addr)) {
+              uniqueWallets.set(addr, item.login_at);
+            }
+          }
+        });
       }
+
+      console.log(`📊 Found ${uniqueWallets.size} unique wallet addresses from login history`);
+
+      // ステップ2: プロフィール登録済みユーザーを取得
+      let profileQuery = supabase
+        .from('user_profiles')
+        .select('*')
+        .eq('tenant_id', 'default');
 
       // ユーザー名で検索（display_name, name, bioを対象に部分一致）
       if (debouncedUsernameQuery.trim()) {
@@ -1136,36 +1147,90 @@ function UsersTab() {
           ];
         });
 
-        query = query.or(orConditions.join(','));
+        profileQuery = profileQuery.or(orConditions.join(','));
       }
 
-      // ページネーション
-      const from = (currentPage - 1) * ITEMS_PER_PAGE;
-      const to = from + ITEMS_PER_PAGE - 1;
-      query = query.range(from, to);
+      const { data: profiles, error: profileError } = await profileQuery;
 
-      const { data, error, count } = await query;
+      if (profileError) {
+        console.error('❌ Profile query error:', profileError);
+        throw profileError;
+      }
 
-      console.log('📊 Supabase response:', {
-        dataLength: data?.length || 0,
-        count,
-        error: error ? error.message : null
+      // ステップ3: プロフィールデータをウォレットアドレスでマップ化
+      const profileMap = new Map();
+      if (profiles) {
+        profiles.forEach(profile => {
+          if (profile.wallet_address) {
+            profileMap.set(profile.wallet_address.toLowerCase(), profile);
+          }
+        });
+      }
+
+      // ステップ4: 全ウォレットアドレスとプロフィールを結合
+      const allUsers: any[] = [];
+      uniqueWallets.forEach((lastLogin, walletAddress) => {
+        const profile = profileMap.get(walletAddress);
+
+        if (profile) {
+          // プロフィール登録済みユーザー
+          allUsers.push(profile);
+        } else {
+          // プロフィール未登録ユーザー（ウォレットアドレスのみ）
+          allUsers.push({
+            id: walletAddress, // IDとしてウォレットアドレスを使用
+            wallet_address: walletAddress,
+            display_name: null,
+            name: null,
+            bio: null,
+            avatar_url: null,
+            icon_url: null,
+            show_wallet_address: false,
+            created_at: lastLogin,
+            updated_at: lastLogin,
+            tenant_id: 'default',
+            is_profile_registered: false // 判別用フラグ
+          });
+        }
       });
 
-      if (error) {
-        console.error('❌ Supabase error:', error);
-        throw error;
+      // ステップ5: フィルタリング（ウォレットアドレス検索）
+      let filteredUsers = allUsers;
+      if (debouncedAddressQuery.trim()) {
+        const addressFilter = debouncedAddressQuery.trim().toLowerCase();
+        filteredUsers = allUsers.filter(user =>
+          user.wallet_address && user.wallet_address.toLowerCase().startsWith(addressFilter)
+        );
       }
 
-      // デバッグ：最初のユーザーのフィールドを確認
-      if (data && data.length > 0) {
-        console.log('🔍 [DEBUG] First user object keys:', Object.keys(data[0]));
-        console.log('🔍 [DEBUG] First user wallet_address:', data[0].wallet_address);
-      }
+      // ステップ6: ソート（created_at降順）
+      filteredUsers.sort((a, b) => {
+        const dateA = new Date(a.created_at || 0).getTime();
+        const dateB = new Date(b.created_at || 0).getTime();
+        return dateB - dateA;
+      });
 
-      setUsers(data || []);
-      setTotalCount(count || 0);
-      console.log('✅ Users fetched successfully:', { users: data?.length || 0, total: count || 0 });
+      // ステップ7: ページネーション
+      const totalCount = filteredUsers.length;
+      const from = (currentPage - 1) * ITEMS_PER_PAGE;
+      const to = from + ITEMS_PER_PAGE;
+      const paginatedUsers = filteredUsers.slice(from, to);
+
+      console.log('📊 Final user list:', {
+        totalUnique: uniqueWallets.size,
+        withProfiles: profiles?.length || 0,
+        afterFilter: filteredUsers.length,
+        currentPage: paginatedUsers.length
+      });
+
+      setUsers(paginatedUsers);
+      setTotalCount(totalCount);
+      console.log('✅ Users fetched successfully:', {
+        users: paginatedUsers.length,
+        total: totalCount,
+        profileRegistered: paginatedUsers.filter((u: any) => u.is_profile_registered !== false).length,
+        profileNotRegistered: paginatedUsers.filter((u: any) => u.is_profile_registered === false).length
+      });
     } catch (error) {
       console.error('❌ fetchUsers error:', error);
       setUsers([]);
@@ -1438,8 +1503,9 @@ function UsersTab() {
                   textDecoration: 'underline',
                   fontWeight: 600,
                 }}>
-                  {user.display_name || user.name || '未設定'}
+                  {user.display_name || user.name || (user.is_profile_registered === false ? 'プロフィール未登録' : '未設定')}
                   {!user.wallet_address && ' ⚠️'}
+                  {user.is_profile_registered === false && ' 📝'}
                 </div>
                 {user.bio && (
                   <div style={{
@@ -1451,6 +1517,15 @@ function UsersTab() {
                     whiteSpace: 'nowrap',
                   }}>
                     {user.bio}
+                  </div>
+                )}
+                {user.is_profile_registered === false && (
+                  <div style={{
+                    fontSize: 11,
+                    color: '#fbbf24',
+                    marginTop: 2,
+                  }}>
+                    ログインのみ / プロフィール未作成
                   </div>
                 )}
               </div>
