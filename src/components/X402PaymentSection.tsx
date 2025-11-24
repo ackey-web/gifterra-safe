@@ -1,7 +1,7 @@
 // src/components/X402PaymentSection.tsx
 // マイページ用X402決済セクション
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSigner, useAddress } from '@thirdweb-dev/react';
 import { usePrivy } from '@privy-io/react-auth';
 import { ethers } from 'ethers';
@@ -193,6 +193,7 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
   const [consentAccepted, setConsentAccepted] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [lastScannedQR, setLastScannedQR] = useState<string>(''); // 重複スキャン防止
+  const isProcessingRef = useRef(false); // 即座に更新される処理中フラグ
 
   const jpycConfig = getTokenConfig('JPYC');
 
@@ -304,14 +305,15 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
       return;
     }
 
-    // 処理中は新しいスキャンを受け付けない
-    if (isProcessing) {
+    // 処理中は新しいスキャンを受け付けない（refを使って即座にチェック）
+    if (isProcessing || isProcessingRef.current) {
       console.log('⏳ [Scanner] Already processing, skipping new scan...');
       return;
     }
 
     console.log('📸 [Scanner] QR code scanned, raw data:', data);
     setLastScannedQR(data);
+    isProcessingRef.current = true; // 即座に処理中フラグを立てる
 
     try {
 
@@ -323,6 +325,7 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
         if (parsed.type === 'wallet') {
           setMessage({ type: 'error', text: 'これはウォレットQRです。請求QRをスキャンしてください。' });
           setLastScannedQR(''); // リセットして再スキャン可能に
+          isProcessingRef.current = false; // フラグをリセット
           return;
         }
         if (parsed.type === 'gasless') {
@@ -331,7 +334,10 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
           await handleGaslessPayment(parsed);
           console.log('✅ [Scanner] handleGaslessPayment completed successfully');
           // 成功後にリセット（同じQRの再スキャンを許可）
-          setTimeout(() => setLastScannedQR(''), 3000);
+          setTimeout(() => {
+            setLastScannedQR('');
+            isProcessingRef.current = false;
+          }, 3000);
           return;
         }
       } catch (e) {
@@ -424,6 +430,7 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
       setMessage({ type: 'error', text: `QRコード読み取りエラー: ${error.message}` });
       setShowScanner(false);
       setLastScannedQR(''); // エラー時もリセット
+      isProcessingRef.current = false; // フラグもリセット
     }
   };
 
