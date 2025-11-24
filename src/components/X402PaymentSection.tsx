@@ -299,6 +299,12 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
 
   // QRコードスキャン処理
   const handleScan = async (data: string) => {
+    console.log('📸 [Scanner] QR code scanned, checking conditions...');
+    console.log('📸 [Scanner] lastScannedQR:', lastScannedQR);
+    console.log('📸 [Scanner] current data:', data);
+    console.log('📸 [Scanner] isProcessing:', isProcessing);
+    console.log('📸 [Scanner] isProcessingRef.current:', isProcessingRef.current);
+
     // 重複スキャン防止: 同じQRが連続で読み取られるのを防ぐ
     if (data === lastScannedQR) {
       console.log('⏭️ [Scanner] Duplicate QR detected, skipping...');
@@ -311,7 +317,7 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
       return;
     }
 
-    console.log('📸 [Scanner] QR code scanned, raw data:', data);
+    console.log('✅ [Scanner] Passed all checks, processing QR...');
     setLastScannedQR(data);
     isProcessingRef.current = true; // 即座に処理中フラグを立てる
 
