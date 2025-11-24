@@ -4,7 +4,7 @@ import fs from 'fs'
 import path from 'path'
 
 // https://vite.dev/config/
-export default defineConfig(({ mode }) => {
+export default defineConfig(() => {
   // Vercel環境ではprocess.envから直接取得、ローカルでは.envファイルから読み込む
   const env = {
     VITE_SUPABASE_URL: process.env.VITE_SUPABASE_URL || '',
@@ -90,7 +90,7 @@ export default defineConfig(({ mode }) => {
     minify: 'terser',
     terserOptions: {
       compress: {
-        drop_console: mode === 'production',
+        drop_console: false, // デバッグ用に一時的に有効化
         drop_debugger: true,
       },
     },
