@@ -3,10 +3,12 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { usePrivy } from '@privy-io/react-auth';
+import { usePrivy, useWallets } from '@privy-io/react-auth';
 import { ConnectWallet, useAddress, useDisconnect } from '@thirdweb-dev/react';
+import { ethers } from 'ethers';
 import { supabase } from '../../lib/supabase';
 import { getTokenConfig } from '../../config/tokens';
+import { JPYC_TOKEN, ERC20_MIN_ABI } from '../../contract';
 import {
   encodeX402,
   parsePaymentAmount,
@@ -20,6 +22,7 @@ import {
   filterPaymentsByPeriod,
   calculateSummary,
 } from '../../utils/paymentExport';
+import { isGaslessPaymentEnabled } from '../../config/featureFlags';
 
 interface PaymentHistory {
   id: string;
@@ -32,9 +35,9 @@ interface PaymentHistory {
 }
 
 export function PaymentTerminal() {
-  const { user, login, logout: privyLogout } = usePrivy();
+  const { user, login } = usePrivy();
+  const { wallets } = useWallets();
   const thirdwebAddress = useAddress();
-  const disconnect = useDisconnect();
 
   // Privy または Thirdweb のいずれかからウォレットアドレスを取得
   const walletAddress = user?.wallet?.address || thirdwebAddress;
@@ -52,6 +55,7 @@ export function PaymentTerminal() {
 
   // QRコード
   const [qrData, setQrData] = useState<string | null>(null);
+  const [currentRequestId, setCurrentRequestId] = useState<string | null>(null);
   const [qrMode, setQrMode] = useState<'invoice' | 'wallet'>('invoice'); // 請求書 or ウォレット
   const [expiryMinutes, setExpiryMinutes] = useState(5);
   const qrRef = useRef<HTMLDivElement>(null);
@@ -87,6 +91,18 @@ export function PaymentTerminal() {
   const [historyPrivacy, setHistoryPrivacy] = useState(false);
   const [historyPage, setHistoryPage] = useState(0);
   const itemsPerPage = 5;
+
+  // ☰ ハンバーガーメニュー（Phase 5）
+  const [showMenu, setShowMenu] = useState(false);
+  const [showAnalytics, setShowAnalytics] = useState(false);
+  const [showNotificationSettings, setShowNotificationSettings] = useState(false);
+
+  // ⚡ ガスレス決済（Phase 5）
+  const [useGasless, setUseGasless] = useState(false); // ガスレス決済を使用するか
+  const [isGaslessAvailable] = useState(isGaslessPaymentEnabled()); // 機能フラグ
+  const [isExecutingGasless, setIsExecutingGasless] = useState(false);
+  const [pendingSignatures, setPendingSignatures] = useState<any[]>([]); // 署名待ちキュー
+  const [batchProcessingEnabled, setBatchProcessingEnabled] = useState(false); // バッチ処理モード
 
   // 店舗プロフィールの取得
   useEffect(() => {
@@ -177,6 +193,210 @@ export function PaymentTerminal() {
       console.error('設定の読み込みエラー:', error);
     }
   }, []);
+
+  // ⚡ Supabase Realtime: ガスレス決済の署名受信監視（Phase 5）
+  useEffect(() => {
+    if (!currentRequestId || !walletAddress || !isGaslessAvailable) return;
+
+    console.log('📡 Realtime subscription started for:', currentRequestId);
+
+    const channel = supabase
+      .channel(`gasless_payment:${currentRequestId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'payment_requests',
+          filter: `request_id=eq.${currentRequestId}`,
+        },
+        async (payload) => {
+          const newRecord = payload.new as any;
+          console.log('📬 Realtime UPDATE received:', newRecord);
+
+          if (newRecord.status === 'signature_received' && !isExecutingGasless) {
+            // バッチ処理モードの場合はキューに追加
+            if (batchProcessingEnabled) {
+              console.log('📦 Adding to batch queue...');
+              setPendingSignatures((prev) => [...prev, newRecord]);
+              setMessage({
+                type: 'success',
+                text: `📦 署名をキューに追加 (${pendingSignatures.length + 1}件待機中)`,
+              });
+              setTimeout(() => setMessage(null), 3000);
+              return;
+            }
+
+            // 即時実行モード
+            setIsExecutingGasless(true);
+
+            try {
+              const wallet = wallets.find(
+                (w) => w.address.toLowerCase() === walletAddress.toLowerCase()
+              );
+              if (!wallet) {
+                throw new Error('ウォレットが見つかりません');
+              }
+
+              console.log('🔄 Switching to Polygon...');
+              await wallet.switchChain(137);
+
+              const ethereumProvider = await wallet.getEthereumProvider();
+              const provider = new ethers.providers.Web3Provider(ethereumProvider);
+              const signer = provider.getSigner();
+
+              console.log('📝 Creating contract instance...');
+              const jpycContract = new ethers.Contract(
+                JPYC_TOKEN.ADDRESS,
+                ERC20_MIN_ABI,
+                signer
+              );
+
+              console.log('⚡ Executing transferWithAuthorization...');
+              const tx = await jpycContract.transferWithAuthorization(
+                newRecord.completed_by,
+                walletAddress,
+                newRecord.value || ethers.utils.parseUnits(newRecord.amount, 18),
+                0,
+                newRecord.valid_before || Math.floor(Date.now() / 1000) + 3600,
+                newRecord.nonce,
+                newRecord.signature_v,
+                newRecord.signature_r,
+                newRecord.signature_s
+              );
+
+              console.log('⏳ Waiting for confirmation...');
+              const receipt = await tx.wait();
+              console.log('✅ Transaction confirmed:', receipt.transactionHash);
+
+              // Supabaseのステータスを更新
+              await supabase
+                .from('payment_requests')
+                .update({
+                  status: 'completed',
+                  completed_at: new Date().toISOString(),
+                  transaction_hash: receipt.transactionHash,
+                })
+                .eq('request_id', currentRequestId);
+
+              setMessage({ type: 'success', text: '✅ ガスレス決済完了！' });
+              setTimeout(() => setMessage(null), 3000);
+
+              // QRをクリア
+              setQrData(null);
+              setCurrentRequestId(null);
+            } catch (error: any) {
+              console.error('❌ Gasless execution error:', error);
+              setMessage({ type: 'error', text: `❌ 実行失敗: ${error.message}` });
+
+              // エラー時はキャンセル扱い
+              await supabase
+                .from('payment_requests')
+                .update({ status: 'cancelled' })
+                .eq('request_id', currentRequestId);
+            } finally {
+              setIsExecutingGasless(false);
+            }
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      console.log('📡 Realtime subscription cleanup');
+      supabase.removeChannel(channel);
+    };
+  }, [
+    currentRequestId,
+    walletAddress,
+    wallets,
+    isExecutingGasless,
+    batchProcessingEnabled,
+    pendingSignatures.length,
+    isGaslessAvailable,
+  ]);
+
+  // 📦 バッチ実行関数（Phase 5）
+  const executeBatch = async () => {
+    if (pendingSignatures.length === 0) {
+      setMessage({ type: 'error', text: '実行する署名がありません' });
+      setTimeout(() => setMessage(null), 2000);
+      return;
+    }
+
+    const batchSize = pendingSignatures.length;
+    const confirmed = window.confirm(
+      `📦 ${batchSize}件の署名をまとめて実行します。\n\n推定ガス代削減: 約${Math.round((batchSize - 1) * 0.15)}円\n\n実行しますか？`
+    );
+
+    if (!confirmed) return;
+    setIsExecutingGasless(true);
+
+    try {
+      const wallet = wallets.find(
+        (w) => w.address.toLowerCase() === walletAddress.toLowerCase()
+      );
+      if (!wallet) throw new Error('ウォレットが見つかりません');
+
+      await wallet.switchChain(137);
+      const ethereumProvider = await wallet.getEthereumProvider();
+      const provider = new ethers.providers.Web3Provider(ethereumProvider);
+      const signer = provider.getSigner();
+
+      const jpycContract = new ethers.Contract(JPYC_TOKEN.ADDRESS, ERC20_MIN_ABI, signer);
+
+      let successCount = 0;
+      let failCount = 0;
+
+      for (const record of pendingSignatures) {
+        try {
+          const tx = await jpycContract.transferWithAuthorization(
+            record.completed_by,
+            walletAddress,
+            record.value || ethers.utils.parseUnits(record.amount, 18),
+            0,
+            record.valid_before || Math.floor(Date.now() / 1000) + 3600,
+            record.nonce,
+            record.signature_v,
+            record.signature_r,
+            record.signature_s
+          );
+          const receipt = await tx.wait();
+
+          await supabase
+            .from('payment_requests')
+            .update({
+              status: 'completed',
+              completed_at: new Date().toISOString(),
+              transaction_hash: receipt.transactionHash,
+            })
+            .eq('request_id', record.request_id);
+
+          successCount++;
+        } catch (error: any) {
+          console.error(`❌ Failed for request ${record.request_id}:`, error);
+          failCount++;
+
+          await supabase
+            .from('payment_requests')
+            .update({ status: 'cancelled' })
+            .eq('request_id', record.request_id);
+        }
+      }
+
+      setPendingSignatures([]);
+      setMessage({
+        type: 'success',
+        text: `✅ バッチ処理完了\n\n成功: ${successCount}件\n失敗: ${failCount}件`,
+      });
+      setTimeout(() => setMessage(null), 5000);
+    } catch (error: any) {
+      console.error('❌ Batch execution error:', error);
+      setMessage({ type: 'error', text: `❌ バッチ処理失敗: ${error.message}` });
+    } finally {
+      setIsExecutingGasless(false);
+    }
+  };
 
   // 設定を保存
   const handleSaveSettings = () => {
@@ -286,7 +506,54 @@ export function PaymentTerminal() {
       const expires = Math.floor(Date.now() / 1000) + expiryMinutes * 60;
       const requestId = generateRequestId();
 
-      // チェックサムアドレスを使用
+      // ⚡ ガスレス決済モード（Phase 5）
+      if (useGasless && isGaslessAvailable) {
+        // EIP-3009用の32バイトnonce生成
+        const nonce = '0x' + Array.from({ length: 64 }, () =>
+          Math.floor(Math.random() * 16).toString(16)
+        ).join('');
+
+        // ガスレス決済用QRデータ
+        const gaslessQRData = JSON.stringify({
+          type: 'gasless',
+          tenant: walletValidation.checksumAddress,
+          token: tokenValidation.checksumAddress,
+          amount: amountWei,
+          chainId: 137,
+          message: `${amountToGenerate}円のお支払い（ガスレス）`,
+          expires,
+          requestId,
+          nonce,
+          validAfter: 0,
+          validBefore: expires,
+        });
+
+        // Supabaseに保存（ガスレス用フィールド付き）
+        const { error } = await supabase.from('payment_requests').insert({
+          request_id: requestId,
+          tenant_address: walletAddress.toLowerCase(),
+          amount: amountToGenerate,
+          message: `${amountToGenerate}円のお支払い（ガスレス）`,
+          expires_at: new Date(expires * 1000).toISOString(),
+          status: 'awaiting_signature',
+          payment_type: 'authorization',
+          nonce,
+          valid_after: 0,
+          valid_before: expires,
+        });
+
+        if (error) throw error;
+
+        setQrData(gaslessQRData);
+        setAmount(amountToGenerate);
+        setCurrentRequestId(requestId);
+        setMessage({ type: 'success', text: '⚡ ガスレスQR生成完了（署名待ち）' });
+
+        setTimeout(() => setMessage(null), 3000);
+        return;
+      }
+
+      // 通常の請求書QR生成（X402）
       const paymentData = encodeX402({
         to: walletValidation.checksumAddress!,
         token: tokenValidation.checksumAddress!,
@@ -465,42 +732,140 @@ export function PaymentTerminal() {
           position: 'relative',
         }}
       >
-        {/* 設定ボタン */}
+        {/* ☰ ハンバーガーメニューボタン（Phase 5） */}
         {walletAddress && walletConfirmed && (
-          <button
-            onClick={() => {
-              setTempPresetAmounts([...presetAmounts]);
-              setTempExpiryMinutes(expiryMinutes);
-              setShowSettingsModal(true);
-            }}
-            style={{
-              position: 'absolute',
-              right: 0,
-              top: 0,
-              width: '44px',
-              height: '44px',
-              background: 'rgba(255, 255, 255, 0.1)',
-              border: '1px solid rgba(255, 255, 255, 0.2)',
-              borderRadius: '10px',
-              color: '#fff',
-              fontSize: '20px',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              transition: 'all 0.2s',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)';
-              e.currentTarget.style.transform = 'scale(1.05)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
-              e.currentTarget.style.transform = 'scale(1)';
-            }}
-          >
-            ⚙️
-          </button>
+          <>
+            <button
+              onClick={() => setShowMenu(!showMenu)}
+              style={{
+                position: 'absolute',
+                right: 0,
+                top: 0,
+                width: '44px',
+                height: '44px',
+                background: 'rgba(255, 255, 255, 0.1)',
+                border: '1px solid rgba(255, 255, 255, 0.2)',
+                borderRadius: '10px',
+                color: '#fff',
+                fontSize: '22px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'all 0.2s',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)';
+                e.currentTarget.style.transform = 'scale(1.05)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+                e.currentTarget.style.transform = 'scale(1)';
+              }}
+            >
+              ☰
+            </button>
+
+            {/* ドロップダウンメニュー */}
+            {showMenu && (
+              <div
+                style={{
+                  position: 'absolute',
+                  top: '54px',
+                  right: 0,
+                  background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)',
+                  border: '1px solid rgba(255, 255, 255, 0.2)',
+                  borderRadius: '12px',
+                  boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5)',
+                  zIndex: 100,
+                  minWidth: '220px',
+                  overflow: 'hidden',
+                }}
+              >
+                <button
+                  onClick={() => {
+                    setShowMenu(false);
+                    setShowAnalytics(true);
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '14px 18px',
+                    background: 'transparent',
+                    border: 'none',
+                    color: '#fff',
+                    fontSize: '15px',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    transition: 'background 0.2s',
+                    borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'transparent';
+                  }}
+                >
+                  📊 分析ダッシュボード
+                </button>
+
+                <button
+                  onClick={() => {
+                    setShowMenu(false);
+                    setShowNotificationSettings(true);
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '14px 18px',
+                    background: 'transparent',
+                    border: 'none',
+                    color: '#fff',
+                    fontSize: '15px',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    transition: 'background 0.2s',
+                    borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'transparent';
+                  }}
+                >
+                  🔔 通知設定
+                </button>
+
+                <button
+                  onClick={() => {
+                    setShowMenu(false);
+                    setTempPresetAmounts([...presetAmounts]);
+                    setTempExpiryMinutes(expiryMinutes);
+                    setShowSettingsModal(true);
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '14px 18px',
+                    background: 'transparent',
+                    border: 'none',
+                    color: '#fff',
+                    fontSize: '15px',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    transition: 'background 0.2s',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'transparent';
+                  }}
+                >
+                  ⚙️ 設定
+                </button>
+              </div>
+            )}
+          </>
         )}
 
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
@@ -825,6 +1190,134 @@ export function PaymentTerminal() {
                   </button>
                 ))}
               </div>
+
+              {/* ⚡ ガスレス決済チェックボックス（Phase 5） */}
+              {isGaslessAvailable && (
+                <div
+                  style={{
+                    marginTop: '16px',
+                    padding: '12px',
+                    background: 'rgba(16, 185, 129, 0.1)',
+                    border: '1px solid rgba(16, 185, 129, 0.3)',
+                    borderRadius: '10px',
+                  }}
+                >
+                  <label
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      cursor: 'pointer',
+                      fontSize: '15px',
+                      fontWeight: '600',
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={useGasless}
+                      onChange={(e) => {
+                        setUseGasless(e.target.checked);
+                        if (!e.target.checked) {
+                          setBatchProcessingEnabled(false);
+                        }
+                      }}
+                      style={{
+                        width: '18px',
+                        height: '18px',
+                        cursor: 'pointer',
+                      }}
+                    />
+                    ⚡ ガスレス決済（ガス代店舗負担）
+                  </label>
+
+                  {/* バッチ処理モード */}
+                  {useGasless && (
+                    <div style={{ marginTop: '12px', paddingLeft: '26px' }}>
+                      <label
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          cursor: 'pointer',
+                          fontSize: '14px',
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={batchProcessingEnabled}
+                          onChange={(e) => setBatchProcessingEnabled(e.target.checked)}
+                          style={{
+                            width: '16px',
+                            height: '16px',
+                            cursor: 'pointer',
+                          }}
+                        />
+                        📦 バッチ処理モード（複数署名まとめて実行）
+                      </label>
+
+                      {/* バッチ処理キュー表示 */}
+                      {batchProcessingEnabled && pendingSignatures.length > 0 && (
+                        <div
+                          style={{
+                            marginTop: '10px',
+                            padding: '10px',
+                            background: 'rgba(16, 185, 129, 0.15)',
+                            borderRadius: '8px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            gap: '10px',
+                          }}
+                        >
+                          <span style={{ fontSize: '13px', fontWeight: '600' }}>
+                            ⏳ {pendingSignatures.length}件待機中
+                            <span style={{ fontSize: '12px', opacity: 0.8, marginLeft: '6px' }}>
+                              (約{Math.round((pendingSignatures.length - 1) * 0.15)}円節約)
+                            </span>
+                          </span>
+                          <button
+                            onClick={executeBatch}
+                            disabled={isExecutingGasless}
+                            style={{
+                              padding: '6px 14px',
+                              fontSize: '13px',
+                              fontWeight: 'bold',
+                              background: isExecutingGasless
+                                ? 'rgba(107, 114, 128, 0.5)'
+                                : 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                              color: '#fff',
+                              border: 'none',
+                              borderRadius: '6px',
+                              cursor: isExecutingGasless ? 'not-allowed' : 'pointer',
+                              boxShadow: isExecutingGasless
+                                ? 'none'
+                                : '0 2px 8px rgba(245, 158, 11, 0.3)',
+                              transition: 'all 0.2s',
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            {isExecutingGasless ? '実行中...' : '⚡ まとめて実行'}
+                          </button>
+                        </div>
+                      )}
+
+                      {/* バッチ処理説明 */}
+                      <p
+                        style={{
+                          fontSize: '12px',
+                          opacity: 0.7,
+                          marginTop: '8px',
+                          marginBottom: 0,
+                          lineHeight: '1.5',
+                        }}
+                      >
+                        💡 署名を受信しても即座に実行せず、キューに追加します。
+                        複数の署名をまとめて実行することでガス代を削減できます。
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* QR生成ボタン（デュアルモード） */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '16px' }}>
@@ -1620,6 +2113,166 @@ export function PaymentTerminal() {
                 確認して生成
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* 📊 分析ダッシュボード モーダル（Phase 5） */}
+      {showAnalytics && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0, 0, 0, 0.85)',
+            backdropFilter: 'blur(4px)',
+            zIndex: 1002,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px',
+          }}
+          onClick={() => setShowAnalytics(false)}
+        >
+          <div
+            style={{
+              background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)',
+              borderRadius: '16px',
+              padding: '32px',
+              maxWidth: '600px',
+              width: '100%',
+              boxShadow: '0 20px 60px rgba(0, 0, 0, 0.6)',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 style={{ margin: '0 0 16px 0', fontSize: '28px', color: '#fff', fontWeight: 'bold' }}>
+              📊 分析ダッシュボード
+            </h2>
+            <p style={{ margin: '0 0 24px 0', fontSize: '15px', color: 'rgba(255, 255, 255, 0.7)', lineHeight: '1.6' }}>
+              売上分析、決済トレンド、顧客インサイトなどの機能は今後のアップデートで追加予定です。
+            </p>
+            <div
+              style={{
+                background: 'rgba(59, 130, 246, 0.1)',
+                border: '1px solid rgba(59, 130, 246, 0.3)',
+                borderRadius: '12px',
+                padding: '16px',
+                marginBottom: '24px',
+              }}
+            >
+              <div style={{ fontSize: '14px', color: 'rgba(255, 255, 255, 0.9)', lineHeight: '1.6' }}>
+                <strong>🚀 予定機能:</strong>
+                <ul style={{ margin: '8px 0 0 0', paddingLeft: '20px' }}>
+                  <li>日次・週次・月次売上レポート</li>
+                  <li>決済方法別統計</li>
+                  <li>ピークタイム分析</li>
+                  <li>リアルタイム売上ダッシュボード</li>
+                </ul>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowAnalytics(false)}
+              style={{
+                width: '100%',
+                padding: '14px',
+                fontSize: '16px',
+                fontWeight: '600',
+                background: 'rgba(255, 255, 255, 0.1)',
+                color: '#fff',
+                border: '1px solid rgba(255, 255, 255, 0.2)',
+                borderRadius: '10px',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+              }}
+            >
+              閉じる
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 🔔 通知設定 モーダル（Phase 5） */}
+      {showNotificationSettings && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0, 0, 0, 0.85)',
+            backdropFilter: 'blur(4px)',
+            zIndex: 1002,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px',
+          }}
+          onClick={() => setShowNotificationSettings(false)}
+        >
+          <div
+            style={{
+              background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)',
+              borderRadius: '16px',
+              padding: '32px',
+              maxWidth: '600px',
+              width: '100%',
+              boxShadow: '0 20px 60px rgba(0, 0, 0, 0.6)',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 style={{ margin: '0 0 16px 0', fontSize: '28px', color: '#fff', fontWeight: 'bold' }}>
+              🔔 通知設定
+            </h2>
+            <p style={{ margin: '0 0 24px 0', fontSize: '15px', color: 'rgba(255, 255, 255, 0.7)', lineHeight: '1.6' }}>
+              プッシュ通知、メール通知、Slack連携などの機能は今後のアップデートで追加予定です。
+            </p>
+            <div
+              style={{
+                background: 'rgba(34, 197, 94, 0.1)',
+                border: '1px solid rgba(34, 197, 94, 0.3)',
+                borderRadius: '12px',
+                padding: '16px',
+                marginBottom: '24px',
+              }}
+            >
+              <div style={{ fontSize: '14px', color: 'rgba(255, 255, 255, 0.9)', lineHeight: '1.6' }}>
+                <strong>🚀 予定機能:</strong>
+                <ul style={{ margin: '8px 0 0 0', paddingLeft: '20px' }}>
+                  <li>決済完了時のプッシュ通知</li>
+                  <li>日次売上サマリーメール</li>
+                  <li>高額決済アラート</li>
+                  <li>Slack/Discord連携</li>
+                </ul>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowNotificationSettings(false)}
+              style={{
+                width: '100%',
+                padding: '14px',
+                fontSize: '16px',
+                fontWeight: '600',
+                background: 'rgba(255, 255, 255, 0.1)',
+                color: '#fff',
+                border: '1px solid rgba(255, 255, 255, 0.2)',
+                borderRadius: '10px',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+              }}
+            >
+              閉じる
+            </button>
           </div>
         </div>
       )}
