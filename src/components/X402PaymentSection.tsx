@@ -31,6 +31,7 @@ const ERC20_ABI = [
   'function transfer(address to, uint256 amount) returns (bool)',
   'function balanceOf(address owner) view returns (uint256)',
   'function decimals() view returns (uint8)',
+  'function transferWithAuthorization(address from, address to, uint256 value, uint256 validAfter, uint256 validBefore, bytes32 nonce, uint8 v, bytes32 r, bytes32 s) external',
 ];
 
 interface X402PaymentSectionProps {
@@ -194,6 +195,105 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
 
   const jpycConfig = getTokenConfig('JPYC');
 
+  // ガスレス決済QRの処理
+  const handleGaslessPayment = async (gaslessData: any) => {
+    try {
+      console.log('⚡ [Gasless] Processing gasless payment QR:', gaslessData);
+
+      // バリデーション
+      if (!walletAddress) {
+        setMessage({ type: 'error', text: 'ウォレットが接続されていません' });
+        return;
+      }
+
+      if (!signer) {
+        setMessage({ type: 'error', text: '署名機能が利用できません' });
+        return;
+      }
+
+      // 有効期限チェック
+      const now = Math.floor(Date.now() / 1000);
+      if (now > gaslessData.validBefore) {
+        setMessage({ type: 'error', text: 'このQRコードは有効期限切れです' });
+        return;
+      }
+
+      setIsProcessing(true);
+      setShowScanner(false);
+      setMessage({ type: 'info', text: '署名を生成しています...' });
+
+      // EIP-712署名用のドメインとメッセージを構築
+      const domain = {
+        name: 'JPY Coin',
+        version: '2',
+        chainId: gaslessData.chainId,
+        verifyingContract: gaslessData.token,
+      };
+
+      const types = {
+        TransferWithAuthorization: [
+          { name: 'from', type: 'address' },
+          { name: 'to', type: 'address' },
+          { name: 'value', type: 'uint256' },
+          { name: 'validAfter', type: 'uint256' },
+          { name: 'validBefore', type: 'uint256' },
+          { name: 'nonce', type: 'bytes32' },
+        ],
+      };
+
+      const value = {
+        from: walletAddress,
+        to: gaslessData.tenant,
+        value: gaslessData.amount,
+        validAfter: gaslessData.validAfter,
+        validBefore: gaslessData.validBefore,
+        nonce: gaslessData.nonce,
+      };
+
+      console.log('⚡ [Gasless] Signing EIP-712 message:', { domain, types, value });
+
+      // EIP-712署名を生成
+      const signature = await (signer as any)._signTypedData(domain, types, value);
+      const sig = ethers.utils.splitSignature(signature);
+
+      console.log('⚡ [Gasless] Signature generated:', {
+        v: sig.v,
+        r: sig.r,
+        s: sig.s,
+      });
+
+      // Supabaseに署名を保存
+      const { error } = await supabase
+        .from('payment_requests')
+        .update({
+          status: 'signature_received',
+          completed_by: walletAddress.toLowerCase(),
+          signature_v: sig.v,
+          signature_r: sig.r,
+          signature_s: sig.s,
+          signature_received_at: new Date().toISOString(),
+        })
+        .eq('request_id', gaslessData.requestId);
+
+      if (error) {
+        console.error('❌ [Gasless] Supabase update error:', error);
+        throw new Error('署名の送信に失敗しました');
+      }
+
+      console.log('✅ [Gasless] Signature sent to Supabase');
+
+      setMessage({ type: 'success', text: '✅ 署名を送信しました！店舗側で決済を完了します。' });
+      setTimeout(() => {
+        setMessage(null);
+        setIsProcessing(false);
+      }, 3000);
+
+    } catch (error: any) {
+      console.error('❌ [Gasless] Error:', error);
+      setMessage({ type: 'error', text: `エラー: ${error.message || '署名の生成に失敗しました'}` });
+      setIsProcessing(false);
+    }
+  };
 
   // QRコードスキャン処理
   const handleScan = async (data: string) => {
@@ -210,7 +310,8 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
           return;
         }
         if (parsed.type === 'gasless') {
-          setMessage({ type: 'error', text: 'ガスレス決済QRコードはスキャン支払いに対応していません。' });
+          // ガスレス決済QRの処理
+          await handleGaslessPayment(parsed);
           return;
         }
       } catch (e) {
