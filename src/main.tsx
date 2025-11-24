@@ -6,8 +6,6 @@ import { Buffer } from "buffer";
 import { PrivyProvider } from "@privy-io/react-auth";
 import { ThirdwebProvider } from "@thirdweb-dev/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { WagmiProvider } from "wagmi";
-import { wagmiConfig } from "./config/wagmi";
 import { Capacitor } from "@capacitor/core";
 import { initGifterraStatusBar } from "./utils/statusBar";
 import { initGifterraKeyboard } from "./utils/keyboard";
@@ -213,14 +211,12 @@ if (wantsTerms) {
     <React.StrictMode>
       <Suspense fallback={<LoadingFallback />}>
         <QueryClientProvider client={queryClient}>
-          <WagmiProvider config={wagmiConfig}>
-            <ThirdwebProvider
+          <ThirdwebProvider
             activeChain={polygonChain}
             clientId={import.meta.env.VITE_THIRDWEB_CLIENT_ID}
           >
             <ReceivePage />
           </ThirdwebProvider>
-          </WagmiProvider>
         </QueryClientProvider>
       </Suspense>
     </React.StrictMode>
@@ -231,14 +227,12 @@ if (wantsTerms) {
     <React.StrictMode>
       <Suspense fallback={<LoadingFallback />}>
         <QueryClientProvider client={queryClient}>
-          <WagmiProvider config={wagmiConfig}>
-            <ThirdwebProvider
+          <ThirdwebProvider
             activeChain={polygonChain}
             clientId={import.meta.env.VITE_THIRDWEB_CLIENT_ID}
           >
             <SuperAdminPage />
           </ThirdwebProvider>
-          </WagmiProvider>
         </QueryClientProvider>
       </Suspense>
     </React.StrictMode>
@@ -249,8 +243,7 @@ if (wantsTerms) {
     <React.StrictMode>
       <Suspense fallback={<LoadingFallback />}>
         <QueryClientProvider client={queryClient}>
-          <WagmiProvider config={wagmiConfig}>
-            <ThirdwebProvider
+          <ThirdwebProvider
             activeChain={polygonChain}
             clientId={import.meta.env.VITE_THIRDWEB_CLIENT_ID}
           >
@@ -307,7 +300,6 @@ if (wantsTerms) {
               {isMobileDevice ? <PaymentTerminalMobile /> : <PaymentTerminal />}
             </PrivyProvider>
           </ThirdwebProvider>
-          </WagmiProvider>
         </QueryClientProvider>
       </Suspense>
     </React.StrictMode>
@@ -318,8 +310,7 @@ if (wantsTerms) {
     <React.StrictMode>
       <Suspense fallback={<LoadingFallback />}>
         <QueryClientProvider client={queryClient}>
-          <WagmiProvider config={wagmiConfig}>
-            <ThirdwebProvider
+          <ThirdwebProvider
             activeChain={polygonChain}
             clientId={import.meta.env.VITE_THIRDWEB_CLIENT_ID}
           >
@@ -378,7 +369,6 @@ if (wantsTerms) {
               </TenantProvider>
             </PrivyProvider>
           </ThirdwebProvider>
-          </WagmiProvider>
         </QueryClientProvider>
       </Suspense>
     </React.StrictMode>
@@ -389,8 +379,7 @@ if (wantsTerms) {
     <React.StrictMode>
       <Suspense fallback={<LoadingFallback />}>
         <QueryClientProvider client={queryClient}>
-          <WagmiProvider config={wagmiConfig}>
-            <ThirdwebProvider
+          <ThirdwebProvider
             activeChain={polygonChain}
             clientId={import.meta.env.VITE_THIRDWEB_CLIENT_ID}
           >
@@ -502,7 +491,6 @@ if (wantsTerms) {
             </AppWrapper>
           </PrivyProvider>
         </ThirdwebProvider>
-      </WagmiProvider>
       </QueryClientProvider>
       </Suspense>
     </React.StrictMode>
