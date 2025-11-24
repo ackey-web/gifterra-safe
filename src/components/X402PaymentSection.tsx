@@ -771,6 +771,12 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
       } else if (signer) {
         // 通常のsigner (MetaMask等)
         console.log('🟠 通常のsigner (MetaMask等)を使用');
+        addLog(`🔍 Signer情報:`);
+        addLog(`  privySigner: ${!!privySigner}`);
+        addLog(`  thirdwebSigner: ${!!thirdwebSigner}`);
+        addLog(`  fallbackSigner: ${!!fallbackSigner}`);
+        addLog(`  採用: ${privySigner ? 'privy' : thirdwebSigner ? 'thirdweb' : 'fallback'}`);
+        setQrDebugLogs(logs);
 
         // ethers.jsのcontract.transfer()を使用（送金セクションと同じ方法）
         console.log('🔵 ethers.js contract.transfer()を使用');
@@ -780,22 +786,29 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
         addLog(`  amount: ${paymentData.amount}`);
         setQrDebugLogs(logs);
 
-        const tokenContractWithSigner = new ethers.Contract(paymentData.token, ERC20_ABI, signer);
+        try {
+          const tokenContractWithSigner = new ethers.Contract(paymentData.token, ERC20_ABI, signer);
 
-        setMessage({ type: 'info', text: 'MetaMaskで承認してください...' });
-        console.log('⏳ ウォレット承認待ち...');
+          setMessage({ type: 'info', text: 'MetaMaskで承認してください...' });
+          console.log('⏳ ウォレット承認待ち...');
 
-        const tx = await tokenContractWithSigner.transfer(paymentData.to, paymentData.amount);
-        txHash = tx.hash;
-        console.log('✅ トランザクション送信成功:', txHash);
-        addLog(`✅ トランザクション送信: ${txHash}`);
-        setQrDebugLogs(logs);
+          const tx = await tokenContractWithSigner.transfer(paymentData.to, paymentData.amount);
+          txHash = tx.hash;
+          console.log('✅ トランザクション送信成功:', txHash);
+          addLog(`✅ トランザクション送信: ${txHash}`);
+          setQrDebugLogs(logs);
 
-        setMessage({ type: 'info', text: 'トランザクション処理中...' });
-        await tx.wait();
-        console.log('✅ トランザクション完了:', txHash);
-        addLog(`✅ トランザクション完了`);
-        setQrDebugLogs(logs);
+          setMessage({ type: 'info', text: 'トランザクション処理中...' });
+          await tx.wait();
+          console.log('✅ トランザクション完了:', txHash);
+          addLog(`✅ トランザクション完了`);
+          setQrDebugLogs(logs);
+        } catch (transferError: any) {
+          console.error('❌ contract.transfer()エラー:', transferError);
+          addLog(`❌ transfer失敗: ${transferError.message}`);
+          setQrDebugLogs(logs);
+          throw transferError;
+        }
       } else {
         throw new Error('署名方法が利用できません');
       }
