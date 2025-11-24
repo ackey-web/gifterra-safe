@@ -237,7 +237,7 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
       let userBalance = '0';
 
       try {
-        const readOnlyProvider = new ethers.providers.JsonRpcProvider('https://rpc.ankr.com/polygon');
+        const readOnlyProvider = new ethers.providers.JsonRpcProvider('https://polygon.llamarpc.com');
         const tokenContract = new ethers.Contract(decoded.token, ERC20_ABI, readOnlyProvider);
 
         const balance = await tokenContract.balanceOf(walletAddress);
@@ -550,7 +550,7 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
       }
 
       // 残高確認用のread-only provider
-      const readOnlyProvider = new ethers.providers.JsonRpcProvider('https://rpc.ankr.com/polygon');
+      const readOnlyProvider = new ethers.providers.JsonRpcProvider('https://polygon.llamarpc.com');
       const tokenContract = new ethers.Contract(paymentData.token, ERC20_ABI, readOnlyProvider);
 
       // 残高確認
