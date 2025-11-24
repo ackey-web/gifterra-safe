@@ -264,6 +264,9 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
       let userBalance = '0';
 
       try {
+        addLog('🔍 残高確認中...');
+        setQrDebugLogs(logs);
+
         const readOnlyProvider = new ethers.providers.JsonRpcProvider('https://rpc.ankr.com/polygon');
         const tokenContract = new ethers.Contract(decoded.token, ERC20_ABI, readOnlyProvider);
 
@@ -271,8 +274,13 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
         const decimals = await tokenContract.decimals();
 
         userBalance = ethers.utils.formatUnits(balance, decimals);
+        addLog(`✅ 残高取得成功: ${userBalance} JPYC`);
+        setQrDebugLogs(logs);
       } catch (balanceError: any) {
         console.error('残高取得エラー:', balanceError.message);
+        addLog(`⚠️ 残高取得失敗: ${balanceError.message}`);
+        addLog(`💡 残高確認をスキップして続行`);
+        setQrDebugLogs(logs);
         userBalance = '0';
       }
 
@@ -658,16 +666,33 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
       }
 
       // 残高確認用のread-only provider
+      // tokenContractはトランザクション構築でも使用するため外で定義
       const readOnlyProvider = new ethers.providers.JsonRpcProvider('https://rpc.ankr.com/polygon');
       const tokenContract = new ethers.Contract(paymentData.token, ERC20_ABI, readOnlyProvider);
 
-      // 残高確認
-      const userBalance = await tokenContract.balanceOf(walletAddress);
+      try {
+        addLog('💰 残高確認中...');
+        setQrDebugLogs(logs);
 
-      if (userBalance.lt(paymentData.amount)) {
-        setMessage({ type: 'error', text: '残高不足です' });
-        setIsProcessing(false);
-        return;
+        // 残高確認
+        const userBalance = await tokenContract.balanceOf(walletAddress);
+
+        if (userBalance.lt(paymentData.amount)) {
+          addLog(`❌ 残高不足: 必要 ${ethers.utils.formatUnits(paymentData.amount, 18)} JPYC`);
+          setQrDebugLogs(logs);
+          setMessage({ type: 'error', text: '残高不足です' });
+          setIsProcessing(false);
+          return;
+        }
+
+        addLog(`✅ 残高確認OK: ${ethers.utils.formatUnits(userBalance, 18)} JPYC`);
+        setQrDebugLogs(logs);
+      } catch (balanceCheckError: any) {
+        console.warn('⚠️ 残高確認エラー - スキップして続行:', balanceCheckError.message);
+        addLog(`⚠️ 残高確認失敗: ${balanceCheckError.message}`);
+        addLog(`💡 残高確認をスキップ - MetaMaskで確認します`);
+        setQrDebugLogs(logs);
+        // エラーでも続行（MetaMaskが残高不足を検出する）
       }
 
       // トランザクションデータを構築
