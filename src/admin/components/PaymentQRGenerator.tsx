@@ -1,12 +1,15 @@
 // src/admin/components/PaymentQRGenerator.tsx
 // テナント向け決済QRコード生成コンポーネント
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { usePrivy, useWallets } from '@privy-io/react-auth';
 import { supabase } from '../../lib/supabase';
 import { getTokenConfig } from '../../config/tokens';
 import { encodeX402, parsePaymentAmount, generateRequestId } from '../../utils/x402';
+import { isGaslessPaymentEnabled } from '../../config/features';
+import { generateNonce } from '../../utils/eip3009';
+import type { AuthorizationQRData } from '../../types/qrPayment';
 
 export function PaymentQRGenerator() {
   const [amount, setAmount] = useState('');
@@ -20,11 +23,24 @@ export function PaymentQRGenerator() {
   const [pendingGenerateData, setPendingGenerateData] = useState<{ amount: string; message: string; expiryMinutes: number } | null>(null);
   const qrRef = useRef<HTMLDivElement>(null);
 
+  // 新規: ガスレス決済の状態
+  const [useGasless, setUseGasless] = useState(false);
+  const [isGaslessAvailable, setIsGaslessAvailable] = useState(false);
+
   const { user } = usePrivy();
   const { wallets } = useWallets();
   const walletAddress = user?.wallet?.address || wallets[0]?.address || '';
 
   const jpycConfig = getTokenConfig('JPYC');
+
+  // ガスレス機能が使えるかチェック
+  useEffect(() => {
+    if (walletAddress) {
+      const available = isGaslessPaymentEnabled(walletAddress);
+      setIsGaslessAvailable(available);
+      console.log('⚡ Gasless payment available:', available);
+    }
+  }, [walletAddress]);
 
   const handleGenerate = async () => {
     setError('');
@@ -47,8 +63,12 @@ export function PaymentQRGenerator() {
       return;
     }
 
-    // 対面決済の場合は直接生成
-    await executeGenerate(amount, message, expiryMinutes);
+    // ガスレスモードかどうかで分岐
+    if (useGasless && isGaslessAvailable) {
+      await executeGenerateGasless(amount, message, expiryMinutes);
+    } else {
+      await executeGenerate(amount, message, expiryMinutes);
+    }
   };
 
   const executeGenerate = async (amt: string, msg: string, expiry: number) => {
@@ -93,6 +113,68 @@ export function PaymentQRGenerator() {
     } catch (err: any) {
       console.error('QR generation error:', err);
       setError(err.message || 'QRコードの生成に失敗しました');
+    } finally {
+      setIsGenerating(false);
+      setShowConfirmModal(false);
+    }
+  };
+
+  // 新規: ガスレスQR生成
+  const executeGenerateGasless = async (amt: string, msg: string, expiry: number) => {
+    setError('');
+    setIsGenerating(true);
+
+    try {
+      const amountWei = parsePaymentAmount(amt, jpycConfig.decimals);
+      const nonce = generateNonce();
+      const validBefore = Math.floor(Date.now() / 1000) + (expiry * 60);
+      const requestId = generateRequestId();
+
+      console.log('⚡ Generating gasless payment QR:', {
+        amount: amt,
+        nonce: nonce.substring(0, 10) + '...',
+        validBefore,
+        requestId,
+      });
+
+      // AuthorizationQRData を生成
+      const qrData: AuthorizationQRData = {
+        type: 'authorization',
+        to: walletAddress,
+        value: amountWei,
+        validBefore,
+        nonce,
+        chainId: 137,
+        storeName: msg || '店舗', // メッセージを店舗名として使用
+        requestId,
+      };
+
+      setQrData(JSON.stringify(qrData));
+
+      // Supabaseに記録（署名待機状態）
+      const { error: dbError } = await supabase
+        .from('payment_requests')
+        .insert({
+          request_id: requestId,
+          tenant_address: walletAddress.toLowerCase(),
+          amount: amt,
+          message: msg || null,
+          expires_at: new Date(validBefore * 1000).toISOString(),
+          status: 'awaiting_signature',
+          payment_type: 'authorization',
+          nonce: nonce,
+        });
+
+      if (dbError) {
+        console.error('Failed to save gasless payment request:', dbError);
+        // エラーでもQRは表示（記録は任意）
+      } else {
+        console.log('✅ Gasless payment request saved:', requestId);
+      }
+
+    } catch (err: any) {
+      console.error('Gasless QR generation error:', err);
+      setError(err.message || 'ガスレスQRコードの生成に失敗しました');
     } finally {
       setIsGenerating(false);
       setShowConfirmModal(false);
@@ -270,6 +352,41 @@ export function PaymentQRGenerator() {
               </optgroup>
             </select>
           </div>
+
+          {/* ガスレス決済オプション（フィーチャーフラグで制御） */}
+          {isGaslessAvailable && (
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={useGasless}
+                  onChange={(e) => setUseGasless(e.target.checked)}
+                />
+                <span style={{ fontSize: isMobile ? 13 : 14, fontWeight: 600, color: '#EAF2FF' }}>
+                  ⚡ ガスレス決済（ユーザーはガス代不要）
+                  <span style={{
+                    marginLeft: 8,
+                    padding: '2px 6px',
+                    background: '#10b981',
+                    color: '#fff',
+                    fontSize: 10,
+                    borderRadius: 4,
+                    fontWeight: 600
+                  }}>
+                    BETA
+                  </span>
+                </span>
+              </label>
+              <p style={{
+                fontSize: 11,
+                color: 'rgba(255,255,255,0.6)',
+                marginTop: 4,
+                marginLeft: 24
+              }}>
+                ユーザーはJPYCだけで決済可能。店舗がガス代を負担します（約0.2円/回）
+              </p>
+            </div>
+          )}
 
           {/* エラーメッセージ */}
           {error && (

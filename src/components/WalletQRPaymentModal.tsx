@@ -1,25 +1,40 @@
 // src/components/WalletQRPaymentModal.tsx
 // ウォレットQR決済用の金額入力モーダル
+// 通常決済とガスレス決済(EIP-3009)の両方に対応
 
 import { useState } from 'react';
-import type { WalletQRData } from '../types/qrPayment';
+import type { WalletQRData, AuthorizationQRData } from '../types/qrPayment';
+import type { AuthorizationSignature } from '../utils/eip3009';
 
 interface WalletQRPaymentModalProps {
   walletData: WalletQRData;
+  authorizationData?: AuthorizationQRData; // ガスレス決済の場合
   onConfirm: (amount: string, message: string) => void;
+  onGaslessConfirm?: (signature: AuthorizationSignature) => void; // ガスレス決済時
   onCancel: () => void;
   debugLogs?: string[];
 }
 
 export function WalletQRPaymentModal({
   walletData,
+  authorizationData,
   onConfirm,
+  onGaslessConfirm,
   onCancel,
   debugLogs = [],
 }: WalletQRPaymentModalProps) {
-  const [amount, setAmount] = useState('');
+  // ガスレス決済モードかどうか
+  const isGaslessMode = !!authorizationData;
+
+  // ガスレス決済の場合、金額は固定（QRコードから取得）
+  const fixedAmount = authorizationData
+    ? (parseFloat(authorizationData.value) / 1e18).toString()
+    : '';
+
+  const [amount, setAmount] = useState(fixedAmount);
   const [message, setMessage] = useState('');
   const [showDebugPanel, setShowDebugPanel] = useState(true);
+  const [isSigning, setIsSigning] = useState(false);
 
   const handleAmountClick = (digit: string) => {
     if (digit === 'C') {
@@ -31,11 +46,29 @@ export function WalletQRPaymentModal({
     }
   };
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     if (!amount || parseFloat(amount) <= 0) {
       alert('金額を入力してください');
       return;
     }
+
+    // ガスレス決済の場合、署名を生成するトリガーを送る
+    if (isGaslessMode && authorizationData && onGaslessConfirm) {
+      setIsSigning(true);
+      try {
+        // 親コンポーネントに署名生成を依頼
+        // 署名生成には ethers.Signer が必要なため、親で実行する必要がある
+        // @ts-ignore - 一時的な型エラー回避
+        await onGaslessConfirm({ authorizationData });
+      } catch (error: any) {
+        console.error('❌ Gasless confirmation error:', error);
+        alert(`署名生成に失敗しました: ${error.message}`);
+        setIsSigning(false);
+      }
+      return;
+    }
+
+    // 通常決済
     onConfirm(amount, message);
   };
 
@@ -76,8 +109,30 @@ export function WalletQRPaymentModal({
               color: '#fff',
             }}
           >
-            💳 お支払い金額を入力
+            {isGaslessMode ? '⚡ ガスレス決済' : '💳 お支払い金額を入力'}
           </h2>
+
+          {/* ガスレスモード説明 */}
+          {isGaslessMode && (
+            <div
+              style={{
+                marginBottom: '12px',
+                padding: '8px 12px',
+                background: 'rgba(16, 185, 129, 0.15)',
+                border: '1px solid rgba(16, 185, 129, 0.3)',
+                borderRadius: '8px',
+                fontSize: '13px',
+                color: '#10b981',
+                lineHeight: '1.5',
+              }}
+            >
+              <strong>ガス代不要</strong>で決済できます
+              <br />
+              <span style={{ fontSize: '12px', opacity: 0.9 }}>
+                署名のみで送金が完了します（ガス代は店舗が負担）
+              </span>
+            </div>
+          )}
 
           {/* デバッグパネル */}
           {debugLogs.length > 0 && (
@@ -192,19 +247,20 @@ export function WalletQRPaymentModal({
           </div>
         </div>
 
-        {/* テンキー */}
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr 1fr',
-            gap: '12px',
-            marginBottom: '24px',
-          }}
-        >
-          {['1', '2', '3', '4', '5', '6', '7', '8', '9', '00', '0', 'C'].map((key) => (
-            <button
-              key={key}
-              onClick={() => handleAmountClick(key)}
+        {/* テンキー（ガスレスモードでは非表示） */}
+        {!isGaslessMode && (
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr 1fr',
+              gap: '12px',
+              marginBottom: '24px',
+            }}
+          >
+            {['1', '2', '3', '4', '5', '6', '7', '8', '9', '00', '0', 'C'].map((key) => (
+              <button
+                key={key}
+                onClick={() => handleAmountClick(key)}
               style={{
                 padding: '20px',
                 fontSize: '24px',
@@ -228,7 +284,8 @@ export function WalletQRPaymentModal({
               {key}
             </button>
           ))}
-        </div>
+          </div>
+        )}
 
         {/* メッセージ入力（オプション） */}
         <div style={{ marginBottom: '24px' }}>
@@ -288,39 +345,49 @@ export function WalletQRPaymentModal({
           </button>
           <button
             onClick={handleConfirm}
-            disabled={!amount || parseFloat(amount) <= 0}
+            disabled={(!amount || parseFloat(amount) <= 0) || isSigning}
             style={{
               flex: 2,
               padding: '16px',
               fontSize: '18px',
               fontWeight: 'bold',
               background:
-                amount && parseFloat(amount) > 0
-                  ? 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)'
+                amount && parseFloat(amount) > 0 && !isSigning
+                  ? isGaslessMode
+                    ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
+                    : 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)'
                   : 'rgba(148, 163, 184, 0.3)',
               color: '#fff',
               border: 'none',
               borderRadius: '12px',
-              cursor: amount && parseFloat(amount) > 0 ? 'pointer' : 'not-allowed',
+              cursor: amount && parseFloat(amount) > 0 && !isSigning ? 'pointer' : 'not-allowed',
               boxShadow:
-                amount && parseFloat(amount) > 0 ? '0 4px 15px rgba(59, 130, 246, 0.3)' : 'none',
+                amount && parseFloat(amount) > 0 && !isSigning
+                  ? isGaslessMode
+                    ? '0 4px 15px rgba(16, 185, 129, 0.3)'
+                    : '0 4px 15px rgba(59, 130, 246, 0.3)'
+                  : 'none',
               transition: 'all 0.2s',
-              opacity: amount && parseFloat(amount) > 0 ? 1 : 0.5,
+              opacity: amount && parseFloat(amount) > 0 && !isSigning ? 1 : 0.5,
             }}
             onMouseEnter={(e) => {
-              if (amount && parseFloat(amount) > 0) {
+              if (amount && parseFloat(amount) > 0 && !isSigning) {
                 e.currentTarget.style.transform = 'translateY(-2px)';
-                e.currentTarget.style.boxShadow = '0 6px 20px rgba(59, 130, 246, 0.4)';
+                e.currentTarget.style.boxShadow = isGaslessMode
+                  ? '0 6px 20px rgba(16, 185, 129, 0.4)'
+                  : '0 6px 20px rgba(59, 130, 246, 0.4)';
               }
             }}
             onMouseLeave={(e) => {
-              if (amount && parseFloat(amount) > 0) {
+              if (amount && parseFloat(amount) > 0 && !isSigning) {
                 e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = '0 4px 15px rgba(59, 130, 246, 0.3)';
+                e.currentTarget.style.boxShadow = isGaslessMode
+                  ? '0 4px 15px rgba(16, 185, 129, 0.3)'
+                  : '0 4px 15px rgba(59, 130, 246, 0.3)';
               }
             }}
           >
-            お支払い確定
+            {isSigning ? '署名生成中...' : isGaslessMode ? '⚡ 署名して決済' : 'お支払い確定'}
           </button>
         </div>
 
