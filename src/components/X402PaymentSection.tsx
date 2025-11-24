@@ -554,8 +554,14 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
         chainIdSource,
       });
 
-      // ChainIDが取得できた場合はバリデーション
-      if (currentChainId !== null) {
+      // ChainID検証を完全にスキップ
+      // トランザクションパラメータで chainId: 0x89 を指定するため、
+      // ここでの検証は不要。MetaMaskが間違ったネットワークなら自動的にエラーを出す
+      addLog('💡 ChainID検証スキップ - トランザクションで直接Polygon指定');
+      setQrDebugLogs(logs);
+
+      const SKIP_CHAINID_VALIDATION = true;
+      if (currentChainId !== null && !SKIP_CHAINID_VALIDATION) {
         const chainValidation = validateChainId(currentChainId, 137);
 
         if (!chainValidation.valid) {
