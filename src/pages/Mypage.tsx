@@ -1798,14 +1798,51 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
         // MATICバランスチェック
         const maticBalance = await signer.getBalance();
 
-        // トランザクションを直接送信
-        const tx = await signer.sendTransaction({
-          to: tokenAddress,
-          data: transferData,
-          gasLimit: 65000, // ERC20 transferの標準的なガスリミット
+        // トランザクション送信前の診断情報
+        console.log('📱 [送金] トランザクション送信前の状態:', {
+          hasWindowEthereum: typeof window !== 'undefined' && !!window.ethereum,
+          isMetaMask: typeof window !== 'undefined' && window.ethereum?.isMetaMask,
+          isIPhone: /iPhone|iPad|iPod/i.test(navigator.userAgent),
+          selectedAddress: typeof window !== 'undefined' && window.ethereum?.selectedAddress,
+          signerAddress: await signer.getAddress(),
+          currentUrl: typeof window !== 'undefined' ? window.location.href : 'N/A',
         });
 
-        const receipt = await tx.wait();
+        // iPhone PWA + MetaMask mobile対応
+        let tx;
+        let receipt;
+        if (typeof window !== 'undefined' && window.ethereum?.isMetaMask && /iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+          console.log('🍎 [iPhone PWA 送金] window.ethereum.request経由でトランザクション送信');
+
+          const signerAddress = await signer.getAddress();
+
+          // window.ethereumを直接使用してトランザクション送信
+          const txHash = await window.ethereum.request({
+            method: 'eth_sendTransaction',
+            params: [{
+              from: signerAddress,
+              to: tokenAddress,
+              data: transferData,
+              gas: ethers.utils.hexlify(65000), // ガスリミットを16進数に変換
+            }],
+          });
+
+          console.log('✅ [iPhone PWA 送金] トランザクションハッシュ:', txHash);
+
+          // トランザクションレシートを待つ
+          const directProvider = new ethers.providers.Web3Provider(window.ethereum as any, 'any');
+          tx = await directProvider.getTransaction(txHash);
+          receipt = await tx.wait();
+        } else {
+          // 通常フロー (Androidやデスクトップ)
+          console.log('💻 [通常送金] signer.sendTransaction経由でトランザクション送信');
+          tx = await signer.sendTransaction({
+            to: tokenAddress,
+            data: transferData,
+            gasLimit: 65000, // ERC20 transferの標準的なガスリミット
+          });
+          receipt = await tx.wait();
+        }
 
         // 残高は10秒ごとに自動更新されます
 
