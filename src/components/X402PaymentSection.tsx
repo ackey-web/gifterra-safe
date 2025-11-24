@@ -794,15 +794,27 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
 
       const tokenContractWithSigner = new ethers.Contract(paymentData.token, ERC20_ABI, signer);
 
+      const signerAddress = await signer.getAddress();
       console.log('🚀 contract.transfer()を呼び出します:', {
         token: paymentData.token,
         to: paymentData.to,
         amount: paymentData.amount,
-        signerAddress: await signer.getAddress(),
+        signerAddress,
+      });
+
+      // MetaMask Mobile診断用
+      console.log('📱 [診断] トランザクション送信前の状態:', {
+        hasWindowEthereum: typeof window !== 'undefined' && !!window.ethereum,
+        isMetaMask: typeof window !== 'undefined' && window.ethereum?.isMetaMask,
+        selectedAddress: typeof window !== 'undefined' && window.ethereum?.selectedAddress,
+        signerType: signer.constructor.name,
+        currentUrl: typeof window !== 'undefined' ? window.location.href : 'N/A',
       });
 
       setMessage({ type: 'info', text: 'MetaMaskで承認してください...' });
       console.log('⏳ ウォレット承認待ち...');
+      addLog('📤 トランザクション送信開始...');
+      setQrDebugLogs(logs);
 
       const tx = await tokenContractWithSigner.transfer(paymentData.to, paymentData.amount);
       txHash = tx.hash;
