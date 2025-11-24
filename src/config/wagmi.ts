@@ -22,7 +22,9 @@ if (!projectId) {
 // コネクターリストを構築（Project IDが有効な場合のみWalletConnectを追加）
 const connectors: any[] = [];
 
-// WalletConnect v2 (Project IDが有効な場合のみ)
+// WalletConnect v2 は一時的に無効化（core/relayerエラーが多発するため）
+// TODO: Project ID設定を確認後に有効化
+/*
 if (projectId && projectId.length > 0 && !projectId.includes('/')) {
   try {
     connectors.push(
@@ -34,7 +36,7 @@ if (projectId && projectId.length > 0 && !projectId.includes('/')) {
           url: 'https://gifterra-safe.vercel.app',
           icons: ['https://gifterra-safe.vercel.app/pwa-512x512.png'],
         },
-        showQrModal: true, // モバイルでQRコード表示
+        showQrModal: true,
       })
     );
     console.log('✅ WalletConnect設定完了 - Project ID:', projectId);
@@ -42,6 +44,8 @@ if (projectId && projectId.length > 0 && !projectId.includes('/')) {
     console.error('❌ WalletConnect初期化エラー:', error);
   }
 }
+*/
+console.log('⚠️ [Wagmi] WalletConnectは一時的に無効化されています');
 
 // Injected provider (デスクトップ用フォールバック)
 connectors.push(injected());
