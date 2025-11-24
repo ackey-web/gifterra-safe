@@ -490,6 +490,24 @@ export const ERC20_MIN_ABI = [
     stateMutability: "view",
     type: "function",
   },
+  // EIP-3009: transferWithAuthorization (JPYC v2)
+  {
+    inputs: [
+      { internalType: "address", name: "from", type: "address" },
+      { internalType: "address", name: "to", type: "address" },
+      { internalType: "uint256", name: "value", type: "uint256" },
+      { internalType: "uint256", name: "validAfter", type: "uint256" },
+      { internalType: "uint256", name: "validBefore", type: "uint256" },
+      { internalType: "bytes32", name: "nonce", type: "bytes32" },
+      { internalType: "uint8", name: "v", type: "uint8" },
+      { internalType: "bytes32", name: "r", type: "bytes32" },
+      { internalType: "bytes32", name: "s", type: "bytes32" },
+    ],
+    name: "transferWithAuthorization",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
 ] as const;
 
 /* =========================================

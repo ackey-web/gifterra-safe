@@ -4,12 +4,14 @@
 import { useState, useRef, useEffect } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { usePrivy, useWallets } from '@privy-io/react-auth';
+import { ethers } from 'ethers';
 import { supabase } from '../../lib/supabase';
 import { getTokenConfig } from '../../config/tokens';
 import { encodeX402, parsePaymentAmount, generateRequestId } from '../../utils/x402';
 import { isGaslessPaymentEnabled } from '../../config/features';
 import { generateNonce } from '../../utils/eip3009';
 import type { AuthorizationQRData } from '../../types/qrPayment';
+import { JPYC_TOKEN, ERC20_MIN_ABI } from '../../contract';
 
 export function PaymentQRGenerator() {
   const [amount, setAmount] = useState('');
@@ -26,6 +28,8 @@ export function PaymentQRGenerator() {
   // 新規: ガスレス決済の状態
   const [useGasless, setUseGasless] = useState(false);
   const [isGaslessAvailable, setIsGaslessAvailable] = useState(false);
+  const [currentRequestId, setCurrentRequestId] = useState<string | null>(null);
+  const [isExecutingGasless, setIsExecutingGasless] = useState(false);
 
   const { user } = usePrivy();
   const { wallets } = useWallets();
@@ -41,6 +45,103 @@ export function PaymentQRGenerator() {
       console.log('⚡ Gasless payment available:', available);
     }
   }, [walletAddress]);
+
+  // Supabase Realtime: 署名受信を監視してtransferWithAuthorizationを実行
+  useEffect(() => {
+    if (!currentRequestId || !walletAddress) return;
+
+    console.log('👂 Realtime subscription started for:', currentRequestId);
+
+    const channel = supabase
+      .channel(`payment_request:${currentRequestId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'payment_requests',
+          filter: `request_id=eq.${currentRequestId}`,
+        },
+        async (payload) => {
+          console.log('📨 Realtime update received:', payload);
+
+          const newRecord = payload.new as any;
+
+          // 署名が受信されたらtransferWithAuthorizationを実行
+          if (newRecord.status === 'signature_received' && !isExecutingGasless) {
+            console.log('✅ Signature received! Executing transferWithAuthorization...');
+            setIsExecutingGasless(true);
+
+            try {
+              // Signerを取得
+              const wallet = wallets.find(w => w.address.toLowerCase() === walletAddress.toLowerCase());
+              if (!wallet) {
+                throw new Error('ウォレットが見つかりません');
+              }
+
+              await wallet.switchChain(137); // Polygon Mainnet
+              const ethereumProvider = await wallet.getEthereumProvider();
+              const provider = new ethers.providers.Web3Provider(ethereumProvider);
+              const signer = provider.getSigner();
+
+              // JPYC コントラクト
+              const jpycContract = new ethers.Contract(JPYC_TOKEN.ADDRESS, ERC20_MIN_ABI, signer);
+
+              // transferWithAuthorization を実行
+              const tx = await jpycContract.transferWithAuthorization(
+                newRecord.completed_by,     // from
+                walletAddress,              // to (店舗)
+                newRecord.value || ethers.utils.parseUnits(newRecord.amount, 18), // value
+                0,                          // validAfter
+                newRecord.valid_before || Math.floor(Date.now() / 1000) + 3600,   // validBefore
+                newRecord.nonce,            // nonce
+                newRecord.signature_v,      // v
+                newRecord.signature_r,      // r
+                newRecord.signature_s       // s
+              );
+
+              console.log('⏳ Transaction sent:', tx.hash);
+              const receipt = await tx.wait();
+              console.log('✅ Transaction confirmed:', receipt.transactionHash);
+
+              // ステータスを完了に更新
+              await supabase
+                .from('payment_requests')
+                .update({
+                  status: 'completed',
+                  completed_at: new Date().toISOString(),
+                })
+                .eq('request_id', currentRequestId);
+
+              alert('✅ ガスレス決済が完了しました！');
+
+              // リセット
+              setCurrentRequestId(null);
+              setQrData(null);
+
+            } catch (error: any) {
+              console.error('❌ transferWithAuthorization error:', error);
+              alert(`❌ 決済の実行に失敗しました: ${error.message}`);
+
+              // エラー状態に更新
+              await supabase
+                .from('payment_requests')
+                .update({ status: 'cancelled' })
+                .eq('request_id', currentRequestId);
+            } finally {
+              setIsExecutingGasless(false);
+            }
+          }
+        }
+      )
+      .subscribe();
+
+    // クリーンアップ
+    return () => {
+      console.log('🔌 Realtime subscription closed');
+      supabase.removeChannel(channel);
+    };
+  }, [currentRequestId, walletAddress, wallets, isExecutingGasless]);
 
   const handleGenerate = async () => {
     setError('');
@@ -170,6 +271,8 @@ export function PaymentQRGenerator() {
         // エラーでもQRは表示（記録は任意）
       } else {
         console.log('✅ Gasless payment request saved:', requestId);
+        // リクエストIDを保存してRealtime購読を開始
+        setCurrentRequestId(requestId);
       }
 
     } catch (err: any) {
