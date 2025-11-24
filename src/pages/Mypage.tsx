@@ -117,6 +117,13 @@ async function getPrivyEthersSigner(privyWallet: any): Promise<ethers.Signer | n
       console.log('✅ [Mypage] MetaMask検出 - 直接window.ethereumを使用してPrivyをバイパス');
 
       try {
+        // MetaMask 7.59.0対応: selectedAddressがnullの場合は明示的に接続をリクエスト
+        if (!window.ethereum.selectedAddress) {
+          console.log('⚠️ [Mypage] selectedAddress is null - requesting accounts (MetaMask 7.59.0対応)');
+          await window.ethereum.request({ method: 'eth_requestAccounts' });
+          console.log('✅ [Mypage] eth_requestAccounts成功:', window.ethereum.selectedAddress);
+        }
+
         const directProvider = new ethers.providers.Web3Provider(window.ethereum as any, 'any');
         const directSigner = directProvider.getSigner();
         const signerAddress = await directSigner.getAddress();
@@ -1361,6 +1368,13 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
         console.log('🔍 [Mypage getSigner] MetaMask直接検出 - Privyをバイパス');
 
         try {
+          // MetaMask 7.59.0対応: selectedAddressがnullの場合は明示的に接続をリクエスト
+          if (!window.ethereum.selectedAddress) {
+            console.log('⚠️ [Mypage getSigner] selectedAddress is null - requesting accounts (MetaMask 7.59.0対応)');
+            await window.ethereum.request({ method: 'eth_requestAccounts' });
+            console.log('✅ [Mypage getSigner] eth_requestAccounts成功:', window.ethereum.selectedAddress);
+          }
+
           const directProvider = new ethers.providers.Web3Provider(window.ethereum as any, 'any');
           const directSigner = directProvider.getSigner();
           const addr = await directSigner.getAddress();
@@ -4378,6 +4392,13 @@ function WalletInfo({ isMobile }: { isMobile: boolean }) {
         console.log('🔍 [WalletInfo getSigner] MetaMask直接検出 - Privyをバイパス');
 
         try {
+          // MetaMask 7.59.0対応: selectedAddressがnullの場合は明示的に接続をリクエスト
+          if (!window.ethereum.selectedAddress) {
+            console.log('⚠️ [WalletInfo getSigner] selectedAddress is null - requesting accounts (MetaMask 7.59.0対応)');
+            await window.ethereum.request({ method: 'eth_requestAccounts' });
+            console.log('✅ [WalletInfo getSigner] eth_requestAccounts成功:', window.ethereum.selectedAddress);
+          }
+
           const directProvider = new ethers.providers.Web3Provider(window.ethereum as any, 'any');
           const directSigner = directProvider.getSigner();
           const addr = await directSigner.getAddress();
