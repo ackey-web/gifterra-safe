@@ -65,6 +65,7 @@ export function PaymentQRGenerator() {
         to: walletAddress,
         token: jpycConfig.currentAddress,
         amount: amountWei,
+        chainId: 137, // Polygon Mainnet
         message: msg || undefined,
         expires,
         requestId,
