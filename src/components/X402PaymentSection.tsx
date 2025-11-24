@@ -607,22 +607,31 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
           } catch (switchError: any) {
             console.error('❌ ネットワーク自動切り替え失敗:', switchError);
             addLog(`❌ 切り替え失敗: ${switchError.message}`);
+            addLog(`⚠️ ChainID検証をスキップして続行します`);
+            addLog(`💡 MetaMaskが自動的に正しいネットワークを要求します`);
+            setQrDebugLogs(logs);
 
-            // 手動切り替えのメッセージを表示
-            setMessage({
-              type: 'error',
-              text: `ネットワークをPolygon Mainnetに切り替えてください。\n\n現在: ${chainValidation.chainName} (ChainID: ${currentChainId})\n取得元: ${chainIdSource}\n\nMetaMaskアプリで手動で切り替えてから再試行してください。\n\nデバッグ:\nprivy.wallets: ${privyWalletChainId ?? 'null'}\nwindow.ethereum: ${windowChainId ?? 'null'}\nsigner.provider: ${signerChainId ?? 'null'}`
-            });
-            setIsProcessing(false);
-            return;
+            // 警告メッセージを表示するが処理は続行
+            console.warn('⚠️ ChainID検証失敗 - MetaMaskに委ねて続行');
+            console.warn('現在のChainID:', currentChainId, 'from', chainIdSource);
+
+            // エラーで止めずに続行（MetaMaskがトランザクション時に正しいネットワークを要求する）
           }
+        } else {
+          // ChainID検証成功
+          addLog(`✅ ChainID検証成功: ${currentChainId} (${chainValidation.chainName})`);
+          setQrDebugLogs(logs);
+          console.log('✅ 接続中のChainID検証成功:', {
+            chainId: currentChainId,
+            chainName: chainValidation.chainName,
+            chainIdSource,
+          });
         }
-
-        console.log('✅ 接続中のChainID検証成功:', {
-          chainId: currentChainId,
-          chainName: chainValidation.chainName,
-          chainIdSource,
-        });
+      } else {
+        // ChainIDが取得できなかった場合も続行
+        addLog(`⚠️ ChainID取得失敗 - トランザクション送信時にMetaMaskが検証`);
+        setQrDebugLogs(logs);
+        console.warn('⚠️ ChainID取得失敗 - 続行');
       }
 
       // RequestID重複チェック（リプレイアタック防止 - Phase 1）
