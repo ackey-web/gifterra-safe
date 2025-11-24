@@ -202,11 +202,15 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
 
     try {
 
-      // ウォレットQRかどうかを判定
+      // QRコードのタイプを判定
       try {
         const parsed = JSON.parse(data);
         if (parsed.type === 'wallet') {
           setMessage({ type: 'error', text: 'これはウォレットQRです。請求QRをスキャンしてください。' });
+          return;
+        }
+        if (parsed.type === 'gasless') {
+          setMessage({ type: 'error', text: 'ガスレス決済QRコードはスキャン支払いに対応していません。' });
           return;
         }
       } catch (e) {
