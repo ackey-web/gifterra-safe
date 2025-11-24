@@ -7,13 +7,16 @@ import {
   useWallet,
 } from "@thirdweb-dev/react";
 import { usePrivy } from "@privy-io/react-auth";
+import { useAccount } from "wagmi";
 import { LoginSupportChat } from "../components/LoginSupportChat";
+import { WalletConnectButton } from "../components/WalletConnectButton";
 
 export const LoginPage: React.FC = () => {
   const address = useAddress();
   const connectionStatus = useConnectionStatus();
   const wallet = useWallet();
   const { login, authenticated, user } = usePrivy();
+  const { isConnected: isWagmiConnected, address: wagmiAddress } = useAccount();
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
   useEffect(() => {
@@ -40,6 +43,23 @@ export const LoginPage: React.FC = () => {
       window.location.href = "/mypage";
     }
   }, [authenticated, user]);
+
+  // WalletConnect接続成功時、マイページにリダイレクト
+  useEffect(() => {
+    if (isWagmiConnected && wagmiAddress) {
+      console.log('✅ WalletConnect接続成功:', wagmiAddress);
+
+      // ローカルストレージに認証情報を保存
+      localStorage.setItem("gifterra_auth", JSON.stringify({
+        address: wagmiAddress,
+        timestamp: Date.now(),
+        walletType: "walletconnect",
+      }));
+
+      // マイページにリダイレクト
+      window.location.href = "/mypage";
+    }
+  }, [isWagmiConnected, wagmiAddress]);
 
   // ウォレット接続成功時、マイページにリダイレクト
   useEffect(() => {
@@ -229,6 +249,9 @@ export const LoginPage: React.FC = () => {
             </div>
           </div>
         </div>
+
+        {/* WalletConnectボタン（モバイルPWA対応） */}
+        <WalletConnectButton />
 
         {/* Privyログインボタン（Google/Email） */}
         <div style={{ marginBottom: 16 }}>
