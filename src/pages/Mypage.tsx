@@ -1808,42 +1808,17 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
           currentUrl: typeof window !== 'undefined' ? window.location.href : 'N/A',
         });
 
-        // スマホ PWA + MetaMask mobile対応 (iPhone & Android両対応)
-        let tx;
-        let receipt;
-        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-        if (typeof window !== 'undefined' && window.ethereum?.isMetaMask && isMobile) {
-          console.log('📱 [モバイル PWA 送金] window.ethereum.request経由でトランザクション送信');
+        // トランザクション送信
+        // モバイルでもデスクトップでも同じsigner.sendTransaction()を使用
+        console.log('💰 [送金] signer.sendTransaction経由でトランザクション送信');
+        const tx = await signer.sendTransaction({
+          to: tokenAddress,
+          data: transferData,
+          gasLimit: 100000, // 余裕を持ったガスリミット
+        });
 
-          const signerAddress = await signer.getAddress();
-
-          // window.ethereumを直接使用してトランザクション送信
-          const txHash = await window.ethereum.request({
-            method: 'eth_sendTransaction',
-            params: [{
-              from: signerAddress,
-              to: tokenAddress,
-              data: transferData,
-              gas: ethers.utils.hexlify(65000), // ガスリミットを16進数に変換
-            }],
-          });
-
-          console.log('✅ [モバイル PWA 送金] トランザクションハッシュ:', txHash);
-
-          // トランザクションレシートを待つ
-          const directProvider = new ethers.providers.Web3Provider(window.ethereum as any, 'any');
-          tx = await directProvider.getTransaction(txHash);
-          receipt = await tx.wait();
-        } else {
-          // 通常フロー (デスクトップのみ)
-          console.log('💻 [デスクトップ送金] signer.sendTransaction経由でトランザクション送信');
-          tx = await signer.sendTransaction({
-            to: tokenAddress,
-            data: transferData,
-            gasLimit: 65000, // ERC20 transferの標準的なガスリミット
-          });
-          receipt = await tx.wait();
-        }
+        console.log('✅ [送金] トランザクション送信成功:', tx.hash);
+        const receipt = await tx.wait();
 
         // 残高は10秒ごとに自動更新されます
 
