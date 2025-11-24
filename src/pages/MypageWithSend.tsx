@@ -11,8 +11,10 @@ import { WalletQRPaymentModal } from '../components/WalletQRPaymentModal';
 import { JPYC_TOKEN, ERC20_MIN_ABI } from '../contract';
 import { analyzeSentiment } from '../lib/ai_analysis';
 import { saveTipMessageToSupabase } from '../lib/saveTipMessage';
-import { parseWalletQR, type WalletQRData } from '../types/qrPayment';
+import { parseWalletQR, parseAuthorizationQR, type WalletQRData, type AuthorizationQRData } from '../types/qrPayment';
 import { saveWalletQRPayment } from '../lib/saveWalletQRPayment';
+import { signTransferAuthorization, type AuthorizationSignature } from '../utils/eip3009';
+import { supabase } from '../lib/supabase';
 
 // 送金タイプ定義
 type SendMode = 'simple' | 'bulk' | 'tenant';
@@ -104,6 +106,7 @@ export function MypageWithSend() {
   // ウォレットQR決済用の状態
   const [showWalletQRPayment, setShowWalletQRPayment] = useState(false);
   const [walletQRData, setWalletQRData] = useState<WalletQRData | null>(null);
+  const [authorizationQRData, setAuthorizationQRData] = useState<AuthorizationQRData | null>(null);
   const [qrDebugLogs, setQrDebugLogs] = useState<string[]>([]);
 
   // ウォレットからsignerを取得
@@ -380,6 +383,37 @@ export function MypageWithSend() {
       // JSON parseエラーは無視して次へ
     }
 
+    // 2.5. ガスレス決済QRコードかチェック (EIP-3009 authorization)
+    try {
+      const authResult = parseAuthorizationQR(data);
+      if (authResult.success && authResult.data) {
+        console.log('⚡ ガスレス決済QR検出:', authResult.data);
+        const authData = authResult.data as AuthorizationQRData;
+
+        // 有効期限チェック
+        const now = Math.floor(Date.now() / 1000);
+        if (now > authData.validBefore) {
+          alert('このQRコードは有効期限切れです');
+          return;
+        }
+
+        // AuthorizationQRData と WalletQRData を両方セット
+        // WalletQRData: モーダル表示用の基本情報
+        const walletData: WalletQRData = {
+          type: 'wallet',
+          address: authData.to,
+          chainId: authData.chainId,
+          name: authData.storeName,
+        };
+        setWalletQRData(walletData);
+        setAuthorizationQRData(authData);
+        setShowWalletQRPayment(true);
+        return;
+      }
+    } catch (e) {
+      // JSON parseエラーは無視して次へ
+    }
+
     // 3. 請求書QRコードかチェック（ethereum:...?amount=... or x402://）
     if (data.startsWith('ethereum:') && data.includes('?')) {
       console.log('📄 請求書QR検出（ethereum: URI with params）:', data);
@@ -460,6 +494,77 @@ export function MypageWithSend() {
       console.error('Wallet QR payment error:', error);
       setSendError(error.message || '支払いに失敗しました');
       alert('❌ 支払いに失敗しました: ' + (error.message || '不明なエラー'));
+    } finally {
+      setSending(false);
+    }
+  };
+
+  // ガスレス決済の署名生成と送信
+  // EIP-3009 transferWithAuthorization を使用
+  const handleGaslessPaymentConfirm = async (data: any) => {
+    if (!authorizationQRData || !signer) {
+      alert('署名の準備ができていません');
+      return;
+    }
+
+    console.log('⚡ ガスレス決済: 署名生成開始', authorizationQRData);
+
+    try {
+      setSending(true);
+      setSendError(null);
+
+      // ユーザーのアドレスを取得
+      const userAddress = await signer.getAddress();
+
+      // EIP-3009 署名生成
+      const signature = await signTransferAuthorization(signer, {
+        from: userAddress,
+        to: authorizationQRData.to,
+        value: authorizationQRData.value,
+        validAfter: 0, // 即座に有効
+        validBefore: authorizationQRData.validBefore,
+        nonce: authorizationQRData.nonce,
+      });
+
+      console.log('✅ 署名生成完了:', {
+        v: signature.v,
+        r: signature.r.substring(0, 10) + '...',
+        s: signature.s.substring(0, 10) + '...',
+      });
+
+      // Supabaseに署名を保存（ストアがリアルタイム受信）
+      const { error: dbError } = await supabase
+        .from('payment_requests')
+        .update({
+          signature_v: signature.v,
+          signature_r: signature.r,
+          signature_s: signature.s,
+          signature_received_at: new Date().toISOString(),
+          completed_by: userAddress.toLowerCase(),
+          status: 'signature_received',
+        })
+        .eq('request_id', authorizationQRData.requestId);
+
+      if (dbError) {
+        console.error('❌ 署名の保存に失敗:', dbError);
+        throw new Error('署名の送信に失敗しました');
+      }
+
+      console.log('✅ 署名をストアへ送信完了');
+
+      // 成功通知
+      alert('✅ 署名を送信しました！店舗が決済を完了します。');
+
+      // モーダルを閉じてリセット
+      setShowWalletQRPayment(false);
+      setWalletQRData(null);
+      setAuthorizationQRData(null);
+      setSendSuccess(true);
+
+    } catch (error: any) {
+      console.error('❌ ガスレス決済エラー:', error);
+      setSendError(error.message || '署名の生成に失敗しました');
+      alert('❌ 署名の生成に失敗しました: ' + (error.message || '不明なエラー'));
     } finally {
       setSending(false);
     }
@@ -1500,10 +1605,13 @@ export function MypageWithSend() {
       {showWalletQRPayment && walletQRData && (
         <WalletQRPaymentModal
           walletData={walletQRData}
+          authorizationData={authorizationQRData || undefined}
           onConfirm={handleWalletQRPaymentConfirm}
+          onGaslessConfirm={handleGaslessPaymentConfirm}
           onCancel={() => {
             setShowWalletQRPayment(false);
             setWalletQRData(null);
+            setAuthorizationQRData(null);
             setQrDebugLogs([]);
           }}
           debugLogs={qrDebugLogs}
