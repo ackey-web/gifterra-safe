@@ -532,10 +532,12 @@ export function PaymentTerminalMobile() {
 
       // ⚡ ガスレス決済モード（Phase 5）
       if (useGasless && isGaslessAvailable) {
-        console.log('⚡ Generating gasless payment QR...');
+        console.log('⚡ [Mobile] Generating gasless payment QR...');
 
         // ガスレスQR用のnonce生成（32 bytes random hex）
         const nonce = '0x' + Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join('');
+
+        console.log('⚡ [Mobile] Generated nonce:', nonce);
 
         // ガスレス決済用QRデータ生成
         const gaslessQRData = JSON.stringify({
@@ -552,8 +554,10 @@ export function PaymentTerminalMobile() {
           validBefore: expires,
         });
 
+        console.log('⚡ [Mobile] QR data prepared:', gaslessQRData.substring(0, 100) + '...');
+
         // Supabaseに保存（ガスレスモード）
-        const { error } = await supabase.from('payment_requests').insert({
+        const insertData = {
           request_id: requestId,
           tenant_address: walletAddress.toLowerCase(),
           amount: amountToGenerate,
@@ -564,9 +568,18 @@ export function PaymentTerminalMobile() {
           nonce,
           valid_after: 0,
           valid_before: expires,
-        });
+        };
 
-        if (error) throw error;
+        console.log('⚡ [Mobile] Inserting to Supabase:', insertData);
+
+        const { error } = await supabase.from('payment_requests').insert(insertData);
+
+        if (error) {
+          console.error('❌ [Mobile] Supabase insert error:', error);
+          throw error;
+        }
+
+        console.log('✅ [Mobile] Gasless QR successfully saved to Supabase');
 
         setQrData(gaslessQRData);
         setCurrentRequestId(requestId);

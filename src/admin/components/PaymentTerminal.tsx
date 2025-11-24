@@ -508,10 +508,14 @@ export function PaymentTerminal() {
 
       // ⚡ ガスレス決済モード（Phase 5）
       if (useGasless && isGaslessAvailable) {
+        console.log('⚡ [Desktop] Generating gasless payment QR...');
+
         // EIP-3009用の32バイトnonce生成
         const nonce = '0x' + Array.from({ length: 64 }, () =>
           Math.floor(Math.random() * 16).toString(16)
         ).join('');
+
+        console.log('⚡ [Desktop] Generated nonce:', nonce);
 
         // ガスレス決済用QRデータ
         const gaslessQRData = JSON.stringify({
@@ -528,8 +532,10 @@ export function PaymentTerminal() {
           validBefore: expires,
         });
 
+        console.log('⚡ [Desktop] QR data prepared:', gaslessQRData.substring(0, 100) + '...');
+
         // Supabaseに保存（ガスレス用フィールド付き）
-        const { error } = await supabase.from('payment_requests').insert({
+        const insertData = {
           request_id: requestId,
           tenant_address: walletAddress.toLowerCase(),
           amount: amountToGenerate,
@@ -540,9 +546,18 @@ export function PaymentTerminal() {
           nonce,
           valid_after: 0,
           valid_before: expires,
-        });
+        };
 
-        if (error) throw error;
+        console.log('⚡ [Desktop] Inserting to Supabase:', insertData);
+
+        const { error } = await supabase.from('payment_requests').insert(insertData);
+
+        if (error) {
+          console.error('❌ [Desktop] Supabase insert error:', error);
+          throw error;
+        }
+
+        console.log('✅ [Desktop] Gasless QR successfully saved to Supabase');
 
         setQrData(gaslessQRData);
         setAmount(amountToGenerate);
@@ -572,6 +587,7 @@ export function PaymentTerminal() {
         message: `${amountToGenerate}円のお支払い`,
         expires_at: new Date(expires * 1000).toISOString(),
         status: 'pending',
+        payment_type: 'invoice',
       });
 
       if (error) throw error;
