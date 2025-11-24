@@ -784,12 +784,14 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
               data: transferData,
               value: '0x0',
               chainId: '0x89', // Polygon Mainnet = 137 (0x89)
+              gas: '0x186A0', // 100,000 ガスリミット（ERC20 transferは十分）
             };
 
             addLog(`📤 MetaMask承認リクエスト送信中...`);
             addLog(`  to: ${paymentData.token}`);
             addLog(`  from: ${walletAddress}`);
             addLog(`  chainId: 0x89 (137 - Polygon Mainnet)`);
+            addLog(`  gas: 100000 (手動指定でガス見積もりスキップ)`);
             setQrDebugLogs(logs);
 
             console.log('📤 eth_sendTransaction 呼び出し直前');
@@ -799,6 +801,7 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
               dataLength: txParams.data.length,
               value: txParams.value,
               chainId: txParams.chainId,
+              gas: txParams.gas,
             });
             console.log('📤 window.ethereum.request() を呼び出します...');
 
