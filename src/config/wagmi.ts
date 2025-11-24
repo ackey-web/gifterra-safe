@@ -2,18 +2,25 @@
 // WalletConnect + Wagmi設定
 
 import { createConfig, http } from 'wagmi';
+import type { Config } from 'wagmi';
 import { polygon, polygonAmoy } from 'wagmi/chains';
 import { walletConnect, injected } from 'wagmi/connectors';
 
 // WalletConnect Project ID (環境変数から取得)
 const projectId = import.meta.env.VITE_WALLETCONNECT_PROJECT_ID || '';
 
+console.log('🔧 [Wagmi] 初期化開始', {
+  hasProjectId: !!projectId,
+  projectIdLength: projectId?.length,
+  projectIdPreview: projectId ? `${projectId.slice(0, 8)}...` : 'なし',
+});
+
 if (!projectId) {
   console.warn('⚠️ VITE_WALLETCONNECT_PROJECT_ID が設定されていません - WalletConnectは無効化されます');
 }
 
 // コネクターリストを構築（Project IDが有効な場合のみWalletConnectを追加）
-const connectors = [];
+const connectors: any[] = [];
 
 // WalletConnect v2 (Project IDが有効な場合のみ)
 if (projectId && projectId.length > 0 && !projectId.includes('/')) {
@@ -39,8 +46,13 @@ if (projectId && projectId.length > 0 && !projectId.includes('/')) {
 // Injected provider (デスクトップ用フォールバック)
 connectors.push(injected());
 
+console.log('🔧 [Wagmi] コネクター構築完了', {
+  connectorsCount: connectors.length,
+  hasWalletConnect: connectors.length > 1,
+});
+
 // Wagmi設定
-export const wagmiConfig = createConfig({
+export const wagmiConfig: Config = createConfig({
   chains: [polygon, polygonAmoy],
   connectors,
   transports: {
@@ -48,3 +60,5 @@ export const wagmiConfig = createConfig({
     [polygonAmoy.id]: http('https://rpc.ankr.com/polygon_amoy'),
   },
 });
+
+console.log('✅ [Wagmi] 設定完了');
