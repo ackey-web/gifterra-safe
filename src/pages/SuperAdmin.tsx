@@ -1097,28 +1097,7 @@ function UsersTab() {
         debouncedAddressQuery
       });
 
-      // ステップ1: 全ウォレットアドレスを取得（ログイン履歴から）
-      const { data: loginHistory } = await supabase
-        .from('user_login_history')
-        .select('wallet_address, login_at')
-        .order('login_at', { ascending: false });
-
-      // 重複を除外してユニークなウォレットアドレスのリストを作成
-      const uniqueWallets = new Map<string, string>(); // wallet_address -> latest login_at
-      if (loginHistory) {
-        loginHistory.forEach(item => {
-          if (item.wallet_address) {
-            const addr = item.wallet_address.toLowerCase();
-            if (!uniqueWallets.has(addr)) {
-              uniqueWallets.set(addr, item.login_at);
-            }
-          }
-        });
-      }
-
-      console.log(`📊 Found ${uniqueWallets.size} unique wallet addresses from login history`);
-
-      // ステップ2: プロフィール登録済みユーザーを取得
+      // ステップ1: プロフィール登録済みユーザーを取得（基本データ）
       let profileQuery = supabase
         .from('user_profiles')
         .select('*')
@@ -1157,44 +1136,62 @@ function UsersTab() {
         throw profileError;
       }
 
-      // ステップ3: プロフィールデータをウォレットアドレスでマップ化
+      console.log(`📊 Found ${profiles?.length || 0} users with profiles`);
+
+      // ステップ2: プロフィールのウォレットアドレスをマップ化
       const profileMap = new Map();
+      const allUsers: any[] = [];
+
       if (profiles) {
         profiles.forEach(profile => {
+          allUsers.push(profile);
           if (profile.wallet_address) {
-            profileMap.set(profile.wallet_address.toLowerCase(), profile);
+            profileMap.set(profile.wallet_address.toLowerCase(), true);
           }
         });
       }
 
-      // ステップ4: 全ウォレットアドレスとプロフィールを結合
-      const allUsers: any[] = [];
-      uniqueWallets.forEach((lastLogin, walletAddress) => {
-        const profile = profileMap.get(walletAddress);
+      // ステップ3: ログイン履歴から追加のウォレットアドレスを取得（プロフィール未登録）
+      try {
+        const { data: loginHistory } = await supabase
+          .from('user_login_history')
+          .select('wallet_address, login_at')
+          .order('login_at', { ascending: false });
 
-        if (profile) {
-          // プロフィール登録済みユーザー
-          allUsers.push(profile);
-        } else {
-          // プロフィール未登録ユーザー（ウォレットアドレスのみ）
-          allUsers.push({
-            id: walletAddress, // IDとしてウォレットアドレスを使用
-            wallet_address: walletAddress,
-            display_name: null,
-            name: null,
-            bio: null,
-            avatar_url: null,
-            icon_url: null,
-            show_wallet_address: false,
-            created_at: lastLogin,
-            updated_at: lastLogin,
-            tenant_id: 'default',
-            is_profile_registered: false // 判別用フラグ
+        // プロフィールに存在しないウォレットアドレスのみを追加
+        const addedWallets = new Set<string>();
+        if (loginHistory) {
+          loginHistory.forEach(item => {
+            if (item.wallet_address) {
+              const addr = item.wallet_address.toLowerCase();
+              // プロフィールに存在せず、まだ追加していないアドレスのみ
+              if (!profileMap.has(addr) && !addedWallets.has(addr)) {
+                addedWallets.add(addr);
+                allUsers.push({
+                  id: addr,
+                  wallet_address: addr,
+                  display_name: null,
+                  name: null,
+                  bio: null,
+                  avatar_url: null,
+                  icon_url: null,
+                  show_wallet_address: false,
+                  created_at: item.login_at,
+                  updated_at: item.login_at,
+                  tenant_id: 'default',
+                  is_profile_registered: false
+                });
+              }
+            }
           });
         }
-      });
+        console.log(`📊 Added ${addedWallets.size} users without profiles from login history`);
+      } catch (loginError) {
+        console.warn('⚠️ Could not fetch login history:', loginError);
+        // ログイン履歴が取得できなくてもプロフィールユーザーは表示
+      }
 
-      // ステップ5: フィルタリング（ウォレットアドレス検索）
+      // ステップ4: フィルタリング（ウォレットアドレス検索）
       let filteredUsers = allUsers;
       if (debouncedAddressQuery.trim()) {
         const addressFilter = debouncedAddressQuery.trim().toLowerCase();
@@ -1203,22 +1200,23 @@ function UsersTab() {
         );
       }
 
-      // ステップ6: ソート（created_at降順）
+      // ステップ5: ソート（created_at降順）
       filteredUsers.sort((a, b) => {
         const dateA = new Date(a.created_at || 0).getTime();
         const dateB = new Date(b.created_at || 0).getTime();
         return dateB - dateA;
       });
 
-      // ステップ7: ページネーション
+      // ステップ6: ページネーション
       const totalCount = filteredUsers.length;
       const from = (currentPage - 1) * ITEMS_PER_PAGE;
       const to = from + ITEMS_PER_PAGE;
       const paginatedUsers = filteredUsers.slice(from, to);
 
       console.log('📊 Final user list:', {
-        totalUnique: uniqueWallets.size,
+        totalUsers: allUsers.length,
         withProfiles: profiles?.length || 0,
+        withoutProfiles: allUsers.length - (profiles?.length || 0),
         afterFilter: filteredUsers.length,
         currentPage: paginatedUsers.length
       });
