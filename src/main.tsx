@@ -502,6 +502,7 @@ if (wantsTerms) {
             </AppWrapper>
           </PrivyProvider>
         </ThirdwebProvider>
+      </WagmiProvider>
       </QueryClientProvider>
       </Suspense>
     </React.StrictMode>
