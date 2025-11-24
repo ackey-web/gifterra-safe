@@ -331,13 +331,20 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
             });
           });
 
-          // MetaMaskまたは外部ウォレットを検索
-          const externalWallet = wallets.find((w: any) => w.walletClientType !== 'privy');
-          console.log('🔍 外部ウォレット検索結果:', externalWallet);
+          // まず外部ウォレット(MetaMask等)を優先的に検索
+          let targetWallet = wallets.find((w: any) => w.walletClientType !== 'privy');
 
-          if (externalWallet && externalWallet.chainId) {
+          // 外部ウォレットがない場合、Privy Embedded Walletを使用
+          if (!targetWallet) {
+            console.log('🔍 外部ウォレットなし - Privy Embedded Walletを使用');
+            targetWallet = wallets[0]; // 最初のウォレット（通常はPrivy Embedded Wallet）
+          } else {
+            console.log('🔍 外部ウォレット検出:', targetWallet.walletClientType);
+          }
+
+          if (targetWallet && targetWallet.chainId) {
             // chainIdは16進数文字列の場合と数値の場合がある
-            const chainIdValue = externalWallet.chainId;
+            const chainIdValue = targetWallet.chainId;
             if (typeof chainIdValue === 'string') {
               privyWalletChainId = chainIdValue.startsWith('0x')
                 ? parseInt(chainIdValue, 16)
@@ -345,9 +352,11 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
             } else {
               privyWalletChainId = chainIdValue;
             }
-            console.log('🟣 Privy walletから取得したChainID:', privyWalletChainId, '(type:', externalWallet.walletClientType, ')');
+            console.log('🟣 Privy walletから取得したChainID:', privyWalletChainId, '(type:', targetWallet.walletClientType, ')');
+          } else if (targetWallet) {
+            console.warn('⚠️ ウォレットは見つかったが chainId が未設定:', targetWallet);
           } else {
-            console.warn('⚠️ 外部ウォレットが見つからないか、chainIdが未設定');
+            console.warn('⚠️ 有効なウォレットが見つからない');
           }
         } catch (e: any) {
           console.warn('Privy wallet ChainID取得エラー:', e.message);
