@@ -498,8 +498,10 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
         try {
           signerChainId = await getCurrentChainId(signer.provider as ethers.providers.Provider);
           console.log('🟠 Signerから取得したChainID:', signerChainId);
+          addLog(`🟠 signer.provider ChainID: ${signerChainId}`);
         } catch (chainError: any) {
           console.warn('ChainID確認エラー（続行）:', chainError.message);
+          addLog(`⚠️ signer.provider取得失敗: ${chainError.message}`);
         }
       }
 
@@ -553,11 +555,43 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
 
           // 自動的にPolygon Mainnetへの切り替えを試みる
           console.log('🔄 Polygon Mainnet (137) への自動切り替えを試みます...');
+          addLog('🔄 ネットワーク切り替え試行中...');
+          setQrDebugLogs(logs);
 
           try {
-            // まずwindow.ethereumが利用可能か確認
-            if (typeof window !== 'undefined' && window.ethereum) {
+            // Privy wallet経由で切り替え（MetaMask Mobile対応）
+            if (wallets && wallets.length > 0) {
+              console.log('📱 Privy wallet経由で switchChain を試みます');
+              addLog('📱 Privy wallet.switchChain(137)呼び出し');
+
+              // 外部ウォレット（MetaMask）を優先的に検索
+              const targetWallet = wallets.find((w: any) => w.walletClientType !== 'privy') || wallets[0];
+
+              console.log('🔍 対象ウォレット:', {
+                walletClientType: targetWallet?.walletClientType,
+                address: targetWallet?.address,
+                hasSwitchChain: typeof targetWallet?.switchChain === 'function'
+              });
+              addLog(`🔍 対象: ${targetWallet?.walletClientType || 'unknown'}`);
+
+              if (targetWallet && typeof targetWallet.switchChain === 'function') {
+                await targetWallet.switchChain(137);
+                console.log('✅ Privy wallet経由でネットワーク切り替え成功');
+                addLog('✅ ネットワーク切り替え成功!');
+                setQrDebugLogs(logs);
+
+                // 切り替え後、再度ChainIDを取得
+                await new Promise(resolve => setTimeout(resolve, 1000));
+
+                // 再検証せずに処理を続行
+                console.log('✅ ネットワーク切り替え完了 - 処理続行');
+              } else {
+                throw new Error('switchChain メソッドが利用できません');
+              }
+            } else if (typeof window !== 'undefined' && window.ethereum) {
+              // フォールバック: window.ethereum
               console.log('📱 window.ethereum.request で wallet_switchEthereumChain を呼び出し');
+              addLog('📱 window.ethereum経由で切り替え');
 
               await window.ethereum.request({
                 method: 'wallet_switchEthereumChain',
@@ -565,24 +599,14 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
               });
 
               console.log('✅ ネットワーク切り替え成功 - 処理を続行します');
-              // 切り替え成功したら処理を続行（returnしない）
-            } else if (wallets && wallets.length > 0) {
-              // window.ethereumがない場合、Privy wallet経由で切り替え
-              console.log('📱 Privy wallet経由で switchChain を試みます');
-
-              const targetWallet = wallets.find((w: any) => w.walletClientType !== 'privy') || wallets[0];
-
-              if (targetWallet && typeof targetWallet.switchChain === 'function') {
-                await targetWallet.switchChain(137);
-                console.log('✅ Privy wallet経由でネットワーク切り替え成功');
-              } else {
-                throw new Error('switchChain メソッドが利用できません');
-              }
+              addLog('✅ window.ethereum切り替え成功');
+              setQrDebugLogs(logs);
             } else {
               throw new Error('ネットワーク切り替え手段がありません');
             }
           } catch (switchError: any) {
             console.error('❌ ネットワーク自動切り替え失敗:', switchError);
+            addLog(`❌ 切り替え失敗: ${switchError.message}`);
 
             // 手動切り替えのメッセージを表示
             setMessage({
