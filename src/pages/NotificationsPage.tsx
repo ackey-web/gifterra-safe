@@ -40,6 +40,8 @@ export function NotificationsPage() {
         return '🏢';
       case 'follow':
         return '👥';
+      case 'system_announcement':
+        return '📢';
       default:
         return '🔔';
     }

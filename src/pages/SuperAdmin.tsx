@@ -29,7 +29,7 @@ import { ScoreParametersPage, TokenAxisPage, SystemMonitoringPage } from '../adm
 import CreateTenantForm from './CreateTenantForm';
 import { SecurityManagement } from '../admin/components/SecurityManagement';
 
-type TabType = 'dashboard' | 'user-preview' | 'users' | 'tenants' | 'applications' | 'revenue' | 'rank-plans' | 'score-parameters' | 'token-axis' | 'system-monitoring' | 'security';
+type TabType = 'dashboard' | 'user-preview' | 'users' | 'tenants' | 'applications' | 'revenue' | 'rank-plans' | 'score-parameters' | 'token-axis' | 'system-monitoring' | 'security' | 'announcements';
 
 export function SuperAdminPage() {
   const connectedAddress = useAddress();
@@ -272,6 +272,12 @@ export function SuperAdminPage() {
             icon="🔒"
             label="セキュリティ管理"
           />
+          <TabButton
+            active={activeTab === 'announcements'}
+            onClick={() => setActiveTab('announcements')}
+            icon="📢"
+            label="システム通知"
+          />
         </div>
 
         {/* タブコンテンツ */}
@@ -286,6 +292,7 @@ export function SuperAdminPage() {
         {activeTab === 'token-axis' && <TokenAxisPage />}
         {activeTab === 'system-monitoring' && <SystemMonitoringPage />}
         {activeTab === 'security' && <SecurityManagement isMobile={false} />}
+        {activeTab === 'announcements' && <AnnouncementsTab />}
       </div>
     </div>
   );
@@ -3625,6 +3632,309 @@ function RankPlansTab() {
               </div>
             );
           })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ========================================
+// システム通知タブ
+// ========================================
+function AnnouncementsTab() {
+  const [title, setTitle] = useState('');
+  const [message, setMessage] = useState('');
+  const [isSending, setIsSending] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [result, setResult] = useState<{ success: boolean; message: string } | null>(null);
+
+  const sendAnnouncementToAllUsers = async () => {
+    if (!title.trim() || !message.trim()) {
+      alert('タイトルとメッセージを入力してください');
+      return;
+    }
+
+    const confirmed = confirm(
+      `全ユーザーに以下のアナウンスを送信します。よろしいですか?\n\nタイトル: ${title}\nメッセージ: ${message}`
+    );
+
+    if (!confirmed) return;
+
+    try {
+      setIsSending(true);
+      setProgress(0);
+      setResult(null);
+
+      console.log('📢 システムアナウンス送信開始:', { title, message });
+
+      // 1. 全ユーザーアドレス取得
+      const { data: users, error: fetchError } = await supabase
+        .from('user_profiles')
+        .select('wallet_address')
+        .eq('tenant_id', 'default');
+
+      if (fetchError) {
+        console.error('❌ ユーザー取得エラー:', fetchError);
+        throw fetchError;
+      }
+
+      if (!users || users.length === 0) {
+        throw new Error('送信対象のユーザーが見つかりませんでした');
+      }
+
+      console.log(`✅ ${users.length}人のユーザーに送信します`);
+
+      // 2. 通知レコード作成
+      const notifications = users.map(user => ({
+        user_address: user.wallet_address.toLowerCase(),
+        type: 'system_announcement',
+        title: title.trim(),
+        message: message.trim(),
+        is_read: false,
+        created_at: new Date().toISOString(),
+      }));
+
+      // 3. バッチ挿入（1000件ずつ）
+      const BATCH_SIZE = 1000;
+      let sentCount = 0;
+
+      for (let i = 0; i < notifications.length; i += BATCH_SIZE) {
+        const batch = notifications.slice(i, i + BATCH_SIZE);
+
+        const { error: insertError } = await supabase
+          .from('notifications')
+          .insert(batch);
+
+        if (insertError) {
+          console.error('❌ 通知挿入エラー:', insertError);
+          throw insertError;
+        }
+
+        sentCount += batch.length;
+        const currentProgress = Math.min(100, Math.floor((sentCount / notifications.length) * 100));
+        setProgress(currentProgress);
+
+        console.log(`📤 送信進捗: ${sentCount}/${notifications.length} (${currentProgress}%)`);
+      }
+
+      console.log('✅ システムアナウンス送信完了:', { count: notifications.length });
+
+      setResult({
+        success: true,
+        message: `${notifications.length}人のユーザーに送信しました`,
+      });
+
+      // フォームをクリア
+      setTitle('');
+      setMessage('');
+    } catch (err) {
+      console.error('❌ システムアナウンス送信エラー:', err);
+      setResult({
+        success: false,
+        message: err instanceof Error ? err.message : '送信に失敗しました',
+      });
+    } finally {
+      setIsSending(false);
+      setProgress(0);
+    }
+  };
+
+  return (
+    <div>
+      <h2 style={{ fontSize: 24, fontWeight: 700, marginBottom: 24, color: '#EAF2FF' }}>
+        📢 システム通知管理
+      </h2>
+
+      {/* 説明 */}
+      <div
+        style={{
+          background: 'rgba(59, 130, 246, 0.1)',
+          border: '1px solid rgba(59, 130, 246, 0.3)',
+          borderRadius: 12,
+          padding: 20,
+          marginBottom: 24,
+          color: '#93c5fd',
+        }}
+      >
+        <div style={{ fontSize: 14, lineHeight: 1.6 }}>
+          <div style={{ fontWeight: 600, marginBottom: 8 }}>💡 システム通知とは</div>
+          <div>
+            全ユーザーのマイページ通知セクションにアナウンスメッセージを一斉送信できます。
+            メンテナンス通知、新機能のお知らせ、重要な連絡事項などにご利用ください。
+          </div>
+        </div>
+      </div>
+
+      {/* 送信フォーム */}
+      <div
+        style={{
+          background: 'rgba(255,255,255,0.05)',
+          border: '1px solid rgba(255,255,255,0.1)',
+          borderRadius: 12,
+          padding: 24,
+          marginBottom: 24,
+        }}
+      >
+        <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 20, color: '#EAF2FF' }}>
+          新規アナウンス作成
+        </h3>
+
+        {/* タイトル入力 */}
+        <div style={{ marginBottom: 20 }}>
+          <label
+            style={{
+              display: 'block',
+              fontSize: 14,
+              fontWeight: 600,
+              marginBottom: 8,
+              color: '#cbd5e1',
+            }}
+          >
+            タイトル <span style={{ color: '#ef4444' }}>*</span>
+          </label>
+          <input
+            type="text"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="例: 【重要】メンテナンスのお知らせ"
+            disabled={isSending}
+            style={{
+              width: '100%',
+              padding: '12px 16px',
+              background: 'rgba(255,255,255,0.1)',
+              border: '1px solid rgba(255,255,255,0.2)',
+              borderRadius: 8,
+              color: '#EAF2FF',
+              fontSize: 14,
+              outline: 'none',
+            }}
+          />
+        </div>
+
+        {/* メッセージ入力 */}
+        <div style={{ marginBottom: 20 }}>
+          <label
+            style={{
+              display: 'block',
+              fontSize: 14,
+              fontWeight: 600,
+              marginBottom: 8,
+              color: '#cbd5e1',
+            }}
+          >
+            メッセージ <span style={{ color: '#ef4444' }}>*</span>
+          </label>
+          <textarea
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            placeholder="例: 2025年2月1日 2:00-4:00にシステムメンテナンスを実施します。この時間帯はサービスをご利用いただけません。"
+            disabled={isSending}
+            rows={6}
+            style={{
+              width: '100%',
+              padding: '12px 16px',
+              background: 'rgba(255,255,255,0.1)',
+              border: '1px solid rgba(255,255,255,0.2)',
+              borderRadius: 8,
+              color: '#EAF2FF',
+              fontSize: 14,
+              outline: 'none',
+              resize: 'vertical',
+              fontFamily: 'inherit',
+            }}
+          />
+        </div>
+
+        {/* プログレスバー */}
+        {isSending && (
+          <div style={{ marginBottom: 20 }}>
+            <div
+              style={{
+                background: 'rgba(255,255,255,0.1)',
+                borderRadius: 8,
+                height: 8,
+                overflow: 'hidden',
+              }}
+            >
+              <div
+                style={{
+                  background: 'linear-gradient(90deg, #667eea 0%, #764ba2 100%)',
+                  height: '100%',
+                  width: `${progress}%`,
+                  transition: 'width 0.3s',
+                }}
+              />
+            </div>
+            <div style={{ marginTop: 8, fontSize: 13, color: '#94a3b8', textAlign: 'center' }}>
+              送信中... {progress}%
+            </div>
+          </div>
+        )}
+
+        {/* 結果メッセージ */}
+        {result && (
+          <div
+            style={{
+              padding: 16,
+              borderRadius: 8,
+              marginBottom: 20,
+              background: result.success
+                ? 'rgba(34, 197, 94, 0.1)'
+                : 'rgba(239, 68, 68, 0.1)',
+              border: `1px solid ${
+                result.success ? 'rgba(34, 197, 94, 0.3)' : 'rgba(239, 68, 68, 0.3)'
+              }`,
+              color: result.success ? '#86efac' : '#fca5a5',
+            }}
+          >
+            {result.success ? '✅' : '❌'} {result.message}
+          </div>
+        )}
+
+        {/* 送信ボタン */}
+        <button
+          onClick={sendAnnouncementToAllUsers}
+          disabled={isSending || !title.trim() || !message.trim()}
+          style={{
+            width: '100%',
+            padding: '16px 24px',
+            background: isSending || !title.trim() || !message.trim()
+              ? 'rgba(148, 163, 184, 0.3)'
+              : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            border: 'none',
+            borderRadius: 8,
+            color: '#fff',
+            fontSize: 16,
+            fontWeight: 700,
+            cursor: isSending || !title.trim() || !message.trim() ? 'not-allowed' : 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 8,
+          }}
+        >
+          {isSending ? '送信中...' : '📢 全ユーザーに送信'}
+        </button>
+      </div>
+
+      {/* 注意事項 */}
+      <div
+        style={{
+          background: 'rgba(239, 68, 68, 0.1)',
+          border: '1px solid rgba(239, 68, 68, 0.3)',
+          borderRadius: 12,
+          padding: 20,
+          color: '#fca5a5',
+        }}
+      >
+        <div style={{ fontSize: 14, lineHeight: 1.6 }}>
+          <div style={{ fontWeight: 600, marginBottom: 8 }}>⚠️ 注意事項</div>
+          <ul style={{ margin: 0, paddingLeft: 20 }}>
+            <li>送信後の取り消しはできません</li>
+            <li>全ユーザーに一斉送信されます</li>
+            <li>ユーザー数が多い場合、送信に時間がかかることがあります</li>
+            <li>重要な通知以外の頻繁な使用は控えてください</li>
+          </ul>
         </div>
       </div>
     </div>
