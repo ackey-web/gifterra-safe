@@ -1565,6 +1565,58 @@ export function MypageWithSend() {
                   </p>
                 </div>
 
+                <div style={{ marginBottom: 16 }}>
+                  <label style={{
+                    display: 'block',
+                    fontSize: 14,
+                    fontWeight: 600,
+                    color: '#2d3748',
+                    marginBottom: 8,
+                  }}>
+                    メッセージ（任意）
+                  </label>
+                  <textarea
+                    value={sendMessage}
+                    onChange={(e) => setSendMessage(e.target.value)}
+                    placeholder="応援メッセージを入力..."
+                    rows={3}
+                    style={{
+                      width: '100%',
+                      padding: '12px',
+                      fontSize: 14,
+                      border: '2px solid #e2e8f0',
+                      borderRadius: '8px',
+                      outline: 'none',
+                      resize: 'vertical',
+                    }}
+                  />
+                  {/* Xシェアトグル */}
+                  <label style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    marginTop: 8,
+                    cursor: 'pointer',
+                    fontSize: 14,
+                    color: '#2d3748',
+                  }}>
+                    <input
+                      type="checkbox"
+                      checked={shareOnX}
+                      onChange={(e) => setShareOnX(e.target.checked)}
+                      style={{
+                        width: 18,
+                        height: 18,
+                        cursor: 'pointer',
+                      }}
+                    />
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style={{ color: '#1DA1F2' }}>
+                      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                    </svg>
+                    <span>Xにメッセージをシェア</span>
+                  </label>
+                </div>
+
                 {sendError && (
                   <div style={{
                     padding: '12px',
