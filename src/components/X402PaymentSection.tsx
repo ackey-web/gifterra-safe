@@ -1,7 +1,7 @@
 // src/components/X402PaymentSection.tsx
 // マイページ用X402決済セクション
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useSigner, useAddress } from '@thirdweb-dev/react';
 import { usePrivy } from '@privy-io/react-auth';
 import { ethers } from 'ethers';
@@ -201,12 +201,9 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
   const [isProcessing, setIsProcessing] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null);
   const [balance, setBalance] = useState<string>('0');
-  const [balanceErrorMessage, setBalanceErrorMessage] = useState<string | null>(null);
   const [showConsentModal, setShowConsentModal] = useState(false);
   const [consentAccepted, setConsentAccepted] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
-  const [lastScannedQR, setLastScannedQR] = useState<string>(''); // 重複スキャン防止
-  const isProcessingRef = useRef(false); // 即座に更新される処理中フラグ
 
   const jpycConfig = getTokenConfig('JPYC');
 
@@ -310,62 +307,26 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
     }
   };
 
-  // QRコードスキャン処理
+  // QRコードスキャン処理（ガスレス決済以前のシンプルな実装に戻す）
   const handleScan = async (data: string) => {
-    console.log('📸 [Scanner] QR code scanned, checking conditions...');
-    console.log('📸 [Scanner] lastScannedQR:', lastScannedQR);
-    console.log('📸 [Scanner] current data:', data);
-    console.log('📸 [Scanner] isProcessing:', isProcessing);
-    console.log('📸 [Scanner] isProcessingRef.current:', isProcessingRef.current);
-
-    // 重複スキャン防止: 同じQRが連続で読み取られるのを防ぐ
-    if (data === lastScannedQR) {
-      console.log('⏭️ [Scanner] Duplicate QR detected, skipping...');
-      return;
-    }
-
-    // 処理中は新しいスキャンを受け付けない（refを使って即座にチェック）
-    if (isProcessing || isProcessingRef.current) {
-      console.log('⏳ [Scanner] Already processing, skipping new scan...');
-      return;
-    }
-
-    console.log('✅ [Scanner] Passed all checks, processing QR...');
-    setLastScannedQR(data);
-    isProcessingRef.current = true; // 即座に処理中フラグを立てる
-
     try {
-
-      // QRコードのタイプを判定
+      // ウォレットQRかどうかを判定
       try {
         const parsed = JSON.parse(data);
-        console.log('🔍 [Scanner] Parsed JSON:', parsed);
-
         if (parsed.type === 'wallet') {
           setMessage({ type: 'error', text: 'これはウォレットQRです。請求QRをスキャンしてください。' });
-          setLastScannedQR(''); // リセットして再スキャン可能に
-          isProcessingRef.current = false; // フラグをリセット
           return;
         }
+        // ガスレス決済QRの場合
         if (parsed.type === 'gasless') {
-          console.log('⚡ [Scanner] Gasless QR detected, calling handleGaslessPayment...');
-          // ガスレス決済QRの処理
           await handleGaslessPayment(parsed);
-          console.log('✅ [Scanner] handleGaslessPayment completed successfully');
-          // 成功後にリセット（同じQRの再スキャンを許可）
-          setTimeout(() => {
-            setLastScannedQR('');
-            isProcessingRef.current = false;
-          }, 3000);
           return;
         }
       } catch (e) {
         // JSON parseエラーは無視（通常のアドレスかX402形式）
-        console.log('ℹ️ [Scanner] Not a JSON QR, trying X402 decode...');
       }
 
       const decoded = decodeX402(data);
-
 
       // EIP-55アドレス検証
       const recipientValidation = validateAddress(decoded.to);
@@ -390,89 +351,28 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
         return;
       }
 
-
       // 有効期限チェック
       if (isPaymentExpired(decoded.expires)) {
         setMessage({ type: 'error', text: 'このQRコードは有効期限切れです' });
         return;
       }
 
-      // 残高確認（read-only providerを使用）
-      // useTokenBalancesと同じロバストな実装: 複数RPC + リトライ
+      // 残高確認（read-only providerを使用）- ガスレス決済以前のシンプルな実装
       let userBalance = '0';
-      let balanceError: string | null = null;
 
       try {
-        console.log('🔍 [Balance] Retrieving balance for wallet:', walletAddress);
-        console.log('🔍 [Balance] Token address:', decoded.token);
+        const readOnlyProvider = new ethers.providers.JsonRpcProvider('https://rpc.ankr.com/polygon');
+        const tokenContract = new ethers.Contract(decoded.token, ERC20_ABI, readOnlyProvider);
 
-        if (!walletAddress) {
-          console.error('❌ [Balance] walletAddress is empty!');
-          throw new Error('ウォレットアドレスが取得できません');
-        }
+        const balance = await tokenContract.balanceOf(walletAddress);
+        const decimals = await tokenContract.decimals();
 
-        // 複数RPCエンドポイント（useTokenBalancesと同じ）
-        const RPC_ENDPOINTS = [
-          'https://rpc.ankr.com/polygon',
-          'https://polygon-bor-rpc.publicnode.com',
-          'https://polygon.drpc.org',
-          'https://polygon-rpc.com',
-        ];
-
-        let lastError: any;
-        let success = false;
-
-        // RPCエンドポイントを順次試行（高速化: リトライ2回、短いタイムアウト）
-        for (let i = 0; i < RPC_ENDPOINTS.length && !success; i++) {
-          const rpcUrl = RPC_ENDPOINTS[i];
-          console.log(`🔍 [Balance] Trying RPC ${i + 1}/${RPC_ENDPOINTS.length}: ${rpcUrl}`);
-
-          const readOnlyProvider = new ethers.providers.JsonRpcProvider(rpcUrl);
-
-          // 各RPCで最大2回リトライ（高速化）
-          for (let attempt = 0; attempt < 2 && !success; attempt++) {
-            try {
-              // タイムアウト付きで残高取得（3秒）
-              const timeoutPromise = new Promise((_, reject) =>
-                setTimeout(() => reject(new Error('Timeout')), 3000)
-              );
-
-              const balancePromise = (async () => {
-                const tokenContract = new ethers.Contract(decoded.token, ERC20_ABI, readOnlyProvider);
-                const balance = await tokenContract.balanceOf(walletAddress);
-                const decimals = await tokenContract.decimals();
-                return { balance, decimals };
-              })();
-
-              const result = await Promise.race([balancePromise, timeoutPromise]) as { balance: any; decimals: number };
-
-              // 小数点以下2桁に制限
-              const rawBalance = ethers.utils.formatUnits(result.balance, result.decimals);
-              userBalance = parseFloat(rawBalance).toFixed(2);
-
-              console.log(`✅ [Balance] Retrieved balance: ${userBalance} JPYC (RPC: ${rpcUrl}, attempt: ${attempt + 1})`);
-              success = true;
-            } catch (error: any) {
-              lastError = error;
-              console.warn(`❌ [Balance] Attempt ${attempt + 1}/2 failed (RPC: ${rpcUrl}):`, error.message);
-
-              if (attempt < 1) {
-                // 短いバックオフ: 300ms
-                console.log(`⏳ [Balance] Retrying in 300ms...`);
-                await new Promise(resolve => setTimeout(resolve, 300));
-              }
-            }
-          }
-        }
-
-        if (!success) {
-          throw lastError || new Error('All RPC endpoints failed');
-        }
-      } catch (balanceErrorCaught: any) {
-        console.error('❌ [Balance] 残高取得エラー（全RPCで失敗）:', balanceErrorCaught.message);
-        console.error('❌ [Balance] Error details:', balanceErrorCaught);
-        balanceError = balanceErrorCaught.message || '残高取得に失敗しました';
-        userBalance = '取得失敗';
+        // 小数点以下2桁に制限
+        const rawBalance = ethers.utils.formatUnits(balance, decimals);
+        userBalance = parseFloat(rawBalance).toFixed(2);
+      } catch (balanceError: any) {
+        console.error('残高取得エラー:', balanceError.message);
+        userBalance = '0';
       }
 
       // X402形式のQRコードを検知 - バージョン付き同意チェック
@@ -482,15 +382,8 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
       // paymentDataとbalanceを設定
       setPaymentData(decoded);
       setBalance(userBalance);
-      setBalanceErrorMessage(balanceError);
       setShowScanner(false);
-
-      // 残高取得エラーがあれば警告表示
-      if (balanceError) {
-        setMessage({ type: 'info', text: '⚠️ 残高取得に失敗しました。決済内容を確認してください。' });
-      } else {
-        setMessage({ type: 'info', text: '決済内容を確認してください' });
-      }
+      setMessage({ type: 'info', text: '決済内容を確認してください' });
 
       // 次のレンダリングサイクルでモーダルを表示
       setTimeout(() => {
@@ -502,13 +395,9 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
       }, 50);
 
     } catch (error: any) {
-      console.error('❌ [Scanner] QR scan error:', error);
-      console.error('❌ [Scanner] Error message:', error.message);
-      console.error('❌ [Scanner] Error stack:', error.stack);
-      setMessage({ type: 'error', text: `QRコード読み取りエラー: ${error.message}` });
+      console.error('QRコード読み取りエラー:', error.message);
+      setMessage({ type: 'error', text: 'QRコードの読み取りに失敗しました' });
       setShowScanner(false);
-      setLastScannedQR(''); // エラー時もリセット
-      isProcessingRef.current = false; // フラグもリセット
     }
   };
 
@@ -1274,25 +1163,7 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
               <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 6, fontWeight: 600 }}>
                 あなたの残高
               </div>
-              <div style={{ fontSize: 16, fontWeight: '600', color: balanceErrorMessage ? '#dc2626' : '#1a1a1a' }}>
-                {balance} JPYC
-              </div>
-              {balanceErrorMessage && (
-                <div style={{
-                  marginTop: 8,
-                  padding: '8px 12px',
-                  background: 'rgba(239, 68, 68, 0.1)',
-                  border: '1px solid rgba(239, 68, 68, 0.3)',
-                  borderRadius: 6,
-                  fontSize: 11,
-                  color: '#dc2626',
-                  lineHeight: 1.5,
-                }}>
-                  ⚠️ 残高取得エラー: {balanceErrorMessage}
-                  <br />
-                  ネットワーク接続を確認してください。
-                </div>
-              )}
+              <div style={{ fontSize: 16, fontWeight: '600', color: '#1a1a1a' }}>{balance} JPYC</div>
             </div>
 
             {/* 有効期限 */}
