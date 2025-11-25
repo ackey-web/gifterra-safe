@@ -386,6 +386,7 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
       }
 
       // 残高確認（read-only providerを使用）
+      // useTokenBalancesと同じロバストな実装: 複数RPC + リトライ
       let userBalance = '0';
       let balanceError: string | null = null;
 
@@ -398,16 +399,53 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
           throw new Error('ウォレットアドレスが取得できません');
         }
 
-        const readOnlyProvider = new ethers.providers.JsonRpcProvider('https://rpc.ankr.com/polygon');
-        const tokenContract = new ethers.Contract(decoded.token, ERC20_ABI, readOnlyProvider);
+        // 複数RPCエンドポイント（useTokenBalancesと同じ）
+        const RPC_ENDPOINTS = [
+          'https://rpc.ankr.com/polygon',
+          'https://polygon-bor-rpc.publicnode.com',
+          'https://polygon.drpc.org',
+          'https://polygon-rpc.com',
+        ];
 
-        const balance = await tokenContract.balanceOf(walletAddress);
-        const decimals = await tokenContract.decimals();
+        let lastError: any;
+        let success = false;
 
-        userBalance = ethers.utils.formatUnits(balance, decimals);
-        console.log('✅ [Balance] Retrieved balance:', userBalance, 'JPYC');
+        // RPCエンドポイントを順次試行
+        for (let i = 0; i < RPC_ENDPOINTS.length && !success; i++) {
+          const rpcUrl = RPC_ENDPOINTS[i];
+          console.log(`🔍 [Balance] Trying RPC ${i + 1}/${RPC_ENDPOINTS.length}: ${rpcUrl}`);
+
+          const readOnlyProvider = new ethers.providers.JsonRpcProvider(rpcUrl);
+
+          // 各RPCで最大3回リトライ
+          for (let attempt = 0; attempt < 3 && !success; attempt++) {
+            try {
+              const tokenContract = new ethers.Contract(decoded.token, ERC20_ABI, readOnlyProvider);
+              const balance = await tokenContract.balanceOf(walletAddress);
+              const decimals = await tokenContract.decimals();
+
+              userBalance = ethers.utils.formatUnits(balance, decimals);
+              console.log(`✅ [Balance] Retrieved balance: ${userBalance} JPYC (RPC: ${rpcUrl}, attempt: ${attempt + 1})`);
+              success = true;
+            } catch (error: any) {
+              lastError = error;
+              console.warn(`❌ [Balance] Attempt ${attempt + 1}/3 failed (RPC: ${rpcUrl}):`, error.message);
+
+              if (attempt < 2) {
+                // エクスポネンシャルバックオフ: 500ms, 1s
+                const delay = Math.min(500 * Math.pow(2, attempt), 1000);
+                console.log(`⏳ [Balance] Retrying in ${delay}ms...`);
+                await new Promise(resolve => setTimeout(resolve, delay));
+              }
+            }
+          }
+        }
+
+        if (!success) {
+          throw lastError || new Error('All RPC endpoints failed');
+        }
       } catch (balanceErrorCaught: any) {
-        console.error('❌ [Balance] 残高取得エラー:', balanceErrorCaught.message);
+        console.error('❌ [Balance] 残高取得エラー（全RPCで失敗）:', balanceErrorCaught.message);
         console.error('❌ [Balance] Error details:', balanceErrorCaught);
         balanceError = balanceErrorCaught.message || '残高取得に失敗しました';
         userBalance = '取得失敗';
