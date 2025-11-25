@@ -263,17 +263,6 @@ export function NotificationsPage() {
               // スーパーアドミンからの一斉送信アナウンスの背景色
               const isSystemAnnouncement = notification.type === 'system_announcement';
 
-              // デバッグ用ログ（開発時のみ）
-              console.log(`🔔 通知[${index}]:`, {
-                type: notification.type,
-                isSystemAnnouncement,
-                title: notification.title,
-                is_read: notification.is_read,
-                calculatedBgColor: isSystemAnnouncement
-                  ? (notification.is_read ? '#fef3c7' : '#fef08a')
-                  : (notification.is_read ? '#ffffff' : '#f0f9ff'),
-              });
-
               // 背景色を決定
               let bgColor: string;
               let hoverBgColor: string;

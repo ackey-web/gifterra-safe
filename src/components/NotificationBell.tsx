@@ -51,6 +51,8 @@ export function NotificationBell({ userAddress, isMobile }: NotificationBellProp
         return '🏢';
       case 'follow':
         return '👥';
+      case 'system_announcement':
+        return '📢';
       default:
         return '🔔';
     }
@@ -253,24 +255,36 @@ export function NotificationBell({ userAddress, isMobile }: NotificationBellProp
                 <div>通知はありません</div>
               </div>
             ) : (
-              notifications.map((notification) => (
-                <div
-                  key={notification.id}
-                  onClick={() => handleNotificationClick(notification)}
-                  style={{
-                    padding: isMobile ? 12 : 14,
-                    borderBottom: '1px solid #f1f5f9',
-                    cursor: 'pointer',
-                    background: notification.is_read ? '#ffffff' : '#f0f9ff',
-                    transition: 'background 0.2s',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = notification.is_read ? '#f8fafc' : '#dbeafe';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = notification.is_read ? '#ffffff' : '#f0f9ff';
-                  }}
-                >
+              notifications.map((notification) => {
+                const isSystemAnnouncement = notification.type === 'system_announcement';
+                const bgColor = isSystemAnnouncement
+                  ? (notification.is_read ? '#fef3c7' : '#fef08a')
+                  : (notification.is_read ? '#ffffff' : '#f0f9ff');
+                const hoverBgColor = isSystemAnnouncement
+                  ? (notification.is_read ? '#fde68a' : '#fde047')
+                  : (notification.is_read ? '#f8fafc' : '#dbeafe');
+
+                return (
+                  <div
+                    key={notification.id}
+                    onClick={() => handleNotificationClick(notification)}
+                    style={{
+                      padding: isMobile ? 12 : 14,
+                      borderBottom: '1px solid #f1f5f9',
+                      cursor: 'pointer',
+                      backgroundColor: bgColor,
+                      transition: 'background-color 0.2s',
+                      ...(isSystemAnnouncement && {
+                        borderLeft: '4px solid #f59e0b',
+                      }),
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = hoverBgColor;
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = bgColor;
+                    }}
+                  >
                   <div style={{ display: 'flex', gap: 10 }}>
                     {/* アイコン */}
                     <div style={{ fontSize: isMobile ? 20 : 24, flexShrink: 0 }}>
@@ -283,7 +297,7 @@ export function NotificationBell({ userAddress, isMobile }: NotificationBellProp
                         style={{
                           fontWeight: notification.is_read ? 400 : 700,
                           fontSize: isMobile ? 13 : 14,
-                          color: '#1a1a1a',
+                          color: isSystemAnnouncement ? '#92400e' : '#1a1a1a',
                           marginBottom: 4,
                         }}
                       >
@@ -292,7 +306,7 @@ export function NotificationBell({ userAddress, isMobile }: NotificationBellProp
                       <div
                         style={{
                           fontSize: isMobile ? 12 : 13,
-                          color: '#64748b',
+                          color: isSystemAnnouncement ? '#78350f' : '#64748b',
                           marginBottom: 6,
                           lineHeight: 1.4,
                         }}
@@ -336,7 +350,8 @@ export function NotificationBell({ userAddress, isMobile }: NotificationBellProp
                     )}
                   </div>
                 </div>
-              ))
+                );
+              })
             )}
           </div>
 
