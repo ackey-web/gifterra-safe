@@ -31,7 +31,6 @@ const ERC20_ABI = [
   'function transfer(address to, uint256 amount) returns (bool)',
   'function balanceOf(address owner) view returns (uint256)',
   'function decimals() view returns (uint8)',
-  'function transferWithAuthorization(address from, address to, uint256 value, uint256 validAfter, uint256 validBefore, bytes32 nonce, uint8 v, bytes32 r, bytes32 s) external',
 ];
 
 interface X402PaymentSectionProps {
@@ -101,17 +100,6 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
   const privyEmbeddedWalletAddress = user?.wallet?.address;
   const walletAddress = privyEmbeddedWalletAddress || thirdwebAddress || '';
 
-  // Debug logging for wallet address
-  useEffect(() => {
-    console.log('🔍 [Wallet] Wallet addresses:', {
-      privyEmbeddedWalletAddress,
-      thirdwebAddress,
-      finalWalletAddress: walletAddress,
-      authenticated,
-      hasUser: !!user,
-      walletsCount: wallets?.length || 0,
-    });
-  }, [walletAddress, privyEmbeddedWalletAddress, thirdwebAddress, authenticated, user, wallets]);
 
   // signerの取得
   // MetaMask接続時は直接window.ethereumを使用（Privyのリダイレクト回避）
@@ -181,20 +169,8 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
     }
   }, [authenticated, wallets]);
 
-  // privySignerのみ使用（MetaMask直接 or Privy経由）
+  // 送金セクションと同じ: privySignerのみ使用
   const signer = privySigner || thirdwebSigner;
-
-  // デバッグ: signerの状態を監視
-  useEffect(() => {
-    console.log('🔍 [Signer State]', {
-      hasSigner: !!signer,
-      hasPrivySigner: !!privySigner,
-      hasThirdwebSigner: !!thirdwebSigner,
-      authenticated,
-      walletsCount: wallets?.length || 0,
-      walletAddress,
-    });
-  }, [signer, privySigner, thirdwebSigner, authenticated, wallets, walletAddress]);
 
   const [showScanner, setShowScanner] = useState(false);
   const [paymentData, setPaymentData] = useState<X402PaymentData | null>(null);
@@ -207,134 +183,14 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
 
   const jpycConfig = getTokenConfig('JPYC');
 
-  // ガスレス決済QRの処理
-  const handleGaslessPayment = async (gaslessData: any) => {
-    try {
-      console.log('⚡ [Gasless] Processing gasless payment QR:', gaslessData);
 
-      // バリデーション
-      if (!walletAddress) {
-        setMessage({ type: 'error', text: 'ウォレットが接続されていません' });
-        return;
-      }
-
-      if (!signer) {
-        console.error('❌ [Gasless] Signerが未設定:', {
-          privySigner: !!privySigner,
-          thirdwebSigner: !!thirdwebSigner,
-          authenticated,
-          walletsCount: wallets?.length || 0,
-          walletAddress,
-        });
-        setMessage({ type: 'error', text: 'ウォレットが接続されていません。ページを再読み込みしてください。' });
-        return;
-      }
-
-      // 有効期限チェック
-      const now = Math.floor(Date.now() / 1000);
-      if (now > gaslessData.validBefore) {
-        setMessage({ type: 'error', text: 'このQRコードは有効期限切れです' });
-        return;
-      }
-
-      // 残高確認（通常のQR決済と同じシンプルな実装）
-      let userBalance = '0';
-      try {
-        const readOnlyProvider = new ethers.providers.JsonRpcProvider('https://rpc.ankr.com/polygon');
-        const jpycConfig = getTokenConfig('JPYC');
-        const tokenContract = new ethers.Contract(jpycConfig.currentAddress, ERC20_ABI, readOnlyProvider);
-
-        const balance = await tokenContract.balanceOf(walletAddress);
-        const decimals = await tokenContract.decimals();
-
-        const rawBalance = ethers.utils.formatUnits(balance, decimals);
-        userBalance = parseFloat(rawBalance).toFixed(2);
-        console.log('✅ [Gasless] Balance retrieved:', userBalance, 'JPYC');
-      } catch (balanceError: any) {
-        console.error('⚠️ [Gasless] Balance fetch error:', balanceError.message);
-        userBalance = '0';
-      }
-
-      setIsProcessing(true);
-      setShowScanner(false);
-      setMessage({ type: 'info', text: `残高: ${userBalance} JPYC\n署名を生成しています...` });
-
-      // EIP-712署名用のドメインとメッセージを構築
-      const domain = {
-        name: 'JPY Coin',
-        version: '2',
-        chainId: gaslessData.chainId,
-        verifyingContract: gaslessData.token,
-      };
-
-      const types = {
-        TransferWithAuthorization: [
-          { name: 'from', type: 'address' },
-          { name: 'to', type: 'address' },
-          { name: 'value', type: 'uint256' },
-          { name: 'validAfter', type: 'uint256' },
-          { name: 'validBefore', type: 'uint256' },
-          { name: 'nonce', type: 'bytes32' },
-        ],
-      };
-
-      const value = {
-        from: walletAddress,
-        to: gaslessData.tenant,
-        value: gaslessData.amount,
-        validAfter: gaslessData.validAfter,
-        validBefore: gaslessData.validBefore,
-        nonce: gaslessData.nonce,
-      };
-
-      console.log('⚡ [Gasless] Signing EIP-712 message:', { domain, types, value });
-
-      // EIP-712署名を生成
-      const signature = await (signer as any)._signTypedData(domain, types, value);
-      const sig = ethers.utils.splitSignature(signature);
-
-      console.log('⚡ [Gasless] Signature generated:', {
-        v: sig.v,
-        r: sig.r,
-        s: sig.s,
-      });
-
-      // Supabaseに署名を保存
-      const { error } = await supabase
-        .from('payment_requests')
-        .update({
-          status: 'signature_received',
-          completed_by: walletAddress.toLowerCase(),
-          signature_v: sig.v,
-          signature_r: sig.r,
-          signature_s: sig.s,
-          signature_received_at: new Date().toISOString(),
-        })
-        .eq('request_id', gaslessData.requestId);
-
-      if (error) {
-        console.error('❌ [Gasless] Supabase update error:', error);
-        throw new Error('署名の送信に失敗しました');
-      }
-
-      console.log('✅ [Gasless] Signature sent to Supabase');
-
-      setMessage({ type: 'success', text: '✅ 署名を送信しました！店舗側で決済を完了します。' });
-      setTimeout(() => {
-        setMessage(null);
-        setIsProcessing(false);
-      }, 3000);
-
-    } catch (error: any) {
-      console.error('❌ [Gasless] Error:', error);
-      setMessage({ type: 'error', text: `エラー: ${error.message || '署名の生成に失敗しました'}` });
-      setIsProcessing(false);
-    }
-  };
-
-  // QRコードスキャン処理（ガスレス決済以前のシンプルな実装に戻す）
+  // QRコードスキャン処理
   const handleScan = async (data: string) => {
+    // デバッグログを保存＋追加用の関数
+
+
     try {
+
       // ウォレットQRかどうかを判定
       try {
         const parsed = JSON.parse(data);
@@ -342,16 +198,12 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
           setMessage({ type: 'error', text: 'これはウォレットQRです。請求QRをスキャンしてください。' });
           return;
         }
-        // ガスレス決済QRの場合（type: 'authorization'）
-        if (parsed.type === 'authorization' || parsed.type === 'gasless') {
-          await handleGaslessPayment(parsed);
-          return;
-        }
       } catch (e) {
         // JSON parseエラーは無視（通常のアドレスかX402形式）
       }
 
       const decoded = decodeX402(data);
+
 
       // EIP-55アドレス検証
       const recipientValidation = validateAddress(decoded.to);
@@ -376,39 +228,27 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
         return;
       }
 
+
       // 有効期限チェック
       if (isPaymentExpired(decoded.expires)) {
         setMessage({ type: 'error', text: 'このQRコードは有効期限切れです' });
         return;
       }
 
-      // 残高確認（read-only providerを使用）- ガスレス決済以前のシンプルな実装
+      // 残高確認（read-only providerを使用）
       let userBalance = '0';
 
       try {
-        console.log('🔍 [Balance] Starting balance fetch...');
-        console.log('🔍 [Balance] Wallet address:', walletAddress);
-        console.log('🔍 [Balance] Token address:', decoded.token);
 
         const readOnlyProvider = new ethers.providers.JsonRpcProvider('https://rpc.ankr.com/polygon');
         const tokenContract = new ethers.Contract(decoded.token, ERC20_ABI, readOnlyProvider);
 
-        console.log('🔍 [Balance] Fetching balance from contract...');
         const balance = await tokenContract.balanceOf(walletAddress);
         const decimals = await tokenContract.decimals();
 
-        console.log('🔍 [Balance] Raw balance:', balance.toString());
-        console.log('🔍 [Balance] Decimals:', decimals);
-
-        // 小数点以下2桁に制限
-        const rawBalance = ethers.utils.formatUnits(balance, decimals);
-        userBalance = parseFloat(rawBalance).toFixed(2);
-
-        console.log('✅ [Balance] Final balance:', userBalance, 'JPYC');
+        userBalance = ethers.utils.formatUnits(balance, decimals);
       } catch (balanceError: any) {
-        console.error('❌ [Balance] 残高取得エラー:', balanceError);
-        console.error('❌ [Balance] Error message:', balanceError.message);
-        console.error('❌ [Balance] Error stack:', balanceError.stack);
+        console.error('残高取得エラー:', balanceError.message);
         userBalance = '0';
       }
 
@@ -440,18 +280,6 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
 
   // 支払い実行
   const handlePayment = async () => {
-    console.log('💰 [Payment] handlePayment called');
-    console.log('💰 [Payment] Signer state:', {
-      hasSigner: !!signer,
-      hasPrivySigner: !!privySigner,
-      hasThirdwebSigner: !!thirdwebSigner,
-      authenticated,
-      walletsCount: wallets?.length || 0,
-      walletAddress,
-      hasWindowEthereum: typeof window !== 'undefined' && !!window.ethereum,
-      isMetaMask: typeof window !== 'undefined' && window.ethereum?.isMetaMask,
-    });
-
     if (!paymentData || !walletAddress) {
       console.error('❌ paymentDataまたはwalletAddressが未設定');
       setMessage({ type: 'error', text: 'ウォレットを接続してください' });
@@ -691,16 +519,7 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
 
       // 送金セクションと完全に同じ実装: contract.transfer()を直接呼び出し
       if (!signer) {
-        console.error('❌ Signerが未設定:', {
-          privySigner: !!privySigner,
-          thirdwebSigner: !!thirdwebSigner,
-          authenticated,
-          walletsCount: wallets?.length || 0,
-          walletAddress,
-          hasWindowEthereum: typeof window !== 'undefined' && !!window.ethereum,
-          isMetaMask: typeof window !== 'undefined' && window.ethereum?.isMetaMask,
-        });
-        throw new Error('ウォレットが接続されていません。ページを再読み込みしてください。');
+        throw new Error('ウォレットが接続されていません');
       }
 
 
