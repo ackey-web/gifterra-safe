@@ -11,10 +11,20 @@ export function ReceivePage() {
   const [displayName, setDisplayName] = useState<string>('');
   const [profileImage, setProfileImage] = useState<string>('');
 
-  // URLパラメータからアドレスを取得（ログイン不要）
+  // URLパスまたはクエリパラメータからアドレスを取得（ログイン不要）
   useEffect(() => {
+    // パスパラメータから取得: /receive/0x123...
+    const pathParts = window.location.pathname.split('/');
+    const addressFromPath = pathParts[pathParts.length - 1];
+
+    // クエリパラメータから取得: /receive?address=0x123...
     const urlParams = new URLSearchParams(window.location.search);
-    const addressParam = urlParams.get('address');
+    const addressFromQuery = urlParams.get('address');
+
+    // パスパラメータを優先、次にクエリパラメータ
+    const addressParam = addressFromPath && addressFromPath !== 'receive'
+      ? addressFromPath
+      : addressFromQuery;
 
     if (addressParam) {
       setAddress(addressParam);
