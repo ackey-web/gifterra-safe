@@ -219,7 +219,14 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
       }
 
       if (!signer) {
-        setMessage({ type: 'error', text: '署名機能が利用できません' });
+        console.error('❌ [Gasless] Signerが未設定:', {
+          privySigner: !!privySigner,
+          thirdwebSigner: !!thirdwebSigner,
+          authenticated,
+          walletsCount: wallets?.length || 0,
+          walletAddress,
+        });
+        setMessage({ type: 'error', text: 'ウォレットが接続されていません。ページを再読み込みしてください。' });
         return;
       }
 
@@ -230,9 +237,27 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
         return;
       }
 
+      // 残高確認（通常のQR決済と同じシンプルな実装）
+      let userBalance = '0';
+      try {
+        const readOnlyProvider = new ethers.providers.JsonRpcProvider('https://rpc.ankr.com/polygon');
+        const jpycConfig = getTokenConfig('JPYC');
+        const tokenContract = new ethers.Contract(jpycConfig.currentAddress, ERC20_ABI, readOnlyProvider);
+
+        const balance = await tokenContract.balanceOf(walletAddress);
+        const decimals = await tokenContract.decimals();
+
+        const rawBalance = ethers.utils.formatUnits(balance, decimals);
+        userBalance = parseFloat(rawBalance).toFixed(2);
+        console.log('✅ [Gasless] Balance retrieved:', userBalance, 'JPYC');
+      } catch (balanceError: any) {
+        console.error('⚠️ [Gasless] Balance fetch error:', balanceError.message);
+        userBalance = '0';
+      }
+
       setIsProcessing(true);
       setShowScanner(false);
-      setMessage({ type: 'info', text: '署名を生成しています...' });
+      setMessage({ type: 'info', text: `残高: ${userBalance} JPYC\n署名を生成しています...` });
 
       // EIP-712署名用のドメインとメッセージを構築
       const domain = {
@@ -317,8 +342,8 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
           setMessage({ type: 'error', text: 'これはウォレットQRです。請求QRをスキャンしてください。' });
           return;
         }
-        // ガスレス決済QRの場合
-        if (parsed.type === 'gasless') {
+        // ガスレス決済QRの場合（type: 'authorization'）
+        if (parsed.type === 'authorization' || parsed.type === 'gasless') {
           await handleGaslessPayment(parsed);
           return;
         }
@@ -361,17 +386,29 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
       let userBalance = '0';
 
       try {
+        console.log('🔍 [Balance] Starting balance fetch...');
+        console.log('🔍 [Balance] Wallet address:', walletAddress);
+        console.log('🔍 [Balance] Token address:', decoded.token);
+
         const readOnlyProvider = new ethers.providers.JsonRpcProvider('https://rpc.ankr.com/polygon');
         const tokenContract = new ethers.Contract(decoded.token, ERC20_ABI, readOnlyProvider);
 
+        console.log('🔍 [Balance] Fetching balance from contract...');
         const balance = await tokenContract.balanceOf(walletAddress);
         const decimals = await tokenContract.decimals();
+
+        console.log('🔍 [Balance] Raw balance:', balance.toString());
+        console.log('🔍 [Balance] Decimals:', decimals);
 
         // 小数点以下2桁に制限
         const rawBalance = ethers.utils.formatUnits(balance, decimals);
         userBalance = parseFloat(rawBalance).toFixed(2);
+
+        console.log('✅ [Balance] Final balance:', userBalance, 'JPYC');
       } catch (balanceError: any) {
-        console.error('残高取得エラー:', balanceError.message);
+        console.error('❌ [Balance] 残高取得エラー:', balanceError);
+        console.error('❌ [Balance] Error message:', balanceError.message);
+        console.error('❌ [Balance] Error stack:', balanceError.stack);
         userBalance = '0';
       }
 
@@ -403,6 +440,18 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
 
   // 支払い実行
   const handlePayment = async () => {
+    console.log('💰 [Payment] handlePayment called');
+    console.log('💰 [Payment] Signer state:', {
+      hasSigner: !!signer,
+      hasPrivySigner: !!privySigner,
+      hasThirdwebSigner: !!thirdwebSigner,
+      authenticated,
+      walletsCount: wallets?.length || 0,
+      walletAddress,
+      hasWindowEthereum: typeof window !== 'undefined' && !!window.ethereum,
+      isMetaMask: typeof window !== 'undefined' && window.ethereum?.isMetaMask,
+    });
+
     if (!paymentData || !walletAddress) {
       console.error('❌ paymentDataまたはwalletAddressが未設定');
       setMessage({ type: 'error', text: 'ウォレットを接続してください' });
