@@ -23,6 +23,7 @@ interface ProfileEditModalProps {
     location?: string;
     show_wallet_address?: boolean;
     reject_anonymous_transfers?: boolean;
+    twitter_id?: string;
   };
   walletAddress: string;
 }
@@ -49,6 +50,7 @@ export function ProfileEditModal({
   const [location, setLocation] = useState(currentProfile.location || '');
   const [showWalletAddress, setShowWalletAddress] = useState(currentProfile.show_wallet_address !== false);
   const [rejectAnonymousTransfers, setRejectAnonymousTransfers] = useState(currentProfile.reject_anonymous_transfers === true);
+  const [twitterId, setTwitterId] = useState(currentProfile.twitter_id || '');
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -194,6 +196,13 @@ export function ProfileEditModal({
       return;
     }
 
+    // Twitter ID validation (@を除去)
+    const cleanTwitterId = twitterId.trim().replace(/^@/, '');
+    if (cleanTwitterId && !/^[A-Za-z0-9_]{1,15}$/.test(cleanTwitterId)) {
+      setError('X IDは英数字とアンダースコアのみ、15文字以内で入力してください');
+      return;
+    }
+
     // Website URL validation
     if (websiteUrl && !websiteUrl.match(/^https?:\/\/.+/)) {
       setError('WebサイトURLは https:// または http:// で始まる必要があります');
@@ -219,6 +228,9 @@ export function ProfileEditModal({
       // Filter out empty custom links
       const validCustomLinks = customLinks.filter(link => link.label && link.url);
 
+      // Twitter IDから@を除去
+      const cleanTwitterId = twitterId.trim().replace(/^@/, '');
+
       // upsert: 存在すれば更新、存在しなければ作成
       // Supabaseの.upsert()を使用（onConflictでユニーク制約を指定）
       const { error: upsertError } = await supabase
@@ -237,6 +249,7 @@ export function ProfileEditModal({
           location: location.trim() || null,
           show_wallet_address: showWalletAddress,
           reject_anonymous_transfers: rejectAnonymousTransfers,
+          twitter_id: cleanTwitterId || null,
           updated_at: new Date().toISOString(),
         }, {
           onConflict: 'wallet_address', // wallet_addressのユニーク制約に基づいてupsert
@@ -1050,6 +1063,74 @@ export function ProfileEditModal({
                 }}
               >
                 {location.length}/20
+              </div>
+            </div>
+
+            {/* X (Twitter) ID */}
+            <div style={{ marginBottom: 20 }}>
+              <label
+                style={{
+                  display: 'block',
+                  marginBottom: 8,
+                  fontSize: isMobile ? 13 : 14,
+                  fontWeight: 600,
+                  color: '#EAF2FF',
+                }}
+              >
+                X (Twitter) ID（任意）
+              </label>
+              <div style={{ position: 'relative' }}>
+                <span
+                  style={{
+                    position: 'absolute',
+                    left: isMobile ? 12 : 16,
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    color: 'rgba(255, 255, 255, 0.5)',
+                    fontSize: isMobile ? 14 : 15,
+                    pointerEvents: 'none',
+                  }}
+                >
+                  @
+                </span>
+                <input
+                  type="text"
+                  value={twitterId}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/^@/, '');
+                    setTwitterId(value);
+                  }}
+                  placeholder="gifterra_app"
+                  maxLength={15}
+                  style={{
+                    width: '100%',
+                    padding: isMobile ? '10px 12px 10px 28px' : '12px 16px 12px 32px',
+                    background: 'rgba(255, 255, 255, 0.05)',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    borderRadius: 8,
+                    color: '#EAF2FF',
+                    fontSize: isMobile ? 14 : 15,
+                    outline: 'none',
+                    transition: 'all 0.2s',
+                  }}
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.5)';
+                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)';
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+                  }}
+                />
+              </div>
+              <div
+                style={{
+                  marginTop: 4,
+                  fontSize: isMobile ? 11 : 12,
+                  color: 'rgba(255, 255, 255, 0.5)',
+                }}
+              >
+                投げ銭をXでシェアした際に通知されます
               </div>
             </div>
 

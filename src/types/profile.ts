@@ -55,6 +55,7 @@ export interface ExtendedProfile {
   location?: string;              // 所在地（20文字以内）
   cover_image_url?: string;       // カバー画像
   reject_anonymous_transfers?: boolean; // 匿名送金拒否設定
+  twitter_id?: string;            // X (Twitter) アカウントID (@なし、例: "gifterra_app")
 }
 
 /**
