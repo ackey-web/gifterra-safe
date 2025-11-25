@@ -185,7 +185,8 @@ export function QRScannerCamera({ onScan, onClose, placeholder = 'QRコードを
                     setCameraError(validation.error || '無効なQRコードです');
                     setIsScanning(false);
                     setShowManualInput(true);
-                    isStoppingRef.current = false;
+                    // バリデーション失敗でもフラグはリセットしない（同じQRの再検出を防ぐ）
+                    // isStoppingRef.current = false;
                   }
                 }
               }
