@@ -1857,13 +1857,13 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
           // X投稿テキストを生成
           let tweetText = '';
           if (recipientProfile?.twitter_id) {
-            tweetText += `@${recipientProfile.twitter_id} `;
+            tweetText += `@${recipientProfile.twitter_id}`;
           } else if (recipientProfile?.display_name) {
-            tweetText += `${recipientProfile.display_name}さん `;
+            tweetText += `${recipientProfile.display_name}さん`;
           }
-          tweetText += `${message}\n\n`;
-          tweetText += `💝 ${amount} ${selectedToken} を送りました\n`;
-          tweetText += `#Gifterra #JPYC #Web3`;
+          tweetText += `\n${message}\n\n`;
+          tweetText += `💝 ${amount} ${selectedToken} を送りました\n\n`;
+          tweetText += `#GIFTERRA #投げ銭 #JPYC`;
 
           console.log('📤 ツイートテキスト:', tweetText);
 
