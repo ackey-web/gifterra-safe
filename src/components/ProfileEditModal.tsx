@@ -231,39 +231,60 @@ export function ProfileEditModal({
       // Twitter IDから@を除去
       const cleanTwitterId = twitterId.trim().replace(/^@/, '');
 
+      console.log('💾 プロフィール保存開始:', {
+        wallet_address: walletAddress.toLowerCase(),
+        display_name: displayName.trim(),
+        twitter_id: cleanTwitterId || null,
+        location: location.trim() || null,
+        roles: roles,
+        show_wallet_address: showWalletAddress,
+        reject_anonymous_transfers: rejectAnonymousTransfers,
+      });
+
       // upsert: 存在すれば更新、存在しなければ作成
       // Supabaseの.upsert()を使用（onConflictでユニーク制約を指定）
-      const { error: upsertError } = await supabase
+      const profileData = {
+        tenant_id: 'default',
+        wallet_address: walletAddress.toLowerCase(),
+        display_name: displayName.trim(),
+        bio: bio.trim(),
+        receive_message: receiveMessage.trim(),
+        avatar_url: avatarUrl || null,
+        cover_image_url: coverImageUrl || null,
+        website_url: websiteUrl.trim() || null,
+        custom_links: validCustomLinks.length > 0 ? validCustomLinks : [],
+        roles: roles.length > 0 ? roles : [],
+        location: location.trim() || null,
+        show_wallet_address: showWalletAddress,
+        reject_anonymous_transfers: rejectAnonymousTransfers,
+        twitter_id: cleanTwitterId || null,
+        updated_at: new Date().toISOString(),
+      };
+
+      const { data, error: upsertError } = await supabase
         .from('user_profiles')
-        .upsert({
-          tenant_id: 'default',
-          wallet_address: walletAddress.toLowerCase(),
-          display_name: displayName.trim(),
-          bio: bio.trim(),
-          receive_message: receiveMessage.trim(),
-          avatar_url: avatarUrl || null,
-          cover_image_url: coverImageUrl || null,
-          website_url: websiteUrl.trim() || null,
-          custom_links: validCustomLinks.length > 0 ? validCustomLinks : [],
-          roles: roles.length > 0 ? roles : [],
-          location: location.trim() || null,
-          show_wallet_address: showWalletAddress,
-          reject_anonymous_transfers: rejectAnonymousTransfers,
-          twitter_id: cleanTwitterId || null,
-          updated_at: new Date().toISOString(),
-        }, {
-          onConflict: 'wallet_address', // wallet_addressのユニーク制約に基づいてupsert
-        });
+        .upsert(profileData, {
+          onConflict: 'tenant_id,wallet_address', // 複合ユニーク制約に基づいてupsert
+        })
+        .select();
 
       if (upsertError) {
-        console.error('❌ ProfileEditModal - Upsert error:', upsertError);
+        console.error('❌ ProfileEditModal - Upsert error:', {
+          error: upsertError,
+          code: upsertError.code,
+          message: upsertError.message,
+          details: upsertError.details,
+          hint: upsertError.hint,
+        });
         throw upsertError;
       }
+
+      console.log('✅ プロフィール保存成功:', data);
 
       onSave();
       onClose();
     } catch (err: any) {
-      console.error('プロフィール保存エラー:', err);
+      console.error('❌ プロフィール保存エラー:', err);
       setError('保存に失敗しました。もう一度お試しください。');
     } finally {
       setIsSubmitting(false);
