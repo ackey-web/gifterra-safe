@@ -1334,6 +1334,7 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
   const [showPrepModal, setShowPrepModal] = useState(false); // JPYC/MATIC準備モーダル
   const [balanceVisible, setBalanceVisible] = useState(true); // 残高の目隠し状態
   const [isAnonymous, setIsAnonymous] = useState(false); // 匿名送金トグル
+  const [shareOnX, setShareOnX] = useState(false); // Xシェアトグル
   const [selectedTenant, setSelectedTenant] = useState<any>(null);
   const [selectedBookmarkUser, setSelectedBookmarkUser] = useState<{ address: string; name?: string } | null>(null);
   const [address, setAddress] = useState('');
@@ -1834,10 +1835,40 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
         }
       }
 
+      // Xシェアが有効な場合は自動的に投稿画面を開く
+      if (shareOnX && message && message.trim()) {
+        try {
+          const { data: recipientProfile } = await supabase
+            .from('user_profiles')
+            .select('twitter_id, display_name')
+            .eq('tenant_id', 'default')
+            .eq('wallet_address', address.toLowerCase())
+            .maybeSingle();
+
+          // X投稿テキストを生成
+          let tweetText = '';
+          if (recipientProfile?.twitter_id) {
+            tweetText += `@${recipientProfile.twitter_id} `;
+          } else if (recipientProfile?.display_name) {
+            tweetText += `${recipientProfile.display_name}さん `;
+          }
+          tweetText += `${message}\n\n`;
+          tweetText += `💝 ${amount} ${selectedToken} を送りました\n`;
+          tweetText += `#Gifterra #JPYC #Web3`;
+
+          // X投稿画面を開く
+          const tweetUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}`;
+          window.open(tweetUrl, '_blank', 'noopener,noreferrer');
+        } catch (err) {
+          console.warn('Failed to open X share:', err);
+        }
+      }
+
       // フォームをリセット
       setAddress('');
       setAmount('');
       setMessage('');
+      setShareOnX(false);
       setSendMode(null);
       setSelectedTenant(null);
 
@@ -2533,6 +2564,31 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
               boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
             }}
           />
+          {/* Xシェアトグル */}
+          <label style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            marginTop: 8,
+            cursor: 'pointer',
+            fontSize: isMobile ? 13 : 14,
+            color: '#2d3748',
+          }}>
+            <input
+              type="checkbox"
+              checked={shareOnX}
+              onChange={(e) => setShareOnX(e.target.checked)}
+              style={{
+                width: 18,
+                height: 18,
+                cursor: 'pointer',
+              }}
+            />
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style={{ color: '#1DA1F2' }}>
+              <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+            </svg>
+            <span>Xにメッセージをシェア</span>
+          </label>
         </div>
       )}
 
