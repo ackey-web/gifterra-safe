@@ -1844,14 +1844,19 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
       }
 
       // Xシェアが有効な場合は自動的に投稿画面を開く
+      console.log('🔍 X Share Check:', { shareOnX, message: message?.substring(0, 20), address: address?.substring(0, 10) });
+
       if (shareOnX && message && message.trim()) {
         try {
+          console.log('✅ X Share条件を満たしました。プロフィールを取得中...');
           const { data: recipientProfile } = await supabase
             .from('user_profiles')
             .select('twitter_id, display_name')
             .eq('tenant_id', 'default')
             .eq('wallet_address', address.toLowerCase())
             .maybeSingle();
+
+          console.log('📝 受信者プロフィール:', recipientProfile);
 
           // X投稿テキストを生成
           let tweetText = '';
@@ -1864,12 +1869,17 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
           tweetText += `💝 ${amount} ${selectedToken} を送りました\n`;
           tweetText += `#Gifterra #JPYC #Web3`;
 
+          console.log('📤 ツイートテキスト:', tweetText);
+
           // X投稿画面を開く
           const tweetUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}`;
+          console.log('🌐 Opening X with URL:', tweetUrl);
           window.open(tweetUrl, '_blank', 'noopener,noreferrer');
         } catch (err) {
-          console.warn('Failed to open X share:', err);
+          console.error('❌ Failed to open X share:', err);
         }
+      } else {
+        console.log('❌ X Share条件を満たしていません');
       }
 
       // フォームをリセット
