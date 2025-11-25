@@ -1863,11 +1863,7 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
           }
           tweetText += `\n${message}\n\n`;
           tweetText += `💝 ${amount} ${selectedToken} を送りました\n\n`;
-
-          // 送信先のプロフィールリンクを追加
-          const profileLink = `https://gifterra-safe.vercel.app/profile/${address}`;
-          tweetText += `${profileLink}\n\n`;
-
+          tweetText += `https://gifterra-safe.vercel.app/\n\n`;
           tweetText += `#GIFTERRA #投げ銭`;
 
           console.log('📤 ツイートテキスト:', tweetText);
