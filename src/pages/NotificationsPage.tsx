@@ -246,12 +246,31 @@ export function NotificationsPage() {
             notifications.map((notification, index) => {
               // スーパーアドミンからの一斉送信アナウンスの背景色
               const isSystemAnnouncement = notification.type === 'system_announcement';
-              const bgColor = isSystemAnnouncement
-                ? (notification.is_read ? '#fef3c7' : '#fef08a') // アンバー系（読んだ/未読）
-                : (notification.is_read ? '#ffffff' : '#f0f9ff'); // 通常（読んだ/未読）
-              const hoverBgColor = isSystemAnnouncement
-                ? (notification.is_read ? '#fde68a' : '#fde047') // ホバー時のアンバー系
-                : (notification.is_read ? '#f8fafc' : '#dbeafe'); // ホバー時の通常
+
+              // デバッグ用ログ（開発時のみ）
+              console.log(`🔔 通知[${index}]:`, {
+                type: notification.type,
+                isSystemAnnouncement,
+                title: notification.title,
+                is_read: notification.is_read,
+                calculatedBgColor: isSystemAnnouncement
+                  ? (notification.is_read ? '#fef3c7' : '#fef08a')
+                  : (notification.is_read ? '#ffffff' : '#f0f9ff'),
+              });
+
+              // 背景色を決定
+              let bgColor: string;
+              let hoverBgColor: string;
+
+              if (isSystemAnnouncement) {
+                // システムアナウンスの場合：アンバー系
+                bgColor = notification.is_read ? '#fef3c7' : '#fef08a';
+                hoverBgColor = notification.is_read ? '#fde68a' : '#fde047';
+              } else {
+                // 通常の通知の場合
+                bgColor = notification.is_read ? '#ffffff' : '#f0f9ff';
+                hoverBgColor = notification.is_read ? '#f8fafc' : '#dbeafe';
+              }
 
               return (
                 <div
@@ -261,17 +280,17 @@ export function NotificationsPage() {
                     padding: isMobile ? 16 : 20,
                     borderBottom: index === notifications.length - 1 ? 'none' : '1px solid #f1f5f9',
                     cursor: 'pointer',
-                    background: bgColor,
-                    transition: 'background 0.2s',
+                    backgroundColor: bgColor,
+                    transition: 'background-color 0.2s',
                     ...(isSystemAnnouncement && {
                       borderLeft: '4px solid #f59e0b',
                     }),
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.background = hoverBgColor;
+                    e.currentTarget.style.backgroundColor = hoverBgColor;
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.background = bgColor;
+                    e.currentTarget.style.backgroundColor = bgColor;
                   }}
                 >
                 <div style={{ display: 'flex', gap: 16 }}>
