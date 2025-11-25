@@ -181,8 +181,20 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
     }
   }, [authenticated, wallets]);
 
-  // 送金セクションと同じ: privySignerのみ使用
+  // privySignerのみ使用（MetaMask直接 or Privy経由）
   const signer = privySigner || thirdwebSigner;
+
+  // デバッグ: signerの状態を監視
+  useEffect(() => {
+    console.log('🔍 [Signer State]', {
+      hasSigner: !!signer,
+      hasPrivySigner: !!privySigner,
+      hasThirdwebSigner: !!thirdwebSigner,
+      authenticated,
+      walletsCount: wallets?.length || 0,
+      walletAddress,
+    });
+  }, [signer, privySigner, thirdwebSigner, authenticated, wallets, walletAddress]);
 
   const [showScanner, setShowScanner] = useState(false);
   const [paymentData, setPaymentData] = useState<X402PaymentData | null>(null);
@@ -741,7 +753,16 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
 
       // 送金セクションと完全に同じ実装: contract.transfer()を直接呼び出し
       if (!signer) {
-        throw new Error('ウォレットが接続されていません');
+        console.error('❌ Signerが未設定:', {
+          privySigner: !!privySigner,
+          thirdwebSigner: !!thirdwebSigner,
+          authenticated,
+          walletsCount: wallets?.length || 0,
+          walletAddress,
+          hasWindowEthereum: typeof window !== 'undefined' && !!window.ethereum,
+          isMetaMask: typeof window !== 'undefined' && window.ethereum?.isMetaMask,
+        });
+        throw new Error('ウォレットが接続されていません。ページを再読み込みしてください。');
       }
 
 
