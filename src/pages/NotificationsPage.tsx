@@ -243,24 +243,37 @@ export function NotificationsPage() {
               </div>
             </div>
           ) : (
-            notifications.map((notification, index) => (
-              <div
-                key={notification.id}
-                onClick={() => handleNotificationClick(notification)}
-                style={{
-                  padding: isMobile ? 16 : 20,
-                  borderBottom: index === notifications.length - 1 ? 'none' : '1px solid #f1f5f9',
-                  cursor: 'pointer',
-                  background: notification.is_read ? '#ffffff' : '#f0f9ff',
-                  transition: 'background 0.2s',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = notification.is_read ? '#f8fafc' : '#dbeafe';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = notification.is_read ? '#ffffff' : '#f0f9ff';
-                }}
-              >
+            notifications.map((notification, index) => {
+              // スーパーアドミンからの一斉送信アナウンスの背景色
+              const isSystemAnnouncement = notification.type === 'system_announcement';
+              const bgColor = isSystemAnnouncement
+                ? (notification.is_read ? '#fef3c7' : '#fef08a') // アンバー系（読んだ/未読）
+                : (notification.is_read ? '#ffffff' : '#f0f9ff'); // 通常（読んだ/未読）
+              const hoverBgColor = isSystemAnnouncement
+                ? (notification.is_read ? '#fde68a' : '#fde047') // ホバー時のアンバー系
+                : (notification.is_read ? '#f8fafc' : '#dbeafe'); // ホバー時の通常
+
+              return (
+                <div
+                  key={notification.id}
+                  onClick={() => handleNotificationClick(notification)}
+                  style={{
+                    padding: isMobile ? 16 : 20,
+                    borderBottom: index === notifications.length - 1 ? 'none' : '1px solid #f1f5f9',
+                    cursor: 'pointer',
+                    background: bgColor,
+                    transition: 'background 0.2s',
+                    ...(isSystemAnnouncement && {
+                      borderLeft: '4px solid #f59e0b',
+                    }),
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = hoverBgColor;
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = bgColor;
+                  }}
+                >
                 <div style={{ display: 'flex', gap: 16 }}>
                   {/* アイコン */}
                   <div
@@ -272,7 +285,9 @@ export function NotificationsPage() {
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      background: notification.is_read ? '#f1f5f9' : '#dbeafe',
+                      background: isSystemAnnouncement
+                        ? (notification.is_read ? '#fde68a' : '#fbbf24') // アンバー系
+                        : (notification.is_read ? '#f1f5f9' : '#dbeafe'), // 通常
                       borderRadius: '50%',
                     }}
                   >
@@ -285,7 +300,7 @@ export function NotificationsPage() {
                       style={{
                         fontWeight: notification.is_read ? 400 : 700,
                         fontSize: isMobile ? 15 : 16,
-                        color: '#1a1a1a',
+                        color: isSystemAnnouncement ? '#92400e' : '#1a1a1a', // アンバー系のダークカラー
                         marginBottom: 6,
                       }}
                     >
@@ -294,7 +309,7 @@ export function NotificationsPage() {
                     <div
                       style={{
                         fontSize: isMobile ? 13 : 14,
-                        color: '#64748b',
+                        color: isSystemAnnouncement ? '#78350f' : '#64748b', // アンバー系のダークカラー
                         marginBottom: 8,
                         lineHeight: 1.5,
                       }}
@@ -338,7 +353,8 @@ export function NotificationsPage() {
                   )}
                 </div>
               </div>
-            ))
+            );
+            })
           )}
         </div>
       </div>
