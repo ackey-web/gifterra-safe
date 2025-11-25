@@ -382,6 +382,7 @@ export function MypagePage() {
           setShowUserSearchModal={setShowUserSearchModal}
           showBookmarkModal={showBookmarkModal}
           setShowBookmarkModal={setShowBookmarkModal}
+          walletAddress={displayAddress || ''}
         />
       </div>
 
@@ -479,7 +480,7 @@ export function MypagePage() {
 // ========================================
 // [A] ヘッダー
 // ========================================
-function Header({ viewMode, setViewMode, isMobile, tenantRank, showSettingsModal, setShowSettingsModal, showUserSearchModal, setShowUserSearchModal, showBookmarkModal, setShowBookmarkModal }: {
+function Header({ viewMode, setViewMode, isMobile, tenantRank, showSettingsModal, setShowSettingsModal, showUserSearchModal, setShowUserSearchModal, showBookmarkModal, setShowBookmarkModal, walletAddress }: {
   viewMode: ViewMode;
   setViewMode: (mode: ViewMode) => void;
   isMobile: boolean;
@@ -490,14 +491,15 @@ function Header({ viewMode, setViewMode, isMobile, tenantRank, showSettingsModal
   setShowUserSearchModal: (show: boolean) => void;
   showBookmarkModal: boolean;
   setShowBookmarkModal: (show: boolean) => void;
+  walletAddress: string;
 }) {
   const disconnect = useDisconnect();
   const { logout: privyLogout, authenticated, user } = usePrivy();
   const address = useAddress();
   const [showMobileMenu, setShowMobileMenu] = useState(false);
 
-  // 表示するアドレス（Privy優先、なければThirdweb）
-  const displayAddress = user?.wallet?.address || address;
+  // 表示するアドレス（親コンポーネントから渡される）
+  const displayAddress = walletAddress || user?.wallet?.address || address;
 
   // テナント申請情報取得
   const { application } = useMyTenantApplication();
@@ -877,10 +879,10 @@ function Header({ viewMode, setViewMode, isMobile, tenantRank, showSettingsModal
       {/* ブックマークユーザーモーダル */}
       {showBookmarkModal && (
         <BookmarkUserModal
-          userAddress={address}
+          userAddress={walletAddress}
           onClose={() => setShowBookmarkModal(false)}
           isMobile={isMobile}
-          mode="select"
+          mode="view"
           onSelectUser={(selectedAddress, userName) => {
             // マイページにユーザー選択情報を渡す
             const sendFormSection = document.getElementById('send-form-section');

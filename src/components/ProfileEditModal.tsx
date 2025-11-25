@@ -263,9 +263,7 @@ export function ProfileEditModal({
 
       const { data, error: upsertError } = await supabase
         .from('user_profiles')
-        .upsert(profileData, {
-          onConflict: 'tenant_id,wallet_address', // 複合ユニーク制約に基づいてupsert
-        })
+        .upsert(profileData)
         .select();
 
       if (upsertError) {
