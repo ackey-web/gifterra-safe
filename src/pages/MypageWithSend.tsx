@@ -92,9 +92,6 @@ export function MypageWithSend() {
   const [sendError, setSendError] = useState<string | null>(null);
   const [sendSuccess, setSendSuccess] = useState(false);
 
-  // X シェア用の状態
-  const [shareOnX, setShareOnX] = useState(false);
-
   // 一括送金用の状態
   const [recipients, setRecipients] = useState<Recipient[]>([
     { id: 1, address: '', amount: '' },
@@ -317,41 +314,9 @@ export function MypageWithSend() {
 
       setSendSuccess(true);
 
-      // Xシェアが有効な場合は自動的に投稿画面を開く
-      if (shareOnX && sendMessage && sendMessage.trim()) {
-        try {
-          const { data: recipientProfile } = await supabase
-            .from('user_profiles')
-            .select('twitter_id, display_name')
-            .eq('tenant_id', 'default')
-            .eq('wallet_address', sendTo.toLowerCase())
-            .maybeSingle();
-
-          // X投稿テキストを生成
-          let tweetText = '';
-
-          if (recipientProfile?.twitter_id) {
-            tweetText += `@${recipientProfile.twitter_id} `;
-          } else if (recipientProfile?.display_name) {
-            tweetText += `${recipientProfile.display_name}さん `;
-          }
-
-          tweetText += `${sendMessage}\n\n`;
-          tweetText += `💝 ${sendAmount} JPYC を送りました\n`;
-          tweetText += `#Gifterra #JPYC #Web3`;
-
-          // X投稿画面を開く
-          const tweetUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}`;
-          window.open(tweetUrl, '_blank', 'noopener,noreferrer');
-        } catch (err) {
-          console.warn('Failed to open X share:', err);
-        }
-      }
-
       setSendTo('');
       setSendAmount('');
       setSendMessage(''); // メッセージもリセット
-      setShareOnX(false); // トグルもリセット
 
       // 残高を更新
       setTimeout(() => {
@@ -1590,31 +1555,6 @@ export function MypageWithSend() {
                       resize: 'vertical',
                     }}
                   />
-                  {/* Xシェアトグル */}
-                  <label style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 8,
-                    marginTop: 8,
-                    cursor: 'pointer',
-                    fontSize: 14,
-                    color: '#2d3748',
-                  }}>
-                    <input
-                      type="checkbox"
-                      checked={shareOnX}
-                      onChange={(e) => setShareOnX(e.target.checked)}
-                      style={{
-                        width: 18,
-                        height: 18,
-                        cursor: 'pointer',
-                      }}
-                    />
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style={{ color: '#1DA1F2' }}>
-                      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
-                    </svg>
-                    <span>Xにメッセージをシェア</span>
-                  </label>
                 </div>
 
                 {sendError && (
@@ -1965,31 +1905,6 @@ export function MypageWithSend() {
                       resize: 'vertical',
                     }}
                   />
-                  {/* Xシェアトグル */}
-                  <label style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 8,
-                    marginTop: 8,
-                    cursor: 'pointer',
-                    fontSize: 14,
-                    color: '#2d3748',
-                  }}>
-                    <input
-                      type="checkbox"
-                      checked={shareOnX}
-                      onChange={(e) => setShareOnX(e.target.checked)}
-                      style={{
-                        width: 18,
-                        height: 18,
-                        cursor: 'pointer',
-                      }}
-                    />
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style={{ color: '#1DA1F2' }}>
-                      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
-                    </svg>
-                    <span>Xにメッセージをシェア</span>
-                  </label>
                 </div>
 
                 {sendError && (
