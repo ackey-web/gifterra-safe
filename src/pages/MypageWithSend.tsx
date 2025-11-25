@@ -93,11 +93,7 @@ export function MypageWithSend() {
   const [sendSuccess, setSendSuccess] = useState(false);
 
   // X シェア用の状態
-  const [showShareModal, setShowShareModal] = useState(false);
-  const [lastTipAmount, setLastTipAmount] = useState('');
-  const [lastTipMessage, setLastTipMessage] = useState('');
-  const [recipientTwitterId, setRecipientTwitterId] = useState<string | null>(null);
-  const [recipientDisplayName, setRecipientDisplayName] = useState<string | null>(null);
+  const [shareOnX, setShareOnX] = useState(false);
 
   // 一括送金用の状態
   const [recipients, setRecipients] = useState<Recipient[]>([
@@ -319,58 +315,54 @@ export function MypageWithSend() {
         }
       }
 
-      // Tip情報を保存（Xシェア用）
-      setLastTipAmount(`${sendAmount} JPYC`);
-      setLastTipMessage(sendMessage);
-
-      // 受取側のプロフィールからX IDと表示名を取得
-      try {
-        const { data: recipientProfile } = await supabase
-          .from('user_profiles')
-          .select('twitter_id, display_name')
-          .eq('tenant_id', 'default')
-          .eq('wallet_address', sendTo.toLowerCase())
-          .maybeSingle();
-
-        if (recipientProfile?.twitter_id) {
-          setRecipientTwitterId(recipientProfile.twitter_id);
-        } else {
-          setRecipientTwitterId(null);
-        }
-        if (recipientProfile?.display_name) {
-          setRecipientDisplayName(recipientProfile.display_name);
-        } else {
-          setRecipientDisplayName(null);
-        }
-      } catch (err) {
-        console.warn('Failed to fetch recipient profile:', err);
-        setRecipientTwitterId(null);
-        setRecipientDisplayName(null);
-      }
-
       setSendSuccess(true);
 
-      // Xシェアモーダルを表示（メッセージがある場合のみ）
-      if (sendMessage && sendMessage.trim()) {
-        setShowShareModal(true);
+      // Xシェアが有効な場合は自動的に投稿画面を開く
+      if (shareOnX && sendMessage && sendMessage.trim()) {
+        try {
+          const { data: recipientProfile } = await supabase
+            .from('user_profiles')
+            .select('twitter_id, display_name')
+            .eq('tenant_id', 'default')
+            .eq('wallet_address', sendTo.toLowerCase())
+            .maybeSingle();
+
+          // X投稿テキストを生成
+          let tweetText = '';
+
+          if (recipientProfile?.twitter_id) {
+            tweetText += `@${recipientProfile.twitter_id} `;
+          } else if (recipientProfile?.display_name) {
+            tweetText += `${recipientProfile.display_name}さん `;
+          }
+
+          tweetText += `${sendMessage}\n\n`;
+          tweetText += `💝 ${sendAmount} JPYC を送りました\n`;
+          tweetText += `#Gifterra #JPYC #Web3`;
+
+          // X投稿画面を開く
+          const tweetUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}`;
+          window.open(tweetUrl, '_blank', 'noopener,noreferrer');
+        } catch (err) {
+          console.warn('Failed to open X share:', err);
+        }
       }
 
       setSendTo('');
       setSendAmount('');
       setSendMessage(''); // メッセージもリセット
+      setShareOnX(false); // トグルもリセット
 
       // 残高を更新
       setTimeout(() => {
         refetchBalances();
       }, 2000);
 
-      // 3秒後にモーダルを閉じる（シェアモーダルが表示されない場合のみ）
-      if (!sendMessage || !sendMessage.trim()) {
-        setTimeout(() => {
-          setShowSendModal(false);
-          setSendSuccess(false);
-        }, 3000);
-      }
+      // 3秒後にモーダルを閉じる
+      setTimeout(() => {
+        setShowSendModal(false);
+        setSendSuccess(false);
+      }, 3000);
 
     } catch (error: any) {
       console.error('Send error:', error);
@@ -1573,6 +1565,58 @@ export function MypageWithSend() {
                   </p>
                 </div>
 
+                <div style={{ marginBottom: 16 }}>
+                  <label style={{
+                    display: 'block',
+                    fontSize: 14,
+                    fontWeight: 600,
+                    color: '#2d3748',
+                    marginBottom: 8,
+                  }}>
+                    メッセージ（任意）
+                  </label>
+                  <textarea
+                    value={sendMessage}
+                    onChange={(e) => setSendMessage(e.target.value)}
+                    placeholder="応援メッセージを入力..."
+                    rows={3}
+                    style={{
+                      width: '100%',
+                      padding: '12px',
+                      fontSize: 14,
+                      border: '2px solid #e2e8f0',
+                      borderRadius: '8px',
+                      outline: 'none',
+                      resize: 'vertical',
+                    }}
+                  />
+                  {/* Xシェアトグル */}
+                  <label style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    marginTop: 8,
+                    cursor: 'pointer',
+                    fontSize: 14,
+                    color: '#2d3748',
+                  }}>
+                    <input
+                      type="checkbox"
+                      checked={shareOnX}
+                      onChange={(e) => setShareOnX(e.target.checked)}
+                      style={{
+                        width: 18,
+                        height: 18,
+                        cursor: 'pointer',
+                      }}
+                    />
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style={{ color: '#1DA1F2' }}>
+                      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                    </svg>
+                    <span>Xにメッセージをシェア</span>
+                  </label>
+                </div>
+
                 {sendError && (
                   <div style={{
                     padding: '12px',
@@ -1988,154 +2032,6 @@ export function MypageWithSend() {
         </div>
       )}
 
-      {/* Xシェアモーダル */}
-      {showShareModal && (
-        <div
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'rgba(0, 0, 0, 0.85)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 10000,
-            padding: '20px',
-          }}
-          onClick={() => {
-            setShowShareModal(false);
-            setShowSendModal(false);
-            setSendSuccess(false);
-          }}
-        >
-          <div
-            style={{
-              background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)',
-              borderRadius: 20,
-              padding: 'clamp(24px, 5vw, 32px)',
-              maxWidth: 500,
-              width: '90%',
-              boxShadow: '0 20px 60px rgba(0, 0, 0, 0.5)',
-              border: '2px solid rgba(102, 126, 234, 0.3)',
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2
-              style={{
-                fontSize: 'clamp(20px, 4vw, 24px)',
-                marginBottom: 16,
-                textAlign: 'center',
-                color: '#fff',
-                fontWeight: 700,
-              }}
-            >
-              💝 Tip完了！
-            </h2>
-
-            <p
-              style={{
-                fontSize: 'clamp(14px, 2.5vw, 16px)',
-                color: 'rgba(255, 255, 255, 0.8)',
-                textAlign: 'center',
-                marginBottom: 24,
-                lineHeight: 1.6,
-              }}
-            >
-              {lastTipAmount} を送りました！
-              <br />
-              Xでシェアして応援を広めませんか？
-            </p>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {/* Xシェアボタン */}
-              <button
-                onClick={() => {
-                  // X IDと表示名に応じてメンション部分を組み立て
-                  let mentionText = '';
-                  if (recipientTwitterId && recipientDisplayName) {
-                    // X IDと表示名の両方がある場合: 「ギフテラ @gifterra_app さんに」
-                    mentionText = `${recipientDisplayName} @${recipientTwitterId} さんに`;
-                  } else if (recipientTwitterId) {
-                    // X IDのみある場合: 「@gifterra_app さんに」
-                    mentionText = `@${recipientTwitterId} さんに`;
-                  } else if (recipientDisplayName) {
-                    // 表示名のみある場合: 「ギフテラ さんに」
-                    mentionText = `${recipientDisplayName} さんに`;
-                  }
-
-                  const messageText = lastTipMessage ? `\n「${lastTipMessage}」\n` : '\n';
-                  const gifterraUrl = '\n\nhttps://gifterra-safe.vercel.app/';
-                  const text = `${mentionText}${lastTipAmount} をチップしました！${messageText}\n#GIFTERRA #投げ銭 #JPYC${gifterraUrl}`;
-                  const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
-                  window.open(url, '_blank');
-                  setShowShareModal(false);
-                  setShowSendModal(false);
-                  setSendSuccess(false);
-                }}
-                style={{
-                  padding: 'clamp(12px, 2.5vw, 16px)',
-                  background: 'linear-gradient(135deg, #1DA1F2 0%, #0d8bd9 100%)',
-                  color: '#fff',
-                  border: 'none',
-                  borderRadius: 12,
-                  fontSize: 'clamp(14px, 2.5vw, 16px)',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  boxShadow: '0 4px 16px rgba(29, 161, 242, 0.4)',
-                  transition: 'all 0.2s',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 8,
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = 'translateY(-2px)';
-                  e.currentTarget.style.boxShadow = '0 6px 20px rgba(29, 161, 242, 0.6)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = '0 4px 16px rgba(29, 161, 242, 0.4)';
-                }}
-              >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
-                </svg>
-                Xでシェアする
-              </button>
-
-              {/* 閉じるボタン */}
-              <button
-                onClick={() => {
-                  setShowShareModal(false);
-                  setShowSendModal(false);
-                  setSendSuccess(false);
-                }}
-                style={{
-                  padding: 'clamp(10px, 2vw, 12px)',
-                  background: 'rgba(255, 255, 255, 0.1)',
-                  color: 'rgba(255, 255, 255, 0.7)',
-                  border: '1px solid rgba(255, 255, 255, 0.2)',
-                  borderRadius: 10,
-                  fontSize: 'clamp(13px, 2vw, 14px)',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
-                }}
-              >
-                後で
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
