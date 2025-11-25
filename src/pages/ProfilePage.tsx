@@ -30,6 +30,7 @@ interface UserProfile {
   twitter_id?: string;
   wallet_address: string;
   show_wallet_address?: boolean;
+  reject_anonymous_transfers?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -102,6 +103,8 @@ export function ProfilePage() {
 
     setIsLoading(true);
     try {
+      console.log('📖 プロフィール読み込み開始:', walletAddress.toLowerCase());
+
       const { data, error } = await supabase
         .from('user_profiles')
         .select('*')
@@ -110,11 +113,20 @@ export function ProfilePage() {
         .maybeSingle(); // single() の代わりに maybeSingle() を使用
 
       if (error) {
+        console.error('❌ プロフィール読み込みエラー:', error);
         setProfile(null);
       } else {
+        console.log('✅ プロフィール読み込み成功:', {
+          twitter_id: data?.twitter_id,
+          reject_anonymous_transfers: data?.reject_anonymous_transfers,
+          location: data?.location,
+          roles: data?.roles,
+          full_data: data,
+        });
         setProfile(data || null);
       }
     } catch (err) {
+      console.error('❌ プロフィール読み込み例外:', err);
       setProfile(null);
     } finally {
       setIsLoading(false);
@@ -909,6 +921,8 @@ export function ProfilePage() {
             roles: profile?.roles || [],
             location: profile?.location || '',
             show_wallet_address: profile?.show_wallet_address,
+            reject_anonymous_transfers: profile?.reject_anonymous_transfers,
+            twitter_id: profile?.twitter_id || '',
           }}
           walletAddress={currentUserWalletAddress}
         />
