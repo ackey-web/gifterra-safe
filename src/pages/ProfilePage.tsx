@@ -313,6 +313,9 @@ export function ProfilePage() {
                   fontWeight: 600,
                   cursor: 'pointer',
                   transition: 'all 0.2s',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.transform = 'scale(1.05)';
@@ -321,7 +324,8 @@ export function ProfilePage() {
                   e.currentTarget.style.transform = 'scale(1)';
                 }}
               >
-                💝 リンク
+                <img src="/share.png" alt="share" style={{ width: 16, height: 16 }} />
+                シェア
               </button>
               <button
                 onClick={() => setShowEditModal(true)}
