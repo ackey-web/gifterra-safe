@@ -1730,15 +1730,10 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
           `トランザクションハッシュ:\n${receipt.transactionHash}`
         );
 
-        setAddress('');
-        setAmount('');
-        setMessage('');
-        setIsSending(false);
-        return;
-      }
-
-      // JPYC送信の場合
-      const tokenAddress = JPYC_TOKEN.ADDRESS;
+        // POL送金後もXシェア処理を実行するため、returnせずに処理を継続
+      } else {
+        // JPYC/NHT送信の場合
+        const tokenAddress = JPYC_TOKEN.ADDRESS;
 
       // テナントチップモードの場合は従来のコントラクトを使用
       if (sendMode === 'tenant') {
@@ -1842,6 +1837,7 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
           );
         }
       }
+      } // else (JPYC/NHT送信) の終了
 
       // Xシェアが有効な場合は自動的に投稿画面を開く
       console.log('🔍 X Share Check:', { shareOnX, message: message?.substring(0, 20), address: address?.substring(0, 10) });

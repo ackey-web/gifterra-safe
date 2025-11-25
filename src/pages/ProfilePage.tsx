@@ -1011,9 +1011,14 @@ export function ProfilePage() {
                 textAlign: 'center',
                 color: '#fff',
                 fontWeight: 700,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
               }}
             >
-              💝 投げ銭リンク
+              <img src="/share.png" alt="share" style={{ width: 20, height: 20 }} />
+              TIP LINK
             </h2>
 
             <p
@@ -1025,7 +1030,7 @@ export function ProfilePage() {
                 lineHeight: 1.6,
               }}
             >
-              あなたの投げ銭リンクをコピーして、<br />
+              あなたのチップリンクをコピーして、<br />
               Xやその他のSNSでシェアしましょう！
             </p>
 
