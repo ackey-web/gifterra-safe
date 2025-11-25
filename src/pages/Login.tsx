@@ -8,6 +8,7 @@ import {
 } from "@thirdweb-dev/react";
 import { usePrivy } from "@privy-io/react-auth";
 import { LoginSupportChat } from "../components/LoginSupportChat";
+import { MetaMaskPWAWarningModal } from "../components/MetaMaskPWAWarningModal";
 
 export const LoginPage: React.FC = () => {
   const address = useAddress();
@@ -15,12 +16,37 @@ export const LoginPage: React.FC = () => {
   const wallet = useWallet();
   const { login, authenticated, user } = usePrivy();
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  const [showMetaMaskWarning, setShowMetaMaskWarning] = useState(false);
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth <= 768);
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
+
+  // PWA環境検出とMetaMask警告表示（初回のみ）
+  useEffect(() => {
+    const isPWA = window.matchMedia('(display-mode: standalone)').matches ||
+                  (window.navigator as any).standalone === true ||
+                  document.referrer.includes('android-app://');
+
+    const hasSeenWarning = localStorage.getItem('metamask_pwa_warning_seen');
+
+    if (isPWA && !hasSeenWarning) {
+      // 500msの遅延を入れて、ページ読み込み後にモーダルを表示
+      const timer = setTimeout(() => {
+        setShowMetaMaskWarning(true);
+      }, 500);
+
+      return () => clearTimeout(timer);
+    }
+  }, []);
+
+  // MetaMask警告モーダルを閉じる処理
+  const handleCloseMetaMaskWarning = () => {
+    setShowMetaMaskWarning(false);
+    localStorage.setItem('metamask_pwa_warning_seen', 'true');
+  };
 
   // Privy認証成功時、マイページにリダイレクト
   useEffect(() => {
@@ -471,6 +497,14 @@ export const LoginPage: React.FC = () => {
 
       {/* ログインサポートチャット */}
       <LoginSupportChat isMobile={isMobile} />
+
+      {/* MetaMask PWA警告モーダル */}
+      {showMetaMaskWarning && (
+        <MetaMaskPWAWarningModal
+          isMobile={isMobile}
+          onClose={handleCloseMetaMaskWarning}
+        />
+      )}
     </div>
   );
 };
