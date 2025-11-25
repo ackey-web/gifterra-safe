@@ -410,32 +410,44 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
         let lastError: any;
         let success = false;
 
-        // RPCエンドポイントを順次試行
+        // RPCエンドポイントを順次試行（高速化: リトライ2回、短いタイムアウト）
         for (let i = 0; i < RPC_ENDPOINTS.length && !success; i++) {
           const rpcUrl = RPC_ENDPOINTS[i];
           console.log(`🔍 [Balance] Trying RPC ${i + 1}/${RPC_ENDPOINTS.length}: ${rpcUrl}`);
 
           const readOnlyProvider = new ethers.providers.JsonRpcProvider(rpcUrl);
 
-          // 各RPCで最大3回リトライ
-          for (let attempt = 0; attempt < 3 && !success; attempt++) {
+          // 各RPCで最大2回リトライ（高速化）
+          for (let attempt = 0; attempt < 2 && !success; attempt++) {
             try {
-              const tokenContract = new ethers.Contract(decoded.token, ERC20_ABI, readOnlyProvider);
-              const balance = await tokenContract.balanceOf(walletAddress);
-              const decimals = await tokenContract.decimals();
+              // タイムアウト付きで残高取得（3秒）
+              const timeoutPromise = new Promise((_, reject) =>
+                setTimeout(() => reject(new Error('Timeout')), 3000)
+              );
 
-              userBalance = ethers.utils.formatUnits(balance, decimals);
+              const balancePromise = (async () => {
+                const tokenContract = new ethers.Contract(decoded.token, ERC20_ABI, readOnlyProvider);
+                const balance = await tokenContract.balanceOf(walletAddress);
+                const decimals = await tokenContract.decimals();
+                return { balance, decimals };
+              })();
+
+              const result = await Promise.race([balancePromise, timeoutPromise]) as { balance: any; decimals: number };
+
+              // 小数点以下2桁に制限
+              const rawBalance = ethers.utils.formatUnits(result.balance, result.decimals);
+              userBalance = parseFloat(rawBalance).toFixed(2);
+
               console.log(`✅ [Balance] Retrieved balance: ${userBalance} JPYC (RPC: ${rpcUrl}, attempt: ${attempt + 1})`);
               success = true;
             } catch (error: any) {
               lastError = error;
-              console.warn(`❌ [Balance] Attempt ${attempt + 1}/3 failed (RPC: ${rpcUrl}):`, error.message);
+              console.warn(`❌ [Balance] Attempt ${attempt + 1}/2 failed (RPC: ${rpcUrl}):`, error.message);
 
-              if (attempt < 2) {
-                // エクスポネンシャルバックオフ: 500ms, 1s
-                const delay = Math.min(500 * Math.pow(2, attempt), 1000);
-                console.log(`⏳ [Balance] Retrying in ${delay}ms...`);
-                await new Promise(resolve => setTimeout(resolve, delay));
+              if (attempt < 1) {
+                // 短いバックオフ: 300ms
+                console.log(`⏳ [Balance] Retrying in 300ms...`);
+                await new Promise(resolve => setTimeout(resolve, 300));
               }
             }
           }
