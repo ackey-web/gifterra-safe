@@ -189,6 +189,7 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
   const [isProcessing, setIsProcessing] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null);
   const [balance, setBalance] = useState<string>('0');
+  const [balanceErrorMessage, setBalanceErrorMessage] = useState<string | null>(null);
   const [showConsentModal, setShowConsentModal] = useState(false);
   const [consentAccepted, setConsentAccepted] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
@@ -386,6 +387,7 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
 
       // 残高確認（read-only providerを使用）
       let userBalance = '0';
+      let balanceError: string | null = null;
 
       try {
         console.log('🔍 [Balance] Retrieving balance for wallet:', walletAddress);
@@ -404,10 +406,11 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
 
         userBalance = ethers.utils.formatUnits(balance, decimals);
         console.log('✅ [Balance] Retrieved balance:', userBalance, 'JPYC');
-      } catch (balanceError: any) {
-        console.error('❌ [Balance] 残高取得エラー:', balanceError.message);
-        console.error('❌ [Balance] Error details:', balanceError);
-        userBalance = '0';
+      } catch (balanceErrorCaught: any) {
+        console.error('❌ [Balance] 残高取得エラー:', balanceErrorCaught.message);
+        console.error('❌ [Balance] Error details:', balanceErrorCaught);
+        balanceError = balanceErrorCaught.message || '残高取得に失敗しました';
+        userBalance = '取得失敗';
       }
 
       // X402形式のQRコードを検知 - バージョン付き同意チェック
@@ -417,8 +420,15 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
       // paymentDataとbalanceを設定
       setPaymentData(decoded);
       setBalance(userBalance);
+      setBalanceErrorMessage(balanceError);
       setShowScanner(false);
-      setMessage({ type: 'info', text: '決済内容を確認してください' });
+
+      // 残高取得エラーがあれば警告表示
+      if (balanceError) {
+        setMessage({ type: 'info', text: '⚠️ 残高取得に失敗しました。決済内容を確認してください。' });
+      } else {
+        setMessage({ type: 'info', text: '決済内容を確認してください' });
+      }
 
       // 次のレンダリングサイクルでモーダルを表示
       setTimeout(() => {
@@ -1193,7 +1203,25 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
               <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 6, fontWeight: 600 }}>
                 あなたの残高
               </div>
-              <div style={{ fontSize: 16, fontWeight: '600', color: '#1a1a1a' }}>{balance} JPYC</div>
+              <div style={{ fontSize: 16, fontWeight: '600', color: balanceErrorMessage ? '#dc2626' : '#1a1a1a' }}>
+                {balance} JPYC
+              </div>
+              {balanceErrorMessage && (
+                <div style={{
+                  marginTop: 8,
+                  padding: '8px 12px',
+                  background: 'rgba(239, 68, 68, 0.1)',
+                  border: '1px solid rgba(239, 68, 68, 0.3)',
+                  borderRadius: 6,
+                  fontSize: 11,
+                  color: '#dc2626',
+                  lineHeight: 1.5,
+                }}>
+                  ⚠️ 残高取得エラー: {balanceErrorMessage}
+                  <br />
+                  ネットワーク接続を確認してください。
+                </div>
+              )}
             </div>
 
             {/* 有効期限 */}
