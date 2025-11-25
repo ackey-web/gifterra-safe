@@ -2565,30 +2565,55 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
             }}
           />
           {/* Xシェアトグル */}
-          <label style={{
+          <div style={{
             display: 'flex',
-            alignItems: 'center',
-            gap: 8,
+            justifyContent: 'flex-end',
             marginTop: 8,
-            cursor: 'pointer',
-            fontSize: isMobile ? 13 : 14,
-            color: '#2d3748',
           }}>
-            <input
-              type="checkbox"
-              checked={shareOnX}
-              onChange={(e) => setShareOnX(e.target.checked)}
-              style={{
-                width: 18,
-                height: 18,
-                cursor: 'pointer',
-              }}
-            />
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style={{ color: '#1DA1F2' }}>
-              <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
-            </svg>
-            <span>Xにメッセージをシェア</span>
-          </label>
+            <label style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              cursor: 'pointer',
+              fontSize: isMobile ? 13 : 14,
+              color: '#666',
+              userSelect: 'none',
+            }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style={{ color: '#1DA1F2' }}>
+                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+              </svg>
+              <span>Xにメッセージをシェア</span>
+              {/* スライドトグル */}
+              <div
+                onClick={() => setShareOnX(!shareOnX)}
+                style={{
+                  position: 'relative',
+                  width: 44,
+                  height: 24,
+                  background: shareOnX
+                    ? 'linear-gradient(135deg, #1DA1F2 0%, #0d8bd9 100%)'
+                    : '#ddd',
+                  borderRadius: 12,
+                  transition: 'background 0.3s',
+                  cursor: 'pointer',
+                }}
+              >
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: 2,
+                    left: shareOnX ? 22 : 2,
+                    width: 20,
+                    height: 20,
+                    background: '#fff',
+                    borderRadius: '50%',
+                    transition: 'left 0.3s',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                  }}
+                />
+              </div>
+            </label>
+          </div>
         </div>
       )}
 
