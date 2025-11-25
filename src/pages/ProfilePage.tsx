@@ -1055,14 +1055,14 @@ export function ProfilePage() {
                 fontFamily: 'monospace',
               }}
             >
-              {`https://gifterra-safe.vercel.app/tip/${walletAddress}`}
+              {`https://gifterra-safe.vercel.app/receive/${walletAddress}`}
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {/* リンクをコピーボタン */}
               <button
                 onClick={() => {
-                  const tipLink = `https://gifterra-safe.vercel.app/tip/${walletAddress}`;
+                  const tipLink = `https://gifterra-safe.vercel.app/receive/${walletAddress}`;
                   navigator.clipboard.writeText(tipLink).then(() => {
                     setToastMessage('リンクをコピーしました！');
                     setShowShareLinkModal(false);
@@ -1100,7 +1100,7 @@ export function ProfilePage() {
                   const displayName = profile?.display_name || 'ギフテラユーザー';
                   const twitterId = profile?.twitter_id;
                   const mentionText = twitterId ? `${displayName} @${twitterId} さんへ投げ銭` : `${displayName} さんへ投げ銭`;
-                  const tipLink = `https://gifterra-safe.vercel.app/tip/${walletAddress}`;
+                  const tipLink = `https://gifterra-safe.vercel.app/receive/${walletAddress}`;
                   const text = `${mentionText}\n${tipLink}\n\n#GIFTERRA #投げ銭 #JPYC`;
                   const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
                   window.open(url, '_blank');
