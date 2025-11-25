@@ -46,6 +46,7 @@ export function ProfilePage() {
   const [isUserBookmarked, setIsUserBookmarked] = useState(false);
   const [isBookmarkLoading, setIsBookmarkLoading] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [showShareLinkModal, setShowShareLinkModal] = useState(false);
   const { user } = usePrivy();
   const thirdwebAddress = useAddress(); // Thirdwebウォレット（MetaMaskなど）
 
@@ -297,30 +298,54 @@ export function ProfilePage() {
           >
             プロフィール
           </h1>
-          {/* 自分のプロフィールの場合のみ編集ボタンを表示 */}
+          {/* 自分のプロフィールの場合のみ編集ボタンとシェアボタンを表示 */}
           {!isViewingOtherProfile && (
-            <button
-              onClick={() => setShowEditModal(true)}
-              style={{
-                padding: isMobile ? '8px 12px' : '10px 16px',
-                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                border: 'none',
-                borderRadius: 8,
-                color: '#fff',
-                fontSize: isMobile ? 14 : 15,
-                fontWeight: 600,
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = 'scale(1.05)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'scale(1)';
-              }}
-            >
-              編集
-            </button>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                onClick={() => setShowShareLinkModal(true)}
+                style={{
+                  padding: isMobile ? '8px 12px' : '10px 16px',
+                  background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                  border: 'none',
+                  borderRadius: 8,
+                  color: '#fff',
+                  fontSize: isMobile ? 14 : 15,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'scale(1.05)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'scale(1)';
+                }}
+              >
+                💝 リンク
+              </button>
+              <button
+                onClick={() => setShowEditModal(true)}
+                style={{
+                  padding: isMobile ? '8px 12px' : '10px 16px',
+                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  border: 'none',
+                  borderRadius: 8,
+                  color: '#fff',
+                  fontSize: isMobile ? 14 : 15,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'scale(1.05)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'scale(1)';
+                }}
+              >
+                編集
+              </button>
+            </div>
           )}
         </div>
 
@@ -936,6 +961,185 @@ export function ProfilePage() {
           }}
         >
           {toastMessage}
+        </div>
+      )}
+
+      {/* 投げ銭リンクシェアモーダル */}
+      {showShareLinkModal && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.85)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 10000,
+            padding: '20px',
+          }}
+          onClick={() => setShowShareLinkModal(false)}
+        >
+          <div
+            style={{
+              background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)',
+              borderRadius: 20,
+              padding: 'clamp(24px, 5vw, 32px)',
+              maxWidth: 500,
+              width: '90%',
+              boxShadow: '0 20px 60px rgba(0, 0, 0, 0.5)',
+              border: '2px solid rgba(102, 126, 234, 0.3)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2
+              style={{
+                fontSize: 'clamp(20px, 4vw, 24px)',
+                marginBottom: 16,
+                textAlign: 'center',
+                color: '#fff',
+                fontWeight: 700,
+              }}
+            >
+              💝 投げ銭リンク
+            </h2>
+
+            <p
+              style={{
+                fontSize: 'clamp(14px, 2.5vw, 16px)',
+                color: 'rgba(255, 255, 255, 0.8)',
+                textAlign: 'center',
+                marginBottom: 24,
+                lineHeight: 1.6,
+              }}
+            >
+              あなたの投げ銭リンクをコピーして、<br />
+              Xやその他のSNSでシェアしましょう！
+            </p>
+
+            {/* リンク表示エリア */}
+            <div
+              style={{
+                background: 'rgba(255, 255, 255, 0.05)',
+                border: '1px solid rgba(255, 255, 255, 0.2)',
+                borderRadius: 12,
+                padding: '16px',
+                marginBottom: 20,
+                wordBreak: 'break-all',
+                fontSize: 'clamp(12px, 2vw, 14px)',
+                color: '#93c5fd',
+                fontFamily: 'monospace',
+              }}
+            >
+              {`https://gifterra-safe.vercel.app/tip/${walletAddress}`}
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {/* リンクをコピーボタン */}
+              <button
+                onClick={() => {
+                  const tipLink = `https://gifterra-safe.vercel.app/tip/${walletAddress}`;
+                  navigator.clipboard.writeText(tipLink).then(() => {
+                    setToastMessage('リンクをコピーしました！');
+                    setShowShareLinkModal(false);
+                  }).catch(() => {
+                    setToastMessage('コピーに失敗しました');
+                  });
+                }}
+                style={{
+                  padding: 'clamp(12px, 2.5vw, 16px)',
+                  background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 12,
+                  fontSize: 'clamp(14px, 2.5vw, 16px)',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 16px rgba(16, 185, 129, 0.4)',
+                  transition: 'all 0.2s',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 6px 20px rgba(16, 185, 129, 0.6)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 4px 16px rgba(16, 185, 129, 0.4)';
+                }}
+              >
+                📋 リンクをコピー
+              </button>
+
+              {/* Xでシェアボタン */}
+              <button
+                onClick={() => {
+                  const displayName = profile?.display_name || 'ギフテラユーザー';
+                  const twitterId = profile?.twitter_id;
+                  const mentionText = twitterId ? `${displayName} @${twitterId} さんへ投げ銭` : `${displayName} さんへ投げ銭`;
+                  const tipLink = `https://gifterra-safe.vercel.app/tip/${walletAddress}`;
+                  const text = `${mentionText}\n${tipLink}\n\n#GIFTERRA #投げ銭 #JPYC`;
+                  const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
+                  window.open(url, '_blank');
+                  setShowShareLinkModal(false);
+                }}
+                style={{
+                  padding: 'clamp(12px, 2.5vw, 16px)',
+                  background: 'linear-gradient(135deg, #1DA1F2 0%, #0d8bd9 100%)',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 12,
+                  fontSize: 'clamp(14px, 2.5vw, 16px)',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 16px rgba(29, 161, 242, 0.4)',
+                  transition: 'all 0.2s',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 6px 20px rgba(29, 161, 242, 0.6)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 4px 16px rgba(29, 161, 242, 0.4)';
+                }}
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                </svg>
+                Xでシェアする
+              </button>
+
+              {/* 閉じるボタン */}
+              <button
+                onClick={() => setShowShareLinkModal(false)}
+                style={{
+                  padding: 'clamp(10px, 2vw, 12px)',
+                  background: 'rgba(255, 255, 255, 0.1)',
+                  color: 'rgba(255, 255, 255, 0.7)',
+                  border: '1px solid rgba(255, 255, 255, 0.2)',
+                  borderRadius: 10,
+                  fontSize: 'clamp(13px, 2vw, 14px)',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+                }}
+              >
+                閉じる
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
