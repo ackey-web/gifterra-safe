@@ -28,6 +28,7 @@ export function BookmarkUserModal({
   const { bookmarks, isLoading } = useUserBookmarks(userAddress);
   const [editingNickname, setEditingNickname] = useState<string | null>(null);
   const [nicknameInput, setNicknameInput] = useState('');
+  const [selectedUserForAction, setSelectedUserForAction] = useState<UserBookmark | null>(null);
 
   const handleRemoveBookmark = async (bookmarkId: string) => {
     if (!confirm('このブックマークを削除しますか?')) {
@@ -182,22 +183,24 @@ export function BookmarkUserModal({
                   border: '1px solid rgba(255,255,255,0.1)',
                   borderRadius: 12,
                   padding: isMobile ? 14 : 16,
-                  cursor: mode === 'select' ? 'pointer' : 'default',
+                  cursor: mode === 'select' || mode === 'view' ? 'pointer' : 'default',
                   transition: 'all 0.2s',
                 }}
                 onClick={() => {
                   if (mode === 'select') {
                     handleSelectUser(bookmark);
+                  } else if (mode === 'view' && editingNickname !== bookmark.id) {
+                    setSelectedUserForAction(bookmark);
                   }
                 }}
                 onMouseEnter={(e) => {
-                  if (mode === 'select') {
+                  if (mode === 'select' || mode === 'view') {
                     e.currentTarget.style.background = 'rgba(102, 126, 234, 0.2)';
                     e.currentTarget.style.borderColor = 'rgba(102, 126, 234, 0.4)';
                   }
                 }}
                 onMouseLeave={(e) => {
-                  if (mode === 'select') {
+                  if (mode === 'select' || mode === 'view') {
                     e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
                     e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)';
                   }
@@ -419,6 +422,195 @@ export function BookmarkUserModal({
           </div>
         )}
       </div>
+
+      {/* アクション選択モーダル */}
+      {selectedUserForAction && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.8)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 10001,
+            padding: isMobile ? 16 : 24,
+          }}
+          onClick={() => setSelectedUserForAction(null)}
+        >
+          <div
+            style={{
+              background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)',
+              borderRadius: isMobile ? 16 : 20,
+              padding: isMobile ? 24 : 32,
+              maxWidth: isMobile ? '100%' : 400,
+              width: '100%',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* ユーザー情報 */}
+            <div
+              style={{
+                textAlign: 'center',
+                marginBottom: 24,
+                paddingBottom: 20,
+                borderBottom: '2px solid rgba(255,255,255,0.1)',
+              }}
+            >
+              {/* アバター */}
+              <div
+                style={{
+                  width: 80,
+                  height: 80,
+                  borderRadius: '50%',
+                  background: selectedUserForAction.profile?.avatar_url
+                    ? `url(${selectedUserForAction.profile.avatar_url})`
+                    : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: 32,
+                  color: '#fff',
+                  margin: '0 auto 16px',
+                }}
+              >
+                {!selectedUserForAction.profile?.avatar_url && '👤'}
+              </div>
+
+              {/* 名前 */}
+              <div
+                style={{
+                  fontSize: 20,
+                  fontWeight: 700,
+                  color: '#EAF2FF',
+                  marginBottom: 8,
+                }}
+              >
+                {selectedUserForAction.nickname || selectedUserForAction.profile?.name || 'Unknown'}
+              </div>
+
+              {/* アドレス */}
+              <div
+                style={{
+                  fontSize: 13,
+                  color: '#94a3b8',
+                  fontFamily: 'monospace',
+                }}
+              >
+                {shortenAddress(selectedUserForAction.bookmarked_address)}
+              </div>
+            </div>
+
+            {/* アクションボタン */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {/* プロフィールを見る */}
+              <button
+                onClick={() => {
+                  window.location.href = `/profile/${selectedUserForAction.bookmarked_address}`;
+                }}
+                style={{
+                  width: '100%',
+                  padding: '16px 20px',
+                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  border: 'none',
+                  borderRadius: 12,
+                  color: '#fff',
+                  fontSize: 16,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                  transition: 'all 0.2s',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 8px 20px rgba(102, 126, 234, 0.4)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
+              >
+                <span style={{ fontSize: 20 }}>👤</span>
+                プロフィールを見る
+              </button>
+
+              {/* ユーザーに送金 */}
+              <button
+                onClick={() => {
+                  if (onSelectUser) {
+                    const displayName = selectedUserForAction.nickname ||
+                                      selectedUserForAction.profile?.name || 'Unknown';
+                    onSelectUser(selectedUserForAction.bookmarked_address, displayName);
+                  }
+                  setSelectedUserForAction(null);
+                  onClose();
+                }}
+                style={{
+                  width: '100%',
+                  padding: '16px 20px',
+                  background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+                  border: 'none',
+                  borderRadius: 12,
+                  color: '#fff',
+                  fontSize: 16,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                  transition: 'all 0.2s',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 8px 20px rgba(245, 87, 108, 0.4)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
+              >
+                <span style={{ fontSize: 20 }}>💸</span>
+                ユーザーに送金
+              </button>
+
+              {/* キャンセル */}
+              <button
+                onClick={() => setSelectedUserForAction(null)}
+                style={{
+                  width: '100%',
+                  padding: '14px 20px',
+                  background: 'rgba(148, 163, 184, 0.2)',
+                  border: '1px solid rgba(148, 163, 184, 0.4)',
+                  borderRadius: 12,
+                  color: '#cbd5e1',
+                  fontSize: 15,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'rgba(148, 163, 184, 0.3)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'rgba(148, 163, 184, 0.2)';
+                }}
+              >
+                キャンセル
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>,
     document.body
   );
