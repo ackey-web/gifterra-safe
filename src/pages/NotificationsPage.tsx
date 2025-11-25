@@ -91,13 +91,29 @@ export function NotificationsPage() {
   };
 
   return (
-    <div
-      style={{
-        minHeight: '100vh',
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-        padding: isMobile ? '80px 16px 24px' : '100px 24px 40px',
-      }}
-    >
+    <>
+      {/* システムアナウンス用のグローバルスタイル */}
+      <style>{`
+        .system-announcement-notification {
+          background-color: #fef08a !important;
+        }
+        .system-announcement-notification.is-read {
+          background-color: #fef3c7 !important;
+        }
+        .system-announcement-notification:hover {
+          background-color: #fde047 !important;
+        }
+        .system-announcement-notification.is-read:hover {
+          background-color: #fde68a !important;
+        }
+      `}</style>
+      <div
+        style={{
+          minHeight: '100vh',
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          padding: isMobile ? '80px 16px 24px' : '100px 24px 40px',
+        }}
+      >
       <div
         style={{
           maxWidth: 800,
@@ -276,6 +292,11 @@ export function NotificationsPage() {
                 <div
                   key={notification.id}
                   onClick={() => handleNotificationClick(notification)}
+                  className={
+                    isSystemAnnouncement
+                      ? `system-announcement-notification${notification.is_read ? ' is-read' : ''}`
+                      : ''
+                  }
                   style={{
                     padding: isMobile ? 16 : 20,
                     borderBottom: index === notifications.length - 1 ? 'none' : '1px solid #f1f5f9',
@@ -378,5 +399,6 @@ export function NotificationsPage() {
         </div>
       </div>
     </div>
+    </>
   );
 }
