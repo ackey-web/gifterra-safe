@@ -1868,7 +1868,7 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
           const profileLink = `https://gifterra-safe.vercel.app/profile/${address}`;
           tweetText += `${profileLink}\n\n`;
 
-          tweetText += `#GIFTERRA #投げ銭 #JPYC`;
+          tweetText += `#GIFTERRA #投げ銭`;
 
           console.log('📤 ツイートテキスト:', tweetText);
 
