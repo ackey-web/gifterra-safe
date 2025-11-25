@@ -125,26 +125,40 @@ export function useFollow(
         setFollowerCount((prev) => Math.max(0, prev - 1));
       } else {
         // フォロー
-        const { error } = await supabase.from('user_follows').insert({
+        console.log('👥 フォロー処理開始:', {
+          follower: currentUserAddress.toLowerCase(),
+          following: targetAddress.toLowerCase(),
+        });
+
+        const { data: followData, error } = await supabase.from('user_follows').insert({
           tenant_id: 'default',
           follower_address: currentUserAddress.toLowerCase(),
           following_address: targetAddress.toLowerCase(),
-        });
+        }).select();
 
         if (error) {
+          console.error('❌ フォロー追加エラー:', error);
           throw error;
         }
 
+        console.log('✅ フォロー追加成功:', followData);
+
         // フォロワーのプロフィール情報を取得（通知メッセージ用）
-        const { data: followerProfile } = await supabase
+        const { data: followerProfile, error: profileError } = await supabase
           .from('user_profiles')
           .select('display_name')
           .eq('tenant_id', 'default')
           .eq('wallet_address', currentUserAddress.toLowerCase())
           .maybeSingle();
 
+        if (profileError) {
+          console.warn('⚠️ フォロワープロフィール取得エラー:', profileError);
+        }
+
         const followerName = followerProfile?.display_name ||
           `${currentUserAddress.slice(0, 6)}...${currentUserAddress.slice(-4)}`;
+
+        console.log('📝 フォロワー名:', followerName);
 
         // フォロー通知を作成
         console.log('🔔 フォロー通知を作成中:', {
@@ -166,7 +180,14 @@ export function useFollow(
           .select();
 
         if (notificationError) {
-          console.error('❌ フォロー通知の作成エラー:', notificationError);
+          console.error('❌ フォロー通知の作成エラー:', {
+            error: notificationError,
+            code: notificationError.code,
+            message: notificationError.message,
+            details: notificationError.details,
+            hint: notificationError.hint,
+          });
+          // 通知作成失敗してもフォローは成功として扱う
         } else {
           console.log('✅ フォロー通知が作成されました:', notificationData);
         }

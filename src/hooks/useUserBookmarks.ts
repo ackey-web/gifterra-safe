@@ -128,22 +128,30 @@ export async function addBookmark(
     const normalizedUserAddress = userAddress.toLowerCase();
     const normalizedBookmarkedAddress = bookmarkedAddress.toLowerCase();
 
+    console.log('📚 ブックマーク追加開始:', {
+      user: normalizedUserAddress,
+      bookmarked: normalizedBookmarkedAddress,
+      nickname,
+    });
+
     // 自分自身をブックマークできないようにする
     if (normalizedUserAddress === normalizedBookmarkedAddress) {
+      console.log('❌ 自分自身をブックマークしようとしました');
       return {
         success: false,
         error: '自分自身をブックマークすることはできません',
       };
     }
 
-    const { error } = await supabase.from('user_bookmarks').insert({
+    const { data, error } = await supabase.from('user_bookmarks').insert({
       user_address: normalizedUserAddress,
       bookmarked_address: normalizedBookmarkedAddress,
       nickname: nickname || null,
       memo: memo || null,
-    });
+    }).select();
 
     if (error) {
+      console.error('❌ ブックマーク追加エラー:', error);
       // 重複エラーの場合
       if (error.code === '23505') {
         return {
@@ -154,9 +162,10 @@ export async function addBookmark(
       throw error;
     }
 
+    console.log('✅ ブックマーク追加成功:', data);
     return { success: true };
   } catch (err) {
-    console.error('ブックマーク追加エラー:', err);
+    console.error('❌ ブックマーク追加エラー:', err);
     return {
       success: false,
       error: err instanceof Error ? err.message : '不明なエラー',
