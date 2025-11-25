@@ -1344,6 +1344,7 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
   const [isCreatingWallet, setIsCreatingWallet] = useState(false);
   const [showReceiveMessageModal, setShowReceiveMessageModal] = useState(false);
   const [recipientReceiveMessage, setRecipientReceiveMessage] = useState<string>('');
+  const [showFirstSendGuide, setShowFirstSendGuide] = useState(false);
 
   // 受取人プロフィールを取得（デバウンス500ms）
   // sendMode に関わらず常にアドレスが入力されたらプロフィールを取得
@@ -1541,6 +1542,13 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
 
   // ガスレス送金処理
   const handleSend = async () => {
+    // 初回送金チェック
+    const hasSeenFirstSendGuide = localStorage.getItem('gifterra_first_send_guide_shown');
+    if (!hasSeenFirstSendGuide) {
+      setShowFirstSendGuide(true);
+      return;
+    }
+
     // 残高チェック（トランザクション実行前）
     if (amount && selectedToken) {
       const amountNum = parseFloat(amount);
@@ -2884,6 +2892,135 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
               }}
             >
               閉じる
+            </button>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* 初回送金ガイドモーダル */}
+      {showFirstSendGuide && createPortal(
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100vw',
+            height: '100vh',
+            background: 'rgba(0, 0, 0, 0.85)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 999999,
+            padding: isMobile ? 16 : 24,
+          }}
+          onClick={() => {
+            setShowFirstSendGuide(false);
+            localStorage.setItem('gifterra_first_send_guide_shown', 'true');
+          }}
+        >
+          <div
+            style={{
+              background: 'linear-gradient(135deg, #fff5e6 0%, #ffe4cc 100%)',
+              borderRadius: 20,
+              padding: isMobile ? 24 : 32,
+              maxWidth: 500,
+              width: '100%',
+              border: '2px solid rgba(251, 146, 60, 0.3)',
+              boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{
+              textAlign: 'center',
+              marginBottom: 24,
+            }}>
+              <div style={{
+                fontSize: isMobile ? 48 : 56,
+                marginBottom: 16,
+              }}>
+                💡
+              </div>
+              <h3 style={{
+                margin: '0 0 12px 0',
+                fontSize: isMobile ? 20 : 24,
+                fontWeight: 700,
+                color: '#1a1a1a',
+              }}>
+                初めての送金について
+              </h3>
+              <div style={{
+                padding: isMobile ? '16px 20px' : '20px 24px',
+                background: 'rgba(255, 255, 255, 0.8)',
+                borderRadius: 12,
+                border: '1px solid rgba(251, 146, 60, 0.2)',
+                marginTop: 20,
+                textAlign: 'left',
+              }}>
+                <div style={{
+                  fontSize: isMobile ? 14 : 15,
+                  color: '#1a1a1a',
+                  lineHeight: 1.8,
+                  marginBottom: 16,
+                }}>
+                  送金を実行すると、英語の承認画面が表示されます。
+                </div>
+                <div style={{
+                  fontSize: isMobile ? 14 : 15,
+                  color: '#1a1a1a',
+                  lineHeight: 1.8,
+                  marginBottom: 16,
+                }}>
+                  <strong style={{ color: '#f97316', fontSize: isMobile ? 15 : 16 }}>
+                    「Approve」ボタン
+                  </strong>
+                  をタップして、送金を承認してください。
+                </div>
+                <div style={{
+                  padding: 12,
+                  background: 'rgba(251, 146, 60, 0.1)',
+                  borderRadius: 8,
+                  border: '1px solid rgba(251, 146, 60, 0.2)',
+                }}>
+                  <div style={{
+                    fontSize: isMobile ? 13 : 14,
+                    color: '#666',
+                    lineHeight: 1.6,
+                  }}>
+                    ⚠️ この承認画面は初回のみ表示されます。2回目以降の送金では表示されません。
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <button
+              onClick={() => {
+                setShowFirstSendGuide(false);
+                localStorage.setItem('gifterra_first_send_guide_shown', 'true');
+                // ガイドを閉じた後、送金処理を再実行
+                handleSend();
+              }}
+              style={{
+                width: '100%',
+                padding: isMobile ? '14px' : '16px',
+                background: 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)',
+                border: 'none',
+                borderRadius: 12,
+                color: '#fff',
+                fontSize: isMobile ? 15 : 16,
+                fontWeight: 700,
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                boxShadow: '0 4px 12px rgba(249, 115, 22, 0.4)',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'scale(1.02)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'scale(1)';
+              }}
+            >
+              理解しました。送金を続ける
             </button>
           </div>
         </div>,
