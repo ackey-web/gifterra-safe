@@ -13,9 +13,10 @@ import { useSystemHealth, getHealthStatusInfo } from '../hooks/useSystemHealth';
 import { formatTokenAmount } from '../utils/userProfile';
 import { TOKEN, TNHT_TOKEN, GIFTERRA_FACTORY_ABI, RANK_PLAN_REGISTRY_CONTRACT } from '../contract';
 import RANK_PLAN_REGISTRY_ABI from '../abis/RankPlanRegistry.json';
-import { useTenantApplications, useApproveTenantApplication, useRejectTenantApplication } from '../hooks/useTenantApplications';
+import { useTenantApplications, useRejectTenantApplication } from '../hooks/useTenantApplications';
 import { RANK_PLANS } from '../types/tenantApplication';
 import type { TenantApplication, ApplicationStatus } from '../types/tenantApplication';
+import { TenantDeploymentPanel } from '../components/TenantDeploymentPanel';
 import { useAllTenantRankPlans, useSetTenantRankPlan, type TenantRankPlanForm } from '../hooks/useTenantRankPlan';
 import { useRankPlanPricing, useUpdateRankPlanPrice, getPlanPrice, type RankPlanPricing } from '../hooks/useRankPlanPricing';
 import { supabase } from '../lib/supabase';
@@ -2369,32 +2370,19 @@ function UserProfilePreview({ address, mode, presetName }: {
 function ApplicationsTab() {
   const [statusFilter, setStatusFilter] = useState<ApplicationStatus>('pending');
   const { applications, loading, error, refetch } = useTenantApplications(statusFilter);
-  const { approve, approving } = useApproveTenantApplication();
   const { reject, rejecting } = useRejectTenantApplication();
 
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectingApplication, setRejectingApplication] = useState<TenantApplication | null>(null);
   const [rejectReason, setRejectReason] = useState('');
 
-  const [showApproveConfirm, setShowApproveConfirm] = useState(false);
-  const [approvingApplication, setApprovingApplication] = useState<TenantApplication | null>(null);
+  const [showDeployModal, setShowDeployModal] = useState(false);
+  const [deployingApplication, setDeployingApplication] = useState<TenantApplication | null>(null);
 
-  // 承認処理
-  const handleApprove = async (application: TenantApplication) => {
-    setApprovingApplication(application);
-    setShowApproveConfirm(true);
-  };
-
-  const confirmApprove = async () => {
-    if (!approvingApplication) return;
-
-    const success = await approve(approvingApplication);
-    if (success) {
-      alert('テナント申請を承認しました');
-      refetch();
-    }
-    setShowApproveConfirm(false);
-    setApprovingApplication(null);
+  // デプロイモーダルを開く
+  const handleDeploy = (application: TenantApplication) => {
+    setDeployingApplication(application);
+    setShowDeployModal(true);
   };
 
   // 拒否処理
@@ -2617,27 +2605,50 @@ function ApplicationsTab() {
                   )}
 
                   {application.status === 'approved' && application.tenant_id && (
-                    <div style={{
-                      padding: 12,
-                      background: 'rgba(34, 197, 94, 0.1)',
-                      border: '1px solid rgba(34, 197, 94, 0.3)',
-                      borderRadius: 8,
-                      marginBottom: 16,
-                    }}>
-                      <div style={{ fontSize: 12, opacity: 0.9 }}>
-                        テナントID: {application.tenant_id}
+                    <>
+                      <div style={{
+                        padding: 12,
+                        background: 'rgba(34, 197, 94, 0.1)',
+                        border: '1px solid rgba(34, 197, 94, 0.3)',
+                        borderRadius: 8,
+                        marginBottom: 16,
+                      }}>
+                        <div style={{ fontSize: 12, opacity: 0.9 }}>
+                          テナントID: {application.tenant_id}
+                        </div>
+                        {application.approved_by && (
+                          <div style={{ fontSize: 11, opacity: 0.8, fontFamily: 'monospace' }}>
+                            承認者: {application.approved_by}
+                          </div>
+                        )}
+                        {application.approved_at && (
+                          <div style={{ fontSize: 11, opacity: 0.8 }}>
+                            承認日時: {new Date(application.approved_at).toLocaleString('ja-JP')}
+                          </div>
+                        )}
                       </div>
-                      {application.approved_by && (
-                        <div style={{ fontSize: 11, opacity: 0.8, fontFamily: 'monospace' }}>
-                          承認者: {application.approved_by}
-                        </div>
+
+                      {/* オプショナルコントラクトデプロイボタン */}
+                      {(!application.reward_nft_address || !application.flag_nft_address || !application.pay_splitter_address) && (
+                        <button
+                          onClick={() => handleDeploy(application)}
+                          style={{
+                            width: '100%',
+                            padding: '10px 20px',
+                            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                            border: 'none',
+                            borderRadius: 8,
+                            color: '#fff',
+                            fontSize: 13,
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            marginBottom: 16,
+                          }}
+                        >
+                          ➕ オプションコントラクトを追加デプロイ
+                        </button>
                       )}
-                      {application.approved_at && (
-                        <div style={{ fontSize: 11, opacity: 0.8 }}>
-                          承認日時: {new Date(application.approved_at).toLocaleString('ja-JP')}
-                        </div>
-                      )}
-                    </div>
+                    </>
                   )}
 
                   {application.status === 'rejected' && application.rejection_reason && (
@@ -2661,22 +2672,20 @@ function ApplicationsTab() {
                   {application.status === 'pending' && (
                     <div style={{ display: 'flex', gap: 12 }}>
                       <button
-                        onClick={() => handleApprove(application)}
-                        disabled={approving}
+                        onClick={() => handleDeploy(application)}
                         style={{
                           flex: 1,
                           padding: '12px 24px',
-                          background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
+                          background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)',
                           border: 'none',
                           borderRadius: 8,
                           color: '#fff',
                           fontSize: 14,
                           fontWeight: 600,
-                          cursor: approving ? 'not-allowed' : 'pointer',
-                          opacity: approving ? 0.6 : 1,
+                          cursor: 'pointer',
                         }}
                       >
-                        {approving ? '承認中...' : '✅ 承認する'}
+                        🚀 デプロイする
                       </button>
                       <button
                         onClick={() => handleReject(application)}
@@ -2705,8 +2714,8 @@ function ApplicationsTab() {
         )}
       </div>
 
-      {/* 承認確認モーダル */}
-      {showApproveConfirm && approvingApplication && (
+      {/* デプロイモーダル */}
+      {showDeployModal && deployingApplication && (
         <div style={{
           position: 'fixed',
           top: 0,
@@ -2718,71 +2727,56 @@ function ApplicationsTab() {
           alignItems: 'center',
           justifyContent: 'center',
           zIndex: 1000,
+          padding: 20
         }}>
           <div style={{
             background: '#2d2d44',
             borderRadius: 16,
             padding: 32,
-            maxWidth: 500,
+            maxWidth: 800,
             width: '90%',
+            maxHeight: '90vh',
+            overflow: 'auto',
             color: '#fff',
           }}>
-            <h3 style={{ margin: '0 0 16px 0', fontSize: 20, fontWeight: 700 }}>
-              承認確認
-            </h3>
-            <p style={{ margin: '0 0 24px 0', fontSize: 14, opacity: 0.9 }}>
-              以下のテナント申請を承認しますか？
-            </p>
-            <div style={{
-              padding: 16,
-              background: 'rgba(255,255,255,0.05)',
-              borderRadius: 8,
-              marginBottom: 24,
-            }}>
-              <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>
-                {approvingApplication.tenant_name}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: 24 }}>
+              <div>
+                <h3 style={{ margin: '0 0 8px 0', fontSize: 24, fontWeight: 700 }}>
+                  {deployingApplication.tenant_name}
+                </h3>
+                <div style={{ fontSize: 12, opacity: 0.7, fontFamily: 'monospace' }}>
+                  {deployingApplication.applicant_address}
+                </div>
               </div>
-              <div style={{ fontSize: 12, opacity: 0.7, fontFamily: 'monospace' }}>
-                {approvingApplication.applicant_address}
-              </div>
-            </div>
-            <div style={{ display: 'flex', gap: 12 }}>
               <button
                 onClick={() => {
-                  setShowApproveConfirm(false);
-                  setApprovingApplication(null);
+                  setShowDeployModal(false);
+                  setDeployingApplication(null);
                 }}
                 style={{
-                  flex: 1,
-                  padding: '12px 24px',
                   background: 'rgba(255,255,255,0.1)',
-                  border: '1px solid rgba(255,255,255,0.2)',
-                  borderRadius: 8,
-                  color: '#fff',
-                  fontSize: 14,
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                }}
-              >
-                キャンセル
-              </button>
-              <button
-                onClick={confirmApprove}
-                style={{
-                  flex: 1,
-                  padding: '12px 24px',
-                  background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
                   border: 'none',
                   borderRadius: 8,
-                  color: '#fff',
-                  fontSize: 14,
-                  fontWeight: 600,
+                  width: 40,
+                  height: 40,
+                  fontSize: 20,
                   cursor: 'pointer',
+                  color: '#fff'
                 }}
               >
-                承認する
+                ×
               </button>
             </div>
+
+            {/* デプロイパネル */}
+            <TenantDeploymentPanel
+              application={deployingApplication}
+              onUpdate={() => {
+                refetch();
+                setShowDeployModal(false);
+                setDeployingApplication(null);
+              }}
+            />
           </div>
         </div>
       )}

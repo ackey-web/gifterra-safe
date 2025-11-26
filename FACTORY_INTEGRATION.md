@@ -191,9 +191,29 @@ Factory統合時にコントラクトサイズ制限（24KB）に直面し、以
 | 1 | RandomRewardEngine削除 | 79,982 bytes | -14.9KB |
 | 2 | PaymentGateway共有化 | 76,349 bytes | -3.6KB |
 | 3 | RewardNFT/FlagNFTオプション化 | 32,269 bytes | -44KB |
-| 4 | PaySplitterオプション化 | **<24,576 bytes** | -7.7KB |
+| 4 | PaySplitterオプション化 | **24,450 bytes** | -7.7KB |
 
 **結果**: 73%のサイズ削減に成功 ✅
+
+### 現在のコントラクトサイズ
+
+```
+GifterraFactory: 24,450 bytes (99.49% 使用)
+制限: 24,576 bytes
+残り: 126 bytes
+```
+
+### オプショナルコントラクトのサイズ
+
+追加できなかった理由：
+
+| コントラクト | サイズ | 備考 |
+|-------------|--------|------|
+| GifterraPaySplitter | 8,331 bytes (8.14 KB) | 最小だが追加不可 |
+| FlagNFT | 18,137 bytes (17.71 KB) | スタンプラリー機能 |
+| RewardNFT_v2 | 25,305 bytes (24.71 KB) | 報酬NFT配布 |
+
+**結論**: 残り126バイトでは追加不可。オプション個別デプロイ方式を採用。
 
 ### 最適化設定（hardhat.config.cjs）
 
