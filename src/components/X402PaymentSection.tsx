@@ -276,6 +276,11 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
       let userBalance = '0';
 
       try {
+        console.log('💰 残高取得開始:', {
+          walletAddress,
+          tokenAddress: decoded.token,
+          isGasless: decoded.isGasless
+        });
 
         const readOnlyProvider = new ethers.providers.JsonRpcProvider('https://rpc.ankr.com/polygon');
         const tokenContract = new ethers.Contract(decoded.token, ERC20_ABI, readOnlyProvider);
@@ -284,8 +289,14 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
         const decimals = await tokenContract.decimals();
 
         userBalance = ethers.utils.formatUnits(balance, decimals);
+        console.log('✅ 残高取得成功:', userBalance, 'JPYC');
       } catch (balanceError: any) {
-        console.error('残高取得エラー:', balanceError.message);
+        console.error('❌ 残高取得エラー:', {
+          message: balanceError.message,
+          code: balanceError.code,
+          walletAddress,
+          tokenAddress: decoded.token
+        });
         userBalance = '0';
       }
 
