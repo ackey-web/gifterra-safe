@@ -21,6 +21,7 @@
 - [x] リプレイアタック防止（requestID）
 - [x] プラットフォーム手数料機能
 - [x] Polygon Mainnetへデプロイ
+- [x] **GifterraFactoryへの統合**（グローバル共有インスタンスとして）
 
 ### 2. フロントエンド
 
@@ -104,6 +105,45 @@
 - **Permit署名**: ガス代不要（オフチェーン署名）
 - **executePaymentWithPermit**: お客様が負担（通常のトランザクション）
 - **メリット**: Permit署名自体は無料、トランザクション実行のみガス代発生
+
+## 🏢 GifterraFactoryへの統合
+
+### 統合方法
+PaymentGatewayWithPermitは**グローバル共有インスタンス**として統合されました。
+
+#### アーキテクチャ
+```
+GifterraFactory
+├── jpycToken (JPYC address)
+├── globalPaymentGateway (PaymentGatewayWithPermit address)
+└── createTenant() → TenantContracts
+    └── paymentGateway: globalPaymentGateway (全テナント共通)
+```
+
+#### 特徴
+1. **全テナントで同じPaymentGatewayインスタンスを使用**
+   - コントラクトサイズを大幅削減（テナントごとにデプロイ不要）
+   - デプロイコストの削減
+
+2. **手数料設定が全テナント共通**
+   - `platformFeeRate`: 全テナントで同じ手数料率
+   - `platformFeeRecipient`: 全テナントで同じ手数料受取人
+   - ギフテラプラットフォームの収益として一元管理
+
+3. **店舗への送金は個別に処理**
+   - 各取引で`merchant`アドレスを指定
+   - 手数料を引いた金額が各店舗に正しく送金される
+
+#### 設定方法
+```solidity
+// Factory owner/super adminが設定
+factory.setGlobalPaymentGateway(paymentGatewayAddress);
+```
+
+#### 将来の拡張
+テナントごとに異なる手数料設定が必要な場合：
+- PaymentGatewayにテナントIDベースの手数料マッピングを追加
+- または特定テナント用に別のPaymentGatewayインスタンスをデプロイ
 
 ## 🧪 テスト方法
 
@@ -200,5 +240,5 @@ function executePaymentWithPermit(
 
 ---
 
-**ステータス**: ✅ 実装完了・デプロイ済み・テスト準備完了
-**最終更新**: 2025-01-26
+**ステータス**: ✅ 実装完了・デプロイ済み・GifterraFactory統合完了・テスト準備完了
+**最終更新**: 2025-01-26 (Factory統合: 2025-11-26)

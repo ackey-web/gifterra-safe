@@ -51,6 +51,12 @@ export function QRScannerCamera({ onScan, onClose, placeholder = 'QRコードを
         return { isValid: true };
       }
 
+      // ガスレスQR形式（type: 'gasless'）をチェック
+      if (parsed.type === 'gasless' && parsed.tenant && parsed.amount) {
+        console.log('✅ ガスレスQR形式として認識');
+        return { isValid: true };
+      }
+
       // X402形式（請求書QR）の必須フィールドをチェック
       if (parsed.to && parsed.token && parsed.amount) {
         console.log('✅ X402形式として認識');
