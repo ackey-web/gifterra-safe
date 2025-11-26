@@ -105,6 +105,15 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
   const privyEmbeddedWalletAddress = user?.wallet?.address || wallets?.[0]?.address;
   const walletAddress = privyEmbeddedWalletAddress || thirdwebAddress || '';
 
+  // デバッグ: ウォレットアドレス取得状況
+  console.log('🔑 ウォレットアドレス取得状況:', {
+    'user?.wallet?.address': user?.wallet?.address,
+    'wallets?.[0]?.address': wallets?.[0]?.address,
+    'thirdwebAddress': thirdwebAddress,
+    'final walletAddress': walletAddress,
+    'wallets count': wallets?.length
+  });
+
 
   // signerの取得
   // MetaMask接続時は直接window.ethereumを使用（Privyのリダイレクト回避）
@@ -286,23 +295,40 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
       try {
         console.log('💰 残高取得開始:', {
           walletAddress,
+          walletAddressLength: walletAddress.length,
           tokenAddress: decoded.token,
           isGasless: decoded.isGasless
         });
 
+        // RPC接続テスト
         const readOnlyProvider = new ethers.providers.JsonRpcProvider('https://rpc.ankr.com/polygon');
-        const tokenContract = new ethers.Contract(decoded.token, ERC20_ABI, readOnlyProvider);
+        console.log('🔌 RPC Provider作成完了');
 
+        const tokenContract = new ethers.Contract(decoded.token, ERC20_ABI, readOnlyProvider);
+        console.log('📜 Contract作成完了');
+
+        console.log('🔍 balanceOf呼び出し中...');
         const balance = await tokenContract.balanceOf(walletAddress);
+        console.log('✅ balanceOf成功:', balance.toString());
+
+        console.log('🔢 decimals取得中...');
         const decimals = await tokenContract.decimals();
+        console.log('✅ decimals成功:', decimals);
 
         userBalance = ethers.utils.formatUnits(balance, decimals);
         console.log('✅ 残高取得成功:', userBalance, 'JPYC');
+
+        // 残高が0の場合も警告
+        if (userBalance === '0' || userBalance === '0.0') {
+          console.warn('⚠️ 残高が0です。JPYCトークンを保有していない可能性があります。');
+        }
       } catch (balanceError: any) {
         console.error('❌ 残高取得エラー:', {
           message: balanceError.message,
           code: balanceError.code,
+          reason: balanceError.reason,
           walletAddress,
+          walletAddressLength: walletAddress.length,
           tokenAddress: decoded.token
         });
         userBalance = '0';
