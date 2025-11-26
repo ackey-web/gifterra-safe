@@ -485,7 +485,7 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
   // 支払い実行
   const handlePayment = async () => {
     // デバッグ: ウォレット接続状態を確認
-    console.log('🔍 handlePayment - ウォレット接続状態:', {
+    const debugInfo = {
       authenticated,
       'user?.wallet?.address': user?.wallet?.address,
       'wallets?.[0]?.address': wallets?.[0]?.address,
@@ -493,7 +493,11 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
       walletAddress,
       'wallets count': wallets?.length,
       paymentData: !!paymentData
-    });
+    };
+    console.log('🔍 handlePayment - ウォレット接続状態:', debugInfo);
+
+    // アラートで表示（Safariコンソールが見えない場合用）
+    alert(`🔍 ウォレット接続状態デバッグ:\n\nauthenticated: ${authenticated}\nuser?.wallet?.address: ${user?.wallet?.address || 'なし'}\nwallets?.[0]?.address: ${wallets?.[0]?.address || 'なし'}\nthirdwebAddress: ${thirdwebAddress || 'なし'}\nwalletAddress: ${walletAddress || 'なし'}\nwallets count: ${wallets?.length || 0}\npaymentData: ${!!paymentData}`);
 
     if (!paymentData) {
       console.error('❌ paymentDataが未設定');
