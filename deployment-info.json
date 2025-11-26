@@ -1,0 +1,11 @@
+{
+  "network": "polygon",
+  "chainId": 137,
+  "contractAddress": "0x9e9a065637323CDfC7c7C8185425fCE248854c9E",
+  "deployerAddress": "0x66F1274aD5d042b7571C2EfA943370dbcd3459aB",
+  "jpycAddress": "0x6AE7Dfc73E0dDE2aa99ac063DcF7e8A63265108c",
+  "platformFeeRecipient": "0x66F1274aD5d042b7571C2EfA943370dbcd3459aB",
+  "transactionHash": "0xa5538109ffabad6d69a1bd4cc69c6007665644a19c6c898cbb442b53bf2617ad",
+  "deployedAt": "2025-11-26T07:42:05.118Z",
+  "gasUsed": "861524"
+}

@@ -1,0 +1,226 @@
+// src/utils/permitSignature.ts
+// ERC-2612 Permit シグネチャ生成ユーティリティ
+
+import { ethers } from 'ethers';
+
+/**
+ * ERC-2612 Permit用のEIP-712ドメイン
+ */
+export interface PermitDomain {
+  name: string;
+  version: string;
+  chainId: number;
+  verifyingContract: string;
+}
+
+/**
+ * Permitメッセージの型定義
+ */
+export interface PermitMessage {
+  owner: string;
+  spender: string;
+  value: string;
+  nonce: number;
+  deadline: number;
+}
+
+/**
+ * EIP-712型定義
+ */
+const PERMIT_TYPES = {
+  Permit: [
+    { name: 'owner', type: 'address' },
+    { name: 'spender', type: 'address' },
+    { name: 'value', type: 'uint256' },
+    { name: 'nonce', type: 'uint256' },
+    { name: 'deadline', type: 'uint256' },
+  ],
+};
+
+/**
+ * JPYCトークンのnonce（カウンター）を取得
+ * @param tokenAddress JPYCトークンアドレス
+ * @param ownerAddress オーナーアドレス
+ * @param provider ethersプロバイダー
+ * @returns 現在のnonce
+ */
+export async function getPermitNonce(
+  tokenAddress: string,
+  ownerAddress: string,
+  provider: ethers.providers.Provider
+): Promise<number> {
+  const tokenContract = new ethers.Contract(
+    tokenAddress,
+    ['function nonces(address owner) view returns (uint256)'],
+    provider
+  );
+
+  const nonce = await tokenContract.nonces(ownerAddress);
+  return nonce.toNumber();
+}
+
+/**
+ * ERC-2612 Permitシグネチャを生成
+ * @param signer ethers Signer（ユーザーのウォレット）
+ * @param tokenAddress JPYCトークンアドレス
+ * @param spenderAddress 承認先アドレス（PaymentGateway）
+ * @param amount 承認金額（wei単位の文字列）
+ * @param deadline 有効期限（Unix timestamp）
+ * @param chainId チェーンID（137 = Polygon Mainnet）
+ * @returns Permitシグネチャ {v, r, s, deadline, nonce}
+ */
+export async function signPermit(
+  signer: ethers.Signer,
+  tokenAddress: string,
+  spenderAddress: string,
+  amount: string,
+  deadline: number,
+  chainId: number = 137
+): Promise<{ v: number; r: string; s: string; deadline: number; nonce: number }> {
+  const ownerAddress = await signer.getAddress();
+
+  // 1. トークンのnonceを取得
+  const provider = signer.provider;
+  if (!provider) {
+    throw new Error('Signer must have a provider');
+  }
+
+  const nonce = await getPermitNonce(tokenAddress, ownerAddress, provider);
+
+  // 2. EIP-712ドメインを定義
+  const domain: PermitDomain = {
+    name: 'JPY Coin', // JPYCのトークン名
+    version: '1',
+    chainId: chainId,
+    verifyingContract: tokenAddress,
+  };
+
+  // 3. Permitメッセージを作成
+  const message: PermitMessage = {
+    owner: ownerAddress,
+    spender: spenderAddress,
+    value: amount,
+    nonce: nonce,
+    deadline: deadline,
+  };
+
+  console.log('📝 Permit署名パラメータ:', {
+    domain,
+    message,
+  });
+
+  // 4. EIP-712署名を生成
+  const signature = await signer._signTypedData(domain, PERMIT_TYPES, message);
+
+  // 5. シグネチャを v, r, s に分解
+  const sig = ethers.utils.splitSignature(signature);
+
+  console.log('✅ Permit署名成功:', {
+    v: sig.v,
+    r: sig.r,
+    s: sig.s,
+    nonce,
+    deadline,
+  });
+
+  return {
+    v: sig.v,
+    r: sig.r,
+    s: sig.s,
+    deadline,
+    nonce,
+  };
+}
+
+/**
+ * Permitシグネチャの有効期限を計算（現在時刻 + 指定分数）
+ * @param minutesFromNow 現在時刻から何分後か
+ * @returns Unix timestamp（秒単位）
+ */
+export function getPermitDeadline(minutesFromNow: number = 30): number {
+  return Math.floor(Date.now() / 1000) + minutesFromNow * 60;
+}
+
+/**
+ * Permitシグネチャの検証（オフチェーン）
+ * @param signature Permitシグネチャ
+ * @param domain EIP-712ドメイン
+ * @param message Permitメッセージ
+ * @param expectedSigner 期待される署名者アドレス
+ * @returns 検証結果（true = 有効）
+ */
+export function verifyPermitSignature(
+  signature: { v: number; r: string; s: string },
+  domain: PermitDomain,
+  message: PermitMessage,
+  expectedSigner: string
+): boolean {
+  try {
+    const digest = ethers.utils._TypedDataEncoder.hash(domain, PERMIT_TYPES, message);
+    const recoveredAddress = ethers.utils.recoverAddress(digest, signature);
+
+    return recoveredAddress.toLowerCase() === expectedSigner.toLowerCase();
+  } catch (error) {
+    console.error('❌ Permit署名検証エラー:', error);
+    return false;
+  }
+}
+
+/**
+ * PaymentGatewayのexecutePaymentWithPermit用のパラメータを準備
+ * @param signer ユーザーのSigner
+ * @param paymentGatewayAddress PaymentGatewayコントラクトアドレス
+ * @param jpycAddress JPYCトークンアドレス
+ * @param merchantAddress 受取人アドレス
+ * @param amount 支払い金額（wei単位）
+ * @param requestId リクエストID（bytes32形式）
+ * @param expiryMinutes Permit有効期限（分）
+ * @returns executePaymentWithPermitの全パラメータ
+ */
+export async function preparePermitPaymentParams(
+  signer: ethers.Signer,
+  paymentGatewayAddress: string,
+  jpycAddress: string,
+  merchantAddress: string,
+  amount: string,
+  requestId: string,
+  expiryMinutes: number = 30
+): Promise<{
+  requestId: string;
+  merchant: string;
+  amount: string;
+  deadline: number;
+  v: number;
+  r: string;
+  s: string;
+}> {
+  // 1. Permit有効期限を計算
+  const deadline = getPermitDeadline(expiryMinutes);
+
+  // 2. Permitシグネチャを生成
+  const permitSig = await signPermit(
+    signer,
+    jpycAddress,
+    paymentGatewayAddress, // spender = PaymentGateway
+    amount,
+    deadline,
+    137 // Polygon Mainnet
+  );
+
+  // 3. requestIdをbytes32形式に変換（必要に応じて）
+  let requestIdBytes32 = requestId;
+  if (!requestId.startsWith('0x')) {
+    // 文字列をbytes32に変換
+    requestIdBytes32 = ethers.utils.id(requestId);
+  }
+
+  return {
+    requestId: requestIdBytes32,
+    merchant: merchantAddress,
+    amount: amount,
+    deadline: permitSig.deadline,
+    v: permitSig.v,
+    r: permitSig.r,
+    s: permitSig.s,
+  };
+}

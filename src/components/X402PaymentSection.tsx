@@ -18,6 +18,11 @@ import {
   getCurrentChainId,
   type X402PaymentData
 } from '../utils/x402';
+import {
+  preparePermitPaymentParams,
+  PAYMENT_GATEWAY_ABI
+} from '../utils/permitSignature';
+import { isGaslessPaymentEnabled } from '../config/featureFlags';
 
 // window.ethereum型定義
 declare global {
@@ -182,6 +187,7 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
   const [showConfirmation, setShowConfirmation] = useState(false);
 
   const jpycConfig = getTokenConfig('JPYC');
+  const PAYMENT_GATEWAY_ADDRESS = import.meta.env.VITE_PAYMENT_GATEWAY_ADDRESS || '';
 
 
   // QRコードスキャン処理
@@ -278,6 +284,124 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
     }
   };
 
+  // ガスレス決済実行
+  const handleGaslessPayment = async () => {
+    if (!paymentData || !walletAddress) {
+      setMessage({ type: 'error', text: 'ウォレットを接続してください' });
+      return;
+    }
+
+    if (!PAYMENT_GATEWAY_ADDRESS) {
+      setMessage({
+        type: 'error',
+        text: 'PaymentGatewayがデプロイされていません。.envにVITE_PAYMENT_GATEWAY_ADDRESSを設定してください'
+      });
+      return;
+    }
+
+    if (!signer) {
+      setMessage({ type: 'error', text: 'ウォレットが接続されていません' });
+      return;
+    }
+
+    setIsProcessing(true);
+    setMessage({ type: 'info', text: 'Permit署名を準備中...' });
+
+    try {
+      console.log('📦 ガスレス決済開始:', {
+        paymentGateway: PAYMENT_GATEWAY_ADDRESS,
+        jpyc: jpycConfig.currentAddress,
+        merchant: paymentData.to,
+        amount: paymentData.amount,
+        requestId: paymentData.requestId,
+      });
+
+      // 1. Permitシグネチャを生成
+      setMessage({ type: 'info', text: 'ウォレットで署名してください...' });
+
+      const permitParams = await preparePermitPaymentParams(
+        signer,
+        PAYMENT_GATEWAY_ADDRESS,
+        jpycConfig.currentAddress,
+        paymentData.to,
+        paymentData.amount,
+        paymentData.requestId || `gasless_${Date.now()}`,
+        30 // 30分の有効期限
+      );
+
+      console.log('✅ Permit署名完了:', permitParams);
+
+      // 2. PaymentGatewayコントラクトを呼び出し
+      setMessage({ type: 'info', text: 'トランザクションを送信中...' });
+
+      const gatewayContract = new ethers.Contract(
+        PAYMENT_GATEWAY_ADDRESS,
+        PAYMENT_GATEWAY_ABI,
+        signer
+      );
+
+      const tx = await gatewayContract.executePaymentWithPermit(
+        permitParams.requestId,
+        permitParams.merchant,
+        permitParams.amount,
+        permitParams.deadline,
+        permitParams.v,
+        permitParams.r,
+        permitParams.s
+      );
+
+      console.log('⏳ トランザクション送信完了:', tx.hash);
+      setMessage({ type: 'info', text: 'トランザクション確認中...' });
+
+      // 3. トランザクション確認
+      const receipt = await tx.wait();
+      console.log('✅ トランザクション確認完了:', receipt);
+
+      // 4. Supabaseに記録
+      if (paymentData.requestId) {
+        const { error: updateError } = await supabase
+          .from('payment_requests')
+          .update({
+            status: 'completed',
+            completed_at: new Date().toISOString(),
+            completed_by: walletAddress.toLowerCase(),
+            tx_hash: tx.hash,
+          })
+          .eq('request_id', paymentData.requestId);
+
+        if (updateError) {
+          console.warn('⚠️ Supabase更新エラー:', updateError.message);
+        }
+      }
+
+      setMessage({ type: 'success', text: '✅ ガスレス決済が完了しました！' });
+      setPaymentData(null);
+      setShowConfirmation(false);
+
+      setTimeout(() => {
+        setMessage(null);
+        setIsProcessing(false);
+      }, 3000);
+
+    } catch (error: any) {
+      console.error('❌ ガスレス決済エラー:', error);
+
+      let errorMessage = 'ガスレス決済に失敗しました';
+      if (error.message.includes('user rejected') || error.message.includes('User denied')) {
+        errorMessage = '署名がキャンセルされました';
+      } else if (error.message.includes('insufficient')) {
+        errorMessage = '残高不足です';
+      } else if (error.message.includes('already processed')) {
+        errorMessage = 'この支払いは既に完了しています';
+      } else if (error.message.includes('expired')) {
+        errorMessage = '有効期限が切れています';
+      }
+
+      setMessage({ type: 'error', text: errorMessage });
+      setIsProcessing(false);
+    }
+  };
+
   // 支払い実行
   const handlePayment = async () => {
     if (!paymentData || !walletAddress) {
@@ -285,6 +409,13 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
       setMessage({ type: 'error', text: 'ウォレットを接続してください' });
       return;
     }
+
+    // ========== ガスレス決済の処理 ==========
+    if (paymentData.gasless && isGaslessPaymentEnabled(walletAddress)) {
+      return await handleGaslessPayment();
+    }
+
+    // ========== 通常決済の処理（既存コード）==========
     setIsProcessing(true);
     setMessage(null);
 

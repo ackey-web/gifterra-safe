@@ -46,6 +46,7 @@
     "@zxing/library": "^0.21.3",
     "buffer": "^6.0.3",
     "canvas-confetti": "^1.9.3",
+    "dotenv": "^17.2.3",
     "ethers": "^5.8.0",
     "jszip": "^3.10.1",
     "permissionless": "^0.2.57",
