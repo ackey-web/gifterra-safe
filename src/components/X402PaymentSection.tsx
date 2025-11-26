@@ -167,16 +167,34 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
         // walletsが空だがuser.walletが存在する場合（Privy埋め込みウォレット）
         if (user?.wallet) {
           console.log('[請求QR] user.walletからプロバイダーを取得');
-          const provider = await user.wallet.getEthereumProvider();
-          const ethersProvider = new ethers.providers.Web3Provider(provider, 'any');
-          const ethersSigner = ethersProvider.getSigner();
-          setPrivySigner(ethersSigner);
-          return;
+          try {
+            // user.walletがgetEthereumProviderメソッドを持っているか確認
+            if (typeof user.wallet.getEthereumProvider !== 'function') {
+              throw new Error('user.wallet.getEthereumProvider is not a function');
+            }
+
+            const provider = await user.wallet.getEthereumProvider();
+
+            if (!provider) {
+              throw new Error('getEthereumProvider returned null/undefined');
+            }
+
+            const ethersProvider = new ethers.providers.Web3Provider(provider, 'any');
+            const ethersSigner = ethersProvider.getSigner();
+            setPrivySigner(ethersSigner);
+            console.log('✅ [請求QR] user.walletからsigner作成成功');
+            return;
+          } catch (walletError: any) {
+            console.error('❌ [請求QR] user.walletからのsigner作成失敗:', walletError.message);
+            // アラートでエラー表示（デバッグ用）
+            alert(`⚠️ Signer作成エラー:\n${walletError.message}\n\nuser.wallet存在: ${!!user.wallet}\ngetEthereumProvider: ${typeof user.wallet.getEthereumProvider}`);
+          }
         }
 
         setPrivySigner(null);
       } catch (error: any) {
         console.error('[請求QR] Failed to setup signer:', error);
+        alert(`❌ Signer setup error: ${error.message}`);
         setPrivySigner(null);
       }
     };
