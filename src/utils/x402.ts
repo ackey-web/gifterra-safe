@@ -11,6 +11,12 @@ export interface X402PaymentData {
   message?: string;     // メモ/説明
   expires?: number;     // 有効期限 (Unix timestamp)
   requestId?: string;   // リクエストID (重複防止)
+  // ガスレス決済用フィールド
+  gasless?: boolean;    // ガスレス決済フラグ（後方互換性のため）
+  isGasless?: boolean;  // ガスレス決済フラグ（新しい命名）
+  nonce?: string;       // ERC-2612 Permit nonce
+  validAfter?: number;  // Permit有効開始時刻
+  validBefore?: number; // Permit有効期限
 }
 
 /**

@@ -239,7 +239,8 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
             nonce: parsed.nonce,
             validAfter: parsed.validAfter,
             validBefore: parsed.validBefore,
-            isGasless: true, // ガスレスフラグ
+            gasless: true,    // ガスレスフラグ（handlePayment用）
+            isGasless: true,  // ガスレスフラグ（デバッグ用）
           };
         } else {
           // X402形式の場合は通常のデコード
