@@ -273,17 +273,15 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
         return;
       }
 
-      // ウォレットアドレスチェック
-      if (!walletAddress) {
-        console.error('❌ ウォレットアドレスが取得できません');
-        setMessage({ type: 'error', text: 'ウォレットが接続されていません' });
-        setShowScanner(false);
-        return;
-      }
-
       // 残高確認（read-only providerを使用、複数RPCフォールバック）
+      // ウォレット未接続の場合は残高0として扱う
       let userBalance = '0';
       let balanceErrorMsg = '';
+
+      if (!walletAddress) {
+        console.warn('⚠️ ウォレット未接続 - 残高確認をスキップ');
+        balanceErrorMsg = 'ウォレット未接続';
+      } else {
 
       // 複数のRPCエンドポイント（フォールバック用）
       const rpcEndpoints = [
@@ -339,6 +337,7 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
           tokenAddress: decoded.token
         });
       }
+      } // ウォレット接続チェックのelse句を閉じる
 
       // X402形式のQRコードを検知 - バージョン付き同意チェック
       const consentRecord = getConsentRecord();
