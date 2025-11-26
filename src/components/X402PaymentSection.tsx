@@ -305,19 +305,26 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
       const hasValidConsent = consentRecord !== null;
 
       // paymentDataとbalanceを設定
+      console.log('📦 決済データ設定:', {
+        decoded,
+        userBalance,
+        hasValidConsent
+      });
+
       setPaymentData(decoded);
       setBalance(userBalance);
       setShowScanner(false);
-      setMessage({ type: 'info', text: '決済内容を確認してください' });
+      setMessage({ type: 'info', text: `決済内容を確認してください（残高: ${userBalance} JPYC）` });
 
-      // 次のレンダリングサイクルでモーダルを表示
+      // コンソールログ確認のため遅延を長くする（3秒）
+      console.log('⏰ 3秒後にモーダルを表示します（コンソールログを確認してください）');
       setTimeout(() => {
         if (!hasValidConsent) {
           setShowConsentModal(true);
         } else {
           setShowConfirmation(true);
         }
-      }, 50);
+      }, 3000);
 
     } catch (error: any) {
       console.error('QRコード読み取りエラー:', error.message);
