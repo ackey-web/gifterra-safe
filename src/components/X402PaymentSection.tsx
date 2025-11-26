@@ -105,15 +105,6 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
   const privyEmbeddedWalletAddress = user?.wallet?.address || wallets?.[0]?.address;
   const walletAddress = privyEmbeddedWalletAddress || thirdwebAddress || '';
 
-  // デバッグ: ウォレットアドレス取得状況
-  console.log('🔑 ウォレットアドレス取得状況:', {
-    'user?.wallet?.address': user?.wallet?.address,
-    'wallets?.[0]?.address': wallets?.[0]?.address,
-    'thirdwebAddress': thirdwebAddress,
-    'final walletAddress': walletAddress,
-    'wallets count': wallets?.length
-  });
-
 
   // signerの取得
   // MetaMask接続時は直接window.ethereumを使用（Privyのリダイレクト回避）
@@ -304,13 +295,6 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
       let lastError: any = null;
       for (const rpcUrl of rpcEndpoints) {
         try {
-          console.log(`💰 残高取得開始（RPC: ${rpcUrl}）:`, {
-            walletAddress,
-            walletAddressLength: walletAddress.length,
-            tokenAddress: decoded.token,
-            isGasless: decoded.isGasless
-          });
-
           // RPC Provider作成（静的ネットワーク設定でNETWORK_ERRORを回避）
           const readOnlyProvider = new ethers.providers.StaticJsonRpcProvider(
             rpcUrl,
@@ -319,24 +303,17 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
               name: 'matic'
             }
           );
-          console.log('🔌 RPC Provider作成完了');
 
           const tokenContract = new ethers.Contract(decoded.token, ERC20_ABI, readOnlyProvider);
-          console.log('📜 Contract作成完了');
-
-          console.log('🔍 balanceOf呼び出し中...');
           const balance = await tokenContract.balanceOf(walletAddress);
-          console.log('✅ balanceOf成功:', balance.toString());
-
-          console.log('🔢 decimals取得中...');
           const decimals = await tokenContract.decimals();
-          console.log('✅ decimals成功:', decimals);
 
-          userBalance = ethers.utils.formatUnits(balance, decimals);
-          console.log('✅ 残高取得成功:', userBalance, 'JPYC');
+          const rawBalance = ethers.utils.formatUnits(balance, decimals);
+          // 小数点以下2桁に丸める
+          userBalance = parseFloat(rawBalance).toFixed(2);
 
           // 残高が0の場合も警告
-          if (userBalance === '0' || userBalance === '0.0') {
+          if (userBalance === '0' || userBalance === '0.0' || userBalance === '0.00') {
             console.warn('⚠️ 残高が0です。JPYCトークンを保有していない可能性があります。');
             balanceErrorMsg = '⚠️ コントラクトから0が返されました';
           }
@@ -367,30 +344,19 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
       const consentRecord = getConsentRecord();
       const hasValidConsent = consentRecord !== null;
 
-      // paymentDataとbalanceを設定
-      console.log('📦 決済データ設定:', {
-        decoded,
-        userBalance,
-        hasValidConsent
-      });
-
-      // 【デバッグ】残高とウォレットアドレスをアラート表示
-      alert(`🔍 デバッグ情報\n\nウォレットアドレス:\n${walletAddress}\n\n取得した残高:\n${userBalance} JPYC\n\nトークンアドレス:\n${decoded.token}\n\n${balanceErrorMsg ? `エラー詳細:\n${balanceErrorMsg}\n\n` : ''}Polygonscanで確認:\nhttps://polygonscan.com/token/${decoded.token}?a=${walletAddress}`);
-
       setPaymentData(decoded);
       setBalance(userBalance);
       setShowScanner(false);
       setMessage({ type: 'info', text: `決済内容を確認してください（残高: ${userBalance} JPYC）` });
 
-      // コンソールログ確認のため遅延を長くする（3秒）
-      console.log('⏰ 3秒後にモーダルを表示します（コンソールログを確認してください）');
+      // モーダル表示
       setTimeout(() => {
         if (!hasValidConsent) {
           setShowConsentModal(true);
         } else {
           setShowConfirmation(true);
         }
-      }, 3000);
+      }, 50);
 
     } catch (error: any) {
       console.error('QRコード読み取りエラー:', error.message);
