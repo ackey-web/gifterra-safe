@@ -290,58 +290,77 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
         return;
       }
 
-      // 残高確認（read-only providerを使用）
+      // 残高確認（read-only providerを使用、複数RPCフォールバック）
       let userBalance = '0';
       let balanceErrorMsg = '';
 
-      try {
-        console.log('💰 残高取得開始:', {
-          walletAddress,
-          walletAddressLength: walletAddress.length,
-          tokenAddress: decoded.token,
-          isGasless: decoded.isGasless
-        });
+      // 複数のRPCエンドポイント（フォールバック用）
+      const rpcEndpoints = [
+        'https://polygon-rpc.com',
+        'https://rpc.ankr.com/polygon',
+        'https://polygon-mainnet.public.blastapi.io',
+      ];
 
-        // RPC接続テスト（chainIdを明示的に指定してネットワークエラーを回避）
-        const readOnlyProvider = new ethers.providers.JsonRpcProvider({
-          url: 'https://rpc.ankr.com/polygon',
-          timeout: 30000  // 30秒タイムアウト
-        }, {
-          chainId: 137,  // Polygon Mainnet
-          name: 'polygon'
-        });
-        console.log('🔌 RPC Provider作成完了');
+      let lastError: any = null;
+      for (const rpcUrl of rpcEndpoints) {
+        try {
+          console.log(`💰 残高取得開始（RPC: ${rpcUrl}）:`, {
+            walletAddress,
+            walletAddressLength: walletAddress.length,
+            tokenAddress: decoded.token,
+            isGasless: decoded.isGasless
+          });
 
-        const tokenContract = new ethers.Contract(decoded.token, ERC20_ABI, readOnlyProvider);
-        console.log('📜 Contract作成完了');
+          // RPC Provider作成（静的ネットワーク設定でNETWORK_ERRORを回避）
+          const readOnlyProvider = new ethers.providers.StaticJsonRpcProvider(
+            rpcUrl,
+            {
+              chainId: 137,
+              name: 'matic'
+            }
+          );
+          console.log('🔌 RPC Provider作成完了');
 
-        console.log('🔍 balanceOf呼び出し中...');
-        const balance = await tokenContract.balanceOf(walletAddress);
-        console.log('✅ balanceOf成功:', balance.toString());
+          const tokenContract = new ethers.Contract(decoded.token, ERC20_ABI, readOnlyProvider);
+          console.log('📜 Contract作成完了');
 
-        console.log('🔢 decimals取得中...');
-        const decimals = await tokenContract.decimals();
-        console.log('✅ decimals成功:', decimals);
+          console.log('🔍 balanceOf呼び出し中...');
+          const balance = await tokenContract.balanceOf(walletAddress);
+          console.log('✅ balanceOf成功:', balance.toString());
 
-        userBalance = ethers.utils.formatUnits(balance, decimals);
-        console.log('✅ 残高取得成功:', userBalance, 'JPYC');
+          console.log('🔢 decimals取得中...');
+          const decimals = await tokenContract.decimals();
+          console.log('✅ decimals成功:', decimals);
 
-        // 残高が0の場合も警告
-        if (userBalance === '0' || userBalance === '0.0') {
-          console.warn('⚠️ 残高が0です。JPYCトークンを保有していない可能性があります。');
-          balanceErrorMsg = '⚠️ コントラクトから0が返されました';
+          userBalance = ethers.utils.formatUnits(balance, decimals);
+          console.log('✅ 残高取得成功:', userBalance, 'JPYC');
+
+          // 残高が0の場合も警告
+          if (userBalance === '0' || userBalance === '0.0') {
+            console.warn('⚠️ 残高が0です。JPYCトークンを保有していない可能性があります。');
+            balanceErrorMsg = '⚠️ コントラクトから0が返されました';
+          }
+
+          // 成功したのでループを抜ける
+          break;
+        } catch (balanceError: any) {
+          lastError = balanceError;
+          console.warn(`⚠️ RPC ${rpcUrl} で残高取得失敗:`, balanceError.message);
+          // 次のRPCを試す
+          continue;
         }
-      } catch (balanceError: any) {
-        balanceErrorMsg = `エラー: ${balanceError.message}\nコード: ${balanceError.code || 'なし'}\n理由: ${balanceError.reason || 'なし'}`;
-        console.error('❌ 残高取得エラー:', {
-          message: balanceError.message,
-          code: balanceError.code,
-          reason: balanceError.reason,
+      }
+
+      // 全てのRPCで失敗した場合
+      if (userBalance === '0' && !balanceErrorMsg && lastError) {
+        balanceErrorMsg = `全RPCで失敗\n最後のエラー: ${lastError.message}\nコード: ${lastError.code || 'なし'}`;
+        console.error('❌ 全RPCで残高取得失敗:', {
+          message: lastError.message,
+          code: lastError.code,
+          reason: lastError.reason,
           walletAddress,
-          walletAddressLength: walletAddress.length,
           tokenAddress: decoded.token
         });
-        userBalance = '0';
       }
 
       // X402形式のQRコードを検知 - バージョン付き同意チェック
