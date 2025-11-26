@@ -292,6 +292,7 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
 
       // 残高確認（read-only providerを使用）
       let userBalance = '0';
+      let balanceErrorMsg = '';
 
       try {
         console.log('💰 残高取得開始:', {
@@ -322,8 +323,10 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
         // 残高が0の場合も警告
         if (userBalance === '0' || userBalance === '0.0') {
           console.warn('⚠️ 残高が0です。JPYCトークンを保有していない可能性があります。');
+          balanceErrorMsg = '⚠️ コントラクトから0が返されました';
         }
       } catch (balanceError: any) {
+        balanceErrorMsg = `エラー: ${balanceError.message}\nコード: ${balanceError.code || 'なし'}\n理由: ${balanceError.reason || 'なし'}`;
         console.error('❌ 残高取得エラー:', {
           message: balanceError.message,
           code: balanceError.code,
@@ -347,7 +350,7 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
       });
 
       // 【デバッグ】残高とウォレットアドレスをアラート表示
-      alert(`🔍 デバッグ情報\n\nウォレットアドレス:\n${walletAddress}\n\n取得した残高:\n${userBalance} JPYC\n\nトークンアドレス:\n${decoded.token}\n\nPolygonscanで確認:\nhttps://polygonscan.com/token/${decoded.token}?a=${walletAddress}`);
+      alert(`🔍 デバッグ情報\n\nウォレットアドレス:\n${walletAddress}\n\n取得した残高:\n${userBalance} JPYC\n\nトークンアドレス:\n${decoded.token}\n\n${balanceErrorMsg ? `エラー詳細:\n${balanceErrorMsg}\n\n` : ''}Polygonscanで確認:\nhttps://polygonscan.com/token/${decoded.token}?a=${walletAddress}`);
 
       setPaymentData(decoded);
       setBalance(userBalance);
