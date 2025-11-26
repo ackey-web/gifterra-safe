@@ -346,6 +346,9 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
         hasValidConsent
       });
 
+      // 【デバッグ】残高とウォレットアドレスをアラート表示
+      alert(`🔍 デバッグ情報\n\nウォレットアドレス:\n${walletAddress}\n\n取得した残高:\n${userBalance} JPYC\n\nトークンアドレス:\n${decoded.token}\n\nPolygonscanで確認:\nhttps://polygonscan.com/token/${decoded.token}?a=${walletAddress}`);
+
       setPaymentData(decoded);
       setBalance(userBalance);
       setShowScanner(false);
