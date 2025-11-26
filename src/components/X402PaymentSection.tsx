@@ -302,8 +302,14 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
           isGasless: decoded.isGasless
         });
 
-        // RPC接続テスト
-        const readOnlyProvider = new ethers.providers.JsonRpcProvider('https://rpc.ankr.com/polygon');
+        // RPC接続テスト（chainIdを明示的に指定してネットワークエラーを回避）
+        const readOnlyProvider = new ethers.providers.JsonRpcProvider({
+          url: 'https://rpc.ankr.com/polygon',
+          timeout: 30000  // 30秒タイムアウト
+        }, {
+          chainId: 137,  // Polygon Mainnet
+          name: 'polygon'
+        });
         console.log('🔌 RPC Provider作成完了');
 
         const tokenContract = new ethers.Contract(decoded.token, ERC20_ABI, readOnlyProvider);
