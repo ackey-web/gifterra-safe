@@ -101,8 +101,8 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
   const { user, authenticated, wallets } = privyContext;
 
   // Privyの埋め込みウォレットアドレスを正しく取得
-  // Privyの新しいバージョンでは user.wallet に直接格納されている
-  const privyEmbeddedWalletAddress = user?.wallet?.address;
+  // user.wallet.address または wallets[0].address から取得
+  const privyEmbeddedWalletAddress = user?.wallet?.address || wallets?.[0]?.address;
   const walletAddress = privyEmbeddedWalletAddress || thirdwebAddress || '';
 
 
@@ -269,6 +269,14 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
       // 有効期限チェック
       if (isPaymentExpired(decoded.expires)) {
         setMessage({ type: 'error', text: 'このQRコードは有効期限切れです' });
+        return;
+      }
+
+      // ウォレットアドレスチェック
+      if (!walletAddress) {
+        console.error('❌ ウォレットアドレスが取得できません');
+        setMessage({ type: 'error', text: 'ウォレットが接続されていません' });
+        setShowScanner(false);
         return;
       }
 
