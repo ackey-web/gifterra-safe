@@ -111,6 +111,10 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
   const [privySigner, setPrivySigner] = useState<ethers.Signer | null>(null);
 
   useEffect(() => {
+    let isMounted = true;
+    let retryCount = 0;
+    const maxRetries = 3;
+
     const getSigner = async () => {
       // MetaMaskブラウザを最優先で検出（Privy完全バイパス）
       if (typeof window !== 'undefined' && window.ethereum) {
@@ -126,7 +130,7 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
 
             const directProvider = new ethers.providers.Web3Provider(window.ethereum as any, 'any');
             const directSigner = directProvider.getSigner();
-            setPrivySigner(directSigner);
+            if (isMounted) setPrivySigner(directSigner);
             return;
           } catch (error: any) {
             console.warn('⚠️ [請求QR] MetaMask直接接続失敗:', error.message);
@@ -136,10 +140,20 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
       }
 
       // Privyウォレット経由でのフォールバック
-      // walletsが空でもuser.walletが存在する場合があるため、user.walletもチェック
+      // walletsが空でもuser?.walletが存在する場合、walletsの初期化待ちかもしれない
+      if ((!wallets || wallets.length === 0) && user?.wallet && retryCount < maxRetries) {
+        console.log(`[請求QR] wallets配列が空 - リトライ ${retryCount + 1}/${maxRetries}`);
+        retryCount++;
+        // 500ms待ってから再試行
+        setTimeout(() => {
+          if (isMounted) getSigner();
+        }, 500);
+        return;
+      }
+
       if ((!wallets || wallets.length === 0) && !user?.wallet) {
         console.log('[請求QR] walletsもuser.walletも存在しないためsignerをnullに設定');
-        setPrivySigner(null);
+        if (isMounted) setPrivySigner(null);
         return;
       }
 
@@ -152,7 +166,7 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
           if (wallet.walletClientType === 'metamask' && typeof window !== 'undefined' && window.ethereum) {
             const directProvider = new ethers.providers.Web3Provider(window.ethereum as any, 'any');
             const directSigner = directProvider.getSigner();
-            setPrivySigner(directSigner);
+            if (isMounted) setPrivySigner(directSigner);
             return;
           }
 
@@ -160,42 +174,16 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
           const provider = await wallet.getEthereumProvider();
           const ethersProvider = new ethers.providers.Web3Provider(provider, 'any');
           const ethersSigner = ethersProvider.getSigner();
-          setPrivySigner(ethersSigner);
+          if (isMounted) setPrivySigner(ethersSigner);
+          console.log('✅ [請求QR] wallets[0]からsigner作成成功');
           return;
         }
 
-        // walletsが空だがuser.walletが存在する場合（Privy埋め込みウォレット）
-        if (user?.wallet) {
-          console.log('[請求QR] user.walletからプロバイダーを取得');
-          try {
-            // user.walletがgetEthereumProviderメソッドを持っているか確認
-            if (typeof user.wallet.getEthereumProvider !== 'function') {
-              throw new Error('user.wallet.getEthereumProvider is not a function');
-            }
-
-            const provider = await user.wallet.getEthereumProvider();
-
-            if (!provider) {
-              throw new Error('getEthereumProvider returned null/undefined');
-            }
-
-            const ethersProvider = new ethers.providers.Web3Provider(provider, 'any');
-            const ethersSigner = ethersProvider.getSigner();
-            setPrivySigner(ethersSigner);
-            console.log('✅ [請求QR] user.walletからsigner作成成功');
-            return;
-          } catch (walletError: any) {
-            console.error('❌ [請求QR] user.walletからのsigner作成失敗:', walletError.message);
-            // アラートでエラー表示（デバッグ用）
-            alert(`⚠️ Signer作成エラー:\n${walletError.message}\n\nuser.wallet存在: ${!!user.wallet}\ngetEthereumProvider: ${typeof user.wallet.getEthereumProvider}`);
-          }
-        }
-
-        setPrivySigner(null);
+        if (isMounted) setPrivySigner(null);
       } catch (error: any) {
         console.error('[請求QR] Failed to setup signer:', error);
-        alert(`❌ Signer setup error: ${error.message}`);
-        setPrivySigner(null);
+        // アラートは表示せず、ログのみ（エラーはhandlePayment時に適切に処理）
+        if (isMounted) setPrivySigner(null);
       }
     };
 
@@ -208,7 +196,11 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
         getSigner();
       }
     }
-  }, [authenticated, wallets]);
+
+    return () => {
+      isMounted = false;
+    };
+  }, [authenticated, wallets, user]);
 
   // 送金セクションと同じ: privySignerのみ使用
   const signer = privySigner || thirdwebSigner;
@@ -409,14 +401,21 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
 
     if (!PAYMENT_GATEWAY_ADDRESS) {
       setMessage({
-        type: 'error',
-        text: 'PaymentGatewayがデプロイされていません。.envにVITE_PAYMENT_GATEWAY_ADDRESSを設定してください'
+        type: 'error', text: 'PaymentGatewayがデプロイされていません。.envにVITE_PAYMENT_GATEWAY_ADDRESSを設定してください'
       });
       return;
     }
 
     if (!signer) {
-      setMessage({ type: 'error', text: 'ウォレットが接続されていません' });
+      // Signerが利用できない場合、ユーザーにページリロードを促す
+      setMessage({
+        type: 'error',
+        text: 'ウォレットの初期化に失敗しました。ページをリロードしてもう一度お試しください。'
+      });
+      // 5秒後に自動リロード
+      setTimeout(() => {
+        window.location.reload();
+      }, 5000);
       return;
     }
 
@@ -520,23 +519,15 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
 
   // 支払い実行
   const handlePayment = async () => {
-    // デバッグ: ウォレット接続状態を確認
-    const debugInfo = {
+    // デバッグログ（コンソールのみ）
+    console.log('🔍 handlePayment - ウォレット接続状態:', {
       authenticated,
-      'user?.wallet?.address': user?.wallet?.address,
-      'wallets?.[0]?.address': wallets?.[0]?.address,
-      thirdwebAddress,
       walletAddress,
       'wallets count': wallets?.length,
-      paymentData: !!paymentData,
       'privySigner exists': !!privySigner,
       'thirdwebSigner exists': !!thirdwebSigner,
       'signer exists': !!signer
-    };
-    console.log('🔍 handlePayment - ウォレット接続状態:', debugInfo);
-
-    // アラートで表示（Safariコンソールが見えない場合用）
-    alert(`🔍 ウォレット接続状態デバッグ:\n\nauthenticated: ${authenticated}\nuser?.wallet?.address: ${user?.wallet?.address || 'なし'}\nwallets?.[0]?.address: ${wallets?.[0]?.address || 'なし'}\nthirdwebAddress: ${thirdwebAddress || 'なし'}\nwalletAddress: ${walletAddress || 'なし'}\nwallets count: ${wallets?.length || 0}\npaymentData: ${!!paymentData}\nprivySigner: ${!!privySigner}\nthirdwebSigner: ${!!thirdwebSigner}\nsigner: ${!!signer}`);
+    });
 
     if (!paymentData) {
       console.error('❌ paymentDataが未設定');
@@ -547,6 +538,19 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
     if (!walletAddress) {
       console.error('❌ walletAddressが未設定');
       setMessage({ type: 'error', text: 'ウォレットを接続してください。ページをリロードしてログインし直してください。' });
+      return;
+    }
+
+    // Signerが利用できない場合、ページリロードを促す
+    if (!signer) {
+      console.error('❌ Signerが未初期化 - ページリロードが必要');
+      setMessage({
+        type: 'error',
+        text: 'ウォレットの初期化に失敗しました。3秒後に自動的にリロードします...'
+      });
+      setTimeout(() => {
+        window.location.reload();
+      }, 3000);
       return;
     }
 
