@@ -197,18 +197,49 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
 
     try {
 
-      // ウォレットQRかどうかを判定
+      // ウォレットQR・ガスレスQRかどうかを判定
+      let decoded: any;
       try {
         const parsed = JSON.parse(data);
+
+        // ウォレットQRの場合はエラー
         if (parsed.type === 'wallet') {
           setMessage({ type: 'error', text: 'これはウォレットQRです。請求QRをスキャンしてください。' });
           return;
         }
-      } catch (e) {
-        // JSON parseエラーは無視（通常のアドレスかX402形式）
-      }
 
-      const decoded = decodeX402(data);
+        // ガスレスQR形式の場合は専用処理
+        if (parsed.type === 'gasless') {
+          console.log('✅ ガスレスQR形式を検知:', parsed);
+
+          // ガスレスQRの必須フィールド検証
+          if (!parsed.tenant || !parsed.token || !parsed.amount) {
+            throw new Error('ガスレスQRに必須フィールドが不足しています');
+          }
+
+          // X402互換形式に変換（tenantをtoに変換）
+          decoded = {
+            to: parsed.tenant.toLowerCase(),
+            token: parsed.token.toLowerCase(),
+            amount: parsed.amount,
+            chainId: parsed.chainId,
+            message: parsed.message,
+            expires: parsed.expires,
+            requestId: parsed.requestId,
+            // ガスレス専用フィールドを保持
+            nonce: parsed.nonce,
+            validAfter: parsed.validAfter,
+            validBefore: parsed.validBefore,
+            isGasless: true, // ガスレスフラグ
+          };
+        } else {
+          // X402形式の場合は通常のデコード
+          decoded = decodeX402(data);
+        }
+      } catch (e) {
+        // JSON parseエラーの場合は通常のX402デコードを試行
+        decoded = decodeX402(data);
+      }
 
 
       // EIP-55アドレス検証
