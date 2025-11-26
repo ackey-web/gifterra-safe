@@ -484,9 +484,26 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
 
   // 支払い実行
   const handlePayment = async () => {
-    if (!paymentData || !walletAddress) {
-      console.error('❌ paymentDataまたはwalletAddressが未設定');
-      setMessage({ type: 'error', text: 'ウォレットを接続してください' });
+    // デバッグ: ウォレット接続状態を確認
+    console.log('🔍 handlePayment - ウォレット接続状態:', {
+      authenticated,
+      'user?.wallet?.address': user?.wallet?.address,
+      'wallets?.[0]?.address': wallets?.[0]?.address,
+      thirdwebAddress,
+      walletAddress,
+      'wallets count': wallets?.length,
+      paymentData: !!paymentData
+    });
+
+    if (!paymentData) {
+      console.error('❌ paymentDataが未設定');
+      setMessage({ type: 'error', text: '決済データが見つかりません' });
+      return;
+    }
+
+    if (!walletAddress) {
+      console.error('❌ walletAddressが未設定');
+      setMessage({ type: 'error', text: 'ウォレットを接続してください。ページをリロードしてログインし直してください。' });
       return;
     }
 
