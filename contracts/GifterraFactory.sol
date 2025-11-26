@@ -5,10 +5,6 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
 import "./Gifterra.sol";
-import "./RewardNFT_v2.sol";
-import "./GifterraPaySplitter.sol";
-import "./FlagNFT.sol";
-import "./RandomRewardEngine.sol";
 import "./RankPlanRegistry.sol";
 
 /**
@@ -21,11 +17,11 @@ import "./RankPlanRegistry.sol";
  * - SaaS型アーキテクチャ：各テナントは完全に独立したコントラクトセットを持つ
  *
  * 【各テナントが持つコントラクト】
- * 1. Gifterra (SBT) - TIP＋ランク管理
- * 2. RewardNFT_v2 - 報酬NFT配布
- * 3. GifterraPaySplitter - 支払い受付
- * 4. FlagNFT - カテゴリ付きフラグNFT（スタンプラリー＋特典）
- * 5. RandomRewardEngine - ランダム報酬配布
+ * 1. Gifterra (SBT) - TIP＋ランク管理（必須・自動デプロイ）
+ * 2. RewardNFT_v2 - 報酬NFT配布（オプショナル・個別デプロイ）
+ * 3. FlagNFT - スタンプラリー（オプショナル・個別デプロイ）
+ * 4. GifterraPaySplitter - 支払い分配（オプショナル・個別デプロイ）
+ * 5. PaymentGatewayWithPermit - ガスレス決済（全テナント共有）
  *
  * 【特許対応】
  * 特許出願人による実装。各テナントが自動配布機能を利用可能。
@@ -55,7 +51,7 @@ contract GifterraFactory is AccessControl, ReentrancyGuard, Pausable {
         address rewardNFT;          // RewardNFT_v2
         address payLitter;          // GifterraPaySplitter
         address flagNFT;            // FlagNFT
-        address randomRewardEngine; // RandomRewardEngine
+        address paymentGateway;     // PaymentGatewayWithPermit (ガスレス決済)
     }
 
     struct TenantInfo {
@@ -93,6 +89,12 @@ contract GifterraFactory is AccessControl, ReentrancyGuard, Pausable {
     // ランクプランレジストリ（固定プラン制）
     address public rankPlanRegistry;
 
+    // JPYCトークンアドレス（ガスレス決済用）
+    address public jpycToken;
+
+    // グローバルPaymentGateway（全テナント共用）
+    address public globalPaymentGateway;
+
     // ========================================
     // イベント
     // ========================================
@@ -105,7 +107,7 @@ contract GifterraFactory is AccessControl, ReentrancyGuard, Pausable {
         address rewardNFT,
         address payLitter,
         address flagNFT,
-        address randomRewardEngine
+        address paymentGateway
     );
 
     event TenantStatusUpdated(uint256 indexed tenantId, bool isActive, bool isPaused);
@@ -121,16 +123,19 @@ contract GifterraFactory is AccessControl, ReentrancyGuard, Pausable {
      * @notice Factory デプロイ
      * @param _feeRecipient 手数料受取アドレス
      * @param _deploymentFee テナント作成手数料（wei単位）
+     * @param _jpycToken JPYCトークンアドレス（ガスレス決済用）
      *
      * 【推奨設定】
      * Polygon Amoy (Testnet): 10 MATIC = 10 * 10^18 wei
      * Polygon Mainnet: 10 MATIC = 10 * 10^18 wei
+     * JPYC Mainnet: 0x6AE7Dfc73E0dDE2aa99ac063DcF7e8A63265108c
      *
      * 例：ethers.parseEther("10") で 10 MATIC
      */
-    constructor(address _feeRecipient, uint256 _deploymentFee) {
+    constructor(address _feeRecipient, uint256 _deploymentFee, address _jpycToken) {
         require(_feeRecipient != address(0), "Invalid fee recipient");
         require(_deploymentFee > 0, "Fee must be positive");
+        require(_jpycToken != address(0), "Invalid JPYC address");
 
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(SUPER_ADMIN_ROLE, msg.sender);
@@ -138,6 +143,7 @@ contract GifterraFactory is AccessControl, ReentrancyGuard, Pausable {
 
         feeRecipient = _feeRecipient;
         deploymentFee = _deploymentFee;
+        jpycToken = _jpycToken;
 
         // デフォルトランク閾値設定
         defaultRankThresholds.push(0);
@@ -198,7 +204,7 @@ contract GifterraFactory is AccessControl, ReentrancyGuard, Pausable {
             contracts.rewardNFT,
             contracts.payLitter,
             contracts.flagNFT,
-            contracts.randomRewardEngine
+            contracts.paymentGateway
         );
 
         return tenantId;
@@ -225,24 +231,12 @@ contract GifterraFactory is AccessControl, ReentrancyGuard, Pausable {
 
         gifterra.transferOwnership(admin);
 
-        // 2. RewardNFT_v2 デプロイ
-        RewardNFT_v2 rewardNFT = new RewardNFT_v2(
-            string(abi.encodePacked(tenantName, " Reward")),
-            "REWARD",
-            "https://api.gifterra.com/metadata/",
-            admin,
-            address(0),
-            0,
-            0
-        );
-
-        // 3-5. 残りのコントラクトデプロイ
+        // 2-4. 残りのコントラクトデプロイ（RewardNFT_v2とFlagNFTはオプショナル）
         return _deployRemainingContracts(
             tenantName,
             admin,
             rewardTokenAddress,
-            address(gifterra),
-            address(rewardNFT)
+            address(gifterra)
         );
     }
 
@@ -254,45 +248,17 @@ contract GifterraFactory is AccessControl, ReentrancyGuard, Pausable {
         string memory tenantName,
         address admin,
         address rewardTokenAddress,
-        address gifterraAddr,
-        address rewardNFTAddr
+        address gifterraAddr
     ) internal returns (TenantContracts memory) {
-        // 3. PaySplitter
-        address[] memory payees = new address[](1);
-        uint256[] memory shares = new uint256[](1);
-        payees[0] = admin;
-        shares[0] = 100;
-        GifterraPaySplitter payLitter = new GifterraPaySplitter(payees, shares);
-
-        // 4. FlagNFT
-        FlagNFT flagNFT = new FlagNFT(
-            string(abi.encodePacked(tenantName, " Flag NFT")),
-            "FNFT",
-            "https://api.gifterra.com/flagnft/",
-            admin,
-            0
-        );
-
-        // 5. RandomRewardEngine
-        RandomRewardEngine randomEngine = new RandomRewardEngine(
-            gifterraAddr,
-            rewardNFTAddr,
-            rewardTokenAddress,
-            admin
-        );
-
-        // 権限設定
-        RewardNFT_v2(rewardNFTAddr).grantRole(
-            RewardNFT_v2(rewardNFTAddr).DISTRIBUTOR_ROLE(),
-            address(randomEngine)
-        );
+        // コードサイズ削減のため、オプショナルコントラクトは個別デプロイに変更
+        // 必要な場合は個別にデプロイして setTenantContracts() で設定可能
 
         return TenantContracts({
             gifterra: gifterraAddr,
-            rewardNFT: rewardNFTAddr,
-            payLitter: address(payLitter),
-            flagNFT: address(flagNFT),
-            randomRewardEngine: address(randomEngine)
+            rewardNFT: address(0),           // オプショナル
+            payLitter: address(0),           // オプショナル（adminアドレス直接使用可）
+            flagNFT: address(0),             // オプショナル
+            paymentGateway: globalPaymentGateway
         });
     }
 
@@ -325,7 +291,7 @@ contract GifterraFactory is AccessControl, ReentrancyGuard, Pausable {
         isTenantContract[contracts.rewardNFT] = true;
         isTenantContract[contracts.payLitter] = true;
         isTenantContract[contracts.flagNFT] = true;
-        isTenantContract[contracts.randomRewardEngine] = true;
+        isTenantContract[contracts.paymentGateway] = true;
     }
 
     // ========================================
@@ -403,6 +369,18 @@ contract GifterraFactory is AccessControl, ReentrancyGuard, Pausable {
     {
         require(_rankPlanRegistry != address(0), "Invalid address");
         rankPlanRegistry = _rankPlanRegistry;
+    }
+
+    /**
+     * @notice グローバルPaymentGatewayアドレス設定
+     * @param _paymentGateway PaymentGatewayコントラクトアドレス
+     */
+    function setGlobalPaymentGateway(address _paymentGateway)
+        external
+        onlyRole(SUPER_ADMIN_ROLE)
+    {
+        require(_paymentGateway != address(0), "Invalid address");
+        globalPaymentGateway = _paymentGateway;
     }
 
     /**

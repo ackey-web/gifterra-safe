@@ -1212,7 +1212,7 @@
       ]
     },
     "/Users/masakiakita/Desktop/gifterra-safe/contracts/PaymentGatewayWithPermit.sol": {
-      "lastModificationDate": 1764138841680,
+      "lastModificationDate": 1764149997589,
       "contentHash": "ee008248dad8ac1ec9d3d10f60d2cabe",
       "sourceName": "contracts/PaymentGatewayWithPermit.sol",
       "solcConfig": {
@@ -1250,6 +1250,337 @@
       "artifacts": [
         "IERC2612",
         "PaymentGatewayWithPermit"
+      ]
+    },
+    "/Users/masakiakita/Desktop/gifterra-safe/contracts/FlagNFT.sol": {
+      "lastModificationDate": 1764149997393,
+      "contentHash": "000738add4c434035f0ec8b3e44c0595",
+      "sourceName": "contracts/FlagNFT.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "@openzeppelin/contracts/token/ERC721/ERC721.sol",
+        "@openzeppelin/contracts/access/AccessControl.sol",
+        "@openzeppelin/contracts/security/Pausable.sol",
+        "@openzeppelin/contracts/security/ReentrancyGuard.sol",
+        "@openzeppelin/contracts/interfaces/IERC4906.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.19"
+      ],
+      "artifacts": [
+        "FlagNFT"
+      ]
+    },
+    "/Users/masakiakita/Desktop/gifterra-safe/contracts/GifterraFactory.sol": {
+      "lastModificationDate": 1764150565152,
+      "contentHash": "938f68958169a8c6645cb8120c3ba670",
+      "sourceName": "contracts/GifterraFactory.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "@openzeppelin/contracts/access/AccessControl.sol",
+        "@openzeppelin/contracts/security/ReentrancyGuard.sol",
+        "@openzeppelin/contracts/security/Pausable.sol",
+        "./Gifterra.sol",
+        "./RankPlanRegistry.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.19"
+      ],
+      "artifacts": [
+        "GifterraFactory"
+      ]
+    },
+    "/Users/masakiakita/Desktop/gifterra-safe/contracts/Gifterra.sol": {
+      "lastModificationDate": 1764149997434,
+      "contentHash": "8efdf4219c56fa30422acb3a509b39c2",
+      "sourceName": "contracts/Gifterra.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "@openzeppelin/contracts/token/ERC20/IERC20.sol",
+        "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol",
+        "@openzeppelin/contracts/access/Ownable.sol",
+        "./RankPlanRegistry.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.20"
+      ],
+      "artifacts": [
+        "Gifterra"
+      ]
+    },
+    "/Users/masakiakita/Desktop/gifterra-safe/contracts/RewardNFT_v2.sol": {
+      "lastModificationDate": 1764149997457,
+      "contentHash": "a7da83feade2540831e0a920aa9da5a3",
+      "sourceName": "contracts/RewardNFT_v2.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "@openzeppelin/contracts/token/ERC721/ERC721.sol",
+        "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol",
+        "@openzeppelin/contracts/token/common/ERC2981.sol",
+        "@openzeppelin/contracts/access/AccessControl.sol",
+        "@openzeppelin/contracts/security/ReentrancyGuard.sol",
+        "@openzeppelin/contracts/security/Pausable.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.19"
+      ],
+      "artifacts": [
+        "RewardNFT_v2"
+      ]
+    },
+    "/Users/masakiakita/Desktop/gifterra-safe/contracts/GifterraPaySplitter.sol": {
+      "lastModificationDate": 1764149997518,
+      "contentHash": "7dcf9f5ac9162eab7550e28df4e18617",
+      "sourceName": "contracts/GifterraPaySplitter.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "@openzeppelin/contracts/finance/PaymentSplitter.sol",
+        "@openzeppelin/contracts/security/Pausable.sol",
+        "@openzeppelin/contracts/security/ReentrancyGuard.sol",
+        "@openzeppelin/contracts/token/ERC20/IERC20.sol",
+        "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol",
+        "@openzeppelin/contracts/access/Ownable.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.19"
+      ],
+      "artifacts": [
+        "GifterraPaySplitter"
+      ]
+    },
+    "/Users/masakiakita/Desktop/gifterra-safe/contracts/RandomRewardEngine.sol": {
+      "lastModificationDate": 1764149997402,
+      "contentHash": "251258084eb12733581e62c69acdc007",
+      "sourceName": "contracts/RandomRewardEngine.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "@openzeppelin/contracts/access/AccessControl.sol",
+        "@openzeppelin/contracts/security/ReentrancyGuard.sol",
+        "@openzeppelin/contracts/security/Pausable.sol",
+        "@openzeppelin/contracts/token/ERC20/IERC20.sol",
+        "@openzeppelin/contracts/token/ERC721/IERC721.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.19"
+      ],
+      "artifacts": [
+        "IGifterra",
+        "IRewardNFT",
+        "RandomRewardEngine"
+      ]
+    },
+    "/Users/masakiakita/Desktop/gifterra-safe/contracts/RankPlanRegistry.sol": {
+      "lastModificationDate": 1764149997548,
+      "contentHash": "3049a5dbed6ffb7252c0c87a2c26f132",
+      "sourceName": "contracts/RankPlanRegistry.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "@openzeppelin/contracts/access/AccessControl.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.19"
+      ],
+      "artifacts": [
+        "RankPlanRegistry"
+      ]
+    },
+    "/Users/masakiakita/Desktop/gifterra-safe/contracts/TestRewardToken.sol": {
+      "lastModificationDate": 1764149997459,
+      "contentHash": "34ca15586f0071c506ff1c495a55a6b9",
+      "sourceName": "contracts/TestRewardToken.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "@openzeppelin/contracts/token/ERC20/ERC20.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.19"
+      ],
+      "artifacts": [
+        "TestRewardToken"
       ]
     }
   }

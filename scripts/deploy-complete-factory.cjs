@@ -30,6 +30,10 @@ async function main() {
   const feeRecipient = process.env.FEE_RECIPIENT || deployer.address;
   console.log("Fee recipient:", feeRecipient);
 
+  // JPYCトークンアドレス（ガスレス決済用）
+  const jpycAddress = process.env.JPYC_MAINNET_ADDRESS || "0x6AE7Dfc73E0dDE2aa99ac063DcF7e8A63265108c";
+  console.log("JPYC Token address:", jpycAddress);
+
   // デプロイ手数料設定（環境変数またはネットワーク別デフォルト）
   let deploymentFee;
   if (process.env.DEPLOYMENT_FEE) {
@@ -104,7 +108,7 @@ async function main() {
   console.log("========================================\n");
 
   const GifterraFactory = await ethers.getContractFactory("GifterraFactory");
-  const factory = await GifterraFactory.deploy(feeRecipient, deploymentFee);
+  const factory = await GifterraFactory.deploy(feeRecipient, deploymentFee, jpycAddress);
 
   await factory.deployed();
   const factoryAddress = factory.address;
@@ -224,7 +228,7 @@ async function main() {
   console.log(`   npx hardhat verify --network ${network.name} ${rankPlanRegistryAddress}`);
 
   console.log("\n2. Verify GifterraFactory:");
-  console.log(`   npx hardhat verify --network ${network.name} ${factoryAddress} "${feeRecipient}" "${deploymentFee.toString()}"`);
+  console.log(`   npx hardhat verify --network ${network.name} ${factoryAddress} "${feeRecipient}" "${deploymentFee.toString()}" "${jpycAddress}"`);
   console.log("   Note: deploymentFee is in wei (e.g., 10000000000000000000 = 10 MATIC)");
 
   // ========================================

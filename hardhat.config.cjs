@@ -9,9 +9,9 @@ module.exports = {
         settings: {
           optimizer: {
             enabled: true,
-            runs: 200
+            runs: 1  // Minimized for deployment size (GifterraFactory is large)
           },
-          viaIR: true
+          viaIR: true  // Re-enabled for better optimization
         }
       },
       {
