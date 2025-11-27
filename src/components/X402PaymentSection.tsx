@@ -493,6 +493,8 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
 
       setMessage({ type: 'error', text: errorMessage });
       setIsProcessing(false);
+      // 確認モーダルを閉じて、再度QRスキャンから始められるようにする
+      setShowConfirmation(false);
     }
   };
 
@@ -705,6 +707,7 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
           setMessage({ type: 'error', text: 'この支払いは既に完了しています' });
           console.error('🔴 重複支払い検出:', paymentData.requestId);
           setIsProcessing(false);
+          setShowConfirmation(false);
           return;
         }
       }
@@ -722,6 +725,7 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
         if (userBalance.lt(paymentData.amount)) {
           setMessage({ type: 'error', text: '残高不足です' });
           setIsProcessing(false);
+          setShowConfirmation(false);
           return;
         }
 
@@ -829,6 +833,8 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
       }
 
       setMessage({ type: 'error', text: errorMessage });
+      // 確認モーダルを閉じて、再度QRスキャンから始められるようにする
+      setShowConfirmation(false);
     } finally {
       setIsProcessing(false);
     }
