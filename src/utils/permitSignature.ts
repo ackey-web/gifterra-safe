@@ -192,14 +192,9 @@ export async function signPermit(
     let signature: string;
 
     // EIP-712 Typed Data形式
+    // Note: EIP712Domainは含めない（eth_signTypedData_v4が自動で処理）
     const typedData = {
       types: {
-        EIP712Domain: [
-          { name: 'name', type: 'string' },
-          { name: 'version', type: 'string' },
-          { name: 'chainId', type: 'uint256' },
-          { name: 'verifyingContract', type: 'address' },
-        ],
         Permit: types.Permit,
       },
       domain,
