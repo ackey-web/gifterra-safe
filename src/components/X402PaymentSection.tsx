@@ -20,7 +20,6 @@ import {
 } from '../utils/x402';
 import {
   preparePermitPaymentParams,
-  preparePermitPaymentParamsWithPrivy,
   PAYMENT_GATEWAY_ABI
 } from '../utils/permitSignature';
 import { isGaslessPaymentEnabled } from '../config/featureFlags';
@@ -440,17 +439,12 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
       addDebugLog(`🔍 isPrivyEmbedded判定結果: ${isPrivyEmbedded}`);
 
       if (isPrivyEmbedded) {
-        addDebugLog('🔍 Privy埋め込みウォレット検出 - Privy Provider版を使用');
-        const wallet = wallets[0];
-        addDebugLog('📡 wallet.getEthereumProvider() 呼び出し開始');
-        const privyProvider = await wallet.getEthereumProvider();
-        addDebugLog('✅ privyProvider取得成功');
-
-        addDebugLog('📝 preparePermitPaymentParamsWithPrivy() 呼び出し開始');
+        addDebugLog('🔍 Privy埋め込みウォレット検出 - Signer版を使用（Privy用）');
+        addDebugLog('📝 preparePermitPaymentParams() 呼び出し開始');
         try {
-          permitParams = await preparePermitPaymentParamsWithPrivy(
-            privyProvider,
-            walletAddress,
+          // Privy埋め込みウォレットでもSignerを使用する
+          permitParams = await preparePermitPaymentParams(
+            signer,
             PAYMENT_GATEWAY_ADDRESS,
             jpycConfig.currentAddress,
             paymentData.to,
@@ -458,9 +452,9 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
             paymentData.requestId || `gasless_${Date.now()}`,
             30 // 30分の有効期限
           );
-          addDebugLog('✅ preparePermitPaymentParamsWithPrivy() 完了');
+          addDebugLog('✅ preparePermitPaymentParams() 完了');
         } catch (permitError: any) {
-          addDebugLog(`❌ preparePermitPaymentParamsWithPrivy() エラー: ${permitError.message}`);
+          addDebugLog(`❌ preparePermitPaymentParams() エラー: ${permitError.message}`);
           console.error('❌ Permit署名生成エラー:', permitError);
           throw permitError;
         }
