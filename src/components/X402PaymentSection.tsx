@@ -199,6 +199,18 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
   const [consentAccepted, setConsentAccepted] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
 
+  // 🚨 デバッグパネル用
+  const [debugLogs, setDebugLogs] = useState<string[]>([]);
+  const [showDebugPanel, setShowDebugPanel] = useState(true); // デフォルトで表示
+
+  // デバッグログ追加ヘルパー
+  const addDebugLog = (log: string) => {
+    const timestamp = new Date().toLocaleTimeString();
+    const logEntry = `[${timestamp}] ${log}`;
+    console.log(logEntry);
+    setDebugLogs(prev => [...prev, logEntry].slice(-20)); // 最新20件のみ保持
+  };
+
   const jpycConfig = getTokenConfig('JPYC');
   const PAYMENT_GATEWAY_ADDRESS = import.meta.env.VITE_PAYMENT_GATEWAY_ADDRESS || '';
 
@@ -399,17 +411,14 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
       return;
     }
 
+    addDebugLog('📦 handleGaslessPayment() 開始');
+
     setIsProcessing(true);
     setMessage({ type: 'info', text: 'Permit署名を準備中...' });
 
     try {
-      console.log('📦 ガスレス決済開始:', {
-        paymentGateway: PAYMENT_GATEWAY_ADDRESS,
-        jpyc: jpycConfig.currentAddress,
-        merchant: paymentData.to,
-        amount: paymentData.amount,
-        requestId: paymentData.requestId,
-      });
+      addDebugLog(`📦 Gateway=${PAYMENT_GATEWAY_ADDRESS?.slice(0, 10)}..., JPYC=${jpycConfig.currentAddress?.slice(0, 10)}...`);
+      addDebugLog(`📦 merchant=${paymentData.to?.slice(0, 10)}..., amount=${paymentData.amount}`);
 
       // 1. Permitシグネチャを生成
       setMessage({ type: 'info', text: 'ウォレットで署名してください...' });
@@ -417,16 +426,12 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
       let permitParams;
 
       // Privy埋め込みウォレットの場合は、providerを直接使用
-      console.log('🔍 ウォレット種別確認:', {
-        hasWallets: !!wallets && wallets.length > 0,
-        walletClientType: wallets?.[0]?.walletClientType,
-        connectorType: wallets?.[0]?.connectorType,
-      });
+      addDebugLog(`🔍 hasWallets=${!!wallets && wallets.length > 0}, type=${wallets?.[0]?.walletClientType}`);
 
       const isPrivyEmbedded = wallets && wallets.length > 0 && wallets[0].walletClientType === 'privy';
 
       if (isPrivyEmbedded) {
-        console.log('🔍 Privy埋め込みウォレット検出 - Privy Provider版を使用');
+        addDebugLog('🔍 Privy埋め込みウォレット検出 - Privy Provider版を使用');
         const wallet = wallets[0];
         const privyProvider = await wallet.getEthereumProvider();
 
@@ -548,33 +553,27 @@ reason: ${error.reason || 'なし'}`;
   // 支払い実行
   const handlePayment = async () => {
     // 🚨 デバッグ: 関数が呼ばれたことを確認
-    console.log('🚨🚨🚨 handlePayment() が呼ばれました 🚨🚨🚨');
+    addDebugLog('🚨 handlePayment() が呼ばれました');
 
-    // デバッグログ（コンソールのみ）
-    console.log('🔍 handlePayment - ウォレット接続状態:', {
-      authenticated,
-      walletAddress,
-      'wallets count': wallets?.length,
-      'privySigner exists': !!privySigner,
-      'thirdwebSigner exists': !!thirdwebSigner,
-      'signer exists': !!signer
-    });
+    // デバッグログ
+    addDebugLog(`🔍 ウォレット: authenticated=${authenticated}, address=${walletAddress?.slice(0, 10)}...`);
+    addDebugLog(`🔍 Signer: privy=${!!privySigner}, thirdweb=${!!thirdwebSigner}, final=${!!signer}`);
 
     if (!paymentData) {
-      console.error('❌ paymentDataが未設定');
+      addDebugLog('❌ paymentDataが未設定');
       setMessage({ type: 'error', text: '決済データが見つかりません' });
       return;
     }
 
     if (!walletAddress) {
-      console.error('❌ walletAddressが未設定');
+      addDebugLog('❌ walletAddressが未設定');
       setMessage({ type: 'error', text: 'ウォレットを接続してください。ページをリロードしてログインし直してください。' });
       return;
     }
 
     // Signerチェック
     if (!signer) {
-      console.error('❌ Signerが未初期化');
+      addDebugLog('❌ Signerが未初期化');
       setMessage({
         type: 'error',
         text: 'ウォレットが接続されていません。'
@@ -584,22 +583,18 @@ reason: ${error.reason || 'なし'}`;
 
     // ========== ガスレス決済の処理 ==========
     // デバッグ: paymentDataの内容を確認
-    console.log('🔍 DEBUG - paymentData全体:', JSON.stringify(paymentData, null, 2));
-    console.log('🔍 DEBUG - paymentData.gasless:', paymentData.gasless);
-    console.log('🔍 DEBUG - isGaslessPaymentEnabled(walletAddress):', isGaslessPaymentEnabled(walletAddress));
-    console.log('🔍 DEBUG - 条件チェック結果:', paymentData.gasless && isGaslessPaymentEnabled(walletAddress));
+    addDebugLog(`🔍 paymentData: to=${paymentData.to?.slice(0, 10)}..., amount=${paymentData.amount}`);
+    addDebugLog(`🔍 paymentData.gasless: ${paymentData.gasless}`);
+    addDebugLog(`🔍 isGaslessPaymentEnabled: ${isGaslessPaymentEnabled(walletAddress)}`);
 
-    // 🚨 画面アラートでも確認
-    const debugMsg = `gasless: ${paymentData.gasless}\nenabled: ${isGaslessPaymentEnabled(walletAddress)}\n結果: ${paymentData.gasless && isGaslessPaymentEnabled(walletAddress)}`;
-    alert('🔍 ガスレス決済チェック:\n' + debugMsg);
+    const gaslessCondition = paymentData.gasless && isGaslessPaymentEnabled(walletAddress);
+    addDebugLog(`🔍 条件チェック結果: ${gaslessCondition}`);
 
-    if (paymentData.gasless && isGaslessPaymentEnabled(walletAddress)) {
-      console.log('✅ ガスレス決済条件を満たしたのでhandleGaslessPayment()を呼び出します');
-      alert('✅ ガスレス決済を実行します');
+    if (gaslessCondition) {
+      addDebugLog('✅ ガスレス決済を実行します');
       return await handleGaslessPayment();
     } else {
-      console.log('⚠️ ガスレス決済条件を満たしていません - 通常決済に進みます');
-      alert('⚠️ 通常決済に進みます');
+      addDebugLog('⚠️ 通常決済に進みます');
     }
 
     // ========== 通常決済の処理（既存コード）==========
@@ -1389,6 +1384,63 @@ reason: ${error.reason || 'なし'}`;
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* 🚨 デバッグパネル */}
+      {showDebugPanel && (
+        <div style={{
+          position: 'fixed',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          maxHeight: '40vh',
+          backgroundColor: '#000',
+          color: '#0f0',
+          fontFamily: 'monospace',
+          fontSize: 11,
+          padding: 8,
+          overflowY: 'auto',
+          zIndex: 9999,
+          borderTop: '2px solid #0f0',
+        }}>
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: 8,
+            borderBottom: '1px solid #0f0',
+            paddingBottom: 4,
+          }}>
+            <strong>🚨 DEBUG PANEL</strong>
+            <button
+              onClick={() => setShowDebugPanel(false)}
+              style={{
+                background: '#ff0000',
+                color: '#fff',
+                border: 'none',
+                padding: '4px 8px',
+                fontSize: 10,
+                cursor: 'pointer',
+                borderRadius: 4,
+              }}
+            >
+              CLOSE
+            </button>
+          </div>
+          {debugLogs.length === 0 ? (
+            <div style={{ color: '#888' }}>ログはまだありません...</div>
+          ) : (
+            debugLogs.map((log, idx) => (
+              <div key={idx} style={{
+                marginBottom: 4,
+                wordBreak: 'break-all',
+                fontSize: 10,
+              }}>
+                {log}
+              </div>
+            ))
+          )}
         </div>
       )}
     </div>
