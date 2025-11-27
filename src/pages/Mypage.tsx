@@ -1294,7 +1294,7 @@ function FlowModeContent({
         gap: isMobile ? 16 : 20,
         marginBottom: isMobile ? 40 : 48,
       }}>
-        <SendForm isMobile={isMobile} bulkSendRecipients={bulkSendRecipients} />
+        <SendForm isMobile={isMobile} bulkSendRecipients={bulkSendRecipients} handleAddToBulkSend={handleAddToBulkSend} />
         <X402PaymentSection isMobile={isMobile} />
         <ReceiveAddress isMobile={isMobile} />
       </div>
@@ -1339,9 +1339,10 @@ function FlowModeContent({
 type SendMode = 'simple' | 'tenant' | 'bulk' | 'bookmark' | 'anonymous';
 
 // 1. 送金フォーム
-function SendForm({ isMobile, bulkSendRecipients }: {
+function SendForm({ isMobile, bulkSendRecipients, handleAddToBulkSend }: {
   isMobile: boolean;
   bulkSendRecipients: Array<{ id: number; address: string; amount: string }>;
+  handleAddToBulkSend: (address: string, name?: string) => void;
 }) {
   // Thirdwebウォレット
   const thirdwebSigner = useSigner();
