@@ -487,6 +487,14 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
         stack: error.stack?.substring(0, 500)
       });
 
+      // デバッグ用アラート（Safari対応）
+      const debugInfo = `エラー詳細:
+message: ${error.message || 'なし'}
+code: ${error.code || 'なし'}
+reason: ${error.reason || 'なし'}`;
+
+      alert(debugInfo);
+
       let errorMessage = 'ガスレス決済に失敗しました';
       if (error.message.includes('user rejected') || error.message.includes('User denied')) {
         errorMessage = '署名がキャンセルされました';
