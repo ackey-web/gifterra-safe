@@ -487,7 +487,7 @@ export function MypagePage() {
 
         {/* [B] コンテンツ */}
         {viewMode === 'flow' ? (
-          <FlowModeContent isMobile={isMobile} tenantRank={tenantRank} address={displayAddress} onChainIdChange={setActualChainId} bulkSendRecipients={bulkSendRecipients} />
+          <FlowModeContent isMobile={isMobile} tenantRank={tenantRank} address={displayAddress} onChainIdChange={setActualChainId} bulkSendRecipients={bulkSendRecipients} setBulkSendRecipients={setBulkSendRecipients} handleAddToBulkSend={handleAddToBulkSend} sendMode={sendMode} setSendMode={setSendMode} />
         ) : (
           <TenantModeContent isMobile={isMobile} />
         )}
@@ -1269,13 +1269,21 @@ function FlowModeContent({
   tenantRank,
   address,
   onChainIdChange,
-  bulkSendRecipients
+  bulkSendRecipients,
+  setBulkSendRecipients,
+  handleAddToBulkSend,
+  sendMode,
+  setSendMode
 }: {
   isMobile: boolean;
   tenantRank: TenantRank;
   address: string | undefined;
   onChainIdChange: (chainId: number | undefined) => void;
   bulkSendRecipients: Array<{ id: number; address: string; amount: string }>;
+  setBulkSendRecipients: (value: Array<{ id: number; address: string; amount: string }> | ((prev: Array<{ id: number; address: string; amount: string }>) => Array<{ id: number; address: string; amount: string }>)) => void;
+  handleAddToBulkSend: (address: string, name?: string) => void;
+  sendMode: SendMode | null;
+  setSendMode: (mode: SendMode | null) => void;
 }) {
   // useAddress()を呼び出して実際の接続アドレスを取得
   const thirdwebAddress = useAddress();
@@ -1354,7 +1362,7 @@ type SendMode = 'simple' | 'tenant' | 'bulk' | 'bookmark' | 'anonymous';
 function SendForm({ isMobile, bulkSendRecipients, setBulkSendRecipients, handleAddToBulkSend, sendMode, setSendMode }: {
   isMobile: boolean;
   bulkSendRecipients: Array<{ id: number; address: string; amount: string }>;
-  setBulkSendRecipients: React.Dispatch<React.SetStateAction<Array<{ id: number; address: string; amount: string }>>>;
+  setBulkSendRecipients: (value: Array<{ id: number; address: string; amount: string }> | ((prev: Array<{ id: number; address: string; amount: string }>) => Array<{ id: number; address: string; amount: string }>)) => void;
   handleAddToBulkSend: (address: string, name?: string) => void;
   sendMode: SendMode | null;
   setSendMode: (mode: SendMode | null) => void;
@@ -3741,7 +3749,7 @@ function BulkSendForm({ isMobile, onChangeMode, recipients, setRecipients }: {
   isMobile: boolean;
   onChangeMode: () => void;
   recipients: Array<{ id: number; address: string; amount: string }>;
-  setRecipients: React.Dispatch<React.SetStateAction<Array<{ id: number; address: string; amount: string }>>>;
+  setRecipients: (value: Array<{ id: number; address: string; amount: string }> | ((prev: Array<{ id: number; address: string; amount: string }>) => Array<{ id: number; address: string; amount: string }>)) => void;
 }) {
   // Thirdwebウォレット
   const thirdwebSigner = useSigner();
