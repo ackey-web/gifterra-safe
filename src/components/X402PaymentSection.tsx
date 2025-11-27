@@ -547,6 +547,9 @@ reason: ${error.reason || 'なし'}`;
 
   // 支払い実行
   const handlePayment = async () => {
+    // 🚨 デバッグ: 関数が呼ばれたことを確認
+    console.log('🚨🚨🚨 handlePayment() が呼ばれました 🚨🚨🚨');
+
     // デバッグログ（コンソールのみ）
     console.log('🔍 handlePayment - ウォレット接続状態:', {
       authenticated,
@@ -586,11 +589,17 @@ reason: ${error.reason || 'なし'}`;
     console.log('🔍 DEBUG - isGaslessPaymentEnabled(walletAddress):', isGaslessPaymentEnabled(walletAddress));
     console.log('🔍 DEBUG - 条件チェック結果:', paymentData.gasless && isGaslessPaymentEnabled(walletAddress));
 
+    // 🚨 画面アラートでも確認
+    const debugMsg = `gasless: ${paymentData.gasless}\nenabled: ${isGaslessPaymentEnabled(walletAddress)}\n結果: ${paymentData.gasless && isGaslessPaymentEnabled(walletAddress)}`;
+    alert('🔍 ガスレス決済チェック:\n' + debugMsg);
+
     if (paymentData.gasless && isGaslessPaymentEnabled(walletAddress)) {
       console.log('✅ ガスレス決済条件を満たしたのでhandleGaslessPayment()を呼び出します');
+      alert('✅ ガスレス決済を実行します');
       return await handleGaslessPayment();
     } else {
       console.log('⚠️ ガスレス決済条件を満たしていません - 通常決済に進みます');
+      alert('⚠️ 通常決済に進みます');
     }
 
     // ========== 通常決済の処理（既存コード）==========
