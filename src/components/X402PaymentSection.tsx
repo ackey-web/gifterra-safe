@@ -427,8 +427,13 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
 
       // Privy埋め込みウォレットの場合は、providerを直接使用
       addDebugLog(`🔍 hasWallets=${!!wallets && wallets.length > 0}, type=${wallets?.[0]?.walletClientType}`);
+      addDebugLog(`🔍 connectorType=${wallets?.[0]?.connectorType}`);
 
-      const isPrivyEmbedded = wallets && wallets.length > 0 && wallets[0].walletClientType === 'privy';
+      // Privy埋め込みウォレットは walletClientType='privy' または connectorType='embedded' で判定
+      const isPrivyEmbedded = wallets && wallets.length > 0 &&
+        (wallets[0].walletClientType === 'privy' || wallets[0].connectorType === 'embedded');
+
+      addDebugLog(`🔍 isPrivyEmbedded判定結果: ${isPrivyEmbedded}`);
 
       if (isPrivyEmbedded) {
         addDebugLog('🔍 Privy埋め込みウォレット検出 - Privy Provider版を使用');
