@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { useSigner, useAddress } from '@thirdweb-dev/react';
-import { usePrivy } from '@privy-io/react-auth';
+import { usePrivy, useWallets } from '@privy-io/react-auth';
 import { ethers } from 'ethers';
 import { QRScannerCamera } from './QRScannerCamera';
 import { supabase } from '../lib/supabase';
@@ -100,10 +100,11 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
 
   // Privyの正しいフック使用
   const { user, authenticated, ready } = usePrivy();
+  const { wallets } = useWallets();
 
   // Privyの埋め込みウォレットアドレスを正しく取得
-  // user.wallet.address から直接取得（これが最も確実）
-  const privyEmbeddedWalletAddress = user?.wallet?.address;
+  // user.wallet.address または wallets[0].address から取得
+  const privyEmbeddedWalletAddress = user?.wallet?.address || wallets?.[0]?.address;
   const walletAddress = privyEmbeddedWalletAddress || thirdwebAddress || '';
 
 
@@ -133,22 +134,46 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
             return;
           } catch (error: any) {
             console.warn('⚠️ [請求QR] MetaMask直接接続失敗:', error.message);
+            // フォールバックとしてPrivy経由を試行
           }
         }
       }
 
-      // Privyの埋め込みウォレットの場合、signerは作成できない
-      // walletAddressのみ利用可能
-      if (user?.wallet?.address) {
-        console.log('[請求QR] Privy埋め込みウォレット検出 - signerなしモード');
-        // signerはnullのままだが、walletAddressは利用可能
+      // Privyウォレット経由でのフォールバック
+      if (!wallets || wallets.length === 0) {
+        console.log('[請求QR] Privyウォレット未検出');
         if (isMounted) setPrivySigner(null);
         return;
       }
 
-      // ウォレットが接続されていない
-      console.log('[請求QR] ウォレット未接続');
-      if (isMounted) setPrivySigner(null);
+      try {
+        const wallet = wallets[0];
+        console.log('🔍 [請求QR] Privyウォレット情報:', {
+          walletType: wallet.walletClientType,
+          connectorType: wallet.connectorType,
+        });
+
+        // Privy経由のMetaMask検出（2次チェック）
+        if (wallet.walletClientType === 'metamask' && typeof window !== 'undefined' && window.ethereum) {
+          console.log('✅ [請求QR] Privy経由でMetaMask検出 - 直接window.ethereumを使用');
+          const directProvider = new ethers.providers.Web3Provider(window.ethereum as any, 'any');
+          const directSigner = directProvider.getSigner();
+          if (isMounted) setPrivySigner(directSigner);
+          console.log('✅ [請求QR] MetaMask直接接続成功');
+          return;
+        }
+
+        // Privyウォレットなど他のウォレットの場合は通常通り
+        console.log('✅ [請求QR] Privy経由でウォレット接続');
+        const provider = await wallet.getEthereumProvider();
+        const ethersProvider = new ethers.providers.Web3Provider(provider, 'any');
+        const ethersSigner = ethersProvider.getSigner();
+        if (isMounted) setPrivySigner(ethersSigner);
+        console.log('✅ [請求QR] Privy経由接続成功');
+      } catch (error: any) {
+        console.error('❌ [請求QR] Failed to setup signer:', error);
+        if (isMounted) setPrivySigner(null);
+      }
     };
 
     // authenticated または MetaMask利用可能な場合にsigner取得を試行
@@ -159,7 +184,7 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
     return () => {
       isMounted = false;
     };
-  }, [authenticated, user]);
+  }, [authenticated, wallets]);
 
   // 送金セクションと同じ: privySignerのみ使用
   const signer = privySigner || thirdwebSigner;
@@ -365,11 +390,10 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
       return;
     }
 
-    // Privy埋め込みウォレットの場合、signerがないため別エラー
     if (!signer) {
       setMessage({
         type: 'error',
-        text: '申し訳ございません。現在、Privy埋め込みウォレットからの決済はサポートされていません。MetaMaskをご利用ください。'
+        text: 'ウォレットが接続されていません。'
       });
       return;
     }
@@ -478,7 +502,7 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
     console.log('🔍 handlePayment - ウォレット接続状態:', {
       authenticated,
       walletAddress,
-      'user.wallet.address': user?.wallet?.address,
+      'wallets count': wallets?.length,
       'privySigner exists': !!privySigner,
       'thirdwebSigner exists': !!thirdwebSigner,
       'signer exists': !!signer
@@ -496,22 +520,12 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
       return;
     }
 
-    // Signerチェック: MetaMaskの場合は必須、Privy埋め込みウォレットの場合はスキップ
-    if (!signer && !user?.wallet?.address) {
-      console.error('❌ Signerもウォレットアドレスもない');
+    // Signerチェック
+    if (!signer) {
+      console.error('❌ Signerが未初期化');
       setMessage({
         type: 'error',
-        text: 'ウォレットを接続してください。'
-      });
-      return;
-    }
-
-    // Privy埋め込みウォレットの場合、signerがないため別処理が必要
-    if (!signer && user?.wallet?.address) {
-      console.error('⚠️ Privy埋め込みウォレット - 現在サポートされていません');
-      setMessage({
-        type: 'error',
-        text: '申し訳ございません。現在、Privy埋め込みウォレットからの決済はサポートされていません。MetaMaskをご利用ください。'
+        text: 'ウォレットが接続されていません。'
       });
       return;
     }
