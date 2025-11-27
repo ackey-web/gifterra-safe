@@ -20,6 +20,7 @@ import {
 } from '../utils/x402';
 import {
   preparePermitPaymentParams,
+  signPermit,
   PAYMENT_GATEWAY_ABI
 } from '../utils/permitSignature';
 import { isGaslessPaymentEnabled } from '../config/featureFlags';
@@ -439,22 +440,73 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
       addDebugLog(`🔍 isPrivyEmbedded判定結果: ${isPrivyEmbedded}`);
 
       if (isPrivyEmbedded) {
-        addDebugLog('🔍 Privy埋め込みウォレット検出 - Signer版を使用（Privy用）');
-        addDebugLog('📝 preparePermitPaymentParams() 呼び出し開始');
+        addDebugLog('🔍 Privy埋め込みウォレット検出 - wallet.signTypedData()を使用');
+        addDebugLog('📝 Privy Permit署名生成開始');
+
         try {
-          // Privy埋め込みウォレットでもSignerを使用する
-          permitParams = await preparePermitPaymentParams(
-            signer,
-            PAYMENT_GATEWAY_ADDRESS,
+          const wallet = wallets[0];
+          const requestId = paymentData.requestId || `gasless_${Date.now()}`;
+          const deadline = Math.floor(Date.now() / 1000) + 30 * 60;
+
+          // nonce取得
+          const readOnlyProvider = new ethers.providers.JsonRpcProvider('https://polygon-rpc.com');
+          const tokenContract = new ethers.Contract(
             jpycConfig.currentAddress,
-            paymentData.to,
-            paymentData.amount,
-            paymentData.requestId || `gasless_${Date.now()}`,
-            30 // 30分の有効期限
+            ['function nonces(address owner) view returns (uint256)', 'function name() view returns (string)'],
+            readOnlyProvider
           );
-          addDebugLog('✅ preparePermitPaymentParams() 完了');
+
+          const nonce = await tokenContract.nonces(walletAddress);
+          const tokenName = await tokenContract.name();
+          addDebugLog(`✅ nonce取得: ${nonce.toString()}, tokenName: ${tokenName}`);
+
+          // EIP-712構造
+          const domain = {
+            name: tokenName,
+            version: '1',
+            chainId: 137,
+            verifyingContract: jpycConfig.currentAddress,
+          };
+
+          const types = {
+            Permit: [
+              { name: 'owner', type: 'address' },
+              { name: 'spender', type: 'address' },
+              { name: 'value', type: 'uint256' },
+              { name: 'nonce', type: 'uint256' },
+              { name: 'deadline', type: 'uint256' },
+            ],
+          };
+
+          const value = {
+            owner: walletAddress,
+            spender: PAYMENT_GATEWAY_ADDRESS,
+            value: paymentData.amount,
+            nonce: nonce.toNumber(),
+            deadline,
+          };
+
+          addDebugLog('📝 Privy signTypedData() 呼び出し');
+          // Privyのsigner経由で署名
+          const privyProvider = await wallet.getEthereumProvider();
+          const privySigner = new ethers.providers.Web3Provider(privyProvider).getSigner();
+          const signature = await (privySigner as any)._signTypedData(domain, types, value);
+          addDebugLog('✅ 署名成功');
+
+          const sig = ethers.utils.splitSignature(signature);
+
+          permitParams = {
+            requestId,
+            merchant: paymentData.to,
+            amount: paymentData.amount,
+            deadline,
+            v: sig.v,
+            r: sig.r,
+            s: sig.s,
+          };
+          addDebugLog('✅ Permit署名生成完了');
         } catch (permitError: any) {
-          addDebugLog(`❌ preparePermitPaymentParams() エラー: ${permitError.message}`);
+          addDebugLog(`❌ Permit署名生成エラー: ${permitError.message}`);
           console.error('❌ Permit署名生成エラー:', permitError);
           throw permitError;
         }
