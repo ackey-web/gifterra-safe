@@ -1428,6 +1428,20 @@ reason: ${error.reason || 'なし'}`;
               CLOSE
             </button>
           </div>
+
+          {/* メンテナンス中メッセージ */}
+          <div style={{
+            backgroundColor: '#ff6600',
+            color: '#000',
+            padding: '8px',
+            marginBottom: '8px',
+            borderRadius: '4px',
+            fontWeight: 'bold',
+            textAlign: 'center',
+          }}>
+            ⚠️ メンテナンス中 ⚠️
+          </div>
+
           {debugLogs.length === 0 ? (
             <div style={{ color: '#888' }}>ログはまだありません...</div>
           ) : (
