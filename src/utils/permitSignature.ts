@@ -204,43 +204,31 @@ export async function signPermit(
 
     console.log('📋 署名データ:', JSON.stringify(typedData, null, 2));
 
-    // 方法1: signerのproviderから直接request（Privy対応）
+    // ethers.jsの_signTypedDataを使用（最も信頼性が高い）
     try {
-      const provider = signer.provider as any;
-      if (provider && provider.provider && provider.provider.request) {
-        // Privyの埋め込みウォレット用
-        console.log('🔍 Privy埋め込みウォレット検出 - provider.provider.requestを使用');
-        signature = await provider.provider.request({
-          method: 'eth_signTypedData_v4',
-          params: [owner.toLowerCase(), JSON.stringify(typedData)],
-        });
-        console.log('✅ provider.provider.requestで署名成功');
-      } else if (typeof window !== 'undefined' && (window as any).ethereum) {
-        // MetaMaskなど外部ウォレット用
-        console.log('🔍 window.ethereum検出 - window.ethereum.requestを使用');
-        const ethereum = (window as any).ethereum;
-        signature = await ethereum.request({
-          method: 'eth_signTypedData_v4',
-          params: [owner.toLowerCase(), JSON.stringify(typedData)],
-        });
-        console.log('✅ window.ethereum.requestで署名成功');
-      } else if (provider && provider.send) {
-        // provider.send フォールバック
-        console.log('🔍 provider.sendを使用');
-        signature = await provider.send('eth_signTypedData_v4', [
-          owner.toLowerCase(),
-          JSON.stringify(typedData),
-        ]);
-        console.log('✅ provider.sendで署名成功');
-      } else {
-        throw new Error('No compatible provider found');
-      }
-    } catch (error: any) {
-      console.warn('⚠️ すべての署名方法が失敗、_signTypedDataにフォールバック:', error.message);
-
-      // 最終フォールバック: ethers標準の_signTypedData
+      console.log('🔍 ethers.jsの_signTypedDataを使用');
       signature = await (signer as any)._signTypedData(domain, types, value);
       console.log('✅ _signTypedDataで署名成功');
+    } catch (ethersError: any) {
+      console.warn('⚠️ _signTypedData失敗、他の方法を試行:', ethersError.message);
+
+      // フォールバック1: window.ethereum (MetaMask)
+      if (typeof window !== 'undefined' && (window as any).ethereum) {
+        try {
+          console.log('🔍 window.ethereum.requestを試行');
+          const ethereum = (window as any).ethereum;
+          signature = await ethereum.request({
+            method: 'eth_signTypedData_v4',
+            params: [owner.toLowerCase(), JSON.stringify(typedData)],
+          });
+          console.log('✅ window.ethereum.requestで署名成功');
+        } catch (windowError: any) {
+          console.error('❌ すべての署名方法が失敗');
+          throw windowError;
+        }
+      } else {
+        throw ethersError;
+      }
     }
 
     const sig = ethers.utils.splitSignature(signature);

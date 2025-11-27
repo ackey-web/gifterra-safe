@@ -7,10 +7,10 @@ async function verifyPermitSignature() {
   // 実際のトランザクションパラメータ
   const merchant = '0x66f1274ad5d042b7571c2efa943370dbcd3459ab';
   const amount = '1000000000000000000'; // 1 JPYC
-  const deadline = 1764086080; // 0x6927cd40
-  const v = 27; // 0x1b
-  const r = '0x183a05ae1d2848dbb145d753503b854ebbac10aca6fecb28e4013be162504feb';
-  const s = '0x0df7ab8801f811877c85ed2d8ae2dc8f37d2522df63ac28f48d8882c771adbb1';
+  const deadline = 1764086547; // 0x6927cf13
+  const v = 28; // 0x1c
+  const r = '0xf65d9136fe581622d6cb56cb70886f76bc841ee6751df0c8c22542a3682ceddb';
+  const s = '0x62dab745be33da09195b5df66be1d62215c12a4813d967af685341f3c80d0021';
 
   const owner = '0x3595098A7EC66299641025d7b291ca8f198D765c';
   const jpycAddress = '0xE7C3D8C9a439feDe00D2600032D5dB0Be71C3c29';
