@@ -560,17 +560,31 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
         signer
       );
 
-      const tx = await gatewayContract.executePaymentWithPermit(
-        requestIdBytes32,
-        permitParams.merchant,
-        permitParams.amount,
-        permitParams.deadline,
-        permitParams.v,
-        permitParams.r,
-        permitParams.s
-      );
+      addDebugLog('📝 Contract instance created');
 
-      console.log('⏳ トランザクション送信完了:', tx.hash);
+      let tx;
+      try {
+        addDebugLog('🔍 Calling executePaymentWithPermit...');
+        tx = await gatewayContract.executePaymentWithPermit(
+          requestIdBytes32,
+          permitParams.merchant,
+          permitParams.amount,
+          permitParams.deadline,
+          permitParams.v,
+          permitParams.r,
+          permitParams.s
+        );
+        addDebugLog(`✅ Transaction sent: ${tx.hash}`);
+        console.log('⏳ トランザクション送信完了:', tx.hash);
+      } catch (txError: any) {
+        addDebugLog(`❌ Transaction error: ${txError.message || 'Unknown error'}`);
+        addDebugLog(`❌ Error code: ${txError.code || 'No code'}`);
+        addDebugLog(`❌ Error reason: ${txError.reason || 'No reason'}`);
+        console.error('❌ Contract call error:', txError);
+        console.error('❌ Full error object:', JSON.stringify(txError, null, 2));
+        throw txError;
+      }
+
       setMessage({ type: 'info', text: 'トランザクション確認中...' });
 
       // 3. トランザクション確認
