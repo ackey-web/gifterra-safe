@@ -186,8 +186,48 @@ export async function signPermit(
       deadline,
     };
 
-    // _signTypedData を使って署名
-    const signature = await signer._signTypedData(domain, types, value);
+    console.log('🔐 EIP-712署名リクエスト準備完了');
+
+    // EIP-712署名を取得
+    let signature: string;
+
+    // eth_signTypedData_v4を直接使用（Privy/MetaMask互換性向上）
+    try {
+      const typedData = {
+        types: {
+          EIP712Domain: [
+            { name: 'name', type: 'string' },
+            { name: 'version', type: 'string' },
+            { name: 'chainId', type: 'uint256' },
+            { name: 'verifyingContract', type: 'address' },
+          ],
+          Permit: types.Permit,
+        },
+        domain,
+        primaryType: 'Permit',
+        message: value,
+      };
+
+      // プロバイダーから直接eth_signTypedData_v4をリクエスト
+      const provider = signer.provider as any;
+      if (!provider) {
+        throw new Error('Provider not available');
+      }
+
+      signature = await provider.send('eth_signTypedData_v4', [
+        owner.toLowerCase(),
+        JSON.stringify(typedData),
+      ]);
+
+      console.log('✅ eth_signTypedData_v4で署名成功');
+    } catch (directError: any) {
+      console.warn('⚠️ eth_signTypedData_v4失敗、_signTypedDataにフォールバック:', directError.message);
+
+      // フォールバック: ethers標準の_signTypedData
+      signature = await (signer as any)._signTypedData(domain, types, value);
+      console.log('✅ _signTypedDataで署名成功');
+    }
+
     const sig = ethers.utils.splitSignature(signature);
 
     console.log('✅ Permit署名完了:', {
