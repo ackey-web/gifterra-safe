@@ -20,6 +20,7 @@ import {
 } from '../utils/x402';
 import {
   preparePermitPaymentParams,
+  preparePermitPaymentParamsWithPrivy,
   PAYMENT_GATEWAY_ABI
 } from '../utils/permitSignature';
 import { isGaslessPaymentEnabled } from '../config/featureFlags';
@@ -413,15 +414,38 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
       // 1. Permitシグネチャを生成
       setMessage({ type: 'info', text: 'ウォレットで署名してください...' });
 
-      const permitParams = await preparePermitPaymentParams(
-        signer,
-        PAYMENT_GATEWAY_ADDRESS,
-        jpycConfig.currentAddress,
-        paymentData.to,
-        paymentData.amount,
-        paymentData.requestId || `gasless_${Date.now()}`,
-        30 // 30分の有効期限
-      );
+      let permitParams;
+
+      // Privy埋め込みウォレットの場合は、providerを直接使用
+      const isPrivyEmbedded = wallets && wallets.length > 0 && wallets[0].walletClientType === 'privy';
+
+      if (isPrivyEmbedded) {
+        console.log('🔍 Privy埋め込みウォレット検出 - Privy Provider版を使用');
+        const wallet = wallets[0];
+        const privyProvider = await wallet.getEthereumProvider();
+
+        permitParams = await preparePermitPaymentParamsWithPrivy(
+          privyProvider,
+          walletAddress,
+          PAYMENT_GATEWAY_ADDRESS,
+          jpycConfig.currentAddress,
+          paymentData.to,
+          paymentData.amount,
+          paymentData.requestId || `gasless_${Date.now()}`,
+          30 // 30分の有効期限
+        );
+      } else {
+        console.log('🔍 MetaMask等の外部ウォレット検出 - Signer版を使用');
+        permitParams = await preparePermitPaymentParams(
+          signer,
+          PAYMENT_GATEWAY_ADDRESS,
+          jpycConfig.currentAddress,
+          paymentData.to,
+          paymentData.amount,
+          paymentData.requestId || `gasless_${Date.now()}`,
+          30 // 30分の有効期限
+        );
+      }
 
       console.log('✅ Permit署名完了:', permitParams);
 

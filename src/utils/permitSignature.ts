@@ -74,12 +74,17 @@ export async function signPermitWithPrivyProvider(
     };
 
     // EIP-712 TypedData
+    // Note: eth_signTypedData_v4はEIP712Domainを自動処理するため、typesには含めない
     const typedData = {
-      types,
+      types: {
+        Permit: types.Permit,
+      },
       primaryType: 'Permit',
       domain,
       message: value,
     };
+
+    console.log('📋 Privy署名データ:', JSON.stringify(typedData, null, 2));
 
     // Privyプロバイダーで署名
     const signature = await privyProvider.request({
@@ -250,6 +255,60 @@ export async function signPermit(
     console.error('❌ Permit署名エラー:', error);
     throw new Error(`Permit署名に失敗しました: ${error.message}`);
   }
+}
+
+/**
+ * ガスレス決済用のPermitパラメータを準備（Privy Provider版）
+ *
+ * @param privyProvider - Privyプロバイダー
+ * @param ownerAddress - 所有者アドレス
+ * @param paymentGatewayAddress - PaymentGatewayコントラクトアドレス
+ * @param jpycAddress - JPYCトークンアドレス
+ * @param merchantAddress - 受取人（店舗）アドレス
+ * @param amount - 金額（wei単位の文字列）
+ * @param _requestId - リクエストID（未使用、Supabase記録用に呼び出し側で使用）
+ * @param expiryMinutes - 有効期限（分）デフォルト: 30分
+ * @returns PaymentGateway.executePaymentWithPermitに渡すパラメータ
+ */
+export async function preparePermitPaymentParamsWithPrivy(
+  privyProvider: any,
+  ownerAddress: string,
+  paymentGatewayAddress: string,
+  jpycAddress: string,
+  merchantAddress: string,
+  amount: string,
+  _requestId: string,
+  expiryMinutes: number = 30
+): Promise<{
+  merchant: string;
+  amount: string;
+  deadline: number;
+  v: number;
+  r: string;
+  s: string;
+}> {
+  // 有効期限を設定（現在時刻 + expiryMinutes）
+  const deadline = Math.floor(Date.now() / 1000) + expiryMinutes * 60;
+
+  // Permit署名を生成（Privy Provider版）
+  const permitSig = await signPermitWithPrivyProvider(
+    privyProvider,
+    ownerAddress,
+    jpycAddress,
+    paymentGatewayAddress,
+    amount,
+    deadline,
+    137 // Polygon Mainnet
+  );
+
+  return {
+    merchant: merchantAddress,
+    amount: amount,
+    deadline: permitSig.deadline,
+    v: permitSig.v,
+    r: permitSig.r,
+    s: permitSig.s,
+  };
 }
 
 /**
