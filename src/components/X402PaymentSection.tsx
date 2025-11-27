@@ -457,6 +457,7 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
           paymentData.requestId || `gasless_${Date.now()}`,
           30 // 30分の有効期限
         );
+        addDebugLog('✅ preparePermitPaymentParamsWithPrivy() 完了');
       } else {
         console.log('🔍 MetaMask等の外部ウォレット検出 - Signer版を使用');
         permitParams = await preparePermitPaymentParams(
