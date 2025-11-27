@@ -311,7 +311,7 @@ export async function signPermit(
  * @param jpycAddress - JPYCトークンアドレス
  * @param merchantAddress - 受取人（店舗）アドレス
  * @param amount - 金額（wei単位の文字列）
- * @param _requestId - リクエストID（未使用、Supabase記録用に呼び出し側で使用）
+ * @param requestId - リクエストID（リプレイアタック防止用）
  * @param expiryMinutes - 有効期限（分）デフォルト: 30分
  * @returns PaymentGateway.executePaymentWithPermitに渡すパラメータ
  */
@@ -322,9 +322,10 @@ export async function preparePermitPaymentParamsWithPrivy(
   jpycAddress: string,
   merchantAddress: string,
   amount: string,
-  _requestId: string,
+  requestId: string,
   expiryMinutes: number = 30
 ): Promise<{
+  requestId: string;
   merchant: string;
   amount: string;
   deadline: number;
@@ -347,6 +348,7 @@ export async function preparePermitPaymentParamsWithPrivy(
   );
 
   return {
+    requestId: requestId,
     merchant: merchantAddress,
     amount: amount,
     deadline: permitSig.deadline,
@@ -364,7 +366,7 @@ export async function preparePermitPaymentParamsWithPrivy(
  * @param jpycAddress - JPYCトークンアドレス
  * @param merchantAddress - 受取人（店舗）アドレス
  * @param amount - 金額（wei単位の文字列）
- * @param _requestId - リクエストID（未使用、Supabase記録用に呼び出し側で使用）
+ * @param requestId - リクエストID（リプレイアタック防止用）
  * @param expiryMinutes - 有効期限（分）デフォルト: 30分
  * @returns PaymentGateway.executePaymentWithPermitに渡すパラメータ
  */
@@ -374,9 +376,10 @@ export async function preparePermitPaymentParams(
   jpycAddress: string,
   merchantAddress: string,
   amount: string,
-  _requestId: string,
+  requestId: string,
   expiryMinutes: number = 30
 ): Promise<{
+  requestId: string;
   merchant: string;
   amount: string;
   deadline: number;
@@ -398,6 +401,7 @@ export async function preparePermitPaymentParams(
   );
 
   return {
+    requestId: requestId,
     merchant: merchantAddress,
     amount: amount,
     deadline: permitSig.deadline,
@@ -411,7 +415,7 @@ export async function preparePermitPaymentParams(
  * PaymentGatewayのABI（executePaymentWithPermit関数のみ）
  */
 export const PAYMENT_GATEWAY_ABI = [
-  'function executePaymentWithPermit(address merchant, uint256 amount, uint256 deadline, uint8 v, bytes32 r, bytes32 s) external',
+  'function executePaymentWithPermit(bytes32 requestId, address merchant, uint256 amount, uint256 deadline, uint8 v, bytes32 r, bytes32 s) external',
   'function jpyc() view returns (address)',
   'function platformFeeRate() view returns (uint256)',
   'function platformFeeRecipient() view returns (address)',

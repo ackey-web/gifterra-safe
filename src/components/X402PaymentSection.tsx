@@ -474,14 +474,23 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
       console.log('✅ Permit署名完了:', permitParams);
       addDebugLog('✅ Permit署名完了');
 
+      // requestIdをbytes32形式に変換
+      const requestIdBytes32 = ethers.utils.id(permitParams.requestId);
+      console.log('🔍 requestId変換:', {
+        original: permitParams.requestId,
+        bytes32: requestIdBytes32,
+      });
+
       // 🔍 コントラクト呼び出し前に全パラメータをログ出力
       console.log('🔍 [コントラクト呼び出し] executePaymentWithPermit パラメータ:');
+      console.log('  requestId:', requestIdBytes32);
       console.log('  merchant:', permitParams.merchant);
       console.log('  amount:', permitParams.amount);
       console.log('  deadline:', permitParams.deadline);
       console.log('  v:', permitParams.v);
       console.log('  r:', permitParams.r);
       console.log('  s:', permitParams.s);
+      addDebugLog(`🔍 requestId: ${requestIdBytes32}`);
       addDebugLog(`🔍 merchant: ${permitParams.merchant}`);
       addDebugLog(`🔍 amount: ${permitParams.amount}`);
       addDebugLog(`🔍 deadline: ${permitParams.deadline}`);
@@ -500,6 +509,7 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
       );
 
       const tx = await gatewayContract.executePaymentWithPermit(
+        requestIdBytes32,
         permitParams.merchant,
         permitParams.amount,
         permitParams.deadline,

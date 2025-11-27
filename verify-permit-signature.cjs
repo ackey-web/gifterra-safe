@@ -4,13 +4,13 @@
 const { ethers } = require('ethers');
 
 async function verifyPermitSignature() {
-  // 実際のトランザクションパラメータ（最新のエラーログより）
+  // 実際のトランザクションパラメータ（最新のログより 17:53:59）
   const merchant = '0x66f1274ad5d042b7571c2efa943370dbcd3459ab';
   const amount = '1000000000000000000'; // 1 JPYC
-  const deadline = 1764088361; // 0x69281629
-  const v = 27; // 0x1b
-  const r = '0x44694f066a708e83b322a8a62e289756edbb5c3a0e703a71c42f48b4a94c37be';
-  const s = '0x4e359295e976317809f66e86c239aab07ba85f256da7f77f67641f7961de36af';
+  const deadline = 1764235434;
+  const v = 28;
+  const r = '0x08ec434f000067d556c09e4299ce70360b48f7c566bb7e908d4dccf15f2a2fec';
+  const s = '0x3561571251940f4d3f8263a5e02976e565326666322b3091e0b53595defd41a8';
 
   const owner = '0x3595098A7EC66299641025d7b291ca8f198D765c';
   const jpycAddress = '0xE7C3D8C9a439feDe00D2600032D5dB0Be71C3c29';
