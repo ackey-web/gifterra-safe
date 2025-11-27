@@ -95,11 +95,14 @@ export async function signPermitWithPrivyProvider(
     console.log('📋 Privy署名データ:', JSON.stringify(typedData, null, 2));
 
     // Privyプロバイダーで署名
+    console.log('✍️ Privy署名リクエスト送信中...');
     const signature = await privyProvider.request({
       method: 'eth_signTypedData_v4',
       params: [ownerAddress, JSON.stringify(typedData)],
     });
+    console.log('✅ 署名受信成功:', signature);
 
+    console.log('🔍 署名の分割処理中...');
     const sig = ethers.utils.splitSignature(signature);
 
     console.log('✅ Privy Permit署名完了:', {
@@ -117,6 +120,11 @@ export async function signPermitWithPrivyProvider(
     };
   } catch (error: any) {
     console.error('❌ Privy Permit署名エラー:', error);
+    console.error('❌ エラー詳細:', {
+      message: error.message,
+      code: error.code,
+      stack: error.stack?.substring(0, 200)
+    });
     throw error;
   }
 }
