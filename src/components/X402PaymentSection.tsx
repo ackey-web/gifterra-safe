@@ -1412,7 +1412,7 @@ reason: ${error.reason || 'なし'}`;
             borderBottom: '1px solid #0f0',
             paddingBottom: 4,
           }}>
-            <strong>🚨 DEBUG PANEL</strong>
+            <strong>🚨 DEBUG PANEL - メンテナンス中</strong>
             <button
               onClick={() => setShowDebugPanel(false)}
               style={{
@@ -1427,19 +1427,6 @@ reason: ${error.reason || 'なし'}`;
             >
               CLOSE
             </button>
-          </div>
-
-          {/* メンテナンス中メッセージ */}
-          <div style={{
-            backgroundColor: '#ff6600',
-            color: '#000',
-            padding: '8px',
-            marginBottom: '8px',
-            borderRadius: '4px',
-            fontWeight: 'bold',
-            textAlign: 'center',
-          }}>
-            ⚠️ メンテナンス中 ⚠️
           </div>
 
           {debugLogs.length === 0 ? (

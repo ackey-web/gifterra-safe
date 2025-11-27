@@ -474,7 +474,7 @@ export function MypagePage() {
 
         {/* [B] コンテンツ */}
         {viewMode === 'flow' ? (
-          <FlowModeContent isMobile={isMobile} tenantRank={tenantRank} address={displayAddress} onChainIdChange={setActualChainId} />
+          <FlowModeContent isMobile={isMobile} tenantRank={tenantRank} address={displayAddress} onChainIdChange={setActualChainId} bulkSendRecipients={bulkSendRecipients} />
         ) : (
           <TenantModeContent isMobile={isMobile} />
         )}
@@ -1254,12 +1254,14 @@ function FlowModeContent({
   isMobile,
   tenantRank,
   address,
-  onChainIdChange
+  onChainIdChange,
+  bulkSendRecipients
 }: {
   isMobile: boolean;
   tenantRank: TenantRank;
   address: string | undefined;
   onChainIdChange: (chainId: number | undefined) => void;
+  bulkSendRecipients: Array<{ id: number; address: string; amount: string }>;
 }) {
   // useAddress()を呼び出して実際の接続アドレスを取得
   const thirdwebAddress = useAddress();
