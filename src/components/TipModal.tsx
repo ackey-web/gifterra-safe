@@ -24,18 +24,43 @@ export function TipModal({
   isMobile,
 }: TipModalProps) {
   const [selectedAmount, setSelectedAmount] = useState<number | null>(null);
+  const [customAmount, setCustomAmount] = useState<string>('');
+  const [isCustomMode, setIsCustomMode] = useState(false);
   const [isSending, setIsSending] = useState(false);
 
   if (!isOpen) return null;
 
   const handleSend = () => {
-    if (!selectedAmount || isSending) {
+    const finalAmount = isCustomMode ? parseFloat(customAmount) : selectedAmount;
+
+    if (!finalAmount || finalAmount <= 0 || isSending) {
       return;
     }
 
     // マイページの送信画面に遷移（そこでセキュリティチェックが行われる）
-    onSendTip(selectedAmount);
+    onSendTip(finalAmount);
   };
+
+  const handleCustomAmountChange = (value: string) => {
+    // 数字とドットのみ許可
+    const sanitized = value.replace(/[^\d.]/g, '');
+    // ドットは1つまで
+    const parts = sanitized.split('.');
+    if (parts.length > 2) {
+      return;
+    }
+    setCustomAmount(sanitized);
+    setIsCustomMode(true);
+    setSelectedAmount(null);
+  };
+
+  const handlePresetClick = (amount: number) => {
+    setSelectedAmount(amount);
+    setIsCustomMode(false);
+    setCustomAmount('');
+  };
+
+  const finalAmount = isCustomMode ? parseFloat(customAmount) || 0 : selectedAmount || 0;
 
   return createPortal(
         <div
@@ -162,15 +187,15 @@ export function TipModal({
             {TIP_AMOUNTS.map((amount) => (
               <button
                 key={amount}
-                onClick={() => setSelectedAmount(amount)}
+                onClick={() => handlePresetClick(amount)}
                 style={{
                   padding: isMobile ? '16px' : '20px',
                   background:
-                    selectedAmount === amount
+                    selectedAmount === amount && !isCustomMode
                       ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
                       : 'rgba(255, 255, 255, 0.05)',
                   border:
-                    selectedAmount === amount
+                    selectedAmount === amount && !isCustomMode
                       ? '2px solid rgba(102, 126, 234, 0.5)'
                       : '1px solid rgba(255, 255, 255, 0.1)',
                   borderRadius: '12px',
@@ -186,13 +211,13 @@ export function TipModal({
                   gap: '4px',
                 }}
                 onMouseEnter={(e) => {
-                  if (selectedAmount !== amount) {
+                  if (selectedAmount !== amount || isCustomMode) {
                     e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
                     e.currentTarget.style.borderColor = 'rgba(102, 126, 234, 0.3)';
                   }
                 }}
                 onMouseLeave={(e) => {
-                  if (selectedAmount !== amount) {
+                  if (selectedAmount !== amount || isCustomMode) {
                     e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
                     e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)';
                   }
@@ -212,7 +237,74 @@ export function TipModal({
             ))}
           </div>
 
-          {selectedAmount && (
+          {/* 自由金額入力 */}
+          <div style={{ marginTop: '24px' }}>
+            <label
+              style={{
+                display: 'block',
+                fontSize: isMobile ? '13px' : '14px',
+                fontWeight: 600,
+                color: '#EAF2FF',
+                marginBottom: '12px',
+              }}
+            >
+              または自由に金額を入力
+            </label>
+            <div style={{ position: 'relative' }}>
+              <input
+                type="text"
+                inputMode="decimal"
+                placeholder="金額を入力"
+                value={customAmount}
+                onChange={(e) => handleCustomAmountChange(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: isMobile ? '14px 60px 14px 16px' : '16px 70px 16px 20px',
+                  background: isCustomMode
+                    ? 'rgba(102, 126, 234, 0.1)'
+                    : 'rgba(255, 255, 255, 0.05)',
+                  border: isCustomMode
+                    ? '2px solid rgba(102, 126, 234, 0.5)'
+                    : '1px solid rgba(255, 255, 255, 0.1)',
+                  borderRadius: '12px',
+                  color: '#EAF2FF',
+                  fontSize: isMobile ? '16px' : '18px',
+                  fontWeight: 600,
+                  outline: 'none',
+                  transition: 'all 0.2s',
+                  boxSizing: 'border-box',
+                }}
+                onFocus={(e) => {
+                  if (!isCustomMode) {
+                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)';
+                    e.currentTarget.style.borderColor = 'rgba(102, 126, 234, 0.3)';
+                  }
+                }}
+                onBlur={(e) => {
+                  if (!isCustomMode) {
+                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+                    e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+                  }
+                }}
+              />
+              <span
+                style={{
+                  position: 'absolute',
+                  right: isMobile ? '16px' : '20px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  fontSize: isMobile ? '14px' : '16px',
+                  fontWeight: 600,
+                  color: 'rgba(255, 255, 255, 0.5)',
+                  pointerEvents: 'none',
+                }}
+              >
+                JPYC
+              </span>
+            </div>
+          </div>
+
+          {finalAmount > 0 && (
             <div
               style={{
                 marginTop: '24px',
@@ -238,7 +330,7 @@ export function TipModal({
                   color: '#EAF2FF',
                 }}
               >
-                {selectedAmount.toLocaleString()} JPYC
+                {finalAmount.toLocaleString()} JPYC
               </div>
               <div
                 style={{
@@ -288,12 +380,12 @@ export function TipModal({
           </button>
           <button
             onClick={handleSend}
-            disabled={!selectedAmount || isSending}
+            disabled={finalAmount <= 0 || isSending}
             style={{
               flex: 1,
               padding: isMobile ? '12px' : '14px',
               background:
-                !selectedAmount || isSending
+                finalAmount <= 0 || isSending
                   ? 'rgba(102, 126, 234, 0.3)'
                   : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
               border: 'none',
@@ -301,17 +393,17 @@ export function TipModal({
               color: '#EAF2FF',
               fontSize: isMobile ? '14px' : '15px',
               fontWeight: 600,
-              cursor: !selectedAmount || isSending ? 'not-allowed' : 'pointer',
+              cursor: finalAmount <= 0 || isSending ? 'not-allowed' : 'pointer',
               transition: 'all 0.2s',
-              opacity: !selectedAmount || isSending ? 0.6 : 1,
+              opacity: finalAmount <= 0 || isSending ? 0.6 : 1,
             }}
             onMouseEnter={(e) => {
-              if (selectedAmount && !isSending) {
+              if (finalAmount > 0 && !isSending) {
                 e.currentTarget.style.transform = 'scale(1.02)';
               }
             }}
             onMouseLeave={(e) => {
-              if (selectedAmount && !isSending) {
+              if (finalAmount > 0 && !isSending) {
                 e.currentTarget.style.transform = 'scale(1)';
               }
             }}
