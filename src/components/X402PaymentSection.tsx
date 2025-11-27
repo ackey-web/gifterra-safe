@@ -447,17 +447,23 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
         addDebugLog('✅ privyProvider取得成功');
 
         addDebugLog('📝 preparePermitPaymentParamsWithPrivy() 呼び出し開始');
-        permitParams = await preparePermitPaymentParamsWithPrivy(
-          privyProvider,
-          walletAddress,
-          PAYMENT_GATEWAY_ADDRESS,
-          jpycConfig.currentAddress,
-          paymentData.to,
-          paymentData.amount,
-          paymentData.requestId || `gasless_${Date.now()}`,
-          30 // 30分の有効期限
-        );
-        addDebugLog('✅ preparePermitPaymentParamsWithPrivy() 完了');
+        try {
+          permitParams = await preparePermitPaymentParamsWithPrivy(
+            privyProvider,
+            walletAddress,
+            PAYMENT_GATEWAY_ADDRESS,
+            jpycConfig.currentAddress,
+            paymentData.to,
+            paymentData.amount,
+            paymentData.requestId || `gasless_${Date.now()}`,
+            30 // 30分の有効期限
+          );
+          addDebugLog('✅ preparePermitPaymentParamsWithPrivy() 完了');
+        } catch (permitError: any) {
+          addDebugLog(`❌ preparePermitPaymentParamsWithPrivy() エラー: ${permitError.message}`);
+          console.error('❌ Permit署名生成エラー:', permitError);
+          throw permitError;
+        }
       } else {
         console.log('🔍 MetaMask等の外部ウォレット検出 - Signer版を使用');
         permitParams = await preparePermitPaymentParams(

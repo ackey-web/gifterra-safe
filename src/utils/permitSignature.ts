@@ -333,10 +333,23 @@ export async function preparePermitPaymentParamsWithPrivy(
   r: string;
   s: string;
 }> {
+  console.log('🚀 preparePermitPaymentParamsWithPrivy() 開始');
+  console.log('📝 パラメータ:', {
+    ownerAddress,
+    paymentGatewayAddress,
+    jpycAddress,
+    merchantAddress,
+    amount,
+    requestId,
+    expiryMinutes,
+  });
+
   // 有効期限を設定（現在時刻 + expiryMinutes）
   const deadline = Math.floor(Date.now() / 1000) + expiryMinutes * 60;
+  console.log('⏰ deadline:', deadline);
 
   // Permit署名を生成（Privy Provider版）
+  console.log('📝 signPermitWithPrivyProvider() を呼び出します');
   const permitSig = await signPermitWithPrivyProvider(
     privyProvider,
     ownerAddress,
@@ -346,8 +359,9 @@ export async function preparePermitPaymentParamsWithPrivy(
     deadline,
     137 // Polygon Mainnet
   );
+  console.log('✅ signPermitWithPrivyProvider() 完了');
 
-  return {
+  const result = {
     requestId: requestId,
     merchant: merchantAddress,
     amount: amount,
@@ -356,6 +370,9 @@ export async function preparePermitPaymentParamsWithPrivy(
     r: permitSig.r,
     s: permitSig.s,
   };
+  console.log('✅ preparePermitPaymentParamsWithPrivy() 完了:', result);
+
+  return result;
 }
 
 /**
