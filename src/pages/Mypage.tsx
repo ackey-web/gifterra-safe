@@ -408,6 +408,7 @@ export function MypagePage() {
           showBookmarkModal={showBookmarkModal}
           setShowBookmarkModal={setShowBookmarkModal}
           walletAddress={displayAddress || ''}
+          handleAddToBulkSend={handleAddToBulkSend}
         />
       </div>
 
@@ -505,7 +506,7 @@ export function MypagePage() {
 // ========================================
 // [A] ヘッダー
 // ========================================
-function Header({ viewMode, setViewMode, isMobile, tenantRank, showSettingsModal, setShowSettingsModal, showUserSearchModal, setShowUserSearchModal, showBookmarkModal, setShowBookmarkModal, walletAddress }: {
+function Header({ viewMode, setViewMode, isMobile, tenantRank, showSettingsModal, setShowSettingsModal, showUserSearchModal, setShowUserSearchModal, showBookmarkModal, setShowBookmarkModal, walletAddress, handleAddToBulkSend }: {
   viewMode: ViewMode;
   setViewMode: (mode: ViewMode) => void;
   isMobile: boolean;
@@ -517,6 +518,7 @@ function Header({ viewMode, setViewMode, isMobile, tenantRank, showSettingsModal
   showBookmarkModal: boolean;
   setShowBookmarkModal: (show: boolean) => void;
   walletAddress: string;
+  handleAddToBulkSend: (address: string, name?: string) => void;
 }) {
   const disconnect = useDisconnect();
   const { logout: privyLogout, authenticated, user } = usePrivy();
