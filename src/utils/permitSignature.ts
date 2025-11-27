@@ -136,14 +136,15 @@ export async function signPermit(
   try {
     const owner = await signer.getAddress();
 
-    // JPYCコントラクトからnonceを取得
+    // Read-only providerを使用してnonce取得（MetaMask署名リクエストを回避）
+    const readOnlyProvider = new ethers.providers.JsonRpcProvider('https://polygon-rpc.com');
     const tokenContract = new ethers.Contract(
       tokenAddress,
       [
         'function nonces(address owner) view returns (uint256)',
         'function name() view returns (string)',
       ],
-      signer
+      readOnlyProvider
     );
 
     const nonce = await tokenContract.nonces(owner);
