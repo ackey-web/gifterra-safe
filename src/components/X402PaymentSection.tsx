@@ -479,6 +479,13 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
 
     } catch (error: any) {
       console.error('❌ ガスレス決済エラー:', error);
+      console.error('❌ エラー詳細:', {
+        message: error.message,
+        code: error.code,
+        reason: error.reason,
+        data: error.data,
+        stack: error.stack?.substring(0, 500)
+      });
 
       let errorMessage = 'ガスレス決済に失敗しました';
       if (error.message.includes('user rejected') || error.message.includes('User denied')) {
@@ -489,6 +496,9 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
         errorMessage = 'この支払いは既に完了しています';
       } else if (error.message.includes('expired')) {
         errorMessage = '有効期限が切れています';
+      } else if (error.message) {
+        // より詳細なエラーメッセージを表示
+        errorMessage = `ガスレス決済エラー: ${error.message.substring(0, 100)}`;
       }
 
       setMessage({ type: 'error', text: errorMessage });
