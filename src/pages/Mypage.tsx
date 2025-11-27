@@ -898,6 +898,7 @@ function Header({ viewMode, setViewMode, isMobile, tenantRank, showSettingsModal
             });
             window.location.href = `/mypage?${params.toString()}`;
           }}
+          onAddToBulkSend={handleAddToBulkSend}
         />
       )}
     </div>
@@ -1339,6 +1340,7 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
   const [shareOnX, setShareOnX] = useState(false); // Xシェアトグル
   const [selectedTenant, setSelectedTenant] = useState<any>(null);
   const [selectedBookmarkUser, setSelectedBookmarkUser] = useState<{ address: string; name?: string } | null>(null);
+  const [bulkSendRecipients, setBulkSendRecipients] = useState<Array<{ id: number; address: string; amount: string }>>([]);
   const [address, setAddress] = useState('');
   const [amount, setAmount] = useState('');
   const [message, setMessage] = useState('');
@@ -1347,6 +1349,42 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
   const [showReceiveMessageModal, setShowReceiveMessageModal] = useState(false);
   const [recipientReceiveMessage, setRecipientReceiveMessage] = useState<string>('');
   const [showFirstSendGuide, setShowFirstSendGuide] = useState(false);
+
+  // ブックマークユーザーを一括送金に追加
+  const handleAddToBulkSend = (userAddress: string, userName?: string) => {
+    // 新しいIDを生成（既存のrecipientsの最大IDに+1）
+    const newId = bulkSendRecipients.length > 0
+      ? Math.max(...bulkSendRecipients.map(r => r.id)) + 1
+      : 1;
+
+    // 重複チェック（同じアドレスが既にある場合は追加しない）
+    const isDuplicate = bulkSendRecipients.some(r => r.address.toLowerCase() === userAddress.toLowerCase());
+
+    if (isDuplicate) {
+      alert(`${userName || userAddress} は既に追加されています`);
+      return;
+    }
+
+    // 新しい受取人を追加
+    setBulkSendRecipients(prev => [
+      ...prev,
+      { id: newId, address: userAddress, amount: '' }
+    ]);
+
+    // 一括送金モードに切り替え
+    setSendMode('bulk');
+
+    // 成功メッセージ
+    alert(`${userName || userAddress} を一括送金リストに追加しました`);
+
+    // 送金フォームにスクロール
+    setTimeout(() => {
+      const sendFormSection = document.getElementById('send-form-section');
+      if (sendFormSection) {
+        sendFormSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 300);
+  };
 
   // 受取人プロフィールを取得（デバウンス500ms）
   // sendMode に関わらず常にアドレスが入力されたらプロフィールを取得
@@ -1903,6 +1941,7 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
       <BulkSendForm
         isMobile={isMobile}
         onChangeMode={() => setSendMode(null)}
+        initialRecipients={bulkSendRecipients}
       />
     );
   }
@@ -2800,6 +2839,7 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
               }, 200);
             }, 50);
           }}
+          onAddToBulkSend={handleAddToBulkSend}
         />
       )}
 
@@ -3686,9 +3726,10 @@ function TenantSelectModal({ isMobile, onClose, onSelectTenant }: {
 }
 
 // 一括送金フォーム
-function BulkSendForm({ isMobile, onChangeMode }: {
+function BulkSendForm({ isMobile, onChangeMode, initialRecipients }: {
   isMobile: boolean;
   onChangeMode: () => void;
+  initialRecipients?: Array<{ id: number; address: string; amount: string }>;
 }) {
   // Thirdwebウォレット
   const thirdwebSigner = useSigner();
@@ -3704,24 +3745,36 @@ function BulkSendForm({ isMobile, onChangeMode }: {
     ? wallets.find(w => w.address.toLowerCase() === privyEmbeddedAddress.toLowerCase())
     : null;
 
-  const selectedToken = 'JPYC'; // JPYC固定
-  const [recipients, setRecipients] = useState<Array<{ id: number; address: string; amount: string }>>([
-    { id: 1, address: '', amount: '' },
-  ]);
+  const [selectedToken, setSelectedToken] = useState<'JPYC' | 'POL'>('JPYC');
+  const [recipients, setRecipients] = useState<Array<{ id: number; address: string; amount: string }>>(
+    initialRecipients && initialRecipients.length > 0
+      ? initialRecipients
+      : [{ id: 1, address: '', amount: '' }]
+  );
   const [isSending, setIsSending] = useState(false);
 
   // 各受取人のプロフィールを管理
   const [recipientProfiles, setRecipientProfiles] = useState<Record<number, RecipientProfile | null>>({});
 
-  const tokenInfo = {
-    name: 'JPYC',
-    symbol: 'JPYC',
-    description: 'ステーブルコイン',
-    detail: '日本円と同価値、送金ツールとして利用',
-    color: '#667eea',
+  const tokenInfoMap: Record<'JPYC' | 'POL', { name: string; symbol: string; description: string; detail: string; color: string; logo?: string }> = {
+    JPYC: {
+      name: 'JPYC',
+      symbol: 'JPYC',
+      description: 'ステーブルコイン',
+      detail: '日本円と同価値、送金ツールとして利用',
+      color: '#667eea',
+    },
+    POL: {
+      name: 'POL',
+      symbol: 'POL',
+      description: 'Polygon ネイティブトークン',
+      detail: 'Polygon エコシステムの基軸通貨',
+      color: '#8247e5',
+      logo: '/polygon-logo.png',
+    },
   };
 
-  const currentToken = tokenInfo;
+  const currentToken = tokenInfoMap[selectedToken];
 
   const addRecipient = () => {
     const newId = Math.max(...recipients.map(r => r.id)) + 1;
@@ -3866,13 +3919,6 @@ function BulkSendForm({ isMobile, onChangeMode }: {
     try {
       setIsSending(true);
 
-      // トークンアドレスを取得（メインネット用）
-      const tokenAddress = selectedToken === 'JPYC' ? JPYC_TOKEN.ADDRESS : NHT_TOKEN.ADDRESS;
-
-      // 全てのウォレットで通常送金を使用（MATICガス必要）
-      // ERC20 Interface を使用して transfer データを手動エンコード
-      const erc20Interface = new ethers.utils.Interface(ERC20_MIN_ABI);
-
       const txHashes: string[] = [];
 
       for (const recipient of recipients) {
@@ -3881,20 +3927,36 @@ function BulkSendForm({ isMobile, onChangeMode }: {
         // アドレスを正規化（チェックサム形式に変換）
         const normalizedAddress = ethers.utils.getAddress(recipient.address);
 
-        // transfer データをエンコード
-        const transferData = erc20Interface.encodeFunctionData('transfer', [
-          normalizedAddress,
-          amountWei
-        ]);
+        let receipt;
 
-        // トランザクションを直接送信
-        const tx = await signer.sendTransaction({
-          to: tokenAddress,
-          data: transferData,
-          gasLimit: 65000,
-        });
+        if (selectedToken === 'POL') {
+          // POL(ネイティブトークン)を直接送信
+          const tx = await signer.sendTransaction({
+            to: normalizedAddress,
+            value: amountWei,
+            gasLimit: 21000, // POL/MATIC送金の標準ガスリミット
+          });
+          receipt = await tx.wait();
+        } else {
+          // JPYC: ERC20トークン送信
+          const tokenAddress = JPYC_TOKEN.ADDRESS;
+          const erc20Interface = new ethers.utils.Interface(ERC20_MIN_ABI);
 
-        const receipt = await tx.wait();
+          // transfer データをエンコード
+          const transferData = erc20Interface.encodeFunctionData('transfer', [
+            normalizedAddress,
+            amountWei
+          ]);
+
+          // トランザクションを直接送信
+          const tx = await signer.sendTransaction({
+            to: tokenAddress,
+            data: transferData,
+            gasLimit: 65000,
+          });
+          receipt = await tx.wait();
+        }
+
         txHashes.push(receipt.transactionHash);
 
         // 送金メッセージを保存（各受信者に対して）
@@ -4021,6 +4083,85 @@ function BulkSendForm({ isMobile, onChangeMode }: {
         </div>
       </div>
 
+      {/* トークン選択 */}
+      <div style={{ marginBottom: 20 }}>
+        <label style={{ display: 'block', fontSize: isMobile ? 13 : 14, color: '#1a1a1a', fontWeight: 700, marginBottom: 12 }}>
+          送金するトークン
+        </label>
+        <div style={{ display: 'flex', gap: 12 }}>
+          {/* JPYC */}
+          <button
+            onClick={() => setSelectedToken('JPYC')}
+            style={{
+              flex: 1,
+              padding: isMobile ? '12px' : '14px',
+              background: selectedToken === 'JPYC' ? '#667eea' : '#ffffff',
+              color: selectedToken === 'JPYC' ? '#ffffff' : '#1a1a1a',
+              border: selectedToken === 'JPYC' ? '2px solid #667eea' : '2px solid #e5e7eb',
+              borderRadius: 12,
+              fontSize: isMobile ? 13 : 14,
+              fontWeight: 700,
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: 6,
+            }}
+            onMouseEnter={(e) => {
+              if (selectedToken !== 'JPYC') {
+                e.currentTarget.style.borderColor = '#667eea';
+                e.currentTarget.style.background = '#f0f4ff';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (selectedToken !== 'JPYC') {
+                e.currentTarget.style.borderColor = '#e5e7eb';
+                e.currentTarget.style.background = '#ffffff';
+              }
+            }}
+          >
+            <div style={{ fontSize: 10, opacity: 0.85, marginBottom: 2 }}>JPYC</div>
+            <div style={{ fontSize: isMobile ? 16 : 18, fontWeight: 900 }}>¥</div>
+          </button>
+
+          {/* POL */}
+          <button
+            onClick={() => setSelectedToken('POL')}
+            style={{
+              flex: 1,
+              padding: isMobile ? '12px' : '14px',
+              background: selectedToken === 'POL' ? '#8247e5' : '#ffffff',
+              color: selectedToken === 'POL' ? '#ffffff' : '#1a1a1a',
+              border: selectedToken === 'POL' ? '2px solid #8247e5' : '2px solid #e5e7eb',
+              borderRadius: 12,
+              fontSize: isMobile ? 13 : 14,
+              fontWeight: 700,
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: 6,
+            }}
+            onMouseEnter={(e) => {
+              if (selectedToken !== 'POL') {
+                e.currentTarget.style.borderColor = '#8247e5';
+                e.currentTarget.style.background = '#f5f0ff';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (selectedToken !== 'POL') {
+                e.currentTarget.style.borderColor = '#e5e7eb';
+                e.currentTarget.style.background = '#ffffff';
+              }
+            }}
+          >
+            <div style={{ fontSize: 10, opacity: 0.85, marginBottom: 2 }}>POL</div>
+            <img src="/polygon-logo.png" alt="POL" style={{ width: 20, height: 20 }} />
+          </button>
+        </div>
+      </div>
 
       {/* 送金先リスト */}
       <div style={{ marginBottom: 16 }}>

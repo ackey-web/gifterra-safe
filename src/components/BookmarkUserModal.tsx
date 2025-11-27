@@ -15,6 +15,7 @@ interface BookmarkUserModalProps {
   isMobile: boolean;
   onClose: () => void;
   onSelectUser?: (address: string, name?: string) => void; // 送金用の選択コールバック
+  onAddToBulkSend?: (address: string, name?: string) => void; // 一括送金に追加するコールバック
   mode?: 'view' | 'select'; // 'view': 閲覧・管理モード, 'select': 送金先選択モード
 }
 
@@ -23,6 +24,7 @@ export function BookmarkUserModal({
   isMobile,
   onClose,
   onSelectUser,
+  onAddToBulkSend,
   mode = 'view',
 }: BookmarkUserModalProps) {
   const { bookmarks, isLoading } = useUserBookmarks(userAddress);
@@ -582,6 +584,46 @@ export function BookmarkUserModal({
                 <span style={{ fontSize: 20 }}>💸</span>
                 ユーザーに送金
               </button>
+
+              {/* 一括送金に追加 */}
+              {onAddToBulkSend && (
+                <button
+                  onClick={() => {
+                    const displayName = selectedUserForAction.nickname ||
+                                      selectedUserForAction.profile?.name || 'Unknown';
+                    onAddToBulkSend(selectedUserForAction.bookmarked_address, displayName);
+                    setSelectedUserForAction(null);
+                    onClose();
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '16px 20px',
+                    background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                    border: 'none',
+                    borderRadius: 12,
+                    color: '#fff',
+                    fontSize: 16,
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 8,
+                    transition: 'all 0.2s',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                    e.currentTarget.style.boxShadow = '0 8px 20px rgba(59, 130, 246, 0.4)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
+                >
+                  <span style={{ fontSize: 20 }}>📤</span>
+                  一括送金に追加
+                </button>
+              )}
 
               {/* キャンセル */}
               <button
