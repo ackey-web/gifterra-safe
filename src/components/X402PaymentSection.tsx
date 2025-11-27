@@ -435,7 +435,6 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
       );
 
       const tx = await gatewayContract.executePaymentWithPermit(
-        permitParams.requestId,
         permitParams.merchant,
         permitParams.amount,
         permitParams.deadline,
