@@ -5,6 +5,110 @@
 import { ethers } from 'ethers';
 
 /**
+ * Privyプロバイダーから署名を取得（signer不要）
+ */
+export async function signPermitWithPrivyProvider(
+  privyProvider: any,
+  ownerAddress: string,
+  tokenAddress: string,
+  spenderAddress: string,
+  amount: string,
+  deadline: number,
+  chainId: number = 137
+): Promise<{
+  v: number;
+  r: string;
+  s: string;
+  deadline: number;
+  nonce: number;
+}> {
+  try {
+    // Read-only providerでnonceとnameを取得
+    const readOnlyProvider = new ethers.providers.JsonRpcProvider('https://polygon-rpc.com');
+    const tokenContract = new ethers.Contract(
+      tokenAddress,
+      [
+        'function nonces(address owner) view returns (uint256)',
+        'function name() view returns (string)',
+      ],
+      readOnlyProvider
+    );
+
+    const nonce = await tokenContract.nonces(ownerAddress);
+    const tokenName = await tokenContract.name();
+
+    console.log('📝 Privy Permit署名準備:', {
+      owner: ownerAddress,
+      spender: spenderAddress,
+      value: amount,
+      nonce: nonce.toString(),
+      deadline,
+    });
+
+    // EIP-712 Domain
+    const domain = {
+      name: tokenName,
+      version: '1',
+      chainId: chainId,
+      verifyingContract: tokenAddress,
+    };
+
+    // Permit Type
+    const types = {
+      Permit: [
+        { name: 'owner', type: 'address' },
+        { name: 'spender', type: 'address' },
+        { name: 'value', type: 'uint256' },
+        { name: 'nonce', type: 'uint256' },
+        { name: 'deadline', type: 'uint256' },
+      ],
+    };
+
+    // Permit Value
+    const value = {
+      owner: ownerAddress,
+      spender: spenderAddress,
+      value: amount,
+      nonce: nonce.toNumber(),
+      deadline,
+    };
+
+    // EIP-712 TypedData
+    const typedData = {
+      types,
+      primaryType: 'Permit',
+      domain,
+      message: value,
+    };
+
+    // Privyプロバイダーで署名
+    const signature = await privyProvider.request({
+      method: 'eth_signTypedData_v4',
+      params: [ownerAddress, JSON.stringify(typedData)],
+    });
+
+    const sig = ethers.utils.splitSignature(signature);
+
+    console.log('✅ Privy Permit署名完了:', {
+      v: sig.v,
+      r: sig.r,
+      s: sig.s,
+    });
+
+    return {
+      v: sig.v,
+      r: sig.r,
+      s: sig.s,
+      deadline,
+      nonce: nonce.toNumber(),
+    };
+  } catch (error: any) {
+    console.error('❌ Privy Permit署名エラー:', error);
+    throw error;
+  }
+}
+
+/**
  * EIP-712 Permit署名を生成
  *
  * @param signer - ethers.js Signer
