@@ -984,14 +984,14 @@ export default function TipApp() {
         margin: "12px auto 0",
         padding: "0 12px"
       }}>
-        <div style={{ 
-          display: "flex", 
+        <div style={{
+          display: "flex",
           flexDirection: "column",
           gap: '12px',
           width: "100%",
           alignItems: "center"
         }}>
-          {/* ConnectWalletとSelectボタンの行 */}
+          {/* ConnectWalletボタン */}
           <div style={{
             display: "flex",
             gap: '12px',
@@ -1006,36 +1006,146 @@ export default function TipApp() {
             modalTitleIconUrl=""
             style={{
               minHeight: '44px', // モバイルタッチ対応
-              fontSize: 'clamp(14px, 2vw, 16px)'
+              fontSize: 'clamp(14px, 2vw, 16px)',
+              flex: 1
             }}
           />
-            {/* マルチトークン選択ドロップダウン */}
-            <select
-              value={selectedTokenId}
-              onChange={(e) => setSelectedTokenId(e.target.value as TokenId)}
-              style={{
-                height: 'clamp(44px, 8vw, 48px)',
-                borderRadius: 10,
-                border: "1px solid #334155",
-                background: "#0f1a24",
-                color: "#fff",
-                padding: "0 12px",
-                fontWeight: 700,
-                fontSize: 'clamp(14px, 2vw, 16px)',
-                minWidth: 'clamp(80px, 15vw, 100px)'
-              }}
-            >
-              {getAvailableTokens(false).map(token => (
-                <option
-                  key={token.id}
-                  value={token.id}
-                  disabled={token.currentAddress === '0x0000000000000000000000000000000000000000'}
+          </div>
+
+          {/* トークン選択ボタン */}
+          <div style={{
+            display: "flex",
+            gap: '8px',
+            width: "100%",
+            justifyContent: "center"
+          }}>
+            {getAvailableTokens(false).map(token => (
+              <button
+                key={token.id}
+                onClick={() => setSelectedTokenId(token.id as TokenId)}
+                disabled={token.currentAddress === '0x0000000000000000000000000000000000000000'}
+                style={{
+                  flex: 1,
+                  padding: 'clamp(10px, 2vw, 12px)',
+                  background: selectedTokenId === token.id
+                    ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+                    : 'rgba(255, 255, 255, 0.1)',
+                  border: selectedTokenId === token.id
+                    ? '2px solid rgba(102, 126, 234, 0.5)'
+                    : '1px solid rgba(255, 255, 255, 0.2)',
+                  borderRadius: 10,
+                  color: token.currentAddress === '0x0000000000000000000000000000000000000000'
+                    ? '#6b7280'
+                    : '#fff',
+                  fontSize: 'clamp(13px, 2vw, 15px)',
+                  fontWeight: selectedTokenId === token.id ? 800 : 600,
+                  cursor: token.currentAddress === '0x0000000000000000000000000000000000000000'
+                    ? 'not-allowed'
+                    : 'pointer',
+                  transition: 'all 0.2s',
+                  opacity: token.currentAddress === '0x0000000000000000000000000000000000000000'
+                    ? 0.5
+                    : 1,
+                  boxShadow: selectedTokenId === token.id
+                    ? '0 4px 12px rgba(102, 126, 234, 0.3)'
+                    : 'none'
+                }}
+                onMouseEnter={(e) => {
+                  if (selectedTokenId !== token.id && token.currentAddress !== '0x0000000000000000000000000000000000000000') {
+                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)';
+                    e.currentTarget.style.transform = 'translateY(-1px)';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (selectedTokenId !== token.id) {
+                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+                    e.currentTarget.style.transform = 'translateY(0)';
+                  }
+                }}
+              >
+                {formatTokenSymbol(token.id, true)}
+                {token.currentAddress === '0x0000000000000000000000000000000000000000' && (
+                  <span style={{ fontSize: '10px', opacity: 0.7 }}> (未設定)</span>
+                )}
+              </button>
+            ))}
+          </div>
+
+          {/* 固定金額選択ボタン */}
+          <div style={{
+            width: "100%",
+            marginTop: '4px'
+          }}>
+            <div style={{
+              fontSize: 12,
+              color: 'rgba(255,255,255,0.7)',
+              marginBottom: 8,
+              textAlign: 'center',
+              fontWeight: 600
+            }}>
+              💡 金額を選択
+            </div>
+            <div style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(70px, 1fr))",
+              gap: '8px',
+              width: "100%"
+            }}>
+              {[100, 500, 1000, 3000, 5000].map((presetAmount) => (
+                <button
+                  key={presetAmount}
+                  onClick={() => setAmount(presetAmount.toString())}
+                  style={{
+                    padding: 'clamp(12px, 2.5vw, 14px)',
+                    background: amount === presetAmount.toString()
+                      ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
+                      : 'rgba(255, 255, 255, 0.08)',
+                    border: amount === presetAmount.toString()
+                      ? '2px solid rgba(16, 185, 129, 0.5)'
+                      : '1px solid rgba(255, 255, 255, 0.15)',
+                    borderRadius: 10,
+                    color: '#fff',
+                    fontSize: 'clamp(13px, 2vw, 15px)',
+                    fontWeight: amount === presetAmount.toString() ? 800 : 600,
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    boxShadow: amount === presetAmount.toString()
+                      ? '0 4px 12px rgba(16, 185, 129, 0.3)'
+                      : 'none',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 2
+                  }}
+                  onMouseEnter={(e) => {
+                    if (amount !== presetAmount.toString()) {
+                      e.currentTarget.style.background = 'rgba(255, 255, 255, 0.12)';
+                      e.currentTarget.style.transform = 'translateY(-2px)';
+                      e.currentTarget.style.borderColor = 'rgba(16, 185, 129, 0.3)';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (amount !== presetAmount.toString()) {
+                      e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)';
+                      e.currentTarget.style.transform = 'translateY(0)';
+                      e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.15)';
+                    }
+                  }}
                 >
-                  {formatTokenSymbol(token.id, true)}
-                  {token.currentAddress === '0x0000000000000000000000000000000000000000' ? ' (未設定)' : ''}
-                </option>
+                  <span style={{ fontSize: 'clamp(14px, 2.5vw, 16px)' }}>
+                    {presetAmount.toLocaleString()}
+                  </span>
+                  <span style={{
+                    fontSize: 'clamp(9px, 1.5vw, 10px)',
+                    opacity: 0.8,
+                    fontWeight: 500
+                  }}>
+                    {selectedTokenConfig.symbol}
+                  </span>
+                </button>
               ))}
-            </select>
+            </div>
           </div>
           
           {/* Tip入力と承認ポリシー選択 */}

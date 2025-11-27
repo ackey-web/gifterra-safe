@@ -13,9 +13,13 @@ import { useFollow } from '../hooks/useFollow';
 import { useFollowLists } from '../hooks/useFollowLists';
 import { FollowListModal } from '../components/FollowListModal';
 import { TipModal } from '../components/TipModal';
+import { TenantTipModal } from '../components/TenantTipModal';
+import { ContributionGauge } from '../components/ContributionGauge';
 import { useRoleUsers } from '../hooks/useRoleUsers';
 import { RoleUsersModal } from '../components/RoleUsersModal';
 import { addBookmark, removeBookmark, isBookmarked } from '../hooks/useUserBookmarks';
+import { useMyTenantApplication } from '../hooks/useTenantApplications';
+import { useUserContribution } from '../hooks/useUserContribution';
 
 interface UserProfile {
   display_name: string;
@@ -43,12 +47,41 @@ export function ProfilePage() {
   const [showFollowListModal, setShowFollowListModal] = useState(false);
   const [followListTab, setFollowListTab] = useState<'followers' | 'following'>('followers');
   const [showTipModal, setShowTipModal] = useState(false);
+  const [showTenantTipModal, setShowTenantTipModal] = useState(false);
   const [showRoleUsersModal, setShowRoleUsersModal] = useState(false);
+  const [profileTab, setProfileTab] = useState<'tenant' | 'bio'>('tenant');
   const [selectedRole, setSelectedRole] = useState<UserRole | null>(null);
   const [isUserBookmarked, setIsUserBookmarked] = useState(false);
   const [isBookmarkLoading, setIsBookmarkLoading] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [showShareLinkModal, setShowShareLinkModal] = useState(false);
+
+  // viewModeをlocalStorageから取得（Mypageと共有）
+  const [viewMode, setViewMode] = useState<'flow' | 'tenant'>(() => {
+    const saved = localStorage.getItem('gifterra_view_mode');
+    return (saved === 'tenant' || saved === 'flow') ? saved : 'flow';
+  });
+
+  // localStorageの変更を監視してviewModeを同期
+  useEffect(() => {
+    const handleStorageChange = () => {
+      const saved = localStorage.getItem('gifterra_view_mode');
+      if (saved === 'tenant' || saved === 'flow') {
+        setViewMode(saved);
+      }
+    };
+
+    // storage イベントは他のタブからの変更のみを検出するため、
+    // 同じタブ内の変更を検出するには定期的にチェック
+    const interval = setInterval(handleStorageChange, 500);
+    window.addEventListener('storage', handleStorageChange);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, []);
+
   const { user } = usePrivy();
   const thirdwebAddress = useAddress(); // Thirdwebウォレット（MetaMaskなど）
 
@@ -68,6 +101,61 @@ export function ProfilePage() {
   const isViewingOtherProfile = pathAddress &&
     pathAddress.length > 0 &&
     pathAddress.toLowerCase() !== currentUserWalletAddress.toLowerCase();
+
+  // テナント申請状況を取得（自分がテナントオーナーかどうか確認用）
+  const { application: myApplication } = useMyTenantApplication();
+  const isMyProfileAndTenantOwner = !isViewingOtherProfile && myApplication?.status === 'approved';
+
+  // 表示中のプロフィールのテナント申請状況を取得（表示ユーザーがテナントオーナーかどうか）
+  const [profileOwnerApplication, setProfileOwnerApplication] = useState<any>(null);
+  const [loadingProfileOwnerTenant, setLoadingProfileOwnerTenant] = useState(true);
+
+  useEffect(() => {
+    async function fetchProfileOwnerTenantStatus() {
+      if (!walletAddress) {
+        setProfileOwnerApplication(null);
+        setLoadingProfileOwnerTenant(false);
+        return;
+      }
+
+      try {
+        setLoadingProfileOwnerTenant(true);
+        const { supabase } = await import('../lib/supabase');
+        const { data, error } = await supabase
+          .from('tenant_applications')
+          .select('*')
+          .eq('applicant_address', walletAddress.toLowerCase())
+          .eq('status', 'approved')
+          .maybeSingle();
+
+        if (error) throw error;
+        setProfileOwnerApplication(data);
+      } catch (err) {
+        console.error('❌ プロフィール所有者のテナント状態取得エラー:', err);
+        setProfileOwnerApplication(null);
+      } finally {
+        setLoadingProfileOwnerTenant(false);
+      }
+    }
+
+    fetchProfileOwnerTenantStatus();
+  }, [walletAddress]);
+
+  // プロフィール所有者がテナントオーナーかどうか
+  const isProfileOwnerTenantApproved = !!profileOwnerApplication;
+
+  // テナント機能を表示するかどうか
+  // 条件: プロフィール所有者が自分 かつ viewMode === 'tenant' の場合のみ表示
+  // 他人のプロフィールの場合は、相手がテナントならSTUDIO表示
+  const shouldShowTenantFeatures = isViewingOtherProfile
+    ? isProfileOwnerTenantApproved  // 他人のプロフィール: テナント承認済みなら表示
+    : (viewMode === 'tenant' && isProfileOwnerTenantApproved); // 自分のプロフィール: STUDIOモード かつ テナント承認済み
+
+  // 貢献度データを取得（他人のプロフィール & テナント承認済みの場合のみ）
+  const { kodomi, isLoading: isContributionLoading } = useUserContribution(
+    isViewingOtherProfile ? currentUserWalletAddress : null,
+    shouldShowTenantFeatures ? walletAddress : null
+  );
 
   // フォロー機能（常にフォロワー数・フォロー中の数を取得、フォローボタンは他人のみ）
   const {
@@ -437,14 +525,30 @@ export function ProfilePage() {
                 <div
                   style={{
                     display: 'flex',
-                    justifyContent: 'flex-end',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
                     gap: isMobile ? '8px' : '12px',
                     padding: isMobile ? '12px 16px' : '16px 20px',
                     borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
                   }}
                 >
-                  {/* ブックマークボタン */}
-                  <button
+                  {/* 左側: 貢献度ゲージ（テナント承認済みの場合のみ表示） */}
+                  <div style={{ flex: '0 0 auto' }}>
+                    {shouldShowTenantFeatures && !isContributionLoading && (
+                      <ContributionGauge kodomi={kodomi} tenantAddress={walletAddress} isMobile={isMobile} />
+                    )}
+                  </div>
+
+                  {/* 右側: ボタン群 */}
+                  <div
+                    style={{
+                      display: 'flex',
+                      gap: isMobile ? '8px' : '12px',
+                      marginLeft: 'auto',
+                    }}
+                  >
+                    {/* ブックマークボタン */}
+                    <button
                     onClick={handleToggleBookmark}
                     disabled={isBookmarkLoading}
                     style={{
@@ -485,10 +589,19 @@ export function ProfilePage() {
                   {/* チップボタン（ウォレットアドレスが公開されている場合のみ表示） */}
                   {profile?.show_wallet_address !== false && (
                     <button
-                      onClick={() => setShowTipModal(true)}
+                      onClick={() => {
+                        // テナント承認済みユーザーにはTenantTipModal、それ以外は通常のTipModalを表示
+                        if (shouldShowTenantFeatures) {
+                          setShowTenantTipModal(true);
+                        } else {
+                          setShowTipModal(true);
+                        }
+                      }}
                       style={{
                         padding: isMobile ? '8px 16px' : '10px 20px',
-                        background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                        background: shouldShowTenantFeatures
+                          ? 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)' // テナント専用は紫系
+                          : 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
                         border: 'none',
                         borderRadius: 8,
                         color: '#fff',
@@ -548,6 +661,7 @@ export function ProfilePage() {
                   >
                     {isFollowLoading ? '処理中...' : isFollowing ? 'フォロー解除' : 'フォロー'}
                   </button>
+                  </div>
                 </div>
               )}
 
@@ -726,33 +840,200 @@ export function ProfilePage() {
                   </div>
                 </div>
 
-                {/* 自己紹介 */}
-                {profile?.bio && (
+                {/* 自己紹介 / テナント情報タブ */}
+                {(profile?.bio || shouldShowTenantFeatures) && (
                   <div style={{ marginBottom: 20 }}>
-                    <label
-                      style={{
-                        display: 'block',
-                        marginBottom: 8,
-                        fontSize: isMobile ? 12 : 13,
-                        fontWeight: 600,
-                        color: 'rgba(255, 255, 255, 0.7)',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.05em',
-                      }}
-                    >
-                      自己紹介
-                    </label>
-                    <p
-                      style={{
-                        margin: 0,
-                        fontSize: isMobile ? 14 : 15,
-                        lineHeight: 1.6,
-                        color: '#EAF2FF',
-                        whiteSpace: 'pre-wrap',
-                      }}
-                    >
-                      {profile.bio}
-                    </p>
+                    {/* タブヘッダー（テナント承認済みの場合のみ表示） */}
+                    {shouldShowTenantFeatures ? (
+                      <>
+                        <div
+                          style={{
+                            display: 'flex',
+                            gap: isMobile ? 8 : 12,
+                            marginBottom: 16,
+                            borderBottom: '2px solid rgba(255, 255, 255, 0.1)',
+                          }}
+                        >
+                          {/* テナント情報タブ */}
+                          <button
+                            onClick={() => setProfileTab('tenant')}
+                            style={{
+                              padding: isMobile ? '8px 16px' : '10px 20px',
+                              background: 'none',
+                              border: 'none',
+                              borderBottom: profileTab === 'tenant' ? '3px solid #8b5cf6' : '3px solid transparent',
+                              color: profileTab === 'tenant' ? '#8b5cf6' : 'rgba(255, 255, 255, 0.6)',
+                              fontSize: isMobile ? 13 : 14,
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              transition: 'all 0.2s',
+                              textTransform: 'uppercase',
+                              letterSpacing: '0.5px',
+                            }}
+                          >
+                            テナント情報
+                          </button>
+
+                          {/* 自己紹介タブ */}
+                          {profile?.bio && (
+                            <button
+                              onClick={() => setProfileTab('bio')}
+                              style={{
+                                padding: isMobile ? '8px 16px' : '10px 20px',
+                                background: 'none',
+                                border: 'none',
+                                borderBottom: profileTab === 'bio' ? '3px solid #8b5cf6' : '3px solid transparent',
+                                color: profileTab === 'bio' ? '#8b5cf6' : 'rgba(255, 255, 255, 0.6)',
+                                fontSize: isMobile ? 13 : 14,
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                transition: 'all 0.2s',
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.5px',
+                              }}
+                            >
+                              自己紹介
+                            </button>
+                          )}
+                        </div>
+
+                        {/* タブコンテンツ */}
+                        {profileTab === 'tenant' ? (
+                          <div
+                            style={{
+                              padding: isMobile ? 16 : 20,
+                              background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(124, 58, 237, 0.05) 100%)',
+                              borderRadius: 12,
+                              border: '1px solid rgba(139, 92, 246, 0.2)',
+                            }}
+                          >
+                            <div style={{ marginBottom: 12 }}>
+                              <div
+                                style={{
+                                  fontSize: isMobile ? 11 : 12,
+                                  fontWeight: 600,
+                                  color: 'rgba(255, 255, 255, 0.5)',
+                                  textTransform: 'uppercase',
+                                  letterSpacing: '0.5px',
+                                  marginBottom: 4,
+                                }}
+                              >
+                                プラン
+                              </div>
+                              <div
+                                style={{
+                                  fontSize: isMobile ? 14 : 15,
+                                  fontWeight: 700,
+                                  color: '#8b5cf6',
+                                  textShadow: '0 0 8px rgba(139, 92, 246, 0.5)',
+                                }}
+                              >
+                                {profileOwnerApplication?.rank_plan || 'STUDIO_PRO_MAX'}
+                              </div>
+                            </div>
+
+                            <div style={{ marginBottom: 12 }}>
+                              <div
+                                style={{
+                                  fontSize: isMobile ? 11 : 12,
+                                  fontWeight: 600,
+                                  color: 'rgba(255, 255, 255, 0.5)',
+                                  textTransform: 'uppercase',
+                                  letterSpacing: '0.5px',
+                                  marginBottom: 4,
+                                }}
+                              >
+                                テナント名
+                              </div>
+                              <div
+                                style={{
+                                  fontSize: isMobile ? 14 : 15,
+                                  fontWeight: 600,
+                                  color: '#EAF2FF',
+                                }}
+                              >
+                                {profileOwnerApplication?.tenant_name || profile?.display_name}
+                              </div>
+                            </div>
+
+                            <div>
+                              <div
+                                style={{
+                                  fontSize: isMobile ? 11 : 12,
+                                  fontWeight: 600,
+                                  color: 'rgba(255, 255, 255, 0.5)',
+                                  textTransform: 'uppercase',
+                                  letterSpacing: '0.5px',
+                                  marginBottom: 4,
+                                }}
+                              >
+                                説明
+                              </div>
+                              <div
+                                style={{
+                                  fontSize: isMobile ? 13 : 14,
+                                  lineHeight: 1.6,
+                                  color: 'rgba(234, 242, 255, 0.9)',
+                                }}
+                              >
+                                {profileOwnerApplication?.description || '（説明なし）'}
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <div
+                            style={{
+                              padding: isMobile ? 16 : 20,
+                              background: 'rgba(255, 255, 255, 0.03)',
+                              borderRadius: 12,
+                              border: '1px solid rgba(255, 255, 255, 0.1)',
+                            }}
+                          >
+                            <p
+                              style={{
+                                margin: 0,
+                                fontSize: isMobile ? 14 : 15,
+                                lineHeight: 1.6,
+                                color: '#EAF2FF',
+                                whiteSpace: 'pre-wrap',
+                              }}
+                            >
+                              {profile.bio}
+                            </p>
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      /* 通常ユーザー（テナントでない場合）は従来通りの表示 */
+                      profile?.bio && (
+                        <>
+                          <label
+                            style={{
+                              display: 'block',
+                              marginBottom: 8,
+                              fontSize: isMobile ? 12 : 13,
+                              fontWeight: 600,
+                              color: 'rgba(255, 255, 255, 0.7)',
+                              textTransform: 'uppercase',
+                              letterSpacing: '0.05em',
+                            }}
+                          >
+                            自己紹介
+                          </label>
+                          <p
+                            style={{
+                              margin: 0,
+                              fontSize: isMobile ? 14 : 15,
+                              lineHeight: 1.6,
+                              color: '#EAF2FF',
+                              whiteSpace: 'pre-wrap',
+                            }}
+                          >
+                            {profile.bio}
+                          </p>
+                        </>
+                      )
+                    )}
                   </div>
                 )}
 
@@ -949,6 +1230,17 @@ export function ProfilePage() {
         onSendTip={handleSendTip}
         isMobile={isMobile}
       />
+
+      {/* テナント専用チップモーダル（kodomi解析 & SBT連動） */}
+      {shouldShowTenantFeatures && (
+        <TenantTipModal
+          isOpen={showTenantTipModal}
+          onClose={() => setShowTenantTipModal(false)}
+          recipientAddress={walletAddress}
+          recipientName={profile?.display_name || `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`}
+          isMobile={isMobile}
+        />
+      )}
 
       {/* ロール別ユーザーリストモーダル */}
       <RoleUsersModal

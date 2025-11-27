@@ -155,7 +155,18 @@ async function getPrivyEthersSigner(privyWallet: any): Promise<ethers.Signer | n
 
 export function MypagePage() {
   const isMobile = useIsMobile(); // Capacitorネイティブ & レスポンシブWeb対応
-  const [viewMode, setViewMode] = useState<ViewMode>('flow');
+
+  // viewModeをlocalStorageから初期化（ProfilePageと共有）
+  const [viewMode, setViewMode] = useState<ViewMode>(() => {
+    const saved = localStorage.getItem('gifterra_view_mode');
+    return (saved === 'tenant' || saved === 'flow') ? saved : 'flow';
+  });
+
+  // viewMode変更時にlocalStorageに保存
+  useEffect(() => {
+    localStorage.setItem('gifterra_view_mode', viewMode);
+  }, [viewMode]);
+
   const [tenantRank, setTenantRank] = useState<TenantRank>('R0'); // TODO: 実データから取得
   const [showWalletSetupModal, setShowWalletSetupModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
@@ -570,8 +581,12 @@ function Header({ viewMode, setViewMode, isMobile, tenantRank, showSettingsModal
     return flowImage;
   };
 
-  // R3（承認済みテナント）のみトグル表示
-  const showToggle = tenantRank === 'R3';
+  // スーパーアドミンアドレス（FLOW/STUDIOトグルを表示）
+  const superAdminAddresses = import.meta.env.VITE_SUPER_ADMIN_ADDRESSES?.toLowerCase().split(',').map((addr: string) => addr.trim()) || [];
+  const isSuperAdmin = displayAddress && superAdminAddresses.includes(displayAddress.toLowerCase());
+
+  // スーパーアドミンのみトグル表示（テナント機能の開発・テスト用）
+  const showToggle = isSuperAdmin;
 
   const handleLogout = async () => {
     try {
@@ -622,7 +637,7 @@ function Header({ viewMode, setViewMode, isMobile, tenantRank, showSettingsModal
         }}
       />
 
-      {/* 中央：ロール切替（R3のみ表示） */}
+      {/* 中央：FLOW/STUDIOトグル（スーパーアドミンのみ表示） */}
       {showToggle && (
         <div style={{
           display: 'flex',
@@ -630,38 +645,41 @@ function Header({ viewMode, setViewMode, isMobile, tenantRank, showSettingsModal
           background: 'rgba(255,255,255,0.05)',
           borderRadius: 999,
           padding: 4,
+          border: '1px solid rgba(255,255,255,0.1)',
         }}>
           <button
             onClick={() => setViewMode('flow')}
             style={{
               padding: isMobile ? '6px 16px' : '8px 20px',
-              background: viewMode === 'flow' ? 'rgba(102, 126, 234, 0.3)' : 'transparent',
+              background: viewMode === 'flow' ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : 'transparent',
               border: 'none',
               borderRadius: 999,
               color: '#EAF2FF',
               fontSize: isMobile ? 12 : 14,
-              fontWeight: 600,
+              fontWeight: 700,
               cursor: 'pointer',
               transition: 'all 0.2s',
+              boxShadow: viewMode === 'flow' ? '0 2px 8px rgba(102, 126, 234, 0.3)' : 'none',
             }}
           >
-            個人
+            FLOW
           </button>
           <button
             onClick={() => setViewMode('tenant')}
             style={{
               padding: isMobile ? '6px 16px' : '8px 20px',
-              background: viewMode === 'tenant' ? 'rgba(118, 75, 162, 0.3)' : 'transparent',
+              background: viewMode === 'tenant' ? 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)' : 'transparent',
               border: 'none',
               borderRadius: 999,
               color: '#EAF2FF',
               fontSize: isMobile ? 12 : 14,
-              fontWeight: 600,
+              fontWeight: 700,
               cursor: 'pointer',
               transition: 'all 0.2s',
+              boxShadow: viewMode === 'tenant' ? '0 2px 8px rgba(240, 147, 251, 0.3)' : 'none',
             }}
           >
-            テナント
+            STUDIO
           </button>
         </div>
       )}
@@ -828,6 +846,31 @@ function Header({ viewMode, setViewMode, isMobile, tenantRank, showSettingsModal
                   <span style={{ fontSize: 18 }}>⚙️</span>
                   <span>設定</span>
                 </button>
+
+                {/* Admin管理画面（テナント所有者のみ） */}
+                {application?.status === 'approved' && (
+                  <button
+                    onClick={() => {
+                      window.location.href = '/admin/tenant-profile';
+                      setShowMobileMenu(false);
+                    }}
+                    style={{
+                      padding: '12px 16px',
+                      background: 'rgba(139, 92, 246, 0.1)',
+                      border: '1px solid rgba(139, 92, 246, 0.3)',
+                      borderRadius: 8,
+                      color: '#C4B5FD',
+                      fontSize: 14,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 12,
+                    }}
+                  >
+                    <span style={{ fontSize: 18 }}>🏢</span>
+                    <span>Admin管理画面</span>
+                  </button>
+                )}
 
                 {/* ターミナルUI */}
                 <button

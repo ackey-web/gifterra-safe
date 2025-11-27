@@ -1,6 +1,8 @@
 // src/admin/TenantProfilePage.tsx
 import { useState, useEffect } from 'react';
-import { uploadImage, deleteFileFromUrl } from '../lib/supabase';
+import { useAddress } from '@thirdweb-dev/react';
+import { supabase } from '../lib/supabase';
+import { useUpdateTenantInfo } from '../hooks/useTenantApplications';
 import PaymentSplitterManagement from './components/PaymentSplitterManagement';
 import PaymentSplitterDeployWizard from './components/PaymentSplitterDeployWizard';
 
@@ -15,6 +17,9 @@ interface TenantProfile {
 }
 
 export default function TenantProfilePage() {
+  const address = useAddress(); // 現在接続中のウォレットアドレス
+  const { updateTenantInfo } = useUpdateTenantInfo();
+
   const [profile, setProfile] = useState<TenantProfile>({
     tenantId: '',
     tenantName: '',
@@ -24,29 +29,66 @@ export default function TenantProfilePage() {
     paymentSplitterAddress: '',
     adminAddresses: [],
   });
+  const [tenantApplicationId, setTenantApplicationId] = useState<string>('');
+  const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [imagePreview, setImagePreview] = useState<string>('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [newAdminAddress, setNewAdminAddress] = useState('');
   const [showDeployWizard, setShowDeployWizard] = useState(false);
 
-  // ローカルストレージから読み込み
+  // Supabaseからテナント情報を取得
   useEffect(() => {
-    const saved = localStorage.getItem('tenant_profile');
-    if (saved) {
-      const data = JSON.parse(saved);
-      setProfile(data);
-      if (data.thumbnail) {
-        setImagePreview(data.thumbnail);
+    async function fetchTenantInfo() {
+      if (!address) {
+        setIsLoading(false);
+        return;
       }
-    } else {
-      // 初回はテナントIDを生成
-      const newTenantId = `TN${Date.now()}${Math.random().toString(36).substr(2, 9)}`.toUpperCase();
-      setProfile(prev => ({ ...prev, tenantId: newTenantId }));
+
+      try {
+        setIsLoading(true);
+
+        // tenant_applicationsテーブルから承認済みのテナント情報を取得
+        const { data, error } = await supabase
+          .from('tenant_applications')
+          .select('*')
+          .eq('applicant_address', address.toLowerCase())
+          .eq('status', 'approved')
+          .maybeSingle();
+
+        if (error) throw error;
+
+        if (data) {
+          setTenantApplicationId(data.id);
+          setProfile({
+            tenantId: data.tenant_id || '',
+            tenantName: data.tenant_name || '',
+            description: data.description || '',
+            thumbnail: '', // thumbnailは別途実装が必要
+            gifterraAddress: data.gifterra_address || '',
+            paymentSplitterAddress: data.pay_splitter_address || '',
+            adminAddresses: [], // admin_addressesは別途実装が必要
+          });
+        } else {
+          setMessage({
+            type: 'error',
+            text: 'テナント情報が見つかりません。テナント申請が承認されているか確認してください。'
+          });
+        }
+      } catch (err) {
+        console.error('❌ テナント情報の取得エラー:', err);
+        setMessage({
+          type: 'error',
+          text: 'テナント情報の取得に失敗しました'
+        });
+      } finally {
+        setIsLoading(false);
+      }
     }
-  }, []);
+
+    fetchTenantInfo();
+  }, [address]);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -88,59 +130,41 @@ export default function TenantProfilePage() {
       return;
     }
 
-    if (profile.gifterraAddress && !/^0x[a-fA-F0-9]{40}$/.test(profile.gifterraAddress)) {
-      setMessage({ type: 'error', text: '有効なGifterraコントラクトアドレスを入力してください (0x... 形式)' });
-      return;
-    }
-
-    if (profile.paymentSplitterAddress && !/^0x[a-fA-F0-9]{40}$/.test(profile.paymentSplitterAddress)) {
-      setMessage({ type: 'error', text: '有効なPaymentSplitterアドレスを入力してください (0x... 形式)' });
+    if (!tenantApplicationId) {
+      setMessage({ type: 'error', text: 'テナント情報が見つかりません' });
       return;
     }
 
     setIsSaving(true);
-    setIsUploading(true);
     setMessage(null);
 
     try {
-      let thumbnailUrl = profile.thumbnail;
+      // useUpdateTenantInfoフックを使ってtenant_applicationsテーブルを更新
+      const success = await updateTenantInfo(tenantApplicationId, {
+        tenant_name: profile.tenantName,
+        description: profile.description,
+      });
 
-      // 新しい画像が選択されている場合、Supabaseにアップロード
-      if (selectedFile) {
-        setMessage({ type: 'success', text: '画像をアップロード中...' });
+      if (success) {
+        setMessage({ type: 'success', text: '✅ テナント情報を保存しました' });
 
-        // 古い画像がある場合は削除
-        if (profile.thumbnail) {
-          await deleteFileFromUrl(profile.thumbnail);
+        // 最新情報を再取得
+        const { data } = await supabase
+          .from('tenant_applications')
+          .select('*')
+          .eq('id', tenantApplicationId)
+          .single();
+
+        if (data) {
+          setProfile(prev => ({
+            ...prev,
+            tenantName: data.tenant_name || '',
+            description: data.description || '',
+          }));
         }
-
-        // 新しい画像をアップロード
-        const uploadedUrl = await uploadImage(selectedFile, 'PUBLIC');
-        if (uploadedUrl) {
-          thumbnailUrl = uploadedUrl;
-        } else {
-          throw new Error('画像のアップロードに失敗しました');
-        }
-
-        setSelectedFile(null);
+      } else {
+        throw new Error('更新に失敗しました');
       }
-
-      // プロフィールデータを更新
-      const updatedProfile = {
-        ...profile,
-        thumbnail: thumbnailUrl,
-      };
-
-      // localStorageに保存（URLのみ）
-      localStorage.setItem('tenant_profile', JSON.stringify(updatedProfile));
-      setProfile(updatedProfile);
-
-      // プレビューを更新
-      if (thumbnailUrl) {
-        setImagePreview(thumbnailUrl);
-      }
-
-      setMessage({ type: 'success', text: 'テナントプロフィールを保存しました' });
     } catch (error) {
       console.error('保存エラー:', error);
       setMessage({
@@ -149,7 +173,6 @@ export default function TenantProfilePage() {
       });
     } finally {
       setIsSaving(false);
-      setIsUploading(false);
     }
   };
 
@@ -227,8 +250,40 @@ export default function TenantProfilePage() {
         </p>
       </div>
 
+      {/* ローディング状態 */}
+      {isLoading && (
+        <div style={{
+          padding: 60,
+          textAlign: 'center',
+          color: '#6b7280',
+        }}>
+          <div style={{ fontSize: 48, marginBottom: 16 }}>⏳</div>
+          <div style={{ fontSize: 18 }}>テナント情報を読み込み中...</div>
+        </div>
+      )}
+
+      {/* ウォレット未接続 */}
+      {!isLoading && !address && (
+        <div style={{
+          padding: 60,
+          textAlign: 'center',
+          background: '#fef3c7',
+          border: '1px solid #f59e0b',
+          borderRadius: 12,
+          color: '#92400e',
+        }}>
+          <div style={{ fontSize: 48, marginBottom: 16 }}>🔒</div>
+          <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 8 }}>
+            ウォレットを接続してください
+          </div>
+          <div style={{ fontSize: 14 }}>
+            テナント情報を表示するには、ウォレットを接続する必要があります
+          </div>
+        </div>
+      )}
+
       {/* メッセージ */}
-      {message && (
+      {!isLoading && address && message && (
         <div style={{
           padding: '12px 16px',
           marginBottom: 24,
@@ -243,6 +298,7 @@ export default function TenantProfilePage() {
       )}
 
       {/* フォーム */}
+      {!isLoading && address && tenantApplicationId && (
       <div style={{
         background: '#ffffff',
         border: '1px solid #e5e7eb',
@@ -396,7 +452,7 @@ export default function TenantProfilePage() {
             type="file"
             accept="image/jpeg,image/png,image/webp"
             onChange={handleImageChange}
-            disabled={isUploading}
+            disabled={isSaving}
             style={{
               display: 'block',
               marginBottom: 8,
@@ -634,22 +690,23 @@ export default function TenantProfilePage() {
         {/* 保存ボタン */}
         <button
           onClick={handleSave}
-          disabled={isSaving || isUploading}
+          disabled={isSaving}
           style={{
             width: '100%',
             padding: '14px',
-            background: isSaving || isUploading ? '#9ca3af' : '#10b981',
+            background: isSaving ? '#9ca3af' : '#10b981',
             border: 'none',
             borderRadius: 8,
             color: '#ffffff',
             fontSize: 16,
             fontWeight: 700,
-            cursor: isSaving || isUploading ? 'not-allowed' : 'pointer',
+            cursor: isSaving ? 'not-allowed' : 'pointer',
           }}
         >
-          {isUploading ? '📤 アップロード中...' : isSaving ? '💾 保存中...' : '💾 保存する'}
+          {isSaving ? '💾 保存中...' : '💾 保存する'}
         </button>
       </div>
+      )}
 
       {/* PaymentSplitterデプロイウィザード（モーダル） */}
       {showDeployWizard && (

@@ -1670,12 +1670,25 @@ export default function AdminDashboard() {
       const saved = localStorage.getItem('tip-active-tab');
       return (saved === 'design' || saved === 'ranks') ? saved as TipTabType : 'ranks';
     });
+    // テナント特定の背景画像キーを取得
+    const getTenantBgImageKey = () => {
+      if (address) {
+        return `tip-bg-image-${address.toLowerCase()}`;
+      }
+      return 'tip-bg-image'; // フォールバック
+    };
+
     const [tipBgImage, setTipBgImage] = useState<string>(() => {
-      return localStorage.getItem('tip-bg-image') || '';
+      const key = getTenantBgImageKey();
+      return localStorage.getItem(key) || localStorage.getItem('tip-bg-image') || '';
     });
 
     // 以前の背景画像URLを追跡（古い画像削除用）
-    const previousTipBgRef = useRef<string>(localStorage.getItem('tip-bg-image') || '');
+    const getPreviousBgImage = () => {
+      const key = getTenantBgImageKey();
+      return localStorage.getItem(key) || localStorage.getItem('tip-bg-image') || '';
+    };
+    const previousTipBgRef = useRef<string>(getPreviousBgImage());
 
     // ランク設定用のstate
     const [maxRankLevel, setMaxRankLevel] = useState<number>(4);
@@ -1730,12 +1743,16 @@ export default function AdminDashboard() {
     };
 
     const handleSaveDesignSettings = () => {
+      const key = getTenantBgImageKey();
       if (tipBgImage) {
+        localStorage.setItem(key, tipBgImage);
+        // グローバル設定も更新（後方互換性のため）
         localStorage.setItem('tip-bg-image', tipBgImage);
       } else {
+        localStorage.removeItem(key);
         localStorage.removeItem('tip-bg-image');
       }
-      alert('✅ デザイン設定を保存しました！');
+      alert('✅ デザイン設定を保存しました！\nプロフィールページのTIP UIに反映されます。');
     };
 
     // ランク表示名を保存
@@ -2016,9 +2033,11 @@ export default function AdminDashboard() {
             <div>
               {/* 背景画像設定セクション */}
               <div style={{ marginTop: 32, padding: 16, background: "rgba(255,255,255,.04)", borderRadius: 8 }}>
-                <h4 style={{ margin: "0 0 10px 0", fontSize: 16 }}>🎨 TIP UI 背景画像設定</h4>
+                <h4 style={{ margin: "0 0 10px 0", fontSize: 16 }}>🎨 プロフィールページ TIP UI 背景画像設定</h4>
                 <ul style={{ margin: "0 0 16px 0", paddingLeft: 20, opacity: 0.8, fontSize: 14 }}>
-                  <li>TIP UI の背景画像を設定できます</li>
+                  <li>あなたのプロフィールページに表示されるTIP UIの背景画像を設定できます</li>
+                  <li>訪問者があなたにチップを送る際に表示されます</li>
+                  <li>テナント承認済みユーザー専用機能です</li>
                 </ul>
 
                 <div style={{ marginBottom: 12 }}>
@@ -2226,10 +2245,10 @@ export default function AdminDashboard() {
                       </div>
                     </div>
 
-                    {/* 閾値設定 */}
+                    {/* 閾値設定（kodomi値ベース） */}
                     <div style={{ marginBottom: 12 }}>
                       <label style={{ display: "block", fontSize: 13, fontWeight: 600, marginBottom: 8, opacity: 0.8 }}>
-                        必要累積TIP額 ({defaultToken.symbol})
+                        必要kodomi値（貢献度スコア）
                       </label>
                       <div style={{ display: "flex", gap: 8 }}>
                         <input
@@ -2263,6 +2282,9 @@ export default function AdminDashboard() {
                           設定
                         </button>
                       </div>
+                      <p style={{ fontSize: 11, opacity: 0.6, margin: "6px 0 0 0", lineHeight: 1.4 }}>
+                        💡 kodomi値は、TIP送信の頻度・金額・継続性などから算出される総合的な貢献度スコアです
+                      </p>
                     </div>
 
                     {/* NFT URI設定 */}
@@ -2344,6 +2366,98 @@ export default function AdminDashboard() {
                 </button>
               </div>
 
+              {/* プロフィールSBTミント閾値設定 */}
+              <div style={{
+                marginTop: 24,
+                padding: 16,
+                background: "rgba(59, 130, 246, 0.1)",
+                border: "1px solid rgba(59, 130, 246, 0.3)",
+                borderRadius: 8
+              }}>
+                <h4 style={{ margin: "0 0 12px 0", fontSize: 16, fontWeight: 700, color: "#3B82F6" }}>
+                  🎭 プロフィールSBTミント閾値設定
+                </h4>
+                <p style={{ margin: "0 0 16px 0", fontSize: 13, opacity: 0.8, lineHeight: 1.6 }}>
+                  あなたのプロフィールページを訪問したユーザーが、kodomi値（貢献度スコア）に応じてプロフィールSBTを自動獲得できる閾値を設定します。
+                </p>
+
+                <div style={{ display: "grid", gap: 12 }}>
+                  {Array.from({ length: maxRankLevel }, (_, i) => i + 1).map((rank) => (
+                    <div
+                      key={`profile-sbt-${rank}`}
+                      style={{
+                        padding: 12,
+                        background: "rgba(255,255,255,.02)",
+                        borderRadius: 6,
+                        border: "1px solid rgba(255,255,255,.08)",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 12
+                      }}
+                    >
+                      <div style={{ minWidth: 200 }}>
+                        <span style={{ fontSize: 14, fontWeight: 600, color: "#3B82F6" }}>
+                          {rankLabels[rank]?.icon || "⭐"} {rankLabels[rank]?.label || `Rank ${rank}`}
+                        </span>
+                      </div>
+                      <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 8 }}>
+                        <span style={{ fontSize: 12, opacity: 0.7, whiteSpace: "nowrap" }}>
+                          必要kodomi:
+                        </span>
+                        <input
+                          type="text"
+                          value={rankThresholdInputs[rank] || ""}
+                          readOnly
+                          placeholder="未設定"
+                          style={{
+                            flex: 1,
+                            padding: "6px 10px",
+                            background: "rgba(255,255,255,0.03)",
+                            border: "1px solid rgba(255,255,255,0.15)",
+                            borderRadius: 4,
+                            color: "#fff",
+                            fontSize: 12,
+                            opacity: 0.8
+                          }}
+                        />
+                        <span style={{ fontSize: 12, opacity: 0.7 }}>
+                          pt
+                        </span>
+                      </div>
+                      <div style={{
+                        fontSize: 11,
+                        opacity: 0.6,
+                        padding: "4px 8px",
+                        background: "rgba(16, 185, 129, 0.1)",
+                        border: "1px solid rgba(16, 185, 129, 0.3)",
+                        borderRadius: 4,
+                        whiteSpace: "nowrap"
+                      }}>
+                        この閾値でSBTミント
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div style={{
+                  marginTop: 16,
+                  padding: 12,
+                  background: "rgba(16, 185, 129, 0.1)",
+                  border: "1px solid rgba(16, 185, 129, 0.3)",
+                  borderRadius: 6,
+                  fontSize: 12,
+                  lineHeight: 1.6,
+                  opacity: 0.9
+                }}>
+                  <strong>💡 仕組み:</strong><br />
+                  • ユーザーのkodomi値が上記の閾値に達すると、自動的にプロフィールSBTがミントされます<br />
+                  • SBTはユーザーのウォレットに保存され、あなたへの貢献度の証明となります<br />
+                  • 同じランクのSBTは一度だけミントされ、重複ミントは防止されます<br />
+                  • kodomi値はTIP送信の頻度・金額・継続性から算出される総合的な貢献度スコアです<br />
+                  • 閾値を変更する場合は、上記の「必要kodomi値」セクションで設定してください
+                </div>
+              </div>
+
               {/* ヒント */}
               <div style={{
                 marginTop: 16,
@@ -2361,6 +2475,7 @@ export default function AdminDashboard() {
                   <li>NFT URIはIPFS、Arweave、HTTPSなどが使用できます</li>
                   <li>設定後、ユーザーのランクは自動的に更新されます</li>
                   <li><strong>ランク表示名</strong>はUI上の見た目のみに影響し、コントラクトには影響しません</li>
+                  <li><strong>プロフィールSBT</strong>は累積TIP額が閾値に達したときに自動ミントされます</li>
                 </ul>
               </div>
             </>

@@ -285,3 +285,62 @@ export function useRejectTenantApplication() {
 
   return { reject, rejecting, error };
 }
+
+/**
+ * テナント情報更新Hook（テナントオーナー専用）
+ */
+export function useUpdateTenantInfo() {
+  const address = useAddress();
+  const [updating, setUpdating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function updateTenantInfo(
+    applicationId: string,
+    updates: {
+      tenant_name?: string;
+      description?: string;
+    }
+  ): Promise<boolean> {
+    if (!address) {
+      setError('ウォレットが接続されていません');
+      return false;
+    }
+
+    try {
+      setUpdating(true);
+      setError(null);
+
+      // 申請者本人かどうか確認
+      const { data: application, error: fetchError } = await supabase
+        .from('tenant_applications')
+        .select('applicant_address')
+        .eq('id', applicationId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      if (application.applicant_address.toLowerCase() !== address.toLowerCase()) {
+        setError('この操作を実行する権限がありません');
+        return false;
+      }
+
+      // テナント情報を更新
+      const { error: updateError } = await supabase
+        .from('tenant_applications')
+        .update(updates)
+        .eq('id', applicationId);
+
+      if (updateError) throw updateError;
+
+      return true;
+    } catch (err) {
+      console.error('❌ テナント情報の更新に失敗:', err);
+      setError(err instanceof Error ? err.message : 'Unknown error');
+      return false;
+    } finally {
+      setUpdating(false);
+    }
+  }
+
+  return { updateTenantInfo, updating, error };
+}
