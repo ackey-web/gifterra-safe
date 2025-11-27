@@ -817,34 +817,35 @@ export function PaymentQRGenerator() {
           {/* ガスレス決済オプション（フィーチャーフラグで制御） */}
           {isGaslessAvailable && (
             <div style={{ marginBottom: 20 }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'not-allowed', opacity: 0.5 }}>
                 <input
                   type="checkbox"
                   checked={useGasless}
                   onChange={(e) => setUseGasless(e.target.checked)}
+                  disabled={true}
                 />
                 <span style={{ fontSize: isMobile ? 13 : 14, fontWeight: 600, color: '#EAF2FF' }}>
                   ⚡ ガスレス決済（ユーザーはガス代不要）
                   <span style={{
                     marginLeft: 8,
                     padding: '2px 6px',
-                    background: '#10b981',
+                    background: '#9CA3AF',
                     color: '#fff',
                     fontSize: 10,
                     borderRadius: 4,
                     fontWeight: 600
                   }}>
-                    BETA
+                    開発中
                   </span>
                 </span>
               </label>
               <p style={{
                 fontSize: 11,
-                color: 'rgba(255,255,255,0.6)',
+                color: 'rgba(255,255,255,0.4)',
                 marginTop: 4,
                 marginLeft: 24
               }}>
-                ユーザーはJPYCだけで決済可能。店舗がガス代を負担します（約0.2円/回）
+                ガスレス決済機能は現在開発中です。通常の決済をご利用ください。
               </p>
             </div>
           )}
