@@ -79,8 +79,9 @@ contract PaymentGatewayWithPermit is Ownable, ReentrancyGuard, Pausable {
     }
 
     /**
-     * @dev Permitを使ったガスレス決済実行
+     * @dev Permitを使ったガスレス決済実行（真のガスレス版）
      * @param requestId リクエストID（リプレイアタック防止用、QRコードに含まれる）
+     * @param payer 支払い元ユーザーアドレス（Permit署名者）
      * @param merchant 受取人アドレス
      * @param amount 支払い金額（wei単位）
      * @param deadline Permit有効期限
@@ -90,6 +91,7 @@ contract PaymentGatewayWithPermit is Ownable, ReentrancyGuard, Pausable {
      */
     function executePaymentWithPermit(
         bytes32 requestId,
+        address payer,
         address merchant,
         uint256 amount,
         uint256 deadline,
@@ -99,6 +101,7 @@ contract PaymentGatewayWithPermit is Ownable, ReentrancyGuard, Pausable {
     ) external nonReentrant whenNotPaused {
         // 1. リクエストID重複チェック（リプレイアタック防止）
         require(!processedRequests[requestId], "Request already processed");
+        require(payer != address(0), "Invalid payer address");
         require(merchant != address(0), "Invalid merchant address");
         require(amount > 0, "Amount must be greater than 0");
         require(block.timestamp <= deadline, "Permit expired");
@@ -107,30 +110,30 @@ contract PaymentGatewayWithPermit is Ownable, ReentrancyGuard, Pausable {
         processedRequests[requestId] = true;
 
         // 3. PermitでApproveをガスレスで実行
-        // msg.senderがpayerとなる（支払い実行者 = Relayer）
-        // しかし、Permitのownerは実際の支払い元ユーザー
-        // 注意: Permit内部でownerが検証される
-        jpyc.permit(tx.origin, address(this), amount, deadline, v, r, s);
+        // msg.sender = トランザクション送信者（merchant = ガス代を払う人）
+        // payer = 支払い元ユーザー（Permit署名者）
+        // 注意: Permit内部でpayerの署名が検証される
+        jpyc.permit(payer, address(this), amount, deadline, v, r, s);
 
         // 4. プラットフォーム手数料計算
         uint256 platformFee = (amount * platformFeeRate) / 10000;
         uint256 merchantAmount = amount - platformFee;
 
         // 5. 残高確認
-        require(jpyc.balanceOf(tx.origin) >= amount, "Insufficient balance");
+        require(jpyc.balanceOf(payer) >= amount, "Insufficient balance");
 
         // 6. transferFromで決済実行
-        // tx.origin = 実際の支払い元ユーザー（Permitのowner）
+        // payer = 支払い元ユーザー（Permit署名者）
         // merchant = 受取人
         require(
-            jpyc.transferFrom(tx.origin, merchant, merchantAmount),
+            jpyc.transferFrom(payer, merchant, merchantAmount),
             "Transfer to merchant failed"
         );
 
         // 7. プラットフォーム手数料を送金（手数料が0より大きい場合のみ）
         if (platformFee > 0) {
             require(
-                jpyc.transferFrom(tx.origin, platformFeeRecipient, platformFee),
+                jpyc.transferFrom(payer, platformFeeRecipient, platformFee),
                 "Transfer platform fee failed"
             );
         }
@@ -138,7 +141,7 @@ contract PaymentGatewayWithPermit is Ownable, ReentrancyGuard, Pausable {
         // 8. イベント発行
         emit PaymentExecuted(
             requestId,
-            tx.origin,
+            payer,
             merchant,
             amount,
             platformFee,
