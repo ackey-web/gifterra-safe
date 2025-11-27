@@ -23,7 +23,10 @@ export async function signPermitWithPrivyProvider(
   nonce: number;
 }> {
   try {
+    console.log('🚀 signPermitWithPrivyProvider() 開始');
+
     // Read-only providerでnonceとnameを取得
+    console.log('📡 RPC接続開始: https://polygon-rpc.com');
     const readOnlyProvider = new ethers.providers.JsonRpcProvider('https://polygon-rpc.com');
     const tokenContract = new ethers.Contract(
       tokenAddress,
@@ -34,8 +37,13 @@ export async function signPermitWithPrivyProvider(
       readOnlyProvider
     );
 
+    console.log('📡 nonce取得開始...');
     const nonce = await tokenContract.nonces(ownerAddress);
+    console.log(`✅ nonce取得成功: ${nonce.toString()}`);
+
+    console.log('📡 tokenName取得開始...');
     const tokenName = await tokenContract.name();
+    console.log(`✅ tokenName取得成功: ${tokenName}`);
 
     console.log('📝 Privy Permit署名準備:', {
       owner: ownerAddress,

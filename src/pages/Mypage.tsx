@@ -163,6 +163,7 @@ export function MypagePage() {
   const [showBookmarkModal, setShowBookmarkModal] = useState(false);
   const [actualChainId, setActualChainId] = useState<number | undefined>(undefined);
   const [userRoles, setUserRoles] = useState<UserRole[]>([]); // 新規ユーザー通知用のロール情報
+  const [bulkSendRecipients, setBulkSendRecipients] = useState<Array<{ id: number; address: string; amount: string }>>([]);
   const { user, authenticated } = usePrivy();
   const thirdwebAddress = useAddress(); // Thirdwebウォレット
 
@@ -264,6 +265,30 @@ export function MypagePage() {
       }
     }
   }, [authenticated, user]);
+
+  // ブックマークユーザーを一括送金に追加
+  const handleAddToBulkSend = (userAddress: string, userName?: string) => {
+    // 新しいIDを生成（既存のrecipientsの最大IDに+1）
+    const newId = bulkSendRecipients.length > 0
+      ? Math.max(...bulkSendRecipients.map(r => r.id)) + 1
+      : 1;
+
+    // 重複チェック（同じアドレスが既にある場合は追加しない）
+    const isDuplicate = bulkSendRecipients.some(r => r.address.toLowerCase() === userAddress.toLowerCase());
+
+    if (isDuplicate) {
+      alert(`${userName || userAddress} は既に追加されています`);
+      return;
+    }
+
+    // 新しい受取人を追加
+    setBulkSendRecipients(prev => [
+      ...prev,
+      { id: newId, address: userAddress, amount: '' }
+    ]);
+
+    alert(`${userName || userAddress} を一括送金リストに追加しました`);
+  };
 
   return (
     <div style={{
@@ -1265,7 +1290,7 @@ function FlowModeContent({
         gap: isMobile ? 16 : 20,
         marginBottom: isMobile ? 40 : 48,
       }}>
-        <SendForm isMobile={isMobile} />
+        <SendForm isMobile={isMobile} bulkSendRecipients={bulkSendRecipients} />
         <X402PaymentSection isMobile={isMobile} />
         <ReceiveAddress isMobile={isMobile} />
       </div>
@@ -1310,7 +1335,10 @@ function FlowModeContent({
 type SendMode = 'simple' | 'tenant' | 'bulk' | 'bookmark' | 'anonymous';
 
 // 1. 送金フォーム
-function SendForm({ isMobile }: { isMobile: boolean }) {
+function SendForm({ isMobile, bulkSendRecipients }: {
+  isMobile: boolean;
+  bulkSendRecipients: Array<{ id: number; address: string; amount: string }>;
+}) {
   // Thirdwebウォレット
   const thirdwebSigner = useSigner();
   const thirdwebAddress = useAddress();
@@ -1340,7 +1368,6 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
   const [shareOnX, setShareOnX] = useState(false); // Xシェアトグル
   const [selectedTenant, setSelectedTenant] = useState<any>(null);
   const [selectedBookmarkUser, setSelectedBookmarkUser] = useState<{ address: string; name?: string } | null>(null);
-  const [bulkSendRecipients, setBulkSendRecipients] = useState<Array<{ id: number; address: string; amount: string }>>([]);
   const [address, setAddress] = useState('');
   const [amount, setAmount] = useState('');
   const [message, setMessage] = useState('');
@@ -1349,42 +1376,6 @@ function SendForm({ isMobile }: { isMobile: boolean }) {
   const [showReceiveMessageModal, setShowReceiveMessageModal] = useState(false);
   const [recipientReceiveMessage, setRecipientReceiveMessage] = useState<string>('');
   const [showFirstSendGuide, setShowFirstSendGuide] = useState(false);
-
-  // ブックマークユーザーを一括送金に追加
-  const handleAddToBulkSend = (userAddress: string, userName?: string) => {
-    // 新しいIDを生成（既存のrecipientsの最大IDに+1）
-    const newId = bulkSendRecipients.length > 0
-      ? Math.max(...bulkSendRecipients.map(r => r.id)) + 1
-      : 1;
-
-    // 重複チェック（同じアドレスが既にある場合は追加しない）
-    const isDuplicate = bulkSendRecipients.some(r => r.address.toLowerCase() === userAddress.toLowerCase());
-
-    if (isDuplicate) {
-      alert(`${userName || userAddress} は既に追加されています`);
-      return;
-    }
-
-    // 新しい受取人を追加
-    setBulkSendRecipients(prev => [
-      ...prev,
-      { id: newId, address: userAddress, amount: '' }
-    ]);
-
-    // 一括送金モードに切り替え
-    setSendMode('bulk');
-
-    // 成功メッセージ
-    alert(`${userName || userAddress} を一括送金リストに追加しました`);
-
-    // 送金フォームにスクロール
-    setTimeout(() => {
-      const sendFormSection = document.getElementById('send-form-section');
-      if (sendFormSection) {
-        sendFormSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
-    }, 300);
-  };
 
   // 受取人プロフィールを取得（デバウンス500ms）
   // sendMode に関わらず常にアドレスが入力されたらプロフィールを取得
@@ -4122,7 +4113,7 @@ function BulkSendForm({ isMobile, onChangeMode, initialRecipients }: {
             }}
           >
             <div style={{ fontSize: 10, opacity: 0.85, marginBottom: 2 }}>JPYC</div>
-            <div style={{ fontSize: isMobile ? 16 : 18, fontWeight: 900 }}>¥</div>
+            <img src="/JPYC-logo.png" alt="JPYC" style={{ width: 20, height: 20 }} />
           </button>
 
           {/* POL */}
