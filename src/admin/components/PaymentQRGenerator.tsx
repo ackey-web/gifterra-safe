@@ -273,12 +273,8 @@ export function PaymentQRGenerator() {
       return;
     }
 
-    // ガスレスモードかどうかで分岐
-    if (useGasless && isGaslessAvailable) {
-      await executeGenerateGasless(amount, message, expiryMinutes);
-    } else {
-      await executeGenerate(amount, message, expiryMinutes);
-    }
+    // 常にX402形式で生成（gaslessフラグはuseGaslessに応じて設定される）
+    await executeGenerate(amount, message, expiryMinutes);
   };
 
   const executeGenerate = async (amt: string, msg: string, expiry: number) => {
@@ -299,6 +295,7 @@ export function PaymentQRGenerator() {
         message: msg || undefined,
         expires,
         requestId,
+        gasless: useGasless && isGaslessAvailable ? true : undefined, // ガスレス決済フラグ
       });
 
       setQrData(paymentData);
