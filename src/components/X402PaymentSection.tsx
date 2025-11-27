@@ -428,10 +428,14 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
       // Privy埋め込みウォレットの場合は、providerを直接使用
       addDebugLog(`🔍 hasWallets=${!!wallets && wallets.length > 0}, type=${wallets?.[0]?.walletClientType}`);
       addDebugLog(`🔍 connectorType=${wallets?.[0]?.connectorType}`);
+      addDebugLog(`🔍 user.wallet=${!!user?.wallet}, user.wallet.address=${user?.wallet?.address?.slice(0, 10)}...`);
+      addDebugLog(`🔍 privyEmbeddedWalletAddress=${privyEmbeddedWalletAddress?.slice(0, 10)}...`);
 
-      // Privy埋め込みウォレットは walletClientType='privy' または connectorType='embedded' で判定
-      const isPrivyEmbedded = wallets && wallets.length > 0 &&
-        (wallets[0].walletClientType === 'privy' || wallets[0].connectorType === 'embedded');
+      // Privy埋め込みウォレットは user.wallet が存在する場合（Privyが管理するウォレット）
+      // または walletClientType='privy' / connectorType='embedded' で判定
+      const isPrivyEmbedded = (user?.wallet?.address && user.wallet.address === walletAddress) ||
+        (wallets && wallets.length > 0 &&
+          (wallets[0].walletClientType === 'privy' || wallets[0].connectorType === 'embedded'));
 
       addDebugLog(`🔍 isPrivyEmbedded判定結果: ${isPrivyEmbedded}`);
 
