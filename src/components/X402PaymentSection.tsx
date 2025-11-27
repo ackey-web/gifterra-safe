@@ -565,6 +565,9 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
       let tx;
       try {
         addDebugLog('🔍 Calling executePaymentWithPermit...');
+
+        // ガス推定が失敗するため、手動でガスリミットを設定
+        addDebugLog('⚙️ 手動ガスリミット設定: 300000');
         tx = await gatewayContract.executePaymentWithPermit(
           requestIdBytes32,
           permitParams.merchant,
@@ -572,7 +575,10 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
           permitParams.deadline,
           permitParams.v,
           permitParams.r,
-          permitParams.s
+          permitParams.s,
+          {
+            gasLimit: 300000, // 手動でガスリミットを設定
+          }
         );
         addDebugLog(`✅ Transaction sent: ${tx.hash}`);
         console.log('⏳ トランザクション送信完了:', tx.hash);
