@@ -1218,9 +1218,10 @@ export function PaymentTerminal() {
                   style={{
                     marginTop: '16px',
                     padding: '12px',
-                    background: 'rgba(16, 185, 129, 0.1)',
-                    border: '1px solid rgba(16, 185, 129, 0.3)',
+                    background: 'rgba(156, 163, 175, 0.1)',
+                    border: '1px solid rgba(156, 163, 175, 0.3)',
                     borderRadius: '10px',
+                    opacity: 0.6,
                   }}
                 >
                   <label
@@ -1228,9 +1229,10 @@ export function PaymentTerminal() {
                       display: 'flex',
                       alignItems: 'center',
                       gap: '8px',
-                      cursor: 'pointer',
+                      cursor: 'not-allowed',
                       fontSize: '15px',
                       fontWeight: '600',
+                      color: '#9CA3AF',
                     }}
                   >
                     <input
@@ -1242,14 +1244,39 @@ export function PaymentTerminal() {
                           setBatchProcessingEnabled(false);
                         }
                       }}
+                      disabled={true}
                       style={{
                         width: '18px',
                         height: '18px',
-                        cursor: 'pointer',
+                        cursor: 'not-allowed',
                       }}
                     />
                     ⚡ ガスレス決済（ガス代店舗負担）
+                    <span
+                      style={{
+                        marginLeft: '4px',
+                        padding: '2px 8px',
+                        background: '#9CA3AF',
+                        color: '#fff',
+                        fontSize: '10px',
+                        borderRadius: '4px',
+                        fontWeight: '600',
+                      }}
+                    >
+                      開発中
+                    </span>
                   </label>
+                  <p
+                    style={{
+                      fontSize: '12px',
+                      color: '#9CA3AF',
+                      marginTop: '8px',
+                      marginLeft: '26px',
+                      lineHeight: '1.4',
+                    }}
+                  >
+                    ガスレス決済機能は現在開発中です。通常の決済をご利用ください。
+                  </p>
 
                   {/* バッチ処理モード */}
                   {useGasless && (
