@@ -52,6 +52,19 @@ export async function signPermitWithPrivyProvider(
       nonce: nonce.toString(),
       deadline,
     });
+    console.log('📝 Domain:', JSON.stringify({
+      name: tokenName,
+      version: '1',
+      chainId: chainId,
+      verifyingContract: tokenAddress,
+    }, null, 2));
+    console.log('📝 Message Value:', JSON.stringify({
+      owner: ownerAddress,
+      spender: spenderAddress,
+      value: amount,
+      nonce: nonce.toNumber(),
+      deadline,
+    }, null, 2));
 
     // EIP-712 Domain
     const domain = {
@@ -109,7 +122,23 @@ export async function signPermitWithPrivyProvider(
       v: sig.v,
       r: sig.r,
       s: sig.s,
+      deadline,
+      nonce: nonce.toNumber(),
     });
+
+    // 🔍 検証用: 署名パラメータを全て出力
+    console.log('🔍 [検証用] 署名生成パラメータ完全版:');
+    console.log('  owner:', ownerAddress);
+    console.log('  spender:', spenderAddress);
+    console.log('  amount:', amount);
+    console.log('  deadline:', deadline);
+    console.log('  nonce:', nonce.toNumber());
+    console.log('  v:', sig.v);
+    console.log('  r:', sig.r);
+    console.log('  s:', sig.s);
+    console.log('  tokenAddress:', tokenAddress);
+    console.log('  tokenName:', tokenName);
+    console.log('  chainId:', chainId);
 
     return {
       v: sig.v,
