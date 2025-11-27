@@ -201,7 +201,7 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
 
   // 🚨 デバッグパネル用
   const [debugLogs, setDebugLogs] = useState<string[]>([]);
-  const [showDebugPanel, setShowDebugPanel] = useState(true); // デフォルトで表示
+  const [showDebugPanel, setShowDebugPanel] = useState(false); // デフォルトで非表示
 
   // デバッグログ追加ヘルパー
   const addDebugLog = (log: string) => {
