@@ -164,6 +164,7 @@ export function MypagePage() {
   const [actualChainId, setActualChainId] = useState<number | undefined>(undefined);
   const [userRoles, setUserRoles] = useState<UserRole[]>([]); // 新規ユーザー通知用のロール情報
   const [bulkSendRecipients, setBulkSendRecipients] = useState<Array<{ id: number; address: string; amount: string }>>([]);
+  const [sendMode, setSendMode] = useState<SendMode | null>(null); // 送金モード管理
   const { user, authenticated } = usePrivy();
   const thirdwebAddress = useAddress(); // Thirdwebウォレット
 
@@ -286,6 +287,17 @@ export function MypagePage() {
       ...prev,
       { id: newId, address: userAddress, amount: '' }
     ]);
+
+    // 一括送金モードに切り替え
+    setSendMode('bulk');
+
+    // SendFormセクションまでスクロール
+    setTimeout(() => {
+      const sendFormElement = document.getElementById('send-form-section');
+      if (sendFormElement) {
+        sendFormElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 100);
 
     alert(`${userName || userAddress} を一括送金リストに追加しました`);
   };
@@ -1294,7 +1306,7 @@ function FlowModeContent({
         gap: isMobile ? 16 : 20,
         marginBottom: isMobile ? 40 : 48,
       }}>
-        <SendForm isMobile={isMobile} bulkSendRecipients={bulkSendRecipients} handleAddToBulkSend={handleAddToBulkSend} />
+        <SendForm isMobile={isMobile} bulkSendRecipients={bulkSendRecipients} setBulkSendRecipients={setBulkSendRecipients} handleAddToBulkSend={handleAddToBulkSend} sendMode={sendMode} setSendMode={setSendMode} />
         <X402PaymentSection isMobile={isMobile} />
         <ReceiveAddress isMobile={isMobile} />
       </div>
@@ -1339,10 +1351,13 @@ function FlowModeContent({
 type SendMode = 'simple' | 'tenant' | 'bulk' | 'bookmark' | 'anonymous';
 
 // 1. 送金フォーム
-function SendForm({ isMobile, bulkSendRecipients, handleAddToBulkSend }: {
+function SendForm({ isMobile, bulkSendRecipients, setBulkSendRecipients, handleAddToBulkSend, sendMode, setSendMode }: {
   isMobile: boolean;
   bulkSendRecipients: Array<{ id: number; address: string; amount: string }>;
+  setBulkSendRecipients: React.Dispatch<React.SetStateAction<Array<{ id: number; address: string; amount: string }>>>;
   handleAddToBulkSend: (address: string, name?: string) => void;
+  sendMode: SendMode | null;
+  setSendMode: (mode: SendMode | null) => void;
 }) {
   // Thirdwebウォレット
   const thirdwebSigner = useSigner();
@@ -1363,7 +1378,6 @@ function SendForm({ isMobile, bulkSendRecipients, handleAddToBulkSend }: {
 
   const [selectedToken, setSelectedToken] = useState<'JPYC' | 'POL'>('JPYC'); // トークン選択（JPYC or POL）
   const [showTokenDropdown, setShowTokenDropdown] = useState(false); // トークン選択ドロップダウン表示状態
-  const [sendMode, setSendMode] = useState<SendMode | null>(null); // null = 未選択
   const [showModeModal, setShowModeModal] = useState(false);
   const [showTenantModal, setShowTenantModal] = useState(false);
   const [showBookmarkSelectModal, setShowBookmarkSelectModal] = useState(false); // ブックマーク選択モーダル
@@ -1937,7 +1951,8 @@ function SendForm({ isMobile, bulkSendRecipients, handleAddToBulkSend }: {
       <BulkSendForm
         isMobile={isMobile}
         onChangeMode={() => setSendMode(null)}
-        initialRecipients={bulkSendRecipients}
+        recipients={bulkSendRecipients}
+        setRecipients={setBulkSendRecipients}
       />
     );
   }
@@ -3722,10 +3737,11 @@ function TenantSelectModal({ isMobile, onClose, onSelectTenant }: {
 }
 
 // 一括送金フォーム
-function BulkSendForm({ isMobile, onChangeMode, initialRecipients }: {
+function BulkSendForm({ isMobile, onChangeMode, recipients, setRecipients }: {
   isMobile: boolean;
   onChangeMode: () => void;
-  initialRecipients?: Array<{ id: number; address: string; amount: string }>;
+  recipients: Array<{ id: number; address: string; amount: string }>;
+  setRecipients: React.Dispatch<React.SetStateAction<Array<{ id: number; address: string; amount: string }>>>;
 }) {
   // Thirdwebウォレット
   const thirdwebSigner = useSigner();
@@ -3742,12 +3758,14 @@ function BulkSendForm({ isMobile, onChangeMode, initialRecipients }: {
     : null;
 
   const [selectedToken, setSelectedToken] = useState<'JPYC' | 'POL'>('JPYC');
-  const [recipients, setRecipients] = useState<Array<{ id: number; address: string; amount: string }>>(
-    initialRecipients && initialRecipients.length > 0
-      ? initialRecipients
-      : [{ id: 1, address: '', amount: '' }]
-  );
   const [isSending, setIsSending] = useState(false);
+
+  // 受取人リストが空の場合は初期レコードを追加
+  useEffect(() => {
+    if (recipients.length === 0) {
+      setRecipients([{ id: 1, address: '', amount: '' }]);
+    }
+  }, [recipients.length, setRecipients]);
 
   // 各受取人のプロフィールを管理
   const [recipientProfiles, setRecipientProfiles] = useState<Record<number, RecipientProfile | null>>({});
