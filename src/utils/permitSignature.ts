@@ -209,42 +209,43 @@ export async function signPermit(
 
     console.log('📋 署名データ:', JSON.stringify(typedData, null, 2));
 
-    // 方法1: window.ethereumを直接使用（最優先、MetaMask/Privy両対応）
-    if (typeof window !== 'undefined' && (window as any).ethereum) {
-      try {
+    // 方法1: signerのproviderから直接request（Privy対応）
+    try {
+      const provider = signer.provider as any;
+      if (provider && provider.provider && provider.provider.request) {
+        // Privyの埋め込みウォレット用
+        console.log('🔍 Privy埋め込みウォレット検出 - provider.provider.requestを使用');
+        signature = await provider.provider.request({
+          method: 'eth_signTypedData_v4',
+          params: [owner.toLowerCase(), JSON.stringify(typedData)],
+        });
+        console.log('✅ provider.provider.requestで署名成功');
+      } else if (typeof window !== 'undefined' && (window as any).ethereum) {
+        // MetaMaskなど外部ウォレット用
+        console.log('🔍 window.ethereum検出 - window.ethereum.requestを使用');
         const ethereum = (window as any).ethereum;
         signature = await ethereum.request({
           method: 'eth_signTypedData_v4',
           params: [owner.toLowerCase(), JSON.stringify(typedData)],
         });
         console.log('✅ window.ethereum.requestで署名成功');
-      } catch (windowError: any) {
-        console.warn('⚠️ window.ethereum.request失敗:', windowError.message);
-
-        // 方法2: provider.sendにフォールバック
-        try {
-          const provider = signer.provider as any;
-          if (provider && provider.send) {
-            signature = await provider.send('eth_signTypedData_v4', [
-              owner.toLowerCase(),
-              JSON.stringify(typedData),
-            ]);
-            console.log('✅ provider.sendで署名成功');
-          } else {
-            throw new Error('provider.send not available');
-          }
-        } catch (providerError: any) {
-          console.warn('⚠️ provider.send失敗:', providerError.message);
-
-          // 方法3: 最終フォールバック - _signTypedData
-          signature = await (signer as any)._signTypedData(domain, types, value);
-          console.log('✅ _signTypedDataで署名成功');
-        }
+      } else if (provider && provider.send) {
+        // provider.send フォールバック
+        console.log('🔍 provider.sendを使用');
+        signature = await provider.send('eth_signTypedData_v4', [
+          owner.toLowerCase(),
+          JSON.stringify(typedData),
+        ]);
+        console.log('✅ provider.sendで署名成功');
+      } else {
+        throw new Error('No compatible provider found');
       }
-    } else {
-      // window.ethereumがない場合は直接_signTypedDataを使用
+    } catch (error: any) {
+      console.warn('⚠️ すべての署名方法が失敗、_signTypedDataにフォールバック:', error.message);
+
+      // 最終フォールバック: ethers標準の_signTypedData
       signature = await (signer as any)._signTypedData(domain, types, value);
-      console.log('✅ _signTypedDataで署名成功（window.ethereum不在）');
+      console.log('✅ _signTypedDataで署名成功');
     }
 
     const sig = ethers.utils.splitSignature(signature);
