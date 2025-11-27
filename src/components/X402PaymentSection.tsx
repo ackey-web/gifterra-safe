@@ -580,8 +580,17 @@ reason: ${error.reason || 'なし'}`;
     }
 
     // ========== ガスレス決済の処理 ==========
+    // デバッグ: paymentDataの内容を確認
+    console.log('🔍 DEBUG - paymentData全体:', JSON.stringify(paymentData, null, 2));
+    console.log('🔍 DEBUG - paymentData.gasless:', paymentData.gasless);
+    console.log('🔍 DEBUG - isGaslessPaymentEnabled(walletAddress):', isGaslessPaymentEnabled(walletAddress));
+    console.log('🔍 DEBUG - 条件チェック結果:', paymentData.gasless && isGaslessPaymentEnabled(walletAddress));
+
     if (paymentData.gasless && isGaslessPaymentEnabled(walletAddress)) {
+      console.log('✅ ガスレス決済条件を満たしたのでhandleGaslessPayment()を呼び出します');
       return await handleGaslessPayment();
+    } else {
+      console.log('⚠️ ガスレス決済条件を満たしていません - 通常決済に進みます');
     }
 
     // ========== 通常決済の処理（既存コード）==========

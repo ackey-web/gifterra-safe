@@ -74,15 +74,9 @@ export async function signPermitWithPrivyProvider(
     };
 
     // EIP-712 TypedData
-    // Privy requires EIP712Domain in types
+    // Standard EIP-712 format (eth_signTypedData_v4 automatically handles EIP712Domain)
     const typedData = {
       types: {
-        EIP712Domain: [
-          { name: 'name', type: 'string' },
-          { name: 'version', type: 'string' },
-          { name: 'chainId', type: 'uint256' },
-          { name: 'verifyingContract', type: 'address' },
-        ],
         Permit: types.Permit,
       },
       primaryType: 'Permit',
