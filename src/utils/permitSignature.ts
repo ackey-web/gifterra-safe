@@ -24,9 +24,11 @@ export async function signPermitWithPrivyProvider(
 }> {
   try {
     console.log('🚀 signPermitWithPrivyProvider() 開始');
+    alert('🚀 signPermitWithPrivyProvider() 開始'); // デバッグ用
 
     // Read-only providerでnonceとnameを取得
     console.log('📡 RPC接続開始: https://polygon-rpc.com');
+    alert('📡 RPC接続開始'); // デバッグ用
     const readOnlyProvider = new ethers.providers.JsonRpcProvider('https://polygon-rpc.com');
     const tokenContract = new ethers.Contract(
       tokenAddress,

@@ -433,8 +433,11 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
       if (isPrivyEmbedded) {
         addDebugLog('🔍 Privy埋め込みウォレット検出 - Privy Provider版を使用');
         const wallet = wallets[0];
+        addDebugLog('📡 wallet.getEthereumProvider() 呼び出し開始');
         const privyProvider = await wallet.getEthereumProvider();
+        addDebugLog('✅ privyProvider取得成功');
 
+        addDebugLog('📝 preparePermitPaymentParamsWithPrivy() 呼び出し開始');
         permitParams = await preparePermitPaymentParamsWithPrivy(
           privyProvider,
           walletAddress,
