@@ -78,7 +78,7 @@ export const TOKEN_MASTER_DATA: Record<TokenId, TokenConfig> = {
     category: 'utility', // ユーティリティトークン：Reward配布可能
     addresses: {
       testnet: import.meta.env.VITE_NHT_TESTNET_ADDRESS || '0xdB738C7A83FE7738299a67741Ae2AbE42B3BA2Ea', // Polygon Amoy tNHT
-      mainnet: import.meta.env.VITE_NHT_MAINNET_ADDRESS || '0x0000000000000000000000000000000000000000', // TODO: メインネットNHTアドレス
+      mainnet: import.meta.env.VITE_NHT_MAINNET_ADDRESS || '0x3cc0e67d0abAbEe99F881AbADa7ef9398Dcf3757', // Polygon Mainnet NHT
     },
     icon: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAzMiAzMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMTYiIGN5PSIxNiIgcj0iMTYiIGZpbGw9IiM4MjQ3ZTMiLz4KPHN2ZyB4PSI2IiB5PSI2IiB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSI+CjxwYXRoIGQ9Ik0xMiAyQzYuNDggMiAyIDYuNDggMiAxMnM0LjQ4IDEwIDEwIDEwIDEwLTQuNDggMTAtMTBTMTcuNTIgMiAxMiAyem0tMiAxNWwtNS01aDNWOGg0djRoM2wtNSA1eiIgZmlsbD0id2hpdGUiLz4KPC9zdmc+Cjwvc3ZnPg==',
     description: 'Gifterraプラットフォームのユーティリティトークン',
