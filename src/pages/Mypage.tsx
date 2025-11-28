@@ -582,22 +582,9 @@ function Header({ viewMode, setViewMode, isMobile, tenantRank, showSettingsModal
     return flowImage;
   };
 
-  // スーパーアドミン判定（デバッグモード対応）
-  const isSuperAdmin = isSuperAdminWithDebug(displayAddress);
-
-  // デバッグログ
-  console.log('🔍 Toggle Debug:', {
-    displayAddress,
-    isSuperAdmin,
-    debugMode: import.meta.env.VITE_SUPER_ADMIN_DEBUG_MODE,
-    walletAddress,
-    userWalletAddress: user?.wallet?.address,
-    thirdwebAddress: address
-  });
-
-  // スーパーアドミンのみトグル表示（テナント機能の開発・テスト用）
-  // 一時的に常に表示（デバッグ用）
-  const showToggle = true; // isSuperAdmin;
+  // 特定アドレスのみトグル表示（開発・テスト用）
+  const ALLOWED_TOGGLE_ADDRESS = '0x66f1274ad5d042b7571c2efa943370dbcd3459ab';
+  const showToggle = displayAddress?.toLowerCase() === ALLOWED_TOGGLE_ADDRESS.toLowerCase();
 
   const handleLogout = async () => {
     try {
