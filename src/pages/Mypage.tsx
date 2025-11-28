@@ -18,6 +18,7 @@ import { saveTransferMessage, useReceivedTransferMessages } from '../hooks/useTr
 import { useRecipientProfile, type RecipientProfile } from '../hooks/useRecipientProfile';
 import { TenantPlanCard } from '../components/TenantPlanCard';
 import { supabase } from '../lib/supabase';
+import { isSuperAdminWithDebug } from '../config/superAdmin';
 import { SettingsModal } from '../components/SettingsModal';
 import { TransferMessageHistory } from '../components/TransferMessageHistory';
 import { SentTransferMessageHistory } from '../components/SentTransferMessageHistory';
@@ -581,12 +582,22 @@ function Header({ viewMode, setViewMode, isMobile, tenantRank, showSettingsModal
     return flowImage;
   };
 
-  // スーパーアドミンアドレス（FLOW/STUDIOトグルを表示）
-  const superAdminAddresses = import.meta.env.VITE_SUPER_ADMIN_ADDRESSES?.toLowerCase().split(',').map((addr: string) => addr.trim()) || [];
-  const isSuperAdmin = displayAddress && superAdminAddresses.includes(displayAddress.toLowerCase());
+  // スーパーアドミン判定（デバッグモード対応）
+  const isSuperAdmin = isSuperAdminWithDebug(displayAddress);
+
+  // デバッグログ
+  console.log('🔍 Toggle Debug:', {
+    displayAddress,
+    isSuperAdmin,
+    debugMode: import.meta.env.VITE_SUPER_ADMIN_DEBUG_MODE,
+    walletAddress,
+    userWalletAddress: user?.wallet?.address,
+    thirdwebAddress: address
+  });
 
   // スーパーアドミンのみトグル表示（テナント機能の開発・テスト用）
-  const showToggle = isSuperAdmin;
+  // 一時的に常に表示（デバッグ用）
+  const showToggle = true; // isSuperAdmin;
 
   const handleLogout = async () => {
     try {
