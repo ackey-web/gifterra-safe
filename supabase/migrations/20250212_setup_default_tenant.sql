@@ -13,7 +13,7 @@ BEGIN
   -- 0. 既存のtenant_idを確認
   SELECT tenant_id INTO existing_tenant_id
   FROM tenant_applications
-  WHERE applicant_address = '0x0174477a1fceb9de25289cd1ca48b6998c9cd7fc'
+  WHERE applicant_address = '0x66f1274ad5d042b7571c2efa943370dbcd3459ab'
     AND status = 'approved';
 
   IF existing_tenant_id IS NOT NULL THEN
@@ -24,7 +24,7 @@ BEGIN
     -- 1. tenant_applicationsテーブルの該当レコードにtenant_idを設定
     UPDATE tenant_applications
     SET tenant_id = default_tenant_uuid
-    WHERE applicant_address = '0x0174477a1fceb9de25289cd1ca48b6998c9cd7fc'
+    WHERE applicant_address = '0x66f1274ad5d042b7571c2efa943370dbcd3459ab'
       AND status = 'approved';
 
     GET DIAGNOSTICS updated_rows = ROW_COUNT;
@@ -50,13 +50,13 @@ BEGIN
     'STUDIO_PRO_MAX',
     true,
     NOW(),
-    '0x0174477a1fceb9de25289cd1ca48b6998c9cd7fc'
+    '0x66f1274ad5d042b7571c2efa943370dbcd3459ab'
   )
   ON CONFLICT (tenant_id)
   DO UPDATE SET
     rank_plan = 'STUDIO_PRO_MAX',
     is_active = true,
-    updated_by = '0x0174477a1fceb9de25289cd1ca48b6998c9cd7fc',
+    updated_by = '0x66f1274ad5d042b7571c2efa943370dbcd3459ab',
     updated_at = NOW();
 
   RAISE NOTICE 'デフォルトテナント設定完了: tenant_id = %', default_tenant_uuid;

@@ -16,10 +16,9 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-const DEFAULT_TENANT_ADDRESS = '0x0174477A1FCEb9dE25289Cd1CA48b6998C9cD7FC';
+const DEFAULT_TENANT_ADDRESS = '0x66f1274ad5d042b7571c2efa943370dbcd3459ab';
 const TENANT_NAME = 'GIFTERRA Official';
 const RANK_PLAN = 'STUDIO_PRO_MAX';
-// TENANT_ID は Supabase で手動設定: 1
 
 async function registerDefaultTenant() {
   console.log('🚀 デフォルトテナント登録を開始します...\n');
