@@ -19,7 +19,7 @@ const supabase = createClient(supabaseUrl, supabaseAnonKey);
 const DEFAULT_TENANT_ADDRESS = '0x0174477A1FCEb9dE25289Cd1CA48b6998C9cD7FC';
 const TENANT_NAME = 'GIFTERRA Official';
 const RANK_PLAN = 'STUDIO_PRO_MAX';
-const TENANT_ID = 1; // デフォルトテナントのID (INTEGER)
+// TENANT_ID は Supabase で手動設定: 1
 
 async function registerDefaultTenant() {
   console.log('🚀 デフォルトテナント登録を開始します...\n');
@@ -44,17 +44,17 @@ async function registerDefaultTenant() {
       console.log('   - テナントID:', existingApplication.tenant_id);
       console.log('   - プラン:', existingApplication.rank_plan);
 
-      // 承認済みでない場合は更新
+      // 承認済みでない場合は更新（tenant_idは除外）
       if (existingApplication.status !== 'approved') {
         console.log('\n2️⃣ 申請を承認済みに更新中...');
         const { error: updateError } = await supabase
           .from('tenant_applications')
           .update({
             status: 'approved',
-            tenant_id: TENANT_ID,
             rank_plan: RANK_PLAN,
             approved_by: DEFAULT_TENANT_ADDRESS.toLowerCase(),
             approved_at: new Date().toISOString(),
+            // tenant_idは手動で設定（Supabaseダッシュボードから）
           })
           .eq('applicant_address', DEFAULT_TENANT_ADDRESS.toLowerCase());
 
@@ -63,6 +63,7 @@ async function registerDefaultTenant() {
           throw updateError;
         }
         console.log('✅ 申請を承認済みに更新しました');
+        console.log('⚠️  注意: tenant_idはSupabaseダッシュボードから手動で設定してください（値: 1）');
       } else {
         console.log('✅ すでに承認済みです');
       }
@@ -89,110 +90,63 @@ async function registerDefaultTenant() {
 
       // 申請を承認
       console.log('\n3️⃣ 申請を承認中...');
+      console.log('   - 申請ID:', newApplication.id);
+      console.log('   - 申請アドレス:', newApplication.applicant_address);
+
       const { error: approveError } = await supabase
         .from('tenant_applications')
         .update({
           status: 'approved',
-          tenant_id: TENANT_ID,
           approved_by: DEFAULT_TENANT_ADDRESS.toLowerCase(),
           approved_at: new Date().toISOString(),
+          // tenant_idは手動で設定（Supabaseダッシュボードから）
         })
-        .eq('id', newApplication.id);
+        .eq('applicant_address', DEFAULT_TENANT_ADDRESS.toLowerCase());
 
       if (approveError) {
         console.error('❌ 承認エラー:', approveError);
         throw approveError;
       }
       console.log('✅ 申請を承認しました');
+      console.log('⚠️  注意: tenant_idはSupabaseダッシュボードから手動で設定してください（値: 1）');
     }
 
-    // 4. ランクプランをチェック
-    console.log('\n4️⃣ ランクプランをチェック中...');
-    const { data: existingPlan, error: planCheckError } = await supabase
-      .from('tenant_rank_plans')
-      .select('*')
-      .eq('tenant_id', TENANT_ID)
-      .maybeSingle();
+    // 4. ランクプラン情報を表示（tenant_idがnullの場合はスキップ）
+    console.log('\n4️⃣ ランクプラン確認...');
+    console.log('⚠️  tenant_rank_plansテーブルの設定は、Supabaseダッシュボードから手動で行ってください');
+    console.log('   手順:');
+    console.log('   1. tenant_applicationsテーブルで該当レコードのtenant_idを1に設定');
+    console.log('   2. tenant_rank_plansテーブルに以下のレコードを追加:');
+    console.log('      - tenant_id: 1');
+    console.log('      - rank_plan: STUDIO_PRO_MAX');
+    console.log('      - is_active: true');
+    console.log('      - subscription_start_date: (現在日時)');
+    console.log('');
 
-    if (planCheckError) {
-      console.error('❌ プランチェックエラー:', planCheckError);
-      throw planCheckError;
-    }
-
-    if (existingPlan) {
-      console.log('📌 既存のプランが見つかりました:');
-      console.log('   - プラン:', existingPlan.rank_plan);
-      console.log('   - アクティブ:', existingPlan.is_active);
-
-      // プランが異なる、または無効な場合は更新
-      if (existingPlan.rank_plan !== RANK_PLAN || !existingPlan.is_active) {
-        console.log('\n5️⃣ ランクプランを更新中...');
-        const { error: updatePlanError } = await supabase
-          .from('tenant_rank_plans')
-          .update({
-            rank_plan: RANK_PLAN,
-            is_active: true,
-            updated_by: DEFAULT_TENANT_ADDRESS.toLowerCase(),
-          })
-          .eq('tenant_id', TENANT_ID);
-
-        if (updatePlanError) {
-          console.error('❌ プラン更新エラー:', updatePlanError);
-          throw updatePlanError;
-        }
-        console.log('✅ ランクプランを更新しました');
-      } else {
-        console.log('✅ プランはすでに正しく設定されています');
-      }
-    } else {
-      // 新規プランを作成
-      console.log('\n5️⃣ 新規ランクプランを作成中...');
-      const { error: insertPlanError } = await supabase
-        .from('tenant_rank_plans')
-        .insert({
-          tenant_id: TENANT_ID,
-          rank_plan: RANK_PLAN,
-          is_active: true,
-          subscription_start_date: new Date().toISOString(),
-          updated_by: DEFAULT_TENANT_ADDRESS.toLowerCase(),
-        });
-
-      if (insertPlanError) {
-        console.error('❌ プラン挿入エラー:', insertPlanError);
-        throw insertPlanError;
-      }
-      console.log('✅ 新規ランクプランを作成しました');
-    }
-
-    // 6. 最終確認
-    console.log('\n6️⃣ 最終確認...');
+    // 5. 最終確認
+    console.log('\n5️⃣ 最終確認...');
     const { data: finalApplication } = await supabase
       .from('tenant_applications')
       .select('*')
       .eq('applicant_address', DEFAULT_TENANT_ADDRESS.toLowerCase())
       .single();
 
-    const { data: finalPlan } = await supabase
-      .from('tenant_rank_plans')
-      .select('*')
-      .eq('tenant_id', TENANT_ID)
-      .single();
-
-    console.log('\n✅ 登録完了！');
+    console.log('\n✅ テナント申請の承認が完了しました！');
     console.log('\n📊 最終状態:');
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log('テナント申請:');
     console.log('  アドレス:', finalApplication?.applicant_address);
     console.log('  名前:', finalApplication?.tenant_name);
     console.log('  ステータス:', finalApplication?.status);
-    console.log('  テナントID:', finalApplication?.tenant_id);
-    console.log('\nランクプラン:');
-    console.log('  プラン:', finalPlan?.rank_plan);
-    console.log('  アクティブ:', finalPlan?.is_active);
-    console.log('  開始日:', finalPlan?.subscription_start_date);
+    console.log('  テナントID:', finalApplication?.tenant_id || '(未設定 - 手動で1に設定してください)');
+    console.log('  プラン:', finalApplication?.rank_plan);
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
 
-    console.log('🎉 Reward UIで STUDIO_PRO_MAX プランが適用されます！');
+    console.log('📝 次のステップ:');
+    console.log('   Supabaseダッシュボードで以下を設定してください:');
+    console.log('   1. tenant_applicationsテーブル: tenant_id を 1 に設定');
+    console.log('   2. tenant_rank_plansテーブル: 上記の手順に従ってレコード追加');
+    console.log('\n🎉 設定完了後、Reward UIで STUDIO_PRO_MAX プランが適用されます！');
 
   } catch (error) {
     console.error('\n❌ エラーが発生しました:', error);
