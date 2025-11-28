@@ -30,7 +30,7 @@ import { ScoreParametersPage, TokenAxisPage, SystemMonitoringPage } from '../adm
 import CreateTenantForm from './CreateTenantForm';
 import { SecurityManagement } from '../admin/components/SecurityManagement';
 
-type TabType = 'dashboard' | 'user-preview' | 'users' | 'tenants' | 'applications' | 'revenue' | 'rank-plans' | 'score-parameters' | 'token-axis' | 'system-monitoring' | 'security' | 'announcements';
+type TabType = 'dashboard' | 'user-preview' | 'users' | 'tenants' | 'applications' | 'revenue' | 'rank-plans' | 'score-parameters' | 'token-axis' | 'system-monitoring' | 'security' | 'announcements' | 'ads';
 
 export function SuperAdminPage() {
   const connectedAddress = useAddress();
@@ -279,6 +279,12 @@ export function SuperAdminPage() {
             icon="📢"
             label="システム通知"
           />
+          <TabButton
+            active={activeTab === 'ads'}
+            onClick={() => setActiveTab('ads')}
+            icon="📺"
+            label="広告管理"
+          />
         </div>
 
         {/* タブコンテンツ */}
@@ -294,6 +300,7 @@ export function SuperAdminPage() {
         {activeTab === 'system-monitoring' && <SystemMonitoringPage />}
         {activeTab === 'security' && <SecurityManagement isMobile={false} />}
         {activeTab === 'announcements' && <AnnouncementsTab />}
+        {activeTab === 'ads' && <AdsManagementTab />}
       </div>
     </div>
   );
@@ -3928,6 +3935,461 @@ function AnnouncementsTab() {
             <li>全ユーザーに一斉送信されます</li>
             <li>ユーザー数が多い場合、送信に時間がかかることがあります</li>
             <li>重要な通知以外の頻繁な使用は控えてください</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// 広告管理タブ
+// ============================================================
+
+interface AdData {
+  src: string;
+  href: string;
+}
+
+function AdsManagementTab() {
+  const [ads, setAds] = useState<AdData[]>([]);
+  const [newAdSrc, setNewAdSrc] = useState('');
+  const [newAdHref, setNewAdHref] = useState('');
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [saveMessage, setSaveMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  // ローカルストレージから広告データを読み込み
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('gifterra-ads');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.ads && Array.isArray(parsed.ads)) {
+          setAds(parsed.ads);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load ads from localStorage:', error);
+    }
+  }, []);
+
+  // ローカルストレージに保存
+  const saveToLocalStorage = (adsData: AdData[]) => {
+    try {
+      localStorage.setItem('gifterra-ads', JSON.stringify({ ads: adsData }));
+      setSaveMessage({ type: 'success', text: '広告データを保存しました' });
+      setTimeout(() => setSaveMessage(null), 3000);
+    } catch (error) {
+      console.error('Failed to save ads to localStorage:', error);
+      setSaveMessage({ type: 'error', text: '保存に失敗しました' });
+      setTimeout(() => setSaveMessage(null), 3000);
+    }
+  };
+
+  // 新規広告を追加
+  const handleAddAd = () => {
+    if (!newAdSrc.trim() || !newAdHref.trim()) {
+      setSaveMessage({ type: 'error', text: '画像URLとリンクURLの両方を入力してください' });
+      setTimeout(() => setSaveMessage(null), 3000);
+      return;
+    }
+
+    const newAds = [...ads, { src: newAdSrc.trim(), href: newAdHref.trim() }];
+    setAds(newAds);
+    saveToLocalStorage(newAds);
+    setNewAdSrc('');
+    setNewAdHref('');
+  };
+
+  // 広告を削除
+  const handleDeleteAd = (index: number) => {
+    const newAds = ads.filter((_, i) => i !== index);
+    setAds(newAds);
+    saveToLocalStorage(newAds);
+  };
+
+  // 広告を編集
+  const handleEditAd = (index: number) => {
+    setEditingIndex(index);
+    setNewAdSrc(ads[index].src);
+    setNewAdHref(ads[index].href);
+  };
+
+  // 編集を保存
+  const handleSaveEdit = () => {
+    if (editingIndex === null) return;
+    if (!newAdSrc.trim() || !newAdHref.trim()) {
+      setSaveMessage({ type: 'error', text: '画像URLとリンクURLの両方を入力してください' });
+      setTimeout(() => setSaveMessage(null), 3000);
+      return;
+    }
+
+    const newAds = [...ads];
+    newAds[editingIndex] = { src: newAdSrc.trim(), href: newAdHref.trim() };
+    setAds(newAds);
+    saveToLocalStorage(newAds);
+    setEditingIndex(null);
+    setNewAdSrc('');
+    setNewAdHref('');
+  };
+
+  // 編集をキャンセル
+  const handleCancelEdit = () => {
+    setEditingIndex(null);
+    setNewAdSrc('');
+    setNewAdHref('');
+  };
+
+  // 順番を変更（上に移動）
+  const handleMoveUp = (index: number) => {
+    if (index === 0) return;
+    const newAds = [...ads];
+    [newAds[index - 1], newAds[index]] = [newAds[index], newAds[index - 1]];
+    setAds(newAds);
+    saveToLocalStorage(newAds);
+  };
+
+  // 順番を変更（下に移動）
+  const handleMoveDown = (index: number) => {
+    if (index === ads.length - 1) return;
+    const newAds = [...ads];
+    [newAds[index], newAds[index + 1]] = [newAds[index + 1], newAds[index]];
+    setAds(newAds);
+    saveToLocalStorage(newAds);
+  };
+
+  return (
+    <div style={{ color: '#fff' }}>
+      <h2 style={{ margin: '0 0 8px 0', fontSize: 24, fontWeight: 700 }}>
+        📺 広告カルーセル管理
+      </h2>
+      <p style={{ margin: '0 0 24px 0', fontSize: 14, color: '#94a3b8' }}>
+        全テナントで共通表示される広告カルーセルを管理します
+      </p>
+
+      {/* 保存メッセージ */}
+      {saveMessage && (
+        <div
+          style={{
+            padding: 16,
+            borderRadius: 8,
+            marginBottom: 20,
+            background: saveMessage.type === 'success'
+              ? 'rgba(34, 197, 94, 0.1)'
+              : 'rgba(239, 68, 68, 0.1)',
+            border: `1px solid ${
+              saveMessage.type === 'success' ? 'rgba(34, 197, 94, 0.3)' : 'rgba(239, 68, 68, 0.3)'
+            }`,
+            color: saveMessage.type === 'success' ? '#86efac' : '#fca5a5',
+          }}
+        >
+          {saveMessage.type === 'success' ? '✅' : '❌'} {saveMessage.text}
+        </div>
+      )}
+
+      {/* 広告追加/編集フォーム */}
+      <div
+        style={{
+          background: 'rgba(30, 41, 59, 0.6)',
+          border: '1px solid rgba(71, 85, 105, 0.4)',
+          borderRadius: 12,
+          padding: 24,
+          marginBottom: 24,
+        }}
+      >
+        <h3 style={{ margin: '0 0 16px 0', fontSize: 18, fontWeight: 600 }}>
+          {editingIndex !== null ? '✏️ 広告を編集' : '➕ 新規広告を追加'}
+        </h3>
+
+        <div style={{ marginBottom: 16 }}>
+          <label style={{ display: 'block', marginBottom: 8, fontSize: 14, color: '#cbd5e1' }}>
+            画像URL
+          </label>
+          <input
+            type="text"
+            value={newAdSrc}
+            onChange={(e) => setNewAdSrc(e.target.value)}
+            placeholder="https://example.com/ad-image.jpg"
+            style={{
+              width: '100%',
+              padding: '12px 16px',
+              background: 'rgba(15, 23, 42, 0.8)',
+              border: '1px solid rgba(71, 85, 105, 0.4)',
+              borderRadius: 8,
+              color: '#fff',
+              fontSize: 14,
+              outline: 'none',
+            }}
+          />
+        </div>
+
+        <div style={{ marginBottom: 16 }}>
+          <label style={{ display: 'block', marginBottom: 8, fontSize: 14, color: '#cbd5e1' }}>
+            リンクURL
+          </label>
+          <input
+            type="text"
+            value={newAdHref}
+            onChange={(e) => setNewAdHref(e.target.value)}
+            placeholder="https://example.com/landing-page"
+            style={{
+              width: '100%',
+              padding: '12px 16px',
+              background: 'rgba(15, 23, 42, 0.8)',
+              border: '1px solid rgba(71, 85, 105, 0.4)',
+              borderRadius: 8,
+              color: '#fff',
+              fontSize: 14,
+              outline: 'none',
+            }}
+          />
+        </div>
+
+        <div style={{ display: 'flex', gap: 12 }}>
+          {editingIndex !== null ? (
+            <>
+              <button
+                onClick={handleSaveEdit}
+                style={{
+                  flex: 1,
+                  padding: '12px 24px',
+                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  border: 'none',
+                  borderRadius: 8,
+                  color: '#fff',
+                  fontSize: 14,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                💾 保存
+              </button>
+              <button
+                onClick={handleCancelEdit}
+                style={{
+                  flex: 1,
+                  padding: '12px 24px',
+                  background: 'rgba(71, 85, 105, 0.3)',
+                  border: '1px solid rgba(71, 85, 105, 0.4)',
+                  borderRadius: 8,
+                  color: '#cbd5e1',
+                  fontSize: 14,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                ❌ キャンセル
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={handleAddAd}
+              style={{
+                width: '100%',
+                padding: '12px 24px',
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                border: 'none',
+                borderRadius: 8,
+                color: '#fff',
+                fontSize: 14,
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              ➕ 追加
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* 現在の広告一覧 */}
+      <div
+        style={{
+          background: 'rgba(30, 41, 59, 0.6)',
+          border: '1px solid rgba(71, 85, 105, 0.4)',
+          borderRadius: 12,
+          padding: 24,
+        }}
+      >
+        <h3 style={{ margin: '0 0 16px 0', fontSize: 18, fontWeight: 600 }}>
+          📋 現在の広告一覧 ({ads.length}件)
+        </h3>
+
+        {ads.length === 0 ? (
+          <div
+            style={{
+              padding: 40,
+              textAlign: 'center',
+              color: '#64748b',
+              fontSize: 14,
+            }}
+          >
+            広告が登録されていません
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {ads.map((ad, index) => (
+              <div
+                key={index}
+                style={{
+                  background: 'rgba(15, 23, 42, 0.6)',
+                  border: editingIndex === index
+                    ? '2px solid rgba(102, 126, 234, 0.6)'
+                    : '1px solid rgba(71, 85, 105, 0.3)',
+                  borderRadius: 8,
+                  padding: 16,
+                  display: 'flex',
+                  gap: 16,
+                  alignItems: 'center',
+                }}
+              >
+                {/* 広告プレビュー */}
+                <div
+                  style={{
+                    width: 120,
+                    height: 80,
+                    borderRadius: 6,
+                    overflow: 'hidden',
+                    flexShrink: 0,
+                    background: 'rgba(0, 0, 0, 0.3)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <img
+                    src={ad.src}
+                    alt={`Ad ${index + 1}`}
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover',
+                    }}
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).style.display = 'none';
+                      (e.target as HTMLImageElement).parentElement!.innerHTML = '🖼️<br/>読込失敗';
+                    }}
+                  />
+                </div>
+
+                {/* 広告情報 */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 4 }}>
+                    広告 #{index + 1}
+                  </div>
+                  <div
+                    style={{
+                      fontSize: 13,
+                      color: '#cbd5e1',
+                      marginBottom: 4,
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    <strong>画像:</strong> {ad.src}
+                  </div>
+                  <div
+                    style={{
+                      fontSize: 13,
+                      color: '#cbd5e1',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    <strong>リンク:</strong> {ad.href}
+                  </div>
+                </div>
+
+                {/* 操作ボタン */}
+                <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+                  <button
+                    onClick={() => handleMoveUp(index)}
+                    disabled={index === 0}
+                    style={{
+                      padding: '8px 12px',
+                      background: index === 0 ? 'rgba(71, 85, 105, 0.2)' : 'rgba(71, 85, 105, 0.4)',
+                      border: '1px solid rgba(71, 85, 105, 0.4)',
+                      borderRadius: 6,
+                      color: index === 0 ? '#64748b' : '#cbd5e1',
+                      fontSize: 12,
+                      cursor: index === 0 ? 'not-allowed' : 'pointer',
+                    }}
+                    title="上に移動"
+                  >
+                    ⬆️
+                  </button>
+                  <button
+                    onClick={() => handleMoveDown(index)}
+                    disabled={index === ads.length - 1}
+                    style={{
+                      padding: '8px 12px',
+                      background: index === ads.length - 1 ? 'rgba(71, 85, 105, 0.2)' : 'rgba(71, 85, 105, 0.4)',
+                      border: '1px solid rgba(71, 85, 105, 0.4)',
+                      borderRadius: 6,
+                      color: index === ads.length - 1 ? '#64748b' : '#cbd5e1',
+                      fontSize: 12,
+                      cursor: index === ads.length - 1 ? 'not-allowed' : 'pointer',
+                    }}
+                    title="下に移動"
+                  >
+                    ⬇️
+                  </button>
+                  <button
+                    onClick={() => handleEditAd(index)}
+                    style={{
+                      padding: '8px 12px',
+                      background: 'rgba(59, 130, 246, 0.2)',
+                      border: '1px solid rgba(59, 130, 246, 0.4)',
+                      borderRadius: 6,
+                      color: '#93c5fd',
+                      fontSize: 12,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    ✏️
+                  </button>
+                  <button
+                    onClick={() => handleDeleteAd(index)}
+                    style={{
+                      padding: '8px 12px',
+                      background: 'rgba(239, 68, 68, 0.2)',
+                      border: '1px solid rgba(239, 68, 68, 0.4)',
+                      borderRadius: 6,
+                      color: '#fca5a5',
+                      fontSize: 12,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    🗑️
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* 注意事項 */}
+      <div
+        style={{
+          marginTop: 24,
+          background: 'rgba(59, 130, 246, 0.1)',
+          border: '1px solid rgba(59, 130, 246, 0.3)',
+          borderRadius: 12,
+          padding: 20,
+          color: '#93c5fd',
+        }}
+      >
+        <div style={{ fontSize: 14, lineHeight: 1.6 }}>
+          <div style={{ fontWeight: 600, marginBottom: 8 }}>💡 使い方</div>
+          <ul style={{ margin: 0, paddingLeft: 20 }}>
+            <li>広告カルーセルは全てのテナントで共通表示されます</li>
+            <li>画像URLは直接アクセス可能な画像ファイルのURLを指定してください</li>
+            <li>リンクURLは広告クリック時の遷移先URLです</li>
+            <li>広告の表示順序は⬆️⬇️ボタンで変更できます</li>
+            <li>変更は即座にローカルストレージに保存されます</li>
           </ul>
         </div>
       </div>

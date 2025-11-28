@@ -7,7 +7,7 @@ import {
   useContract,
   useContractRead,
 } from "@thirdweb-dev/react";
-import { usePrivy, useWallets } from "@privy-io/react-auth";
+import { usePrivy } from "@privy-io/react-auth";
 import { ethers } from "ethers";
 import { CONTRACT_ADDRESS, CONTRACT_ABI } from "../contract";
 import { useEmergency } from "../lib/emergency";
@@ -15,6 +15,11 @@ import { AdCarousel } from "../components/AdCarousel";
 import { rewardSuccessConfetti } from "../utils/confetti";
 import type { TokenId } from "../config/tokens";
 import { getTokenConfig } from "../config/tokens";
+import { useTenantRankPlan } from '../hooks/useTenantRankPlan';
+import flowImage from '../assets/flow.png';
+import studioImage from '../assets/studio.png';
+import studioProImage from '../assets/studio-pro.png';
+import studioProMaxImage from '../assets/studio-pro-max.png';
 
 /* ---------- 安全イベントパーサ（修正版） ---------- */
 function getEventArgsFromReceipt(
@@ -51,20 +56,74 @@ export default function App() {
 
   // Privy hooks
   const { login, authenticated, user } = usePrivy();
-  const { wallets } = useWallets();
 
   // 統合アドレス: Privy埋め込みウォレット優先、なければThirdweb
   const privyEmbeddedWalletAddress = user?.wallet?.address;
   const address = privyEmbeddedWalletAddress || thirdwebAddress;
+
+  // テナントオーナー情報取得（URLパラメータ優先、次にlocalStorage）
+  const [tenantOwnerId] = useState<string | null>(() => {
+    // URLからtenantパラメータを取得
+    const params = new URLSearchParams(window.location.search);
+    const tenantFromUrl = params.get('tenant');
+
+    if (tenantFromUrl) {
+      // URLにtenantパラメータがある場合はlocalStorageに保存
+      localStorage.setItem('reward-tenant-id', tenantFromUrl);
+      return tenantFromUrl;
+    }
+
+    // URLにない場合はlocalStorageから取得
+    return localStorage.getItem('reward-tenant-id');
+  });
+
+  // テナントオーナーのプラン情報を取得
+  const { plan: tenantRankPlan } = useTenantRankPlan(tenantOwnerId);
+
+  // プランに応じたロゴ画像を取得
+  const getHeaderLogo = () => {
+    if (tenantRankPlan && tenantRankPlan.is_active) {
+      const planType = tenantRankPlan.rank_plan;
+      switch (planType) {
+        case 'STUDIO':
+          return studioImage;
+        case 'STUDIO_PRO':
+          return studioProImage;
+        case 'STUDIO_PRO_MAX':
+          return studioProMaxImage;
+        case 'FLOW':
+          return flowImage;
+        default:
+          return flowImage;
+      }
+    }
+    return flowImage; // デフォルト
+  };
 
   // Rewardトークン設定（ユーティリティトークン限定）
   // TODO: 将来的にTenantContextから取得
   const rewardTokenId: TokenId = 'NHT'; // デフォルトはNHT（ユーティリティトークン）
   const rewardTokenConfig = useMemo(() => getTokenConfig(rewardTokenId), [rewardTokenId]);
 
-  // 背景画像をlocalStorageから取得（管理画面で設定可能）
+  // 背景画像をlocalStorageから取得（テナント専用キー優先）
   const [customBgImage] = useState<string>(() => {
+    if (tenantOwnerId) {
+      // テナント専用の背景画像を取得
+      return localStorage.getItem(`reward-bg-image-${tenantOwnerId}`) || '/ads/ui-wallpeaper.png';
+    }
+    // デフォルト背景画像
     return localStorage.getItem('reward-bg-image') || '/ads/ui-wallpeaper.png';
+  });
+
+  // スモーク濃度をlocalStorageから取得（テナント専用キー優先）
+  const [smokeOpacity] = useState<number>(() => {
+    if (tenantOwnerId) {
+      const saved = localStorage.getItem(`reward-smoke-opacity-${tenantOwnerId}`);
+      return saved ? parseFloat(saved) : 0.9;
+    }
+    // デフォルトスモーク濃度
+    const saved = localStorage.getItem('reward-smoke-opacity');
+    return saved ? parseFloat(saved) : 0.9;
   });
 
   // ---- 読み取り（エラーハンドリング強化）----
@@ -91,7 +150,7 @@ export default function App() {
   }, [dailyRewardError, userInfoError]);
 
   // チェーン確認とデータ表示
-  const isCorrectChain = chain?.chainId === 80002; // Polygon Amoy
+  const isCorrectChain = chain?.chainId === 137; // Polygon Mainnet
   
   const dailyReward = useMemo(() => {
     if (dailyRewardError) {
@@ -509,119 +568,239 @@ export default function App() {
         minHeight: "100vh",
         width: "100vw",
         maxWidth: "100vw",
-        background: "#0b1620",
-        backgroundImage: `url(${customBgImage})`,
+        background: "#0a0e27",
+        backgroundImage: `linear-gradient(135deg, rgba(10,14,39,${smokeOpacity}) 0%, rgba(26,32,53,${smokeOpacity * 0.95}) 100%), url(${customBgImage})`,
         backgroundSize: "cover",
         backgroundPosition: "center",
         backgroundRepeat: "no-repeat",
         backgroundAttachment: "fixed",
         color: "#fff",
-        display: "grid",
-        gridTemplateRows: "auto 1fr auto",
-        alignContent: "start",
-        padding: "14px 10px 16px",
+        display: "flex",
+        flexDirection: "column",
+        padding: 0,
         margin: 0,
         overflowX: "hidden",
         boxSizing: "border-box",
         position: "relative",
       }}
     >
-      {/* タイトル（ロゴなし・モダンフォント） */}
-      <div style={{ textAlign: "center", marginTop: 8, marginBottom: 20 }}>
-        <h1
+      {/* ヘッダー - テナントオーナーのプランロゴ */}
+      <header
+        style={{
+          width: "100%",
+          padding: "16px 20px",
+          background: "rgba(15, 23, 42, 0.6)",
+          backdropFilter: "blur(20px)",
+          borderBottom: "1px solid rgba(255, 255, 255, 0.08)",
+          boxShadow: "0 4px 24px rgba(0, 0, 0, 0.4)",
+        }}
+      >
+        <div
           style={{
-            fontSize: "clamp(24px, 3vw, 32px)",
-            margin: "0 0 8px",
-            lineHeight: 1.2,
-            fontWeight: 800,
-            textShadow: "0 2px 12px rgba(0,0,0,0.5)"
+            maxWidth: "1200px",
+            margin: "0 auto",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
           }}
         >
-          🎁 Daily Reward
-        </h1>
-        <p style={{
-          fontSize: 14,
-          opacity: 0.85,
-          margin: 0,
-          fontWeight: 500
-        }}>
-          毎日トークンを受け取ろう
-        </p>
-      </div>
+          <img
+            src={getHeaderLogo()}
+            alt="Tenant Plan Logo"
+            style={{
+              height: 50,
+              width: "auto",
+              maxWidth: "280px",
+              objectFit: "contain",
+              filter: "drop-shadow(0 2px 8px rgba(0, 0, 0, 0.3))",
+            }}
+          />
+        </div>
+      </header>
 
       {/* 中央コンテンツ */}
       <div
         style={{
-          display: "grid",
-          justifyItems: "center",
-          gap: 12,
-          paddingTop: 4
+          flex: 1,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          padding: "40px 20px 32px",
+          maxWidth: "900px",
+          width: "100%",
+          margin: "0 auto",
+          gap: 32,
         }}
       >
-        {/* 接続状態 */}
-        <p
-          style={{
-            margin: "0 0 6px 0",
-            fontSize: 13,
-            fontWeight: address ? 700 : 400,
-            color: address ? "#4ade80" : "rgba(255,255,255,0.75)"
-          }}
-        >
-          {address ? (
-            privyEmbeddedWalletAddress
-              ? `📧 埋め込みウォレット: ${address.slice(0, 6)}...${address.slice(-4)}`
-              : `🦊 外部ウォレット: ${address.slice(0, 6)}...${address.slice(-4)}`
-          ) : "ウォレットを接続してください"}
-        </p>
+        {/* タイトルセクション */}
+        <div style={{ textAlign: "center", marginBottom: 0 }}>
+          <h1
+            style={{
+              fontSize: "clamp(28px, 4vw, 42px)",
+              margin: "0 0 12px",
+              lineHeight: 1.2,
+              fontWeight: 800,
+              background: "linear-gradient(135deg, #fff 0%, #a5b4fc 100%)",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+              textShadow: "none",
+              letterSpacing: "-0.02em",
+            }}
+          >
+            💎 Daily Reward
+          </h1>
+          <p
+            style={{
+              fontSize: 15,
+              opacity: 0.7,
+              margin: 0,
+              fontWeight: 400,
+              letterSpacing: "0.01em",
+            }}
+          >
+            毎日プレミアムトークンを受け取ろう
+          </p>
+        </div>
 
-        {/* ボタン行（高さ統一・配置修正） */}
+        {/* アクションボタングループ */}
         <div
           style={{
+            width: "100%",
+            maxWidth: "600px",
             display: "flex",
+            flexDirection: "column",
+            gap: 20,
             alignItems: "center",
-            justifyContent: "center",
-            gap: 12,
-            flexWrap: "wrap",
-            marginTop: 8
           }}
         >
-          {/* Privyログインボタン（埋め込みウォレット） */}
-          {!authenticated && (
-            <button
-              onClick={login}
+          {/* 接続ボタングループ（未接続時のみ表示） */}
+          {!address && (
+            <div
               style={{
-                display: "inline-flex",
-                alignItems: "center",
+                display: "flex",
+                gap: 12,
+                flexWrap: "wrap",
                 justifyContent: "center",
-                height: 48,
-                padding: "0 20px",
-                background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-                color: "#fff",
-                borderRadius: 12,
-                border: "none",
-                fontSize: 14,
-                fontWeight: 600,
-                cursor: "pointer",
-                transition: "all 0.2s",
-                boxShadow: "0 4px 12px rgba(102, 126, 234, 0.3)"
+                width: "100%",
               }}
             >
-              📧 メールでログイン
-            </button>
+              {!authenticated && (
+                <button
+                  onClick={login}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    minHeight: 56,
+                    padding: "0 28px",
+                    background: "linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)",
+                    color: "#fff",
+                    borderRadius: 16,
+                    border: "1px solid rgba(139, 92, 246, 0.3)",
+                    fontSize: 15,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    transition: "all 0.3s",
+                    boxShadow: "0 6px 20px rgba(99, 102, 241, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2)",
+                    letterSpacing: "0.01em",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = "translateY(-2px)";
+                    e.currentTarget.style.boxShadow = "0 8px 28px rgba(99, 102, 241, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.2)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = "translateY(0)";
+                    e.currentTarget.style.boxShadow = "0 6px 20px rgba(99, 102, 241, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2)";
+                  }}
+                >
+                  📧 メールでログイン
+                </button>
+              )}
+
+              <div style={{ display: "flex", alignItems: "center", minHeight: 56 }}>
+                <ConnectWallet
+                  theme="dark"
+                  modalTitle="外部ウォレット接続"
+                  modalTitleIconUrl=""
+                />
+              </div>
+            </div>
           )}
 
-          {/* ThirdWeb外部ウォレット接続 */}
-          <div style={{
-            display: "flex",
-            alignItems: "center",
-            height: 48
-          }}>
-            <ConnectWallet
-              theme="dark"
-              modalTitle="外部ウォレット接続"
-              modalTitleIconUrl=""
-            />
+          {/* 統合情報カード（ウォレット + リワード情報） */}
+          <div
+            style={{
+              width: "100%",
+              maxWidth: "450px",
+              background: "linear-gradient(135deg, rgba(30, 41, 59, 0.5) 0%, rgba(15, 23, 42, 0.7) 100%)",
+              backdropFilter: "blur(16px)",
+              padding: "16px 20px",
+              borderRadius: 16,
+              border: "1px solid rgba(148, 163, 184, 0.15)",
+              textAlign: "left",
+              fontSize: 13,
+              lineHeight: 1.5,
+              display: "grid",
+              rowGap: 8,
+              boxShadow: "0 4px 20px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.03)",
+            }}
+          >
+            <div
+              style={{
+                fontSize: 11,
+                fontWeight: 600,
+                color: "rgba(255, 255, 255, 0.4)",
+                marginBottom: 2,
+                textTransform: "uppercase",
+                letterSpacing: "0.08em",
+              }}
+            >
+              Reward Information
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "90px 1fr", gap: 8, alignItems: "start" }}>
+              <strong style={{ color: "rgba(255, 255, 255, 0.6)", fontSize: 12 }}>Wallet:</strong>
+              <span style={{
+                color: address ? "#a5f3fc" : "rgba(255,255,255,0.5)",
+                fontFamily: "monospace",
+                fontSize: 12,
+                wordBreak: "break-all",
+                fontWeight: address ? 600 : 500,
+              }}>
+                {address ? (
+                  privyEmbeddedWalletAddress
+                    ? `📧 ${address.slice(0, 6)}...${address.slice(-4)}`
+                    : `🦊 ${address.slice(0, 6)}...${address.slice(-4)}`
+                ) : "未接続"}
+              </span>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "90px 1fr", gap: 8 }}>
+              <strong style={{ color: "rgba(255, 255, 255, 0.6)", fontSize: 12 }}>Chain:</strong>
+              <span style={{ color: "#a5f3fc", fontSize: 12 }}>
+                {chain ? `${chain.name} (${chain.chainId})` : "—"}
+              </span>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "90px 1fr", gap: 8 }}>
+              <strong style={{ color: "rgba(255, 255, 255, 0.6)", fontSize: 12 }}>Daily Reward:</strong>
+              <span style={{ color: "#4ade80", fontWeight: 700, fontSize: 13 }}>{dailyReward}</span>
+            </div>
+            {(!!dailyRewardError || !!userInfoError) && (
+              <div
+                style={{
+                  color: "#fbbf24",
+                  fontSize: 12,
+                  marginTop: 4,
+                  padding: "8px 12px",
+                  background: "rgba(251, 191, 36, 0.1)",
+                  borderRadius: 8,
+                  border: "1px solid rgba(251, 191, 36, 0.2)",
+                }}
+              >
+                ⚠️ データ読み込みエラーが発生しました
+              </div>
+            )}
           </div>
+
+          {/* メインクレームボタン */}
           <button
             onClick={isMaintenance ? undefined : onClaim}
             disabled={!canClaim}
@@ -629,131 +808,214 @@ export default function App() {
               display: "inline-flex",
               alignItems: "center",
               justifyContent: "center",
-              height: 48,
-              padding: "0 20px",
+              minHeight: 64,
+              padding: "0 40px",
               background: canClaim
-                ? "linear-gradient(135deg, #ff6b6b 0%, #ff8e53 100%)"
-                : "rgba(58, 63, 70, 0.8)",
+                ? "linear-gradient(135deg, #f59e0b 0%, #ef4444 100%)"
+                : "linear-gradient(135deg, rgba(71, 85, 105, 0.5) 0%, rgba(51, 65, 85, 0.5) 100%)",
               color: "#fff",
-              borderRadius: 12,
-              border: canClaim ? "none" : "1px solid rgba(255,255,255,0.1)",
+              borderRadius: 20,
+              border: canClaim ? "1px solid rgba(239, 68, 68, 0.3)" : "1px solid rgba(255,255,255,0.1)",
               cursor: canClaim ? "pointer" : "not-allowed",
-              fontSize: 15,
-              fontWeight: 700,
+              fontSize: 17,
+              fontWeight: 800,
               lineHeight: 1,
-              opacity: canClaim ? 1 : 0.7,
-              boxShadow: canClaim ? "0 4px 16px rgba(255,107,107,0.3)" : "none",
-              transition: "all 0.2s ease"
+              opacity: canClaim ? 1 : 0.5,
+              boxShadow: canClaim
+                ? "0 8px 32px rgba(239, 68, 68, 0.5), inset 0 2px 0 rgba(255, 255, 255, 0.2)"
+                : "0 4px 12px rgba(0, 0, 0, 0.3)",
+              transition: "all 0.3s ease",
+              letterSpacing: "0.02em",
+              textTransform: "uppercase",
+              width: "100%",
+              maxWidth: "400px",
+            }}
+            onMouseEnter={(e) => {
+              if (canClaim) {
+                e.currentTarget.style.transform = "translateY(-3px) scale(1.02)";
+                e.currentTarget.style.boxShadow = "0 12px 40px rgba(239, 68, 68, 0.6), inset 0 2px 0 rgba(255, 255, 255, 0.2)";
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (canClaim) {
+                e.currentTarget.style.transform = "translateY(0) scale(1)";
+                e.currentTarget.style.boxShadow = "0 8px 32px rgba(239, 68, 68, 0.5), inset 0 2px 0 rgba(255, 255, 255, 0.2)";
+              }
             }}
           >
             {isMaintenance
-              ? "メンテナンス中"
+              ? "⛔ メンテナンス中"
               : isWriting
-              ? "送信中…"
+              ? "⏳ 送信中…"
               : canClaim
-              ? "リワードを請求する"
-              : "カウントダウン中"}
+              ? "💎 リワードを請求する"
+              : "⏰ カウントダウン中"}
           </button>
         </div>
 
-        {/* 状態表示（元レイアウト） */}
-        <div style={{ fontSize: 12, opacity: 0.9, marginTop: 4, minHeight: 16 }}>
-          {!address
-            ? "ウォレット未接続"
-            : isMaintenance
-            ? "⛔ 現在メンテナンス中"
-            : remain > 0
-            ? `次の受け取りまで: ${fmt(remain)}`
-            : "受け取り可能です ✨"}
-        </div>
-
-        {/* ウォレット追加（成功時のみ表示） */}
-        <div style={{ height: 56, display: "grid", placeItems: "center" }}>
-          {showAddToken && (
-            <div style={{ display: "grid", justifyItems: "center" }}>
-              <div style={{ fontSize: 12, opacity: 0.8, marginBottom: 4 }}>
-                💡 初めて {rewardTokenConfig.symbol} を受け取る方はこちら
-              </div>
-              <button
-                onClick={addTokenToWallet}
-                style={{
-                  background: "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)",
-                  color: "#fff",
-                  border: "none",
-                  borderRadius: 10,
-                  padding: "8px 16px",
-                  fontSize: 13,
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  boxShadow: "0 2px 8px rgba(59,130,246,0.3)",
-                  transition: "all 0.2s ease"
-                }}
-              >
-                {rewardTokenConfig.symbol} をウォレットに追加 🪙
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* 情報カード（モダンスタイル） */}
+        {/* カウントダウン表示 */}
         <div
           style={{
-            boxSizing: "border-box",
-            width: "min(88vw, 520px)",
-            background: "rgba(255,255,255,0.08)",
-            backdropFilter: "blur(10px)",
-            padding: "12px 14px",
+            width: "100%",
+            maxWidth: "450px",
+            background: "linear-gradient(135deg, rgba(59, 130, 246, 0.08) 0%, rgba(37, 99, 235, 0.04) 100%)",
+            backdropFilter: "blur(16px)",
+            border: "1px solid rgba(96, 165, 250, 0.15)",
             borderRadius: 16,
-            border: "1px solid rgba(255,255,255,0.12)",
-            textAlign: "left",
-            fontSize: 13,
-            lineHeight: 1.5,
-            display: "grid",
-            rowGap: 6,
-            marginTop: 4,
-            boxShadow: "0 4px 16px rgba(0,0,0,0.2)"
+            padding: "20px",
+            boxShadow: "0 4px 20px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.05)",
+            textAlign: "center",
           }}
         >
-          <div><strong>Address:</strong> {address ?? "—"}</div>
-          <div><strong>Chain:</strong> {chain ? `${chain.name} (${chain.chainId})` : "—"}</div>
-          <div><strong>Daily Reward:</strong> {dailyReward}</div>
-          {(!!dailyRewardError || !!userInfoError) && (
-            <div style={{ color: "#ff6b6b", fontSize: 11, marginTop: 4 }}>
-              ⚠️ データ読み込みエラーが発生しました
+          <div
+            style={{
+              fontSize: 13,
+              fontWeight: 600,
+              color: "rgba(255, 255, 255, 0.5)",
+              marginBottom: 12,
+              textTransform: "uppercase",
+              letterSpacing: "0.08em",
+            }}
+          >
+            Status
+          </div>
+          <div
+            style={{
+              fontSize: remain > 0 ? 32 : 20,
+              fontWeight: 800,
+              color: !address
+                ? "rgba(255, 255, 255, 0.5)"
+                : isMaintenance
+                ? "#fbbf24"
+                : remain > 0
+                ? "#60a5fa"
+                : "#4ade80",
+              fontFamily: "monospace",
+              letterSpacing: remain > 0 ? "0.05em" : "0.01em",
+            }}
+          >
+            {!address
+              ? "ウォレット未接続"
+              : isMaintenance
+              ? "⛔ 現在メンテナンス中"
+              : remain > 0
+              ? fmt(remain)
+              : "✨ 受け取り可能です"}
+          </div>
+          {!address || isMaintenance || remain === 0 ? null : (
+            <div
+              style={{
+                fontSize: 12,
+                color: "rgba(255, 255, 255, 0.4)",
+                marginTop: 8,
+                fontWeight: 500,
+              }}
+            >
+              次の受け取りまで
             </div>
           )}
         </div>
 
-        {/* 特許回避NFTウィジェット（オプション） */}
-        {/*
-        <PatentSafeNFTWidget 
-          systemId={1}
-          className="patent-safe-integration"
-        />
-        */}
+        {/* トークン追加セクション */}
+        {showAddToken && (
+          <div
+            style={{
+              width: "100%",
+              maxWidth: "450px",
+              background: "linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, rgba(5, 150, 105, 0.04) 100%)",
+              backdropFilter: "blur(16px)",
+              border: "1px solid rgba(52, 211, 153, 0.15)",
+              borderRadius: 16,
+              padding: "16px 20px",
+              boxShadow: "0 4px 20px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.05)",
+              textAlign: "center",
+            }}
+          >
+            <div
+              style={{
+                fontSize: 13,
+                color: "rgba(255, 255, 255, 0.6)",
+                marginBottom: 12,
+                fontWeight: 500,
+              }}
+            >
+              💡 初めて {rewardTokenConfig.symbol} を受け取る方はこちら
+            </div>
+            <button
+              onClick={addTokenToWallet}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                minHeight: 48,
+                padding: "0 24px",
+                background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+                color: "#fff",
+                border: "1px solid rgba(16, 185, 129, 0.3)",
+                borderRadius: 14,
+                fontSize: 14,
+                fontWeight: 700,
+                cursor: "pointer",
+                boxShadow: "0 4px 16px rgba(16, 185, 129, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2)",
+                transition: "all 0.3s ease",
+                letterSpacing: "0.01em",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = "translateY(-2px)";
+                e.currentTarget.style.boxShadow = "0 6px 20px rgba(16, 185, 129, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.2)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = "translateY(0)";
+                e.currentTarget.style.boxShadow = "0 4px 16px rgba(16, 185, 129, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2)";
+              }}
+            >
+              🪙 {rewardTokenConfig.symbol} をウォレットに追加
+            </button>
+          </div>
+        )}
 
-        {/* 広告スライドショー（localStorageから自動読み込み） */}
-        <AdCarousel
+        {/* 広告カルーセル */}
+        <div
           style={{
-            width: "clamp(200px, 28vw, 240px)",
-            height: "auto",
-            marginTop: 18,
+            width: "100%",
+            maxWidth: "350px",
+            marginTop: 8,
           }}
-        />
+        >
+          <AdCarousel
+            style={{
+              width: "100%",
+              height: "auto",
+              borderRadius: 14,
+              overflow: "hidden",
+              boxShadow: "0 4px 20px rgba(0, 0, 0, 0.25)",
+            }}
+          />
+        </div>
       </div>
 
       {/* フッター */}
-      <div
+      <footer
         style={{
+          width: "100%",
+          padding: "20px",
+          background: "rgba(15, 23, 42, 0.4)",
+          backdropFilter: "blur(20px)",
+          borderTop: "1px solid rgba(255, 255, 255, 0.05)",
           textAlign: "center",
-          fontSize: 12,
-          opacity: 0.6,
-          marginTop: 16,
-          marginBottom: 6
         }}
       >
-        Presented by <strong>METATRON.</strong>
-      </div>
+        <div
+          style={{
+            fontSize: 12,
+            color: "rgba(255, 255, 255, 0.4)",
+            fontWeight: 500,
+            letterSpacing: "0.05em",
+          }}
+        >
+          Powered by <strong style={{ color: "rgba(255, 255, 255, 0.6)" }}>GIFTERRA</strong>
+        </div>
+      </footer>
 
       {/* 成功メッセージオーバーレイ */}
       {showSuccessMessage && (
@@ -767,26 +1029,29 @@ export default function App() {
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            backgroundColor: "rgba(0, 0, 0, 0.3)",
-            backdropFilter: "blur(2px)",
+            backgroundColor: "rgba(0, 0, 0, 0.5)",
+            backdropFilter: "blur(8px)",
             zIndex: 1000,
-            animation: "fadeIn 0.3s ease-in-out"
+            animation: "fadeIn 0.3s ease-in-out",
           }}
         >
           <div
             style={{
-              background: "linear-gradient(135deg, #667eea, #764ba2)",
-              borderRadius: "16px",
-              padding: "24px 32px",
+              background: "linear-gradient(135deg, #f59e0b 0%, #ef4444 100%)",
+              borderRadius: 24,
+              padding: "32px 48px",
               textAlign: "center",
-              fontSize: "18px",
+              fontSize: 20,
               fontWeight: 800,
               color: "#fff",
-              boxShadow: "0 8px 32px rgba(0, 0, 0, 0.3)",
-              animation: "scaleIn 0.4s ease-out"
+              boxShadow: "0 16px 48px rgba(239, 68, 68, 0.5), inset 0 2px 0 rgba(255, 255, 255, 0.3)",
+              animation: "scaleIn 0.4s ease-out",
+              border: "1px solid rgba(255, 255, 255, 0.2)",
+              letterSpacing: "0.01em",
             }}
           >
-            💎本日のリワードを受け取りました！
+            <div style={{ fontSize: 48, marginBottom: 12 }}>💎</div>
+            <div>本日のリワードを受け取りました！</div>
           </div>
         </div>
       )}

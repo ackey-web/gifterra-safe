@@ -72,8 +72,9 @@ export function useAllTenantRankPlans() {
 
 /**
  * 特定テナントのランクプラン取得Hook
+ * @param tenantId - テナントID（数値）またはウォレットアドレス（文字列）
  */
-export function useTenantRankPlan(tenantId: string | null | undefined) {
+export function useTenantRankPlan(tenantId: string | number | null | undefined) {
   const [plan, setPlan] = useState<TenantRankPlanData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -92,14 +93,45 @@ export function useTenantRankPlan(tenantId: string | null | undefined) {
 
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('tenant_rank_plans')
-        .select('*')
-        .eq('tenant_id', tenantId)
-        .maybeSingle();
 
-      if (error) throw error;
-      setPlan(data);
+      // ウォレットアドレス形式（0xで始まる）の場合、tenant_applicationsから検索
+      if (typeof tenantId === 'string' && tenantId.startsWith('0x')) {
+        // まず、tenant_applicationsからtenant_idを取得
+        const { data: application, error: appError } = await supabase
+          .from('tenant_applications')
+          .select('tenant_id')
+          .eq('applicant_address', tenantId.toLowerCase())
+          .eq('status', 'approved')
+          .maybeSingle();
+
+        if (appError) throw appError;
+
+        if (!application?.tenant_id) {
+          // 承認済みテナントが見つからない場合はnull
+          setPlan(null);
+          return;
+        }
+
+        // 取得したtenant_idでランクプランを検索
+        const { data, error } = await supabase
+          .from('tenant_rank_plans')
+          .select('*')
+          .eq('tenant_id', application.tenant_id)
+          .maybeSingle();
+
+        if (error) throw error;
+        setPlan(data);
+      } else {
+        // 数値IDまたは文字列数値の場合
+        const { data, error } = await supabase
+          .from('tenant_rank_plans')
+          .select('*')
+          .eq('tenant_id', tenantId)
+          .maybeSingle();
+
+        if (error) throw error;
+        setPlan(data);
+      }
     } catch (err) {
       console.error('❌ テナントランクプランの取得に失敗:', err);
       setError(err instanceof Error ? err.message : 'Unknown error');

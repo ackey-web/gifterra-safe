@@ -35,6 +35,7 @@ interface UserProfile {
   wallet_address: string;
   show_wallet_address?: boolean;
   reject_anonymous_transfers?: boolean;
+  show_reward_button?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -624,6 +625,37 @@ export function ProfilePage() {
                       }}
                     >
                       💰 チップを贈る
+                    </button>
+                  )}
+
+                  {/* Reward UIボタン（プロフィールオーナーが表示設定している場合のみ） */}
+                  {profile?.show_reward_button !== false && (
+                    <button
+                      onClick={() => {
+                        window.location.href = `/reward?tenant=${walletAddress}`;
+                      }}
+                      style={{
+                        padding: isMobile ? '8px 16px' : '10px 20px',
+                        background: 'linear-gradient(135deg, #f59e0b 0%, #ef4444 100%)',
+                        border: 'none',
+                        borderRadius: 8,
+                        color: '#fff',
+                        fontSize: isMobile ? 14 : 15,
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        transition: 'all 0.2s',
+                        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.transform = 'scale(1.05)';
+                        e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.3)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = 'scale(1)';
+                        e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.2)';
+                      }}
+                    >
+                      💎 Daily Reward
                     </button>
                   )}
 

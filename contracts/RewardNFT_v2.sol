@@ -2,11 +2,11 @@
 pragma solidity ^0.8.19;
 
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
-import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
-import "@openzeppelin/contracts/token/common/ERC2981.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
+import "@openzeppelin/contracts/interfaces/IERC165.sol";
+import "@openzeppelin/contracts/interfaces/IERC4906.sol"; // メタデータ更新イベント
 
 /**
  * @title RewardNFT v2
@@ -38,17 +38,20 @@ import "@openzeppelin/contracts/security/Pausable.sol";
  * - JourneyPass：フラグ付きNFT（状態保持）
  */
 contract RewardNFT_v2 is
-    ERC721URIStorage,
+    ERC721,
     AccessControl,
-    ReentrancyGuard,
     Pausable,
-    ERC2981
+    ReentrancyGuard,
+    IERC4906 // メタデータ更新イベント
 {
     // ロール定義
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     bytes32 public constant DISTRIBUTOR_ROLE = keccak256("DISTRIBUTOR_ROLE");
     bytes32 public constant REVEALER_ROLE = keccak256("REVEALER_ROLE");
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
+
+    // トークンURIストレージ（ERC721URIStorageの代替）
+    mapping(uint256 => string) private _tokenURIs;
 
     // 基本設定
     string private _baseTokenURI;
@@ -145,9 +148,6 @@ contract RewardNFT_v2 is
         if (_distributorAddress != address(0)) {
             _grantRole(DISTRIBUTOR_ROLE, _distributorAddress);
         }
-
-        // デフォルトロイヤリティ設定（2.5%）
-        _setDefaultRoyalty(owner, 250);
     }
 
     // ========================================
@@ -569,16 +569,6 @@ contract RewardNFT_v2 is
         emit DistributorUpdated(oldDistributor, newDistributor);
     }
 
-    function setDefaultRoyalty(address recipient, uint96 feeNumerator)
-        external onlyRole(DEFAULT_ADMIN_ROLE) {
-        _setDefaultRoyalty(recipient, feeNumerator);
-    }
-
-    function setTokenRoyalty(uint256 tokenId, address recipient, uint96 feeNumerator)
-        external onlyRole(DEFAULT_ADMIN_ROLE) {
-        _setTokenRoyalty(tokenId, recipient, feeNumerator);
-    }
-
     function setBaseURICompositionMode(bool enabled)
         external onlyRole(DEFAULT_ADMIN_ROLE) {
         useBaseURIComposition = enabled;
@@ -711,8 +701,13 @@ contract RewardNFT_v2 is
         return _baseTokenURI;
     }
 
+    function _setTokenURI(uint256 tokenId, string memory _tokenURI) internal virtual {
+        require(_ownerOf(tokenId) != address(0), "URI set of nonexistent token");
+        _tokenURIs[tokenId] = _tokenURI;
+    }
+
     function tokenURI(uint256 tokenId)
-        public view virtual override(ERC721URIStorage) returns (string memory) {
+        public view virtual override(ERC721) returns (string memory) {
         require(_ownerOf(tokenId) != address(0), "URI query for nonexistent token");
 
         // リビール前の場合はpreRevealURIを返す
@@ -725,8 +720,15 @@ contract RewardNFT_v2 is
             return _composeSKUBasedURI(tokenSku[tokenId], tokenId);
         }
 
-        // 従来の個別URI
-        return super.tokenURI(tokenId);
+        // 個別URIが設定されている場合
+        string memory _tokenURI = _tokenURIs[tokenId];
+        if (bytes(_tokenURI).length > 0) {
+            return _tokenURI;
+        }
+
+        // ベースURIを返す
+        string memory base = _baseURI();
+        return bytes(base).length > 0 ? string(abi.encodePacked(base, _toString(tokenId))) : "";
     }
 
     // ========================================
@@ -767,14 +769,18 @@ contract RewardNFT_v2 is
     // ========================================
 
     function _burn(uint256 tokenId)
-        internal virtual override(ERC721URIStorage) {
+        internal virtual override(ERC721) {
         super._burn(tokenId);
-        _resetTokenRoyalty(tokenId);
+        // トークンURIをクリア
+        if (bytes(_tokenURIs[tokenId]).length != 0) {
+            delete _tokenURIs[tokenId];
+        }
     }
 
     function supportsInterface(bytes4 interfaceId)
-        public view virtual override(ERC721URIStorage, AccessControl, ERC2981) returns (bool) {
-        return super.supportsInterface(interfaceId);
+        public view virtual override(ERC721, AccessControl, IERC165) returns (bool) {
+        return interfaceId == type(IERC4906).interfaceId ||
+               super.supportsInterface(interfaceId);
     }
 
     function totalSupply() public view returns (uint256) {

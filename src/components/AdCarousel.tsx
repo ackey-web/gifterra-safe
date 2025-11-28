@@ -176,7 +176,54 @@ export function AdCarousel({
     }
   };
 
-  if (ads.length === 0) return null;
+  // 広告がない場合はプレースホルダーを表示
+  if (ads.length === 0) {
+    return (
+      <div
+        className={className}
+        style={{
+          position: 'relative',
+          overflow: 'hidden',
+          borderRadius: 14,
+          background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%)',
+          border: '2px dashed rgba(255, 255, 255, 0.2)',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '40px 20px',
+          minHeight: 200,
+          ...style
+        }}
+      >
+        <div style={{
+          fontSize: 48,
+          marginBottom: 16,
+          opacity: 0.6
+        }}>
+          📺
+        </div>
+        <div style={{
+          fontSize: 18,
+          fontWeight: 700,
+          color: '#fff',
+          marginBottom: 8,
+          textAlign: 'center',
+          letterSpacing: '0.02em'
+        }}>
+          広告募集中
+        </div>
+        <div style={{
+          fontSize: 14,
+          color: 'rgba(255, 255, 255, 0.7)',
+          textAlign: 'center',
+          letterSpacing: '0.01em'
+        }}>
+          contact us,,,GIFTERRA
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -222,7 +269,7 @@ export function AdCarousel({
             transform: `scale(${index === currentIndex ? 1 : 0.95}) translateX(${
               index === currentIndex ? 0 : index < currentIndex ? '-10px' : '10px'
             })`,
-            transition: prefersReducedMotion 
+            transition: prefersReducedMotion
               ? `opacity ${effectiveTransitionDuration}ms ease`
               : `all ${effectiveTransitionDuration}ms cubic-bezier(0.4, 0, 0.2, 1)`,
             zIndex: index === currentIndex ? 2 : 1,

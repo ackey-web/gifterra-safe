@@ -45,21 +45,40 @@ export function RewardUIManagementPage({
   // マルチトークン対応：環境に応じたトークン設定
   const defaultToken = getDefaultToken();
   const [activeTab, setActiveTab] = useState<TabType>('contract');
+  // テナントオーナーのアドレスを取得（ウォレット接続されている場合）
+  const tenantAddress = getGifterraAddress();
+
+  // テナント専用のlocalStorageキーを生成
+  const rewardBgImageKey = `reward-bg-image-${tenantAddress}`;
+  const rewardSmokeOpacityKey = `reward-smoke-opacity-${tenantAddress}`;
+
   const [rewardBgImage, setRewardBgImage] = useState<string>(() => {
-    return localStorage.getItem('reward-bg-image') || '';
+    return localStorage.getItem(rewardBgImageKey) || '';
   });
 
+  // スモーク濃度（0.0 〜 1.0、デフォルト0.9）
+  const [smokeOpacity, setSmokeOpacity] = useState<number>(() => {
+    const saved = localStorage.getItem(rewardSmokeOpacityKey);
+    return saved ? parseFloat(saved) : 0.9;
+  });
+
+  // テナント専用Reward UIのURLを生成
+  const rewardUrl = typeof window !== 'undefined'
+    ? `${window.location.origin}/reward?tenant=${tenantAddress}`
+    : `/reward?tenant=${tenantAddress}`;
+
   // 以前の背景画像URLを追跡（古い画像削除用）
-  const previousRewardBgRef = useRef<string>(localStorage.getItem('reward-bg-image') || '');
+  const previousRewardBgRef = useRef<string>(localStorage.getItem(rewardBgImageKey) || '');
 
   const handleSaveDesign = () => {
-    saveAdData(editingAds);
-    // 背景画像も保存
+    // 背景画像を保存（テナント専用キー）
     if (rewardBgImage) {
-      localStorage.setItem('reward-bg-image', rewardBgImage);
+      localStorage.setItem(rewardBgImageKey, rewardBgImage);
     } else {
-      localStorage.removeItem('reward-bg-image');
+      localStorage.removeItem(rewardBgImageKey);
     }
+    // スモーク濃度を保存
+    localStorage.setItem(rewardSmokeOpacityKey, smokeOpacity.toString());
     alert('✅ デザイン設定を保存しました！');
   };
 
@@ -152,11 +171,11 @@ export function RewardUIManagementPage({
           📱 リワードUI 総合管理
         </h2>
 
-        {/* Reward UI URL（右上に配置） */}
-        <div style={{ display: "flex", gap: 8, alignItems: "center", maxWidth: 500 }}>
+        {/* Reward UI URL（右上に配置） - テナント専用URL */}
+        <div style={{ display: "flex", gap: 8, alignItems: "center", maxWidth: 600 }}>
           <input
             type="text"
-            value={typeof window !== 'undefined' ? `${window.location.origin}/reward` : '/reward'}
+            value={rewardUrl}
             readOnly
             style={{
               flex: 1,
@@ -168,13 +187,12 @@ export function RewardUIManagementPage({
               borderRadius: 6,
               fontFamily: 'monospace',
               outline: 'none',
-              minWidth: 200
+              minWidth: 250
             }}
           />
           <button
             onClick={() => {
-              const url = typeof window !== 'undefined' ? `${window.location.origin}/reward` : '/reward';
-              navigator.clipboard.writeText(url);
+              navigator.clipboard.writeText(rewardUrl);
               const btn = document.activeElement as HTMLButtonElement;
               if (btn) {
                 const originalText = btn.textContent;
@@ -340,163 +358,18 @@ export function RewardUIManagementPage({
               デザイン設定
             </h3>
 
-            {/* 広告管理セクション */}
-            <div style={{ marginBottom: 20, padding: 16, background: "rgba(255,255,255,.04)", borderRadius: 8 }}>
-              <h4 style={{ margin: "0 0 10px 0", fontSize: 16 }}>🎯 広告画像管理</h4>
-              <ul style={{ margin: 0, paddingLeft: 20, opacity: 0.8, fontSize: 14 }}>
-                <li>最大3つの広告スロットを設定できます</li>
-                <li>広告画像: ローカルフォルダから画像を選択してアップロード</li>
-                <li>リンクURL: クリック時に開くWebサイトのURL</li>
-              </ul>
-            </div>
-
-            {editingAds.map((ad, index) => (
-              <div key={index} style={{
-                marginBottom: 16,
-                padding: 16,
-                background: "rgba(255,255,255,.06)",
-                borderRadius: 8,
-                position: "relative",
-                display: "flex",
-                gap: 16
-              }}>
-                {/* 画像プレビュー */}
-                <div style={{
-                  width: 80,
-                  height: 80,
-                  background: "rgba(255,255,255,.1)",
-                  borderRadius: 8,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  flexShrink: 0,
-                  overflow: "hidden"
-                }}>
-                  {ad.src ? (
-                    <img
-                      src={ad.src}
-                      alt={`広告プレビュー ${index + 1}`}
-                      style={{
-                        width: "100%",
-                        height: "100%",
-                        objectFit: "cover",
-                        borderRadius: 6
-                      }}
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).style.display = "none";
-                        const nextSibling = (e.target as HTMLImageElement).nextElementSibling as HTMLElement;
-                        if (nextSibling) {
-                          nextSibling.style.display = "flex";
-                        }
-                      }}
-                    />
-                  ) : null}
-                  <div style={{
-                    display: ad.src ? "none" : "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: 12,
-                    color: "rgba(255,255,255,.5)",
-                    textAlign: "center",
-                    padding: 8
-                  }}>
-                    画像なし
-                  </div>
-                </div>
-
-                {/* 入力フィールド */}
-                <div style={{ flex: 1 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                    <h4 style={{ margin: 0, fontSize: 16 }}>広告スロット {index + 1}</h4>
-                    {editingAds.length > 1 && (
-                      <button
-                        onClick={() => removeAdSlot(index)}
-                        style={{
-                          background: "#dc2626",
-                          color: "#fff",
-                          border: "none",
-                          borderRadius: 4,
-                          padding: "4px 8px",
-                          fontSize: 12,
-                          cursor: "pointer"
-                        }}
-                      >
-                        削除
-                      </button>
-                    )}
-                  </div>
-
-                  <div style={{ marginBottom: 12 }}>
-                    <label style={{ display: "block", marginBottom: 4, fontSize: 14, opacity: 0.8 }}>
-                      広告画像:
-                    </label>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => handleImageUpload(e, index)}
-                      style={{
-                        width: "100%",
-                        padding: "10px",
-                        background: "rgba(255,255,255,.1)",
-                        border: "1px solid rgba(255,255,255,.2)",
-                        borderRadius: 4,
-                        color: "#fff",
-                        fontSize: 14,
-                        cursor: "pointer"
-                      }}
-                    />
-                  </div>
-
-                  <div>
-                    <label style={{ display: "block", marginBottom: 4, fontSize: 14, opacity: 0.8 }}>
-                      リンクURL:
-                    </label>
-                    <input
-                      type="text"
-                      value={ad.href}
-                      onChange={(e) => updateAd(index, 'href', e.target.value)}
-                      placeholder="https://example.com/"
-                      style={{
-                        width: "100%",
-                        padding: 8,
-                        background: "rgba(255,255,255,.1)",
-                        border: "1px solid rgba(255,255,255,.2)",
-                        borderRadius: 4,
-                        color: "#fff",
-                        fontSize: 14
-                      }}
-                    />
-                  </div>
-                </div>
-              </div>
-            ))}
-
-            {editingAds.length < 3 && (
-              <button
-                onClick={addAdSlot}
-                style={{
-                  background: "#059669",
-                  color: "#fff",
-                  border: "none",
-                  borderRadius: 8,
-                  padding: "10px 16px",
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  marginBottom: 24
-                }}
-              >
-                ➕ 広告スロット追加
-              </button>
-            )}
-
             {/* 背景画像設定セクション */}
-            <div style={{ marginTop: 32, padding: 16, background: "rgba(255,255,255,.04)", borderRadius: 8 }}>
+            <div style={{ padding: 16, background: "rgba(255,255,255,.04)", borderRadius: 8 }}>
               <h4 style={{ margin: "0 0 10px 0", fontSize: 16 }}>🎨 Reward UI 背景画像設定</h4>
               <ul style={{ margin: "0 0 16px 0", paddingLeft: 20, opacity: 0.8, fontSize: 14 }}>
                 <li>Reward UI の背景画像を設定できます</li>
+                <li>スモーク濃度でテキストの可読性を調整できます</li>
               </ul>
 
               <div style={{ marginBottom: 12 }}>
+                <label style={{ display: "block", marginBottom: 8, fontSize: 14, fontWeight: 600 }}>
+                  背景画像をアップロード:
+                </label>
                 <input
                   type="file"
                   accept="image/*"
@@ -513,18 +386,188 @@ export function RewardUIManagementPage({
                   }}
                 />
               </div>
+            </div>
 
-              {/* プレビュー */}
+            {/* スモーク濃度調整 & プレビュー統合セクション */}
+            <div style={{ marginTop: 24, padding: 16, background: "rgba(255,255,255,.04)", borderRadius: 8 }}>
+              <h4 style={{ margin: "0 0 10px 0", fontSize: 16 }}>💨 スモーク濃度調整</h4>
+              <p style={{ margin: "0 0 16px 0", opacity: 0.8, fontSize: 14, lineHeight: 1.6 }}>
+                背景画像の上に重ねるスモークエフェクトの濃さを調整できます。<br />
+                濃度が高いほど背景が暗くなり、テキストが読みやすくなります。
+              </p>
+
+              {/* スライダーコントロール */}
+              <div style={{ marginBottom: 24 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                  <label style={{ fontSize: 14, fontWeight: 600, opacity: 0.9 }}>
+                    スモーク濃度:
+                  </label>
+                  <span style={{
+                    fontSize: 20,
+                    fontWeight: 800,
+                    color: "#3B82F6",
+                    padding: "4px 12px",
+                    background: "rgba(59, 130, 246, 0.1)",
+                    borderRadius: 6
+                  }}>
+                    {Math.round(smokeOpacity * 100)}%
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  step="5"
+                  value={smokeOpacity * 100}
+                  onChange={(e) => setSmokeOpacity(parseFloat(e.target.value) / 100)}
+                  style={{
+                    width: "100%",
+                    height: 10,
+                    borderRadius: 5,
+                    outline: "none",
+                    cursor: "pointer",
+                    accentColor: "#3B82F6"
+                  }}
+                />
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, opacity: 0.5, marginTop: 8 }}>
+                  <span>🌅 透明 (0%)</span>
+                  <span>🌙 濃い (100%)</span>
+                </div>
+              </div>
+
+              {/* リアルタイムプレビュー */}
+              <div>
+                <div style={{
+                  fontSize: 14,
+                  fontWeight: 600,
+                  opacity: 0.9,
+                  marginBottom: 12,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8
+                }}>
+                  👁️ リアルタイムプレビュー
+                  <span style={{ fontSize: 12, fontWeight: 400, opacity: 0.6 }}>
+                    （スライダーを動かすと即座に反映されます）
+                  </span>
+                </div>
+                <div style={{
+                  width: "100%",
+                  height: 300,
+                  background: rewardBgImage
+                    ? `linear-gradient(135deg, rgba(10,14,39,${smokeOpacity}) 0%, rgba(26,32,53,${smokeOpacity * 0.95}) 100%), url(${rewardBgImage}) center/cover`
+                    : `linear-gradient(135deg, rgba(10,14,39,${smokeOpacity}) 0%, rgba(26,32,53,${smokeOpacity * 0.95}) 100%)`,
+                  borderRadius: 12,
+                  border: "3px solid rgba(59, 130, 246, 0.3)",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 16,
+                  color: "#fff",
+                  position: "relative",
+                  overflow: "hidden",
+                  boxShadow: "0 8px 32px rgba(0,0,0,0.3)"
+                }}>
+                  {/* プレビューコンテンツ */}
+                  <div style={{
+                    fontSize: 32,
+                    fontWeight: 800,
+                    textShadow: "0 4px 16px rgba(0,0,0,0.6)",
+                    background: "linear-gradient(135deg, #fff 0%, #a5b4fc 100%)",
+                    WebkitBackgroundClip: "text",
+                    WebkitTextFillColor: "transparent",
+                    letterSpacing: "-0.02em"
+                  }}>
+                    💎 Daily Reward
+                  </div>
+                  <div style={{
+                    fontSize: 14,
+                    opacity: 0.9,
+                    textShadow: "0 2px 8px rgba(0,0,0,0.5)",
+                    textAlign: "center",
+                    maxWidth: "80%"
+                  }}>
+                    毎日プレミアムトークンを受け取ろう
+                  </div>
+
+                  {/* 角に濃度表示 */}
+                  <div style={{
+                    position: "absolute",
+                    top: 12,
+                    right: 12,
+                    background: "rgba(0,0,0,0.5)",
+                    backdropFilter: "blur(8px)",
+                    padding: "6px 12px",
+                    borderRadius: 8,
+                    fontSize: 12,
+                    fontWeight: 600
+                  }}>
+                    スモーク: {Math.round(smokeOpacity * 100)}%
+                  </div>
+                </div>
+
+                {!rewardBgImage && (
+                  <div style={{
+                    fontSize: 12,
+                    opacity: 0.6,
+                    marginTop: 12,
+                    textAlign: "center",
+                    padding: "8px",
+                    background: "rgba(251, 191, 36, 0.1)",
+                    borderRadius: 6,
+                    border: "1px solid rgba(251, 191, 36, 0.2)"
+                  }}>
+                    💡 背景画像をアップロードすると、実際の見え方を確認できます
+                  </div>
+                )}
+
+                {rewardBgImage && (
+                  <div style={{
+                    fontSize: 12,
+                    opacity: 0.7,
+                    marginTop: 12,
+                    textAlign: "center",
+                    color: "#4ade80"
+                  }}>
+                    ✅ 実際のReward UIでの見え方です
+                  </div>
+                )}
+              </div>
+
+              {/* 設定した背景画像のプレビュー */}
               {rewardBgImage && (
-                <div style={{ marginTop: 16 }}>
-                  <div style={{ fontSize: 14, opacity: 0.8, marginBottom: 8 }}>プレビュー:</div>
+                <div style={{ marginTop: 24 }}>
+                  <div style={{
+                    fontSize: 14,
+                    fontWeight: 600,
+                    opacity: 0.9,
+                    marginBottom: 12,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8
+                  }}>
+                    🖼️ 設定した背景画像
+                    <span style={{ fontSize: 12, fontWeight: 400, opacity: 0.6 }}>
+                      （スモークなし）
+                    </span>
+                  </div>
                   <div style={{
                     width: "100%",
                     height: 200,
                     background: `url(${rewardBgImage}) center/cover`,
-                    borderRadius: 8,
-                    border: "2px solid rgba(255,255,255,.2)"
+                    borderRadius: 12,
+                    border: "2px solid rgba(148, 163, 184, 0.3)",
+                    boxShadow: "0 4px 16px rgba(0,0,0,0.2)"
                   }} />
+                  <div style={{
+                    fontSize: 12,
+                    opacity: 0.6,
+                    marginTop: 8,
+                    textAlign: "center"
+                  }}>
+                    この画像の上にスモークエフェクトが重なります
+                  </div>
                 </div>
               )}
             </div>
