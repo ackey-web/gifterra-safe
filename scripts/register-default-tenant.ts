@@ -16,7 +16,7 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-const DEFAULT_TENANT_ADDRESS = '0x66f1274ad5d042b7571c2efa943370dbcd3459ab';
+const DEFAULT_TENANT_ADDRESS = '0xfcea8435dcbba7f3b1da01e8ea3f4af234a20bcb';
 const TENANT_NAME = 'GIFTERRA Official';
 const RANK_PLAN = 'STUDIO_PRO_MAX';
 
