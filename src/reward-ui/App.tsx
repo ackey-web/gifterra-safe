@@ -7,6 +7,7 @@ import {
   useContract,
   useContractRead,
 } from "@thirdweb-dev/react";
+import { usePrivy, useWallets } from "@privy-io/react-auth";
 import { ethers } from "ethers";
 import { CONTRACT_ADDRESS, CONTRACT_ABI } from "../contract";
 import { useEmergency } from "../lib/emergency";
@@ -44,9 +45,17 @@ function getEventArgsFromReceipt(
 }
 
 export default function App() {
-  const address = useAddress();
+  const thirdwebAddress = useAddress();
   const chain = useChain();
   const { contract } = useContract(CONTRACT_ADDRESS, CONTRACT_ABI);
+
+  // Privy hooks
+  const { login, authenticated, user } = usePrivy();
+  const { wallets } = useWallets();
+
+  // 統合アドレス: Privy埋め込みウォレット優先、なければThirdweb
+  const privyEmbeddedWalletAddress = user?.wallet?.address;
+  const address = privyEmbeddedWalletAddress || thirdwebAddress;
 
   // Rewardトークン設定（ユーティリティトークン限定）
   // TODO: 将来的にTenantContextから取得
@@ -558,7 +567,11 @@ export default function App() {
             color: address ? "#4ade80" : "rgba(255,255,255,0.75)"
           }}
         >
-          {address ? `接続済み: ${address.slice(0, 6)}...${address.slice(-4)}` : "ウォレットを接続してください"}
+          {address ? (
+            privyEmbeddedWalletAddress
+              ? `📧 埋め込みウォレット: ${address.slice(0, 6)}...${address.slice(-4)}`
+              : `🦊 外部ウォレット: ${address.slice(0, 6)}...${address.slice(-4)}`
+          ) : "ウォレットを接続してください"}
         </p>
 
         {/* ボタン行（高さ統一・配置修正） */}
@@ -572,14 +585,40 @@ export default function App() {
             marginTop: 8
           }}
         >
-          <div style={{ 
-            display: "flex", 
+          {/* Privyログインボタン（埋め込みウォレット） */}
+          {!authenticated && (
+            <button
+              onClick={login}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                height: 48,
+                padding: "0 20px",
+                background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                color: "#fff",
+                borderRadius: 12,
+                border: "none",
+                fontSize: 14,
+                fontWeight: 600,
+                cursor: "pointer",
+                transition: "all 0.2s",
+                boxShadow: "0 4px 12px rgba(102, 126, 234, 0.3)"
+              }}
+            >
+              📧 メールでログイン
+            </button>
+          )}
+
+          {/* ThirdWeb外部ウォレット接続 */}
+          <div style={{
+            display: "flex",
             alignItems: "center",
-            height: 48 // ウォレット接続ボタンの高さ基準
+            height: 48
           }}>
-            <ConnectWallet 
-              theme="dark" 
-              modalTitle="リワード受け取り用ウォレット接続"
+            <ConnectWallet
+              theme="dark"
+              modalTitle="外部ウォレット接続"
               modalTitleIconUrl=""
             />
           </div>
