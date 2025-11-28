@@ -7,12 +7,21 @@
 DO $$
 DECLARE
   default_tenant_uuid UUID := '00000000-0000-0000-0000-000000000001'::uuid;
+  updated_rows INTEGER;
 BEGIN
   -- 1. tenant_applicationsテーブルの該当レコードにtenant_idを設定
   UPDATE tenant_applications
   SET tenant_id = default_tenant_uuid
   WHERE applicant_address = '0x0174477a1fceb9de25289cd1ca48b6998c9cd7fc'
     AND status = 'approved';
+
+  GET DIAGNOSTICS updated_rows = ROW_COUNT;
+
+  IF updated_rows = 0 THEN
+    RAISE EXCEPTION 'テナント申請レコードが見つかりません。先にregister-default-tenant.tsを実行してください。';
+  END IF;
+
+  RAISE NOTICE 'tenant_applicationsテーブル更新完了: % 行更新', updated_rows;
 
   -- 2. tenant_rank_plansテーブルにSTUDIO_PRO_MAXプランを追加
   -- 既存レコードがある場合は更新、ない場合は挿入
