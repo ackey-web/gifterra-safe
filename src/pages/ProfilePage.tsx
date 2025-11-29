@@ -607,7 +607,7 @@ export function ProfilePage() {
                           textAlign: 'right',
                           textShadow: '0 2px 8px rgba(74, 158, 255, 0.8), 0 0 20px rgba(74, 158, 255, 0.5)',
                         }}>
-                          {Math.round(userKodomi.jpyc.totalAmount)}
+                          Lv.{userKodomi.jpyc.displayLevel}
                         </span>
                       </div>
 
@@ -659,7 +659,7 @@ export function ProfilePage() {
                           textAlign: 'right',
                           textShadow: '0 2px 8px rgba(255, 126, 51, 0.8), 0 0 20px rgba(255, 126, 51, 0.5)',
                         }}>
-                          {userKodomi.resonance.engagementScore}
+                          Lv.{userKodomi.resonance.displayLevel}
                         </span>
                       </div>
                     </div>
