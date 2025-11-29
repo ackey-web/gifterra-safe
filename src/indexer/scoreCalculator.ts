@@ -156,24 +156,27 @@ export function updateStreak(
 /**
  * 共鳴スコア（kodomi）を正規化
  *
- * 【算出基準 - 案A + AI質的分析】
- * kodomi = (回数スコア + AI質的スコア) × (1 + 連続ボーナス)
+ * 【算出基準 - 案A + AI質的分析 + 時間減衰】
+ * kodomi = ((回数スコア + AI質的スコア) × (1 + 連続ボーナス)) × 時間減衰係数
  *
  * - 回数スコア: 全トークン同じ重み（1.0）、金額は含まない
  * - AI質的スコア: メッセージの文脈理解・感情分析（0-50）
  * - 連続ボーナス: 7日ごとに10%加算
+ * - 時間減衰: 最終応援日から経過した日数に応じて減衰（7日で50%、30日で25%）
  *
  * @param utilityTokenCount ユーティリティトークン（tNHT等）のTIP回数
  * @param jpycTipCount JPYC（Economic軸トークン）のTIP回数
  * @param streak 連続日数
- * @param avgSentiment 平均感情スコア（0-100）メッセージがない場合は50
+ * @param aiQualityScore AI質的スコア（0-50）
+ * @param lastDate 最終応援日（nullの場合は減衰なし）
  * @returns 正規化後のスコア（kodomi）
  */
 export function normalizeResonanceScore(
   utilityTokenCount: number,
   jpycTipCount: number,
   streak: number,
-  aiQualityScore: number = 0
+  aiQualityScore: number = 0,
+  lastDate: Date | null = null
 ): number {
   // 回数スコア（全トークン同じ重み）
   const countScore = utilityTokenCount + jpycTipCount;
@@ -181,8 +184,25 @@ export function normalizeResonanceScore(
   // 連続ボーナス（7日ごとに10%加算）- 回数スコアのみに適用
   const streakBonus = Math.floor(streak / 7) * 0.1;
 
-  // kodomi = (回数スコア × (1 + 連続ボーナス)) + AI質的スコア
-  const kodomi = (countScore * (1 + streakBonus)) + aiQualityScore;
+  // 基本kodomi = (回数スコア × (1 + 連続ボーナス)) + AI質的スコア
+  let kodomi = (countScore * (1 + streakBonus)) + aiQualityScore;
+
+  // 時間減衰計算（最後の応援から経過時間に基づく）
+  if (lastDate && countScore > 0) {
+    const now = new Date();
+    const daysSinceLastTip = Math.floor((now.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24));
+
+    // 減衰係数計算（7日間で50%減衰、30日で25%まで減衰）
+    let decayFactor = 1.0;
+    if (daysSinceLastTip > 0) {
+      // 指数関数的減衰：7日で50%、30日で25%
+      const decayRate = 0.1; // 減衰率
+      decayFactor = Math.exp(-decayRate * daysSinceLastTip / 7);
+      decayFactor = Math.max(0.25, decayFactor); // 最低25%まで減衰
+    }
+
+    kodomi = kodomi * decayFactor;
+  }
 
   return Math.round(kodomi);
 }

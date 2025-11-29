@@ -303,12 +303,13 @@ export class ScoreDatabase {
     // ai_quality_scoreを取得（フロントエンドが既に計算済み）
     const aiQualityScore = await this.getAIQualityScore(userScore.address);
 
-    // 正規化（新しいkodomi算出: 案A + AI質的スコア）
+    // 正規化（新しいkodomi算出: 案A + AI質的スコア + 時間減衰）
     userScore.resonance.normalized = normalizeResonanceScore(
       userScore.resonance.actions.utilityTokenTips,  // 全トークン重み1.0
       userScore.resonance.actions.economicTokenTips, // 全トークン重み1.0
       userScore.resonance.streak,
-      aiQualityScore // DBから取得したAI質的スコア
+      aiQualityScore, // DBから取得したAI質的スコア
+      userScore.resonance.lastDate // 最終応援日（時間減衰用）
     );
 
     // レベル計算
@@ -372,12 +373,13 @@ export class ScoreDatabase {
     // ai_quality_scoreを取得（フロントエンドが既に計算済み）
     const aiQualityScore = await this.getAIQualityScore(userScore.address);
 
-    // 正規化（kodomi算出: トークン種別ごとの重み付き回数 + 連続ボーナス + AI質的スコア）
+    // 正規化（kodomi算出: トークン種別ごとの重み付き回数 + 連続ボーナス + AI質的スコア + 時間減衰）
     userScore.resonance.normalized = normalizeResonanceScore(
       userScore.resonance.actions.utilityTokenTips,  // tNHT等（重み1.0）
       userScore.resonance.actions.economicTokenTips, // JPYC等（重み1.0）
       userScore.resonance.streak,
-      aiQualityScore // DBから取得したAI質的スコア
+      aiQualityScore, // DBから取得したAI質的スコア
+      userScore.resonance.lastDate // 最終応援日（時間減衰用）
     );
 
     // レベル計算
@@ -671,6 +673,9 @@ export class ScoreDatabase {
           claims: 0,
           logins: 0,
         },
+        aiQualityScore: row.ai_quality_score || 0,
+        avgSentiment: row.avg_sentiment || 50,
+        messageCount: row.message_count || 0,
       },
       composite: {
         value: row.composite_score || 0,
