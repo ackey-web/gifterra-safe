@@ -2,6 +2,7 @@
 // ユーザープロフィールページ - モバイルファーストのレスポンシブデザイン
 
 import { useState, useEffect } from 'react';
+import { useAddress } from '@thirdweb-dev/react';
 import { useUserProfile } from '../hooks/useUserProfile';
 import { useUserKodomi } from '../hooks/useUserKodomi';
 import { getRankColor, getRankBadge, shortenAddress, formatRelativeTime, generateTwitterShareText } from '../utils/userProfile';
@@ -13,9 +14,13 @@ export function UserProfilePage({ address: propsAddress, mockProfile, mockActivi
   mockProfile?: UserProfile | null;
   mockActivities?: any[];
 } = {}) {
+  const myAddress = useAddress(); // ログイン中のユーザーアドレス
   const pathParts = window.location.pathname.split('/');
   const addressFromUrl = pathParts[pathParts.indexOf('user') + 1];
   const targetAddress = propsAddress || addressFromUrl;
+
+  // 他のユーザーのプロフィールを閲覧しているかチェック
+  const isViewingOtherProfile = myAddress && targetAddress && myAddress.toLowerCase() !== targetAddress.toLowerCase();
 
   // レスポンシブ対応：画面幅を検知
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
@@ -34,6 +39,11 @@ export function UserProfilePage({ address: propsAddress, mockProfile, mockActivi
 
   // 対象ユーザーへの自分のkodomi値を取得
   const userKodomi = useUserKodomi(targetAddress);
+
+  console.log('🎯 UserProfile - myAddress:', myAddress);
+  console.log('🎯 UserProfile - targetAddress:', targetAddress);
+  console.log('🎯 UserProfile - isViewingOtherProfile:', isViewingOtherProfile);
+  console.log('🎯 UserProfile - userKodomi:', userKodomi);
 
   const profile = mockProfile || realProfile;
   const activities = mockActivities || realActivities || [];
@@ -263,8 +273,8 @@ export function UserProfilePage({ address: propsAddress, mockProfile, mockActivi
           </div>
         </div>
 
-        {/* このユーザーへの自分のkodomi（2軸ゲージ） */}
-        {!userKodomi.loading && !userKodomi.error && (
+        {/* このユーザーへの自分のkodomi（2軸ゲージ） - 他のユーザーのプロフィールを見ている場合のみ表示 */}
+        {isViewingOtherProfile && !userKodomi.loading && !userKodomi.error && (
           <div style={{ marginBottom: isMobile ? 48 : 80 }}>
             <h2 style={{
               fontSize: isMobile ? 20 : 28,

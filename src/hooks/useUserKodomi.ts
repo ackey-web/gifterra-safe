@@ -194,7 +194,10 @@ export function useUserKodomi(targetAddress: string | undefined) {
   });
 
   useEffect(() => {
+    console.log('🔍 useUserKodomi - myAddress:', myAddress, 'targetAddress:', targetAddress);
+
     if (!myAddress || !targetAddress) {
+      console.log('⚠️ useUserKodomi - アドレスが不足しています');
       setData(prev => ({ ...prev, loading: false }));
       return;
     }
@@ -206,6 +209,7 @@ export function useUserKodomi(targetAddress: string | undefined) {
     if (!myAddress || !targetAddress) return;
 
     try {
+      console.log('📊 fetchUserKodomiData - 開始');
       setData(prev => ({ ...prev, loading: true, error: null }));
 
       // Supabaseから自分→対象ユーザーへの送信履歴を取得
@@ -214,6 +218,8 @@ export function useUserKodomi(targetAddress: string | undefined) {
         .select('*')
         .eq('from_address', myAddress.toLowerCase())
         .eq('to_address', targetAddress.toLowerCase());
+
+      console.log('📊 取得したトランザクション数:', transactions?.length || 0);
 
       if (txError) throw txError;
 
@@ -256,7 +262,7 @@ export function useUserKodomi(targetAddress: string | undefined) {
       const jpycRank = calculateJPYCRank(jpycTotal);
       const resonanceRank = calculateResonanceRank(engagementScore);
 
-      setData({
+      const result = {
         jpyc: {
           totalAmount: jpycTotal,
           tipCount: jpycCount,
@@ -271,7 +277,10 @@ export function useUserKodomi(targetAddress: string | undefined) {
         },
         loading: false,
         error: null,
-      });
+      };
+
+      console.log('✅ useUserKodomi - データセット完了:', result);
+      setData(result);
     } catch (err) {
       console.error('❌ ユーザーkodomi取得エラー:', err);
       setData(prev => ({
