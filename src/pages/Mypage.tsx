@@ -29,6 +29,7 @@ import { UserSearchModal } from '../components/UserSearchModal';
 import { BookmarkUserModal } from '../components/BookmarkUserModal';
 import { MypageAssistant } from '../components/MypageAssistant';
 import { LegalCompliantDualAxisTank } from '../components/score/LegalCompliantDualAxisTank';
+import { LevelUpPopup } from '../components/score/LevelUpPopup';
 import type { UserRole } from '../types/profile';
 import flowImage from '../assets/flow.png';
 import studioImage from '../assets/studio.png';
@@ -4981,6 +4982,57 @@ function OverallKodomiTank({ isMobile, walletAddress }: { isMobile: boolean; wal
   console.log('🎯🎯🎯 [TANK-DEBUG-v2] OverallKodomiTank - コンポーネントレンダリング');
   console.log('🎯 [TANK-DEBUG-v2] 受け取ったwalletAddress:', walletAddress);
   const { jpyc, resonance, overall, loading, error } = useDualAxisKodomi(walletAddress);
+  const [levelUpPopup, setLevelUpPopup] = useState<{
+    axis: 'jpyc' | 'resonance' | 'overall';
+    oldLevel: number;
+    newLevel: number;
+    rank: string;
+    color: string;
+  } | null>(null);
+
+  // レベルアップ検知
+  useEffect(() => {
+    if (loading) return;
+
+    // JPYC レベルアップチェック
+    const prevJpycLevel = parseInt(localStorage.getItem('prev_jpyc_level') || '1');
+    if (jpyc.displayLevel > prevJpycLevel) {
+      setLevelUpPopup({
+        axis: 'jpyc',
+        oldLevel: prevJpycLevel,
+        newLevel: jpyc.displayLevel,
+        rank: jpyc.rank,
+        color: jpyc.color,
+      });
+    }
+    localStorage.setItem('prev_jpyc_level', jpyc.displayLevel.toString());
+
+    // Resonance レベルアップチェック
+    const prevResonanceLevel = parseInt(localStorage.getItem('prev_resonance_level') || '1');
+    if (resonance.displayLevel > prevResonanceLevel) {
+      setLevelUpPopup({
+        axis: 'resonance',
+        oldLevel: prevResonanceLevel,
+        newLevel: resonance.displayLevel,
+        rank: resonance.rank,
+        color: resonance.color,
+      });
+    }
+    localStorage.setItem('prev_resonance_level', resonance.displayLevel.toString());
+
+    // Overall レベルアップチェック
+    const prevOverallLevel = parseInt(localStorage.getItem('prev_overall_level') || '1');
+    if (overall.displayLevel > prevOverallLevel) {
+      setLevelUpPopup({
+        axis: 'overall',
+        oldLevel: prevOverallLevel,
+        newLevel: overall.displayLevel,
+        rank: overall.rank,
+        color: overall.color,
+      });
+    }
+    localStorage.setItem('prev_overall_level', overall.displayLevel.toString());
+  }, [jpyc.displayLevel, resonance.displayLevel, overall.displayLevel, loading]);
 
   console.log('[TANK-DEBUG-v2] フック結果:');
   console.log('  loading:', loading);
@@ -5009,30 +5061,44 @@ function OverallKodomiTank({ isMobile, walletAddress }: { isMobile: boolean; wal
   }
 
   return (
-    <div style={{ marginBottom: isMobile ? 40 : 60 }}>
-      <LegalCompliantDualAxisTank
-        jpycAmount={jpyc.totalAmount}
-        jpycTipCount={jpyc.tipCount}
-        jpycLevel={jpyc.level}
-        jpycDisplayLevel={jpyc.displayLevel}
-        jpycRank={jpyc.rank}
-        jpycColor={jpyc.color}
-        supportCount={resonance.supportCount}
-        streakDays={resonance.streakDays}
-        engagementScore={resonance.engagementScore}
-        resonanceLevel={resonance.level}
-        resonanceDisplayLevel={resonance.displayLevel}
-        resonanceRank={resonance.rank}
-        resonanceColor={resonance.color}
-        overallScore={overall.totalScore}
-        overallRank={overall.rank}
-        overallColor={overall.color}
-        overallLevel={overall.level}
-        overallDisplayLevel={overall.displayLevel}
-        showDetails={true}
-        size={isMobile ? 'small' : 'medium'}
-      />
-    </div>
+    <>
+      <div style={{ marginBottom: isMobile ? 40 : 60 }}>
+        <LegalCompliantDualAxisTank
+          jpycAmount={jpyc.totalAmount}
+          jpycTipCount={jpyc.tipCount}
+          jpycLevel={jpyc.level}
+          jpycDisplayLevel={jpyc.displayLevel}
+          jpycRank={jpyc.rank}
+          jpycColor={jpyc.color}
+          supportCount={resonance.supportCount}
+          streakDays={resonance.streakDays}
+          engagementScore={resonance.engagementScore}
+          resonanceLevel={resonance.level}
+          resonanceDisplayLevel={resonance.displayLevel}
+          resonanceRank={resonance.rank}
+          resonanceColor={resonance.color}
+          overallScore={overall.totalScore}
+          overallRank={overall.rank}
+          overallColor={overall.color}
+          overallLevel={overall.level}
+          overallDisplayLevel={overall.displayLevel}
+          showDetails={true}
+          size={isMobile ? 'small' : 'medium'}
+        />
+      </div>
+
+      {/* レベルアップポップアップ */}
+      {levelUpPopup && (
+        <LevelUpPopup
+          axis={levelUpPopup.axis}
+          oldLevel={levelUpPopup.oldLevel}
+          newLevel={levelUpPopup.newLevel}
+          rank={levelUpPopup.rank}
+          color={levelUpPopup.color}
+          onComplete={() => setLevelUpPopup(null)}
+        />
+      )}
+    </>
   );
 }
 

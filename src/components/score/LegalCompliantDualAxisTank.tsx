@@ -538,7 +538,7 @@ export const LegalCompliantDualAxisTank: React.FC<LegalCompliantDualAxisTankProp
               textTransform: 'uppercase',
             }}
           >
-            🏆 総合スコア
+            🏆 総合KODOMI
           </div>
 
           <div
