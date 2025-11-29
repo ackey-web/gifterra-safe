@@ -139,3 +139,39 @@ export async function deleteProduct(id: string, tenantId: string): Promise<void>
     throw new Error(error.error || 'Failed to delete product');
   }
 }
+
+// ========================================
+// スコアパラメータ関連
+// ========================================
+
+export interface ScoreParamsData {
+  weightEconomic: number;
+  weightResonance: number;
+  curve: 'Linear' | 'Sqrt' | 'Log';
+}
+
+export interface ScoreParamsRecord extends ScoreParamsData {
+  id: string;
+  lastUpdated: string;
+}
+
+/**
+ * スコアパラメータを保存
+ */
+export async function saveScoreParams(params: ScoreParamsData): Promise<ScoreParamsRecord> {
+  const url = `${API_BASE_URL}/api/admin/score-params`;
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(params)
+  });
+
+  if (!response.ok) {
+    const error: ErrorResponse = await response.json();
+    throw new Error(error.error || 'Failed to save score params');
+  }
+
+  const data = await response.json();
+  return data.params;
+}

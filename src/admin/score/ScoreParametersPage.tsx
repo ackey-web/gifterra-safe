@@ -6,6 +6,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { LegalCompliantDualAxisTank } from '../../components/score/LegalCompliantDualAxisTank';
 import { supabase } from '../../lib/supabase';
+import { saveScoreParams, type ScoreParamsData } from '../../lib/adminApi';
 
 // ========================================
 // 型定義
@@ -149,33 +150,25 @@ export const ScoreParametersPage: React.FC = () => {
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      console.log('💾 Saving params to Supabase...', editParams);
+      console.log('💾 Saving params via API...', editParams);
 
-      // 新しいパラメータレコードをINSERT（履歴として保存）
-      const { data, error } = await supabase
-        .from('score_params')
-        .insert({
-          weight_economic: editParams.weightEconomic,
-          weight_resonance: editParams.weightResonance,
-          curve: editParams.curve,
-          last_updated: new Date().toISOString(),
-        })
-        .select()
-        .single();
-
-      if (error) {
-        console.error('❌ Failed to save params:', error);
-        throw error;
-      }
-
-      console.log('✅ Params saved successfully:', data);
-
-      // 状態を更新
-      const updatedParams: ScoreParams = {
+      // API経由で保存（Service Role使用）
+      const paramsData: ScoreParamsData = {
         weightEconomic: editParams.weightEconomic,
         weightResonance: editParams.weightResonance,
         curve: editParams.curve,
-        lastUpdated: data.last_updated,
+      };
+
+      const savedParams = await saveScoreParams(paramsData);
+
+      console.log('✅ Params saved successfully:', savedParams);
+
+      // 状態を更新
+      const updatedParams: ScoreParams = {
+        weightEconomic: savedParams.weightEconomic,
+        weightResonance: savedParams.weightResonance,
+        curve: savedParams.curve,
+        lastUpdated: savedParams.lastUpdated,
       };
 
       setParams(updatedParams);
