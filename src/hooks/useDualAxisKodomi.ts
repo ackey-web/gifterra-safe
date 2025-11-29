@@ -142,7 +142,11 @@ function calculateResonanceRank(engagementScore: number): {
 export function useDualAxisKodomi() {
   const address = useAddress();
 
-  console.log('🚀 useDualAxisKodomi - フック呼び出し, address:', address);
+  console.log('🚀🚀🚀 [KODOMI-DEBUG-v2] useDualAxisKodomi - フック呼び出し');
+  console.log('  address:', address);
+  console.log('  address type:', typeof address);
+  console.log('  address is null?:', address === null);
+  console.log('  address is undefined?:', address === undefined);
 
   const [data, setData] = useState<DualAxisKodomiData>({
     jpyc: {
@@ -169,19 +173,38 @@ export function useDualAxisKodomi() {
 
   // useCallbackでメモ化してクロージャ問題を解決
   const fetchDualAxisData = useCallback(async () => {
-    if (!address) return;
+    console.log('[KODOMI-DEBUG-v2] fetchDualAxisData呼び出し, address:', address);
+
+    if (!address) {
+      console.log('[KODOMI-DEBUG-v2] addressがnullまたはundefinedのため早期リターン');
+      return;
+    }
 
     try {
-      console.log('🔍 useDualAxisKodomi - fetchDualAxisData開始 address:', address);
+      console.log('🔍 [KODOMI-DEBUG-v2] fetchDualAxisData開始');
+      console.log('  対象アドレス:', address);
+      console.log('  小文字変換後:', address.toLowerCase());
+
       setData(prev => ({ ...prev, loading: true, error: null }));
 
       // Supabaseからトランザクション履歴を取得
+      console.log('[KODOMI-DEBUG-v2] Supabaseクエリ実行中...');
       const { data: transactions, error: txError } = await supabase
         .from('transfer_messages')
         .select('*')
         .eq('from_address', address.toLowerCase());
 
-      console.log('📊 useDualAxisKodomi - 取得したトランザクション数:', transactions?.length || 0);
+      console.log('📊 [KODOMI-DEBUG-v2] Supabaseクエリ完了');
+      console.log('  エラー:', txError);
+      console.log('  取得したトランザクション数:', transactions?.length || 0);
+
+      if (transactions && transactions.length > 0) {
+        console.log('  最新トランザクション:', {
+          token_symbol: transactions[0].token_symbol,
+          amount: transactions[0].amount,
+          created_at: transactions[0].created_at,
+        });
+      }
 
       if (txError) throw txError;
 
@@ -245,18 +268,18 @@ export function useDualAxisKodomi() {
         error: null,
       };
 
-      console.log('✅ useDualAxisKodomi - データセット完了:', {
-        jpycTotal,
-        jpycCount,
-        nhtCount,
-        streakDays,
-        messageQuality,
-        engagementScore,
-        jpycRank: jpycRank.rank,
-        resonanceRank: resonanceRank.rank,
-      });
+      console.log('✅✅✅ [KODOMI-DEBUG-v2] データセット完了:');
+      console.log('  JPYC総額:', jpycTotal, 'JPYC');
+      console.log('  JPYCチップ回数:', jpycCount);
+      console.log('  NHTチップ回数:', nhtCount);
+      console.log('  ストリーク:', streakDays, '日');
+      console.log('  メッセージ品質:', messageQuality);
+      console.log('  エンゲージメント:', engagementScore);
+      console.log('  JPYCランク:', jpycRank.rank, 'Lv.' + jpycRank.displayLevel, `(${jpycRank.level.toFixed(2)}%)`);
+      console.log('  Resonanceランク:', resonanceRank.rank, 'Lv.' + resonanceRank.displayLevel, `(${resonanceRank.level.toFixed(2)}%)`);
 
       setData(result);
+      console.log('[KODOMI-DEBUG-v2] setData実行完了');
     } catch (err) {
       console.error('❌ 2軸kodomi取得エラー:', err);
       setData(prev => ({
