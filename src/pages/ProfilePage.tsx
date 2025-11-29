@@ -544,44 +544,46 @@ export function ProfilePage() {
                     )}
                   </div>
 
-                  {/* 中央: このユーザーへのkodomiゲージ（コンパクト版・横伸びゲージ） */}
+                  {/* 中央: このユーザーへのkodomiゲージ（横伸びゲージ） */}
                   {!userKodomi.loading && !userKodomi.error && (
                     <div style={{
                       display: 'flex',
                       flexDirection: 'column',
-                      gap: isMobile ? 4 : 6,
-                      marginLeft: isMobile ? 0 : 12,
-                      minWidth: isMobile ? 120 : 160,
+                      gap: isMobile ? 6 : 8,
+                      marginLeft: isMobile ? 0 : 16,
+                      flex: 1,
+                      maxWidth: isMobile ? '100%' : 280,
                     }}>
                       {/* 💸 JPYC ゲージ */}
                       <div style={{
                         display: 'flex',
                         alignItems: 'center',
-                        gap: 6,
+                        gap: isMobile ? 8 : 10,
                       }}>
-                        <span style={{ fontSize: isMobile ? 12 : 14 }}>💸</span>
+                        <span style={{ fontSize: isMobile ? 16 : 18 }}>💸</span>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{
-                            height: isMobile ? 6 : 8,
+                            height: isMobile ? 8 : 10,
                             background: 'rgba(0, 0, 0, 0.3)',
-                            borderRadius: 4,
+                            borderRadius: 6,
                             overflow: 'hidden',
                             position: 'relative',
+                            border: '1px solid rgba(74, 158, 255, 0.2)',
                           }}>
                             <div style={{
                               width: `${Math.min(100, (userKodomi.jpyc.level / 100) * 100)}%`,
                               height: '100%',
                               background: 'linear-gradient(90deg, #4a9eff 0%, #2d7dd2 100%)',
                               transition: 'width 0.5s ease',
-                              boxShadow: '0 0 8px rgba(74, 158, 255, 0.5)',
+                              boxShadow: '0 0 10px rgba(74, 158, 255, 0.6)',
                             }} />
                           </div>
                         </div>
                         <span style={{
-                          fontSize: isMobile ? 9 : 10,
+                          fontSize: isMobile ? 11 : 12,
                           fontWeight: 700,
                           color: '#4a9eff',
-                          minWidth: isMobile ? 28 : 32,
+                          minWidth: isMobile ? 36 : 40,
                           textAlign: 'right',
                         }}>
                           {Math.round(userKodomi.jpyc.totalAmount)}
@@ -592,31 +594,32 @@ export function ProfilePage() {
                       <div style={{
                         display: 'flex',
                         alignItems: 'center',
-                        gap: 6,
+                        gap: isMobile ? 8 : 10,
                       }}>
-                        <span style={{ fontSize: isMobile ? 12 : 14 }}>⚡</span>
+                        <span style={{ fontSize: isMobile ? 16 : 18 }}>⚡</span>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{
-                            height: isMobile ? 6 : 8,
+                            height: isMobile ? 8 : 10,
                             background: 'rgba(0, 0, 0, 0.3)',
-                            borderRadius: 4,
+                            borderRadius: 6,
                             overflow: 'hidden',
                             position: 'relative',
+                            border: '1px solid rgba(255, 126, 51, 0.2)',
                           }}>
                             <div style={{
                               width: `${Math.min(100, (userKodomi.resonance.level / 100) * 100)}%`,
                               height: '100%',
                               background: 'linear-gradient(90deg, #ff7e33 0%, #ff5722 100%)',
                               transition: 'width 0.5s ease',
-                              boxShadow: '0 0 8px rgba(255, 126, 51, 0.5)',
+                              boxShadow: '0 0 10px rgba(255, 126, 51, 0.6)',
                             }} />
                           </div>
                         </div>
                         <span style={{
-                          fontSize: isMobile ? 9 : 10,
+                          fontSize: isMobile ? 11 : 12,
                           fontWeight: 700,
                           color: '#ff7e33',
-                          minWidth: isMobile ? 28 : 32,
+                          minWidth: isMobile ? 36 : 40,
                           textAlign: 'right',
                         }}>
                           {userKodomi.resonance.engagementScore}
