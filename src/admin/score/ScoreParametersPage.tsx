@@ -3,7 +3,8 @@
  * @description Admin用：二軸スコアシステムのパラメータを直感的に管理
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { LegalCompliantDualAxisTank } from '../../components/score/LegalCompliantDualAxisTank';
 
 // ========================================
 // 型定義
@@ -160,9 +161,108 @@ export const ScoreParametersPage: React.FC = () => {
     return '#8b5cf6'; // Balanced purple
   };
 
+  // ========================================
+  // プレビュー計算ロジック（50 JPYC基準）
+  // ========================================
+
+  const previewData = useMemo(() => {
+    const baseJPYC = 50; // 基準JPYC額
+    const baseNHT = 10;  // 基準NHT応援回数
+
+    // 重みを適用してスコア計算
+    const jpycScore = baseJPYC * (editParams.weightEconomic / 100);
+    const resonanceScore = baseNHT * 2 * (editParams.weightResonance / 100); // NHTは回数×2
+
+    // ランク定義（useDualAxisKodomiと同じ）
+    const JPYC_RANKS = {
+      BRONZE: { name: 'Bronze', threshold: 0, color: '#cd7f32', maxThreshold: 200 },
+      SILVER: { name: 'Silver', threshold: 200, color: '#c0c0c0', maxThreshold: 700 },
+      GOLD: { name: 'Gold', threshold: 700, color: '#ffd700', maxThreshold: 1500 },
+      PLATINUM: { name: 'Platinum', threshold: 1500, color: '#e5e4e2', maxThreshold: 7000 },
+      DIAMOND: { name: 'Diamond', threshold: 7000, color: '#b9f2ff', maxThreshold: Infinity },
+    };
+
+    const RESONANCE_RANKS = {
+      SPARK: { name: 'Spark', threshold: 0, color: '#ffa500', maxThreshold: 150 },
+      FLAME: { name: 'Flame', threshold: 150, color: '#ff6b35', maxThreshold: 400 },
+      BLAZE: { name: 'Blaze', threshold: 400, color: '#ff4500', maxThreshold: 800 },
+      INFERNO: { name: 'Inferno', threshold: 800, color: '#dc143c', maxThreshold: 1500 },
+      PHOENIX: { name: 'Phoenix', threshold: 1500, color: '#ff00ff', maxThreshold: Infinity },
+    };
+
+    // JPYCランク計算
+    function calculateJPYCRank(totalAmount: number) {
+      const ranks = Object.values(JPYC_RANKS);
+      for (let i = 0; i < ranks.length; i++) {
+        const currentRank = ranks[i];
+        if (totalAmount < currentRank.maxThreshold) {
+          const progress = totalAmount >= currentRank.threshold
+            ? ((totalAmount - currentRank.threshold) / (currentRank.maxThreshold - currentRank.threshold)) * 100
+            : 0;
+          return {
+            rank: currentRank.name,
+            color: currentRank.color,
+            level: Math.min(progress, 100),
+            displayLevel: i + 1,
+          };
+        }
+      }
+      return {
+        rank: JPYC_RANKS.DIAMOND.name,
+        color: JPYC_RANKS.DIAMOND.color,
+        level: 100,
+        displayLevel: Object.keys(JPYC_RANKS).length,
+      };
+    }
+
+    // Resonanceランク計算
+    function calculateResonanceRank(engagementScore: number) {
+      const ranks = Object.values(RESONANCE_RANKS);
+      for (let i = 0; i < ranks.length; i++) {
+        const currentRank = ranks[i];
+        if (engagementScore < currentRank.maxThreshold) {
+          const progress = engagementScore >= currentRank.threshold
+            ? ((engagementScore - currentRank.threshold) / (currentRank.maxThreshold - currentRank.threshold)) * 100
+            : 0;
+          return {
+            rank: currentRank.name,
+            color: currentRank.color,
+            level: Math.min(progress, 100),
+            displayLevel: i + 1,
+          };
+        }
+      }
+      return {
+        rank: RESONANCE_RANKS.PHOENIX.name,
+        color: RESONANCE_RANKS.PHOENIX.color,
+        level: 100,
+        displayLevel: Object.keys(RESONANCE_RANKS).length,
+      };
+    }
+
+    const jpycRank = calculateJPYCRank(jpycScore);
+    const resonanceRank = calculateResonanceRank(resonanceScore);
+
+    return {
+      jpycAmount: jpycScore,
+      jpycTipCount: 1,
+      jpycLevel: jpycRank.level,
+      jpycDisplayLevel: jpycRank.displayLevel,
+      jpycRank: jpycRank.rank,
+      jpycColor: jpycRank.color,
+      supportCount: baseNHT,
+      streakDays: 3,
+      engagementScore: resonanceScore,
+      resonanceLevel: resonanceRank.level,
+      resonanceDisplayLevel: resonanceRank.displayLevel,
+      resonanceRank: resonanceRank.rank,
+      resonanceColor: resonanceRank.color,
+    };
+  }, [editParams.weightEconomic, editParams.weightResonance]);
+
   return (
     <div className="score-params-page">
-      <style jsx>{`
+      <style>{`
         .score-params-page {
           max-width: 1200px;
           margin: 0 auto;
@@ -545,6 +645,37 @@ export const ScoreParametersPage: React.FC = () => {
           color: #742a2a;
         }
 
+        /* プレビューセクション */
+        .preview-section {
+          margin-top: 32px;
+          padding: 24px;
+          background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
+          border-radius: 16px;
+          border: 2px solid #e2e8f0;
+        }
+
+        .preview-title {
+          font-size: 16px;
+          font-weight: 700;
+          color: #2d3748;
+          margin-bottom: 12px;
+          text-align: center;
+        }
+
+        .preview-description {
+          font-size: 13px;
+          color: #718096;
+          margin-bottom: 20px;
+          text-align: center;
+          line-height: 1.6;
+        }
+
+        .preview-tank-wrapper {
+          display: flex;
+          justify-content: center;
+          margin-top: 20px;
+        }
+
         /* モバイル対応 */
         @media (max-width: 768px) {
           .current-params {
@@ -671,6 +802,23 @@ export const ScoreParametersPage: React.FC = () => {
                     </div>
                   </div>
                 </div>
+
+                {/* リアルタイムプレビュー */}
+                <div className="preview-section">
+                  <div className="preview-title">
+                    📊 リアルタイムプレビュー
+                  </div>
+                  <div className="preview-description">
+                    50 JPYCのチップ + 10回のNHT応援を送った場合のkodomi TANKの変化
+                  </div>
+                  <div className="preview-tank-wrapper">
+                    <LegalCompliantDualAxisTank
+                      {...previewData}
+                      showDetails={true}
+                      size="small"
+                    />
+                  </div>
+                </div>
               </div>
             )}
 
@@ -730,6 +878,23 @@ export const ScoreParametersPage: React.FC = () => {
                       {editParams.weightResonance} ({(editParams.weightResonance / 100).toFixed(1)}倍)
                     </span>
                     <span>300 (3倍)</span>
+                  </div>
+                </div>
+
+                {/* リアルタイムプレビュー（カスタムモード） */}
+                <div className="preview-section">
+                  <div className="preview-title">
+                    📊 リアルタイムプレビュー
+                  </div>
+                  <div className="preview-description">
+                    50 JPYCのチップ + 10回のNHT応援を送った場合のkodomi TANKの変化
+                  </div>
+                  <div className="preview-tank-wrapper">
+                    <LegalCompliantDualAxisTank
+                      {...previewData}
+                      showDetails={true}
+                      size="small"
+                    />
                   </div>
                 </div>
               </div>
