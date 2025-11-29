@@ -1207,7 +1207,7 @@ export function ProfilePage() {
                                 whiteSpace: 'pre-wrap',
                               }}
                             >
-                              {profile.bio}
+                              {profile?.bio}
                             </p>
                           </div>
                         )}
