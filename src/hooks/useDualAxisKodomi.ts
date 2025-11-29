@@ -384,6 +384,7 @@ export function useDualAxisKodomi(walletAddress?: string) {
     console.log('🔄 [KODOMI-DEBUG-v2] useEffect (初回データ取得) 実行');
     console.log('  address:', address);
     console.log('  addressの型:', typeof address);
+    console.log('  walletAddress引数:', walletAddress);
 
     if (!address) {
       console.log('⚠️ [KODOMI-DEBUG-v2] addressがnull/undefinedのため、loading=falseにして早期リターン');
@@ -393,7 +394,7 @@ export function useDualAxisKodomi(walletAddress?: string) {
 
     console.log('✅ [KODOMI-DEBUG-v2] addressあり、fetchDualAxisData呼び出し');
     fetchDualAxisData();
-  }, [fetchDualAxisData]); // addressはfetchDualAxisDataに含まれているので不要
+  }, [address, fetchDualAxisData, walletAddress]); // walletAddressを依存配列に追加
 
   // リアルタイム更新の購読
   useEffect(() => {
@@ -402,36 +403,43 @@ export function useDualAxisKodomi(walletAddress?: string) {
       return;
     }
 
-    console.log('🔔 [KODOMI-DEBUG-v2] リアルタイム購読開始 for address:', address);
+    const normalizedAddress = address.toLowerCase();
+    console.log('🔔 [KODOMI-DEBUG-v2] リアルタイム購読開始 for address:', normalizedAddress);
+    console.log('🔔 [KODOMI-DEBUG-v2] チャンネル名:', `kodomi-updates-${normalizedAddress}`);
 
     // Supabaseリアルタイムサブスクリプション設定
     const channel = supabase
-      .channel(`kodomi-updates-${address.toLowerCase()}`)
+      .channel(`kodomi-updates-${normalizedAddress}`)
       .on(
         'postgres_changes',
         {
           event: '*', // INSERT, UPDATE, DELETE全て
           schema: 'public',
           table: 'transfer_messages',
-          filter: `from_address=eq.${address.toLowerCase()}`,
+          filter: `from_address=eq.${normalizedAddress}`,
         },
         (payload) => {
-          console.log('🔔 [KODOMI-DEBUG-v2] リアルタイム更新検知 (from_address):', payload);
+          console.log('🔔🔔🔔 [KODOMI-DEBUG-v2] !!!! リアルタイム更新検知 (from_address) !!!!');
           console.log('  イベント種類:', payload.eventType);
+          console.log('  対象アドレス:', normalizedAddress);
           console.log('  新しいレコード:', payload.new);
+          console.log('  古いレコード:', payload.old);
+          console.log('🔄 [KODOMI-DEBUG-v2] fetchDualAxisDataを呼び出してデータ再取得します...');
           fetchDualAxisData(); // データ再取得
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('📡 [KODOMI-DEBUG-v2] 購読ステータス:', status);
+      });
 
     console.log('✅ [KODOMI-DEBUG-v2] リアルタイム購読チャンネル作成完了');
 
     // クリーンアップ
     return () => {
-      console.log('🔕 [KODOMI-DEBUG-v2] リアルタイム購読解除 for address:', address);
+      console.log('🔕 [KODOMI-DEBUG-v2] リアルタイム購読解除 for address:', normalizedAddress);
       supabase.removeChannel(channel);
     };
-  }, [address, fetchDualAxisData]); // addressとfetchDualAxisDataの両方に依存
+  }, [address, fetchDualAxisData, walletAddress]); // walletAddressも依存配列に追加
 
   return { ...data, refetch: fetchDualAxisData };
 }
