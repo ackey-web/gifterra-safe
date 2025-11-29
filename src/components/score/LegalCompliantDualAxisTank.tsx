@@ -290,8 +290,9 @@ export const LegalCompliantDualAxisTank: React.FC<LegalCompliantDualAxisTankProp
         {/* JPYC詳細情報 */}
         {showDetails && (
           <div style={{ textAlign: 'center', color: 'rgba(255,255,255,0.9)', width: sizeConfig.tankWidth + 30 }}>
-            <div style={{ fontSize: sizeConfig.fontSize + 1, fontWeight: 'bold', marginBottom: 3 }}>
-              💸 JPYC貢献
+            <div style={{ fontSize: sizeConfig.fontSize + 1, fontWeight: 'bold', marginBottom: 3, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+              <img src="/JPYC-logo.png" alt="JPYC" style={{ width: sizeConfig.fontSize + 8, height: sizeConfig.fontSize + 8, filter: 'drop-shadow(0 2px 6px rgba(74, 158, 255, 0.6))' }} />
+              <span>JPYC貢献</span>
             </div>
             <div style={{ fontSize: sizeConfig.fontSize + 4, fontWeight: 800, color: '#4a9eff', textShadow: '0 0 10px rgba(74, 158, 255, 0.5)' }}>
               {formatNumber(jpycAmount)} JPYC

@@ -558,33 +558,54 @@ export function ProfilePage() {
                       <div style={{
                         display: 'flex',
                         alignItems: 'center',
-                        gap: isMobile ? 8 : 10,
+                        gap: isMobile ? 10 : 12,
                       }}>
-                        <span style={{ fontSize: isMobile ? 16 : 18 }}>💸</span>
+                        <img
+                          src="/JPYC-logo.png"
+                          alt="JPYC"
+                          style={{
+                            width: isMobile ? 20 : 24,
+                            height: isMobile ? 20 : 24,
+                            filter: 'drop-shadow(0 2px 4px rgba(74, 158, 255, 0.5))',
+                          }}
+                        />
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{
-                            height: isMobile ? 8 : 10,
-                            background: 'rgba(0, 0, 0, 0.3)',
-                            borderRadius: 6,
+                            height: isMobile ? 12 : 16,
+                            background: 'linear-gradient(180deg, rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0.7) 100%)',
+                            borderRadius: 10,
                             overflow: 'hidden',
                             position: 'relative',
-                            border: '1px solid rgba(74, 158, 255, 0.2)',
+                            border: '2px solid rgba(74, 158, 255, 0.3)',
+                            boxShadow: 'inset 0 2px 8px rgba(0, 0, 0, 0.6), 0 4px 12px rgba(0, 0, 0, 0.3)',
                           }}>
                             <div style={{
                               width: `${Math.min(100, (userKodomi.jpyc.level / 100) * 100)}%`,
                               height: '100%',
-                              background: 'linear-gradient(90deg, #4a9eff 0%, #2d7dd2 100%)',
+                              background: 'linear-gradient(135deg, #4a9eff 0%, #2d7dd2 50%, #1e5fa0 100%)',
                               transition: 'width 0.5s ease',
-                              boxShadow: '0 0 10px rgba(74, 158, 255, 0.6)',
-                            }} />
+                              boxShadow: '0 0 20px rgba(74, 158, 255, 0.8), inset 0 2px 4px rgba(255, 255, 255, 0.3)',
+                              position: 'relative',
+                            }}>
+                              <div style={{
+                                position: 'absolute',
+                                top: 0,
+                                left: 0,
+                                right: 0,
+                                height: '40%',
+                                background: 'linear-gradient(180deg, rgba(255, 255, 255, 0.4) 0%, transparent 100%)',
+                                borderRadius: '10px 10px 0 0',
+                              }} />
+                            </div>
                           </div>
                         </div>
                         <span style={{
-                          fontSize: isMobile ? 11 : 12,
-                          fontWeight: 700,
+                          fontSize: isMobile ? 13 : 15,
+                          fontWeight: 800,
                           color: '#4a9eff',
-                          minWidth: isMobile ? 36 : 40,
+                          minWidth: isMobile ? 40 : 50,
                           textAlign: 'right',
+                          textShadow: '0 2px 8px rgba(74, 158, 255, 0.8), 0 0 20px rgba(74, 158, 255, 0.5)',
                         }}>
                           {Math.round(userKodomi.jpyc.totalAmount)}
                         </span>
@@ -594,33 +615,49 @@ export function ProfilePage() {
                       <div style={{
                         display: 'flex',
                         alignItems: 'center',
-                        gap: isMobile ? 8 : 10,
+                        gap: isMobile ? 10 : 12,
                       }}>
-                        <span style={{ fontSize: isMobile ? 16 : 18 }}>⚡</span>
+                        <span style={{
+                          fontSize: isMobile ? 20 : 24,
+                          filter: 'drop-shadow(0 2px 4px rgba(255, 126, 51, 0.6))',
+                        }}>⚡</span>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{
-                            height: isMobile ? 8 : 10,
-                            background: 'rgba(0, 0, 0, 0.3)',
-                            borderRadius: 6,
+                            height: isMobile ? 12 : 16,
+                            background: 'linear-gradient(180deg, rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0.7) 100%)',
+                            borderRadius: 10,
                             overflow: 'hidden',
                             position: 'relative',
-                            border: '1px solid rgba(255, 126, 51, 0.2)',
+                            border: '2px solid rgba(255, 126, 51, 0.3)',
+                            boxShadow: 'inset 0 2px 8px rgba(0, 0, 0, 0.6), 0 4px 12px rgba(0, 0, 0, 0.3)',
                           }}>
                             <div style={{
                               width: `${Math.min(100, (userKodomi.resonance.level / 100) * 100)}%`,
                               height: '100%',
-                              background: 'linear-gradient(90deg, #ff7e33 0%, #ff5722 100%)',
+                              background: 'linear-gradient(135deg, #ff7e33 0%, #ff5722 50%, #d84315 100%)',
                               transition: 'width 0.5s ease',
-                              boxShadow: '0 0 10px rgba(255, 126, 51, 0.6)',
-                            }} />
+                              boxShadow: '0 0 20px rgba(255, 126, 51, 0.8), inset 0 2px 4px rgba(255, 255, 255, 0.3)',
+                              position: 'relative',
+                            }}>
+                              <div style={{
+                                position: 'absolute',
+                                top: 0,
+                                left: 0,
+                                right: 0,
+                                height: '40%',
+                                background: 'linear-gradient(180deg, rgba(255, 255, 255, 0.4) 0%, transparent 100%)',
+                                borderRadius: '10px 10px 0 0',
+                              }} />
+                            </div>
                           </div>
                         </div>
                         <span style={{
-                          fontSize: isMobile ? 11 : 12,
-                          fontWeight: 700,
+                          fontSize: isMobile ? 13 : 15,
+                          fontWeight: 800,
                           color: '#ff7e33',
-                          minWidth: isMobile ? 36 : 40,
+                          minWidth: isMobile ? 40 : 50,
                           textAlign: 'right',
+                          textShadow: '0 2px 8px rgba(255, 126, 51, 0.8), 0 0 20px rgba(255, 126, 51, 0.5)',
                         }}>
                           {userKodomi.resonance.engagementScore}
                         </span>
