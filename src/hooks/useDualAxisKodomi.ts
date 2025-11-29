@@ -1,9 +1,8 @@
 // src/hooks/useDualAxisKodomi.ts
 // 法務対応：JPYC（金銭的貢献）とNHT（応援熱量）を分離した2軸kodomi取得Hook
 
-import { useState, useEffect } from 'react';
-import { useAddress, useContract } from '@thirdweb-dev/react';
-import { CONTRACT_ABI, getGifterraAddress } from '../contract';
+import { useState, useEffect, useCallback } from 'react';
+import { useAddress } from '@thirdweb-dev/react';
 import { supabase } from '../lib/supabase';
 
 /**
@@ -142,8 +141,6 @@ function calculateResonanceRank(engagementScore: number): {
  */
 export function useDualAxisKodomi() {
   const address = useAddress();
-  const gifterraAddress = getGifterraAddress();
-  const { contract } = useContract(gifterraAddress, CONTRACT_ABI);
 
   const [data, setData] = useState<DualAxisKodomiData>({
     jpyc: {
@@ -168,59 +165,8 @@ export function useDualAxisKodomi() {
     error: null,
   });
 
-  useEffect(() => {
-    if (!address || !contract) {
-      setData(prev => ({ ...prev, loading: false }));
-      return;
-    }
-
-    fetchDualAxisData();
-  }, [address, contract]);
-
-  // リアルタイム更新の購読（addressのみに依存）
-  useEffect(() => {
-    if (!address) return;
-
-    // Supabaseリアルタイムサブスクリプション設定
-    console.log('🔔 useDualAxisKodomi - リアルタイムサブスクリプション開始 for address:', address);
-    const channel = supabase
-      .channel(`kodomi-updates-${address.toLowerCase()}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*', // INSERT, UPDATE, DELETE全て
-          schema: 'public',
-          table: 'transfer_messages',
-          filter: `from_address=eq.${address.toLowerCase()}`,
-        },
-        (payload) => {
-          console.log('🔔 リアルタイム更新検知 (from):', payload);
-          fetchDualAxisData(); // データ再取得
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'transfer_messages',
-          filter: `to_address=eq.${address.toLowerCase()}`,
-        },
-        (payload) => {
-          console.log('🔔 リアルタイム更新検知 (to):', payload);
-          fetchDualAxisData(); // データ再取得
-        }
-      )
-      .subscribe();
-
-    // クリーンアップ
-    return () => {
-      console.log('🔕 useDualAxisKodomi - リアルタイムサブスクリプション解除');
-      supabase.removeChannel(channel);
-    };
-  }, [address]);
-
-  async function fetchDualAxisData() {
+  // useCallbackでメモ化してクロージャ問題を解決
+  const fetchDualAxisData = useCallback(async () => {
     if (!address) return;
 
     try {
@@ -317,7 +263,60 @@ export function useDualAxisKodomi() {
         error: err instanceof Error ? err.message : 'Unknown error',
       }));
     }
-  }
+  }, [address]); // addressが変わったら再作成
+
+  // 初回データ取得（addressが変わったらロード）
+  useEffect(() => {
+    if (!address) {
+      setData(prev => ({ ...prev, loading: false }));
+      return;
+    }
+
+    fetchDualAxisData();
+  }, [address, fetchDualAxisData]);
+
+  // リアルタイム更新の購読（fetchDualAxisDataを依存配列に含める）
+  useEffect(() => {
+    if (!address) return;
+
+    // Supabaseリアルタイムサブスクリプション設定
+    console.log('🔔 useDualAxisKodomi - リアルタイムサブスクリプション開始 for address:', address);
+    const channel = supabase
+      .channel(`kodomi-updates-${address.toLowerCase()}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // INSERT, UPDATE, DELETE全て
+          schema: 'public',
+          table: 'transfer_messages',
+          filter: `from_address=eq.${address.toLowerCase()}`,
+        },
+        (payload) => {
+          console.log('🔔 リアルタイム更新検知 (from):', payload);
+          fetchDualAxisData(); // データ再取得
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'transfer_messages',
+          filter: `to_address=eq.${address.toLowerCase()}`,
+        },
+        (payload) => {
+          console.log('🔔 リアルタイム更新検知 (to):', payload);
+          fetchDualAxisData(); // データ再取得
+        }
+      )
+      .subscribe();
+
+    // クリーンアップ
+    return () => {
+      console.log('🔕 useDualAxisKodomi - リアルタイムサブスクリプション解除');
+      supabase.removeChannel(channel);
+    };
+  }, [address, fetchDualAxisData]); // fetchDualAxisDataを依存配列に追加
 
   return { ...data, refetch: fetchDualAxisData };
 }
