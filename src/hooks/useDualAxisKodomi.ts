@@ -33,11 +33,23 @@ export interface ResonanceAxisData {
 }
 
 /**
+ * 総合スコア情報
+ */
+export interface OverallScoreData {
+  totalScore: number;          // 総合スコア（JPYC + Resonanceの正規化合算）
+  rank: string;                // 総合ランク
+  color: string;               // ランクカラー
+  level: number;               // レベル（0-100%）
+  displayLevel: number;        // 表示用レベル数値
+}
+
+/**
  * 統合データ
  */
 export interface DualAxisKodomiData {
   jpyc: JPYCAxisData;
   resonance: ResonanceAxisData;
+  overall: OverallScoreData;   // 総合スコア追加
   loading: boolean;
   error: string | null;
 }
@@ -137,6 +149,64 @@ function calculateResonanceRank(engagementScore: number): {
 }
 
 /**
+ * 総合ランク定義
+ */
+const OVERALL_RANKS = {
+  NOVICE: { name: 'Novice', threshold: 0, color: '#8b7355', maxThreshold: 300 },        // 初心者
+  SUPPORTER: { name: 'Supporter', threshold: 300, color: '#4a90e2', maxThreshold: 800 },  // サポーター
+  CHAMPION: { name: 'Champion', threshold: 800, color: '#9b59b6', maxThreshold: 1500 },  // チャンピオン
+  LEGEND: { name: 'Legend', threshold: 1500, color: '#e74c3c', maxThreshold: 3000 },    // レジェンド
+  MYTHIC: { name: 'Mythic', threshold: 3000, color: '#f39c12', maxThreshold: Infinity }, // 神話級
+} as const;
+
+/**
+ * 総合スコア計算
+ * JPYC軸とResonance軸を正規化して合算
+ */
+function calculateOverallScore(
+  jpycAmount: number,
+  engagementScore: number
+): OverallScoreData {
+  // JPYC軸を0-1000スケールに正規化（最大7000 JPYCを1000ポイントとする）
+  const normalizedJPYC = Math.min(1000, (jpycAmount / 7000) * 1000);
+
+  // Resonance軸はすでに0-1000スケール
+  const normalizedResonance = Math.min(1000, engagementScore);
+
+  // 総合スコア = JPYC (50%) + Resonance (50%)
+  const totalScore = Math.round((normalizedJPYC * 0.5) + (normalizedResonance * 0.5));
+
+  // ランク計算
+  const ranks = Object.values(OVERALL_RANKS);
+
+  for (let i = 0; i < ranks.length; i++) {
+    const currentRank = ranks[i];
+    if (totalScore < currentRank.maxThreshold) {
+      const progress = totalScore >= currentRank.threshold
+        ? ((totalScore - currentRank.threshold) / (currentRank.maxThreshold - currentRank.threshold)) * 100
+        : 0;
+
+      return {
+        totalScore,
+        rank: currentRank.name,
+        color: currentRank.color,
+        level: Math.min(progress, 100),
+        displayLevel: i + 1,
+      };
+    }
+  }
+
+  // 最高ランク
+  return {
+    totalScore,
+    rank: OVERALL_RANKS.MYTHIC.name,
+    color: OVERALL_RANKS.MYTHIC.color,
+    level: 100,
+    displayLevel: Object.keys(OVERALL_RANKS).length,
+  };
+}
+
+/**
  * 2軸kodomi取得フック
  */
 export function useDualAxisKodomi() {
@@ -164,6 +234,13 @@ export function useDualAxisKodomi() {
       engagementScore: 0,
       rank: 'Spark',
       color: '#ffa500',
+      level: 0,
+      displayLevel: 1,
+    },
+    overall: {
+      totalScore: 0,
+      rank: 'Novice',
+      color: '#8b7355',
       level: 0,
       displayLevel: 1,
     },
@@ -251,6 +328,9 @@ export function useDualAxisKodomi() {
       // Resonanceランク計算
       const resonanceRank = calculateResonanceRank(engagementScore);
 
+      // 総合スコア計算
+      const overallScore = calculateOverallScore(jpycTotal, engagementScore);
+
       const result = {
         jpyc: {
           totalAmount: jpycTotal,
@@ -264,6 +344,7 @@ export function useDualAxisKodomi() {
           engagementScore,
           ...resonanceRank,
         },
+        overall: overallScore,
         loading: false,
         error: null,
       };
@@ -277,6 +358,7 @@ export function useDualAxisKodomi() {
       console.log('  エンゲージメント:', engagementScore);
       console.log('  JPYCランク:', jpycRank.rank, 'Lv.' + jpycRank.displayLevel, `(${jpycRank.level.toFixed(2)}%)`);
       console.log('  Resonanceランク:', resonanceRank.rank, 'Lv.' + resonanceRank.displayLevel, `(${resonanceRank.level.toFixed(2)}%)`);
+      console.log('  総合スコア:', overallScore.totalScore, '/', overallScore.rank, 'Lv.' + overallScore.displayLevel, `(${overallScore.level.toFixed(2)}%)`);
 
       setData(result);
       console.log('[KODOMI-DEBUG-v2] setData実行完了');

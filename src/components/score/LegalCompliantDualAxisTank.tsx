@@ -24,6 +24,13 @@ export interface LegalCompliantDualAxisTankProps {
   resonanceRank: string;         // ランク名
   resonanceColor: string;        // ランクカラー
 
+  // 🏆 総合スコア（オプション）
+  overallScore?: number;         // 総合スコア
+  overallRank?: string;          // 総合ランク名
+  overallColor?: string;         // 総合ランクカラー
+  overallLevel?: number;         // 総合レベル（0-100%）
+  overallDisplayLevel?: number;  // 総合表示用レベル数値
+
   // オプション
   showDetails?: boolean;
   size?: 'small' | 'medium' | 'large';
@@ -57,6 +64,11 @@ export const LegalCompliantDualAxisTank: React.FC<LegalCompliantDualAxisTankProp
   resonanceDisplayLevel,
   resonanceRank,
   resonanceColor,
+  overallScore,
+  overallRank,
+  overallColor,
+  overallLevel,
+  overallDisplayLevel,
   showDetails = true,
   size = 'medium',
   className = '',
@@ -500,6 +512,141 @@ export const LegalCompliantDualAxisTank: React.FC<LegalCompliantDualAxisTankProp
         )}
       </div>
       </div>
+
+      {/* 🏆 総合スコア表示 */}
+      {overallScore !== undefined && overallRank && (
+        <div
+          style={{
+            marginTop: 28,
+            padding: '20px 28px',
+            background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.04) 100%)',
+            borderRadius: 16,
+            border: `2px solid ${overallColor || 'rgba(255, 255, 255, 0.2)'}`,
+            boxShadow: `0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 0 20px ${overallColor || '#ffffff'}33`,
+            position: 'relative',
+            zIndex: 10,
+            textAlign: 'center',
+          }}
+        >
+          <div
+            style={{
+              fontSize: sizeConfig.fontSize,
+              fontWeight: 700,
+              color: 'rgba(255, 255, 255, 0.9)',
+              marginBottom: 10,
+              letterSpacing: '0.05em',
+              textTransform: 'uppercase',
+            }}
+          >
+            🏆 総合スコア
+          </div>
+
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              gap: 16,
+              marginBottom: 12,
+            }}
+          >
+            <div style={{ textAlign: 'center' }}>
+              <div
+                style={{
+                  fontSize: sizeConfig.fontSize + 12,
+                  fontWeight: 900,
+                  color: overallColor || '#ffffff',
+                  textShadow: `0 0 12px ${overallColor || '#ffffff'}99, 0 2px 8px rgba(0, 0, 0, 0.8)`,
+                }}
+              >
+                {formatNumber(overallScore)}
+              </div>
+              <div
+                style={{
+                  fontSize: sizeConfig.fontSize - 2,
+                  color: 'rgba(255, 255, 255, 0.6)',
+                  marginTop: 2,
+                }}
+              >
+                ポイント
+              </div>
+            </div>
+
+            <div
+              style={{
+                width: 2,
+                height: 40,
+                background: 'linear-gradient(180deg, transparent, rgba(255, 255, 255, 0.3), transparent)',
+              }}
+            />
+
+            <div style={{ textAlign: 'center' }}>
+              <div
+                style={{
+                  display: 'inline-block',
+                  padding: '6px 16px',
+                  background: `linear-gradient(135deg, ${overallColor || '#888888'}dd, ${overallColor || '#666666'}aa)`,
+                  borderRadius: 12,
+                  fontSize: sizeConfig.fontSize + 2,
+                  fontWeight: 800,
+                  color: '#ffffff',
+                  textShadow: '0 2px 4px rgba(0, 0, 0, 0.5)',
+                  border: '1px solid rgba(255, 255, 255, 0.2)',
+                }}
+              >
+                {overallRank}
+              </div>
+              {overallDisplayLevel && (
+                <div
+                  style={{
+                    fontSize: sizeConfig.fontSize - 1,
+                    color: 'rgba(255, 255, 255, 0.7)',
+                    marginTop: 4,
+                    fontWeight: 600,
+                  }}
+                >
+                  Lv.{overallDisplayLevel}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* プログレスバー */}
+          {overallLevel !== undefined && (
+            <div
+              style={{
+                width: '100%',
+                height: 8,
+                background: 'rgba(0, 0, 0, 0.3)',
+                borderRadius: 4,
+                overflow: 'hidden',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+              }}
+            >
+              <div
+                style={{
+                  width: `${overallLevel}%`,
+                  height: '100%',
+                  background: `linear-gradient(90deg, ${overallColor || '#888888'}, ${overallColor || '#aaaaaa'})`,
+                  transition: 'width 1s cubic-bezier(0.4, 0, 0.2, 1)',
+                  boxShadow: `0 0 8px ${overallColor || '#ffffff'}66`,
+                }}
+              />
+            </div>
+          )}
+
+          <div
+            style={{
+              fontSize: sizeConfig.fontSize - 3,
+              color: 'rgba(255, 255, 255, 0.5)',
+              marginTop: 8,
+              fontStyle: 'italic',
+            }}
+          >
+            JPYC 50% + 応援熱量 50%
+          </div>
+        </div>
+      )}
 
       {/* 注釈 */}
       <div

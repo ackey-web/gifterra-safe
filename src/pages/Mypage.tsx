@@ -4977,7 +4977,7 @@ function WalletInfo({ isMobile }: { isMobile: boolean }) {
 // 3. 全体kodomiタンク（法務対応版:JPYC/NHT分離表示）
 function OverallKodomiTank({ isMobile }: { isMobile: boolean }) {
   console.log('🎯🎯🎯 [TANK-DEBUG-v2] OverallKodomiTank - コンポーネントレンダリング');
-  const { jpyc, resonance, loading, error } = useDualAxisKodomi();
+  const { jpyc, resonance, overall, loading, error } = useDualAxisKodomi();
 
   console.log('[TANK-DEBUG-v2] フック結果:');
   console.log('  loading:', loading);
@@ -4985,6 +4985,7 @@ function OverallKodomiTank({ isMobile }: { isMobile: boolean }) {
   console.log('  JPYC総額:', jpyc.totalAmount, 'JPYC');
   console.log('  JPYCランク:', jpyc.rank, 'Lv.' + jpyc.displayLevel, `(${jpyc.level}%)`);
   console.log('  Resonanceランク:', resonance.rank, 'Lv.' + resonance.displayLevel, `(${resonance.level}%)`);
+  console.log('  総合スコア:', overall.totalScore, '/', overall.rank, 'Lv.' + overall.displayLevel, `(${overall.level}%)`);
 
   if (loading) {
     console.log('[TANK-DEBUG-v2] ⏳ 読み込み中表示...');
@@ -5020,6 +5021,11 @@ function OverallKodomiTank({ isMobile }: { isMobile: boolean }) {
         resonanceDisplayLevel={resonance.displayLevel}
         resonanceRank={resonance.rank}
         resonanceColor={resonance.color}
+        overallScore={overall.totalScore}
+        overallRank={overall.rank}
+        overallColor={overall.color}
+        overallLevel={overall.level}
+        overallDisplayLevel={overall.displayLevel}
         showDetails={true}
         size={isMobile ? 'small' : 'medium'}
       />
