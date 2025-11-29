@@ -659,7 +659,7 @@ export function ProfilePage() {
                           textAlign: 'right',
                           textShadow: '0 2px 8px rgba(255, 126, 51, 0.8), 0 0 20px rgba(255, 126, 51, 0.5)',
                         }}>
-                          Lv.{userKodomi.resonance.displayLevel}
+                          {userKodomi.resonance.engagementScore}
                         </span>
                       </div>
                     </div>
