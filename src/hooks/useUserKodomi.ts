@@ -152,9 +152,11 @@ function calculateStreak(sortedDates: string[]): number {
  * メッセージ品質スコア計算
  */
 function calculateMessageQuality(transactions: any[]): number {
+  if (!transactions || transactions.length === 0) return 0;
+
   const messagesWithText = transactions.filter(tx => tx.message && tx.message.trim().length > 0);
 
-  if (messagesWithText.length === 0) return 30;
+  if (messagesWithText.length === 0) return 0;
 
   const messageRatio = messagesWithText.length / transactions.length;
   const avgLength = messagesWithText.reduce((sum, tx) => sum + (tx.message?.length || 0), 0) / messagesWithText.length;

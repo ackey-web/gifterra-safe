@@ -704,12 +704,12 @@ export function ProfilePage() {
               <div style={{ padding: isMobile ? 20 : 32 }}>
                 {/* このユーザーへの自分のkodomi（2軸ゲージ） - 他のユーザーのプロフィールを見ている場合のみ表示 */}
                 {isViewingOtherProfile && !userKodomi.loading && !userKodomi.error && (
-                  <div style={{ marginBottom: isMobile ? 24 : 32 }}>
+                  <div style={{ marginBottom: isMobile ? 16 : 20 }}>
                     <h3 style={{
-                      fontSize: isMobile ? 16 : 18,
+                      fontSize: isMobile ? 13 : 14,
                       fontWeight: 700,
-                      marginBottom: isMobile ? 16 : 20,
-                      opacity: 0.9,
+                      marginBottom: isMobile ? 10 : 12,
+                      opacity: 0.8,
                       textAlign: 'center',
                     }}>
                       このユーザーへのあなたの kodomi
@@ -717,25 +717,25 @@ export function ProfilePage() {
                     <div style={{
                       display: 'flex',
                       flexDirection: 'column',
-                      gap: isMobile ? 12 : 16,
-                      maxWidth: 600,
+                      gap: isMobile ? 8 : 10,
+                      maxWidth: 500,
                       margin: '0 auto',
                     }}>
                       {/* 💸 JPYC貢献ゲージ */}
                       <div>
                         <div style={{
-                          fontSize: isMobile ? 11 : 12,
-                          fontWeight: 700,
-                          color: 'rgba(255,255,255,0.7)',
-                          marginBottom: 6,
+                          fontSize: isMobile ? 10 : 11,
+                          fontWeight: 600,
+                          color: 'rgba(255,255,255,0.6)',
+                          marginBottom: 4,
                           display: 'flex',
                           alignItems: 'center',
-                          gap: 6,
+                          gap: 4,
                         }}>
                           <span>💸</span>
                           <span>JPYC貢献</span>
-                          <span style={{ fontSize: isMobile ? 10 : 11, opacity: 0.6 }}>
-                            （{userKodomi.jpyc.totalAmount.toLocaleString()} JPYC · {userKodomi.jpyc.tipCount}回）
+                          <span style={{ fontSize: isMobile ? 9 : 10, opacity: 0.6 }}>
+                            {userKodomi.jpyc.totalAmount.toLocaleString()} JPYC · {userKodomi.jpyc.tipCount}回
                           </span>
                         </div>
                         <ContributionGaugeCustom
@@ -749,18 +749,18 @@ export function ProfilePage() {
                       {/* ⚡ NHT応援熱量ゲージ */}
                       <div>
                         <div style={{
-                          fontSize: isMobile ? 11 : 12,
-                          fontWeight: 700,
-                          color: 'rgba(255,255,255,0.7)',
-                          marginBottom: 6,
+                          fontSize: isMobile ? 10 : 11,
+                          fontWeight: 600,
+                          color: 'rgba(255,255,255,0.6)',
+                          marginBottom: 4,
                           display: 'flex',
                           alignItems: 'center',
-                          gap: 6,
+                          gap: 4,
                         }}>
                           <span>⚡</span>
                           <span>応援熱量</span>
-                          <span style={{ fontSize: isMobile ? 10 : 11, opacity: 0.6 }}>
-                            （{userKodomi.resonance.supportCount}回 · {userKodomi.resonance.streakDays}日連続）
+                          <span style={{ fontSize: isMobile ? 9 : 10, opacity: 0.6 }}>
+                            {userKodomi.resonance.supportCount}回 · {userKodomi.resonance.streakDays}日連続
                           </span>
                         </div>
                         <ContributionGaugeCustom
@@ -770,9 +770,9 @@ export function ProfilePage() {
                           isMobile={isMobile}
                         />
                         <div style={{
-                          fontSize: isMobile ? 9 : 10,
-                          color: 'rgba(255,255,255,0.5)',
-                          marginTop: 4,
+                          fontSize: isMobile ? 8 : 9,
+                          color: 'rgba(255,255,255,0.4)',
+                          marginTop: 2,
                           textAlign: 'center',
                           fontStyle: 'italic',
                         }}>
@@ -1640,20 +1640,20 @@ function ContributionGaugeCustom({ kodomi, label, icon, isMobile }: {
       style={{
         display: 'flex',
         alignItems: 'center',
-        gap: isMobile ? '10px' : '14px',
-        padding: isMobile ? '10px 16px' : '12px 20px',
-        background: 'linear-gradient(135deg, rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0.3) 100%)',
-        borderRadius: 12,
-        backdropFilter: 'blur(12px)',
-        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
-        border: '1px solid rgba(255, 255, 255, 0.1)',
+        gap: isMobile ? '6px' : '8px',
+        padding: isMobile ? '6px 10px' : '8px 12px',
+        background: 'linear-gradient(135deg, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.2) 100%)',
+        borderRadius: 8,
+        backdropFilter: 'blur(8px)',
+        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.08)',
+        border: '1px solid rgba(255, 255, 255, 0.08)',
       }}
     >
       {/* アイコン */}
       <span
         style={{
-          fontSize: isMobile ? 22 : 26,
-          filter: 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3))',
+          fontSize: isMobile ? 16 : 18,
+          filter: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3))',
         }}
       >
         {icon}
@@ -1662,13 +1662,13 @@ function ContributionGaugeCustom({ kodomi, label, icon, isMobile }: {
       {/* ラベル */}
       <div
         style={{
-          fontSize: isMobile ? 10 : 11,
-          fontWeight: 800,
-          color: 'rgba(255, 255, 255, 0.6)',
-          letterSpacing: '1px',
+          fontSize: isMobile ? 9 : 10,
+          fontWeight: 700,
+          color: 'rgba(255, 255, 255, 0.5)',
+          letterSpacing: '0.5px',
           textTransform: 'uppercase',
-          textShadow: '0 1px 2px rgba(0, 0, 0, 0.5)',
-          minWidth: isMobile ? 40 : 50,
+          textShadow: '0 1px 2px rgba(0, 0, 0, 0.4)',
+          minWidth: isMobile ? 30 : 35,
         }}
       >
         {label}
@@ -1679,18 +1679,18 @@ function ContributionGaugeCustom({ kodomi, label, icon, isMobile }: {
         style={{
           display: 'flex',
           flexDirection: 'column',
-          gap: 4,
+          gap: 2,
           flex: 1,
           minWidth: 0,
         }}
       >
         <div
           style={{
-            fontSize: isMobile ? 11 : 12,
-            fontWeight: 700,
+            fontSize: isMobile ? 9 : 10,
+            fontWeight: 600,
             color: levelColor,
-            letterSpacing: '0.5px',
-            textShadow: `0 0 8px ${levelColor}80, 0 2px 4px rgba(0, 0, 0, 0.5)`,
+            letterSpacing: '0.3px',
+            textShadow: `0 0 6px ${levelColor}60, 0 1px 2px rgba(0, 0, 0, 0.4)`,
           }}
         >
           Lv.{level}
@@ -1700,12 +1700,12 @@ function ContributionGaugeCustom({ kodomi, label, icon, isMobile }: {
         <div
           style={{
             width: '100%',
-            height: isMobile ? 10 : 12,
-            background: 'linear-gradient(180deg, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.2) 100%)',
-            borderRadius: 6,
+            height: isMobile ? 6 : 8,
+            background: 'linear-gradient(180deg, rgba(0, 0, 0, 0.3) 0%, rgba(0, 0, 0, 0.15) 100%)',
+            borderRadius: 4,
             overflow: 'hidden',
-            boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.5)',
-            border: '1px solid rgba(0, 0, 0, 0.3)',
+            boxShadow: 'inset 0 1px 3px rgba(0, 0, 0, 0.4)',
+            border: '1px solid rgba(0, 0, 0, 0.2)',
             position: 'relative',
           }}
         >
@@ -1715,9 +1715,9 @@ function ContributionGaugeCustom({ kodomi, label, icon, isMobile }: {
               height: '100%',
               background: `linear-gradient(180deg, ${levelColor} 0%, ${levelColor}cc 50%, ${levelColor}99 100%)`,
               transition: 'width 0.5s ease',
-              boxShadow: `0 0 12px ${levelColor}, inset 0 1px 0 rgba(255, 255, 255, 0.4)`,
+              boxShadow: `0 0 8px ${levelColor}80, inset 0 1px 0 rgba(255, 255, 255, 0.3)`,
               position: 'relative',
-              borderRadius: 4,
+              borderRadius: 3,
             }}
           >
             <div
@@ -1727,8 +1727,8 @@ function ContributionGaugeCustom({ kodomi, label, icon, isMobile }: {
                 left: 0,
                 right: 0,
                 height: '40%',
-                background: 'linear-gradient(180deg, rgba(255, 255, 255, 0.3) 0%, transparent 100%)',
-                borderRadius: '4px 4px 0 0',
+                background: 'linear-gradient(180deg, rgba(255, 255, 255, 0.2) 0%, transparent 100%)',
+                borderRadius: '3px 3px 0 0',
               }}
             />
           </div>
@@ -1741,16 +1741,16 @@ function ContributionGaugeCustom({ kodomi, label, icon, isMobile }: {
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'flex-end',
-          gap: 2,
+          gap: 1,
         }}
       >
         <div
           style={{
-            fontSize: isMobile ? 13 : 15,
+            fontSize: isMobile ? 11 : 12,
             fontWeight: 700,
             color: '#fff',
-            textShadow: '0 2px 4px rgba(0, 0, 0, 0.5)',
-            letterSpacing: '0.3px',
+            textShadow: '0 1px 3px rgba(0, 0, 0, 0.4)',
+            letterSpacing: '0.2px',
           }}
         >
           {kodomi}pt
@@ -1759,10 +1759,10 @@ function ContributionGaugeCustom({ kodomi, label, icon, isMobile }: {
         {level < 5 && (
           <div
             style={{
-              fontSize: isMobile ? 9 : 10,
-              opacity: 0.6,
+              fontSize: isMobile ? 8 : 9,
+              opacity: 0.5,
               color: '#fff',
-              textShadow: '0 1px 2px rgba(0, 0, 0, 0.5)',
+              textShadow: '0 1px 2px rgba(0, 0, 0, 0.4)',
               whiteSpace: 'nowrap',
             }}
           >
@@ -1773,10 +1773,10 @@ function ContributionGaugeCustom({ kodomi, label, icon, isMobile }: {
         {level >= 5 && (
           <div
             style={{
-              fontSize: isMobile ? 9 : 10,
+              fontSize: isMobile ? 8 : 9,
               opacity: 0.7,
               color: '#fbbf24',
-              textShadow: '0 0 6px rgba(251, 191, 36, 0.5), 0 1px 2px rgba(0, 0, 0, 0.5)',
+              textShadow: '0 0 4px rgba(251, 191, 36, 0.4), 0 1px 2px rgba(0, 0, 0, 0.4)',
               whiteSpace: 'nowrap',
               fontWeight: 600,
             }}
