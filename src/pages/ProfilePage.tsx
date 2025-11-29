@@ -544,6 +544,57 @@ export function ProfilePage() {
                     )}
                   </div>
 
+                  {/* 中央: このユーザーへのkodomiゲージ（コンパクト版） */}
+                  {!userKodomi.loading && !userKodomi.error && (
+                    <div style={{
+                      display: 'flex',
+                      gap: isMobile ? 6 : 8,
+                      alignItems: 'center',
+                      marginLeft: isMobile ? 0 : 12,
+                      flexWrap: 'wrap',
+                    }}>
+                      {/* 💸 JPYC */}
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        padding: isMobile ? '4px 8px' : '6px 10px',
+                        background: 'linear-gradient(135deg, rgba(74, 158, 255, 0.2) 0%, rgba(74, 158, 255, 0.1) 100%)',
+                        borderRadius: 6,
+                        border: '1px solid rgba(74, 158, 255, 0.3)',
+                      }}>
+                        <span style={{ fontSize: isMobile ? 14 : 16 }}>💸</span>
+                        <span style={{
+                          fontSize: isMobile ? 11 : 12,
+                          fontWeight: 700,
+                          color: '#4a9eff',
+                        }}>
+                          {Math.round(userKodomi.jpyc.totalAmount)}
+                        </span>
+                      </div>
+
+                      {/* ⚡ 応援 */}
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        padding: isMobile ? '4px 8px' : '6px 10px',
+                        background: 'linear-gradient(135deg, rgba(255, 126, 51, 0.2) 0%, rgba(255, 126, 51, 0.1) 100%)',
+                        borderRadius: 6,
+                        border: '1px solid rgba(255, 126, 51, 0.3)',
+                      }}>
+                        <span style={{ fontSize: isMobile ? 14 : 16 }}>⚡</span>
+                        <span style={{
+                          fontSize: isMobile ? 11 : 12,
+                          fontWeight: 700,
+                          color: '#ff7e33',
+                        }}>
+                          {userKodomi.resonance.engagementScore}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
                   {/* 右側: ボタン群 */}
                   <div
                     style={{
@@ -702,81 +753,6 @@ export function ProfilePage() {
               )}
 
               <div style={{ padding: isMobile ? 20 : 32 }}>
-                {/* このユーザーへの自分のkodomi（2軸ゲージ） - 他のユーザーのプロフィールを見ている場合のみ表示 */}
-                {isViewingOtherProfile && !userKodomi.loading && !userKodomi.error && (
-                  <div style={{ marginBottom: isMobile ? 16 : 20 }}>
-                    <h3 style={{
-                      fontSize: isMobile ? 13 : 14,
-                      fontWeight: 700,
-                      marginBottom: isMobile ? 10 : 12,
-                      opacity: 0.8,
-                      textAlign: 'center',
-                    }}>
-                      このユーザーへのあなたの kodomi
-                    </h3>
-                    <div style={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: isMobile ? 8 : 10,
-                      maxWidth: 500,
-                      margin: '0 auto',
-                    }}>
-                      {/* 💸 JPYC貢献ゲージ */}
-                      <div>
-                        <div style={{
-                          fontSize: isMobile ? 10 : 11,
-                          fontWeight: 600,
-                          color: 'rgba(255,255,255,0.6)',
-                          marginBottom: 4,
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 4,
-                        }}>
-                          <span>💸</span>
-                          <span>JPYC貢献</span>
-                        </div>
-                        <ContributionGaugeCustom
-                          kodomi={Math.round(userKodomi.jpyc.totalAmount)}
-                          label="JPYC"
-                          icon="💸"
-                          isMobile={isMobile}
-                        />
-                      </div>
-
-                      {/* ⚡ 応援熱量ゲージ */}
-                      <div>
-                        <div style={{
-                          fontSize: isMobile ? 10 : 11,
-                          fontWeight: 600,
-                          color: 'rgba(255,255,255,0.6)',
-                          marginBottom: 4,
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 4,
-                        }}>
-                          <span>⚡</span>
-                          <span>応援熱量</span>
-                        </div>
-                        <ContributionGaugeCustom
-                          kodomi={userKodomi.resonance.engagementScore}
-                          label="応援"
-                          icon="⚡"
-                          isMobile={isMobile}
-                        />
-                        <div style={{
-                          fontSize: isMobile ? 8 : 9,
-                          color: 'rgba(255,255,255,0.4)',
-                          marginTop: 2,
-                          textAlign: 'center',
-                          fontStyle: 'italic',
-                        }}>
-                          ※メッセージや頻度などで評価
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
                 {/* アイコンと基本情報 */}
                 <div
                   style={{
