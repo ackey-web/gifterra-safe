@@ -205,6 +205,31 @@ export function useUserKodomi(targetAddress: string | undefined) {
     }
 
     fetchUserKodomiData();
+
+    // Supabaseリアルタイムサブスクリプション設定
+    console.log('🔔 useUserKodomi - リアルタイムサブスクリプション開始');
+    const channel = supabase
+      .channel(`user-kodomi-${myAddress}-${targetAddress}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // INSERT, UPDATE, DELETE全て
+          schema: 'public',
+          table: 'transfer_messages',
+          filter: `from_address=eq.${myAddress.toLowerCase()},to_address=eq.${targetAddress.toLowerCase()}`,
+        },
+        (payload) => {
+          console.log('🔔 useUserKodomi - リアルタイム更新検知:', payload);
+          fetchUserKodomiData(); // データ再取得
+        }
+      )
+      .subscribe();
+
+    // クリーンアップ
+    return () => {
+      console.log('🔕 useUserKodomi - リアルタイムサブスクリプション解除');
+      supabase.removeChannel(channel);
+    };
   }, [myAddress, targetAddress]);
 
   async function fetchUserKodomiData() {

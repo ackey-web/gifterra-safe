@@ -175,6 +175,31 @@ export function useDualAxisKodomi() {
     }
 
     fetchDualAxisData();
+
+    // Supabaseリアルタイムサブスクリプション設定
+    console.log('🔔 useDualAxisKodomi - リアルタイムサブスクリプション開始');
+    const channel = supabase
+      .channel('kodomi-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // INSERT, UPDATE, DELETE全て
+          schema: 'public',
+          table: 'transfer_messages',
+          filter: `from_address=eq.${address.toLowerCase()}`,
+        },
+        (payload) => {
+          console.log('🔔 リアルタイム更新検知:', payload);
+          fetchDualAxisData(); // データ再取得
+        }
+      )
+      .subscribe();
+
+    // クリーンアップ
+    return () => {
+      console.log('🔕 useDualAxisKodomi - リアルタイムサブスクリプション解除');
+      supabase.removeChannel(channel);
+    };
   }, [address, contract]);
 
   async function fetchDualAxisData() {
