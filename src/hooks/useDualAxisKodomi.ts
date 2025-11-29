@@ -181,6 +181,7 @@ export function useDualAxisKodomi() {
     if (!address) return;
 
     try {
+      console.log('🔍 useDualAxisKodomi - fetchDualAxisData開始 address:', address);
       setData(prev => ({ ...prev, loading: true, error: null }));
 
       // Supabaseからトランザクション履歴を取得
@@ -188,6 +189,8 @@ export function useDualAxisKodomi() {
         .from('transfer_messages')
         .select('*')
         .eq('from_address', address.toLowerCase());
+
+      console.log('📊 useDualAxisKodomi - 取得したトランザクション数:', transactions?.length || 0);
 
       if (txError) throw txError;
 
@@ -234,7 +237,7 @@ export function useDualAxisKodomi() {
       // Resonanceランク計算
       const resonanceRank = calculateResonanceRank(engagementScore);
 
-      setData({
+      const result = {
         jpyc: {
           totalAmount: jpycTotal,
           tipCount: jpycCount,
@@ -249,7 +252,20 @@ export function useDualAxisKodomi() {
         },
         loading: false,
         error: null,
+      };
+
+      console.log('✅ useDualAxisKodomi - データセット完了:', {
+        jpycTotal,
+        jpycCount,
+        nhtCount,
+        streakDays,
+        messageQuality,
+        engagementScore,
+        jpycRank: jpycRank.rank,
+        resonanceRank: resonanceRank.rank,
       });
+
+      setData(result);
     } catch (err) {
       console.error('❌ 2軸kodomi取得エラー:', err);
       setData(prev => ({
@@ -292,9 +308,11 @@ function calculateStreak(sortedDates: string[]): number {
  * メッセージ品質スコア計算（簡易版）
  */
 function calculateMessageQuality(transactions: any[]): number {
+  if (!transactions || transactions.length === 0) return 0;
+
   const messagesWithText = transactions.filter(tx => tx.message && tx.message.trim().length > 0);
 
-  if (messagesWithText.length === 0) return 30; // デフォルトスコア
+  if (messagesWithText.length === 0) return 0;
 
   // メッセージ付きの割合 × 100
   const messageRatio = messagesWithText.length / transactions.length;
