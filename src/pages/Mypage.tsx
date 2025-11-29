@@ -4990,7 +4990,7 @@ function OverallKodomiTank({ isMobile, walletAddress }: { isMobile: boolean; wal
     color: string;
   } | null>(null);
 
-  // レベルアップ検知
+  // レベルアップ検知（リロード時に重複表示されないように修正）
   useEffect(() => {
     if (loading) return;
 
@@ -5004,8 +5004,8 @@ function OverallKodomiTank({ isMobile, walletAddress }: { isMobile: boolean; wal
         rank: jpyc.rank,
         color: jpyc.color,
       });
+      return; // 一度に1つのアニメーションのみ表示
     }
-    localStorage.setItem('prev_jpyc_level', jpyc.displayLevel.toString());
 
     // Resonance レベルアップチェック
     const prevResonanceLevel = parseInt(localStorage.getItem('prev_resonance_level') || '1');
@@ -5017,8 +5017,8 @@ function OverallKodomiTank({ isMobile, walletAddress }: { isMobile: boolean; wal
         rank: resonance.rank,
         color: resonance.color,
       });
+      return; // 一度に1つのアニメーションのみ表示
     }
-    localStorage.setItem('prev_resonance_level', resonance.displayLevel.toString());
 
     // Overall レベルアップチェック
     const prevOverallLevel = parseInt(localStorage.getItem('prev_overall_level') || '1');
@@ -5031,7 +5031,6 @@ function OverallKodomiTank({ isMobile, walletAddress }: { isMobile: boolean; wal
         color: overall.color,
       });
     }
-    localStorage.setItem('prev_overall_level', overall.displayLevel.toString());
   }, [jpyc.displayLevel, resonance.displayLevel, overall.displayLevel, loading]);
 
   console.log('[TANK-DEBUG-v2] フック結果:');
@@ -5095,7 +5094,17 @@ function OverallKodomiTank({ isMobile, walletAddress }: { isMobile: boolean; wal
           newLevel={levelUpPopup.newLevel}
           rank={levelUpPopup.rank}
           color={levelUpPopup.color}
-          onComplete={() => setLevelUpPopup(null)}
+          onComplete={() => {
+            // アニメーション完了後にlocalStorageを更新（リロード時の重複表示を防ぐ）
+            if (levelUpPopup.axis === 'jpyc') {
+              localStorage.setItem('prev_jpyc_level', levelUpPopup.newLevel.toString());
+            } else if (levelUpPopup.axis === 'resonance') {
+              localStorage.setItem('prev_resonance_level', levelUpPopup.newLevel.toString());
+            } else if (levelUpPopup.axis === 'overall') {
+              localStorage.setItem('prev_overall_level', levelUpPopup.newLevel.toString());
+            }
+            setLevelUpPopup(null);
+          }}
         />
       )}
     </>
