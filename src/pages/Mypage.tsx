@@ -320,7 +320,7 @@ export function MypagePage() {
   return (
     <div style={{
       minHeight: '100vh',
-      background: 'linear-gradient(135deg, #018a9a 0%, #017080 100%)',
+      background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%)',
       color: '#e0e0e0',
       position: 'relative',
       overflow: 'hidden',
@@ -391,7 +391,10 @@ export function MypagePage() {
       <div style={{
         position: 'fixed',
         inset: 0,
-        background: 'rgba(12, 16, 28, 0.44)',
+        background: 'linear-gradient(145deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.06) 100%)',
+        backdropFilter: 'blur(20px)',
+        border: '1px solid rgba(255, 255, 255, 0.25)',
+        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3), 0 2px 8px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
         pointerEvents: 'none',
         zIndex: 0,
       }} />
@@ -412,16 +415,16 @@ export function MypagePage() {
       <div style={{
         maxWidth: isMobile ? '100%' : 600,
         margin: isMobile ? '0 16px 16px' : '0 auto 20px',
-        background: 'rgba(255, 255, 255, 0.12)',
-        backdropFilter: 'blur(10px)',
-        WebkitBackdropFilter: 'blur(10px)',
-        border: '1px solid rgba(255, 255, 255, 0.2)',
-        borderRadius: isMobile ? 16 : 20,
-        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
-        paddingTop: isMobile ? '8px' : '10px',
-        paddingBottom: isMobile ? '8px' : '10px',
-        paddingLeft: isMobile ? '16px' : '24px',
-        paddingRight: isMobile ? '16px' : '24px',
+        background: 'linear-gradient(145deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.08) 100%)',
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
+        border: '1px solid rgba(255, 255, 255, 0.25)',
+        borderRadius: isMobile ? 20 : 24,
+        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3), 0 2px 8px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
+        paddingTop: isMobile ? '12px' : '16px',
+        paddingBottom: isMobile ? '12px' : '16px',
+        paddingLeft: isMobile ? '20px' : '28px',
+        paddingRight: isMobile ? '20px' : '28px',
       }}>
         <Header
           viewMode={viewMode}
@@ -643,7 +646,9 @@ function Header({ viewMode, setViewMode, isMobile, tenantRank, showSettingsModal
         <div style={{
           display: 'flex',
           gap: 8,
-          background: 'rgba(255,255,255,0.05)',
+          background: 'linear-gradient(145deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.04) 100%)',
+          border: '1px solid rgba(255, 255, 255, 0.15)',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
           borderRadius: 999,
           padding: 4,
           border: '1px solid rgba(255,255,255,0.1)',
@@ -652,7 +657,8 @@ function Header({ viewMode, setViewMode, isMobile, tenantRank, showSettingsModal
             onClick={() => setViewMode('flow')}
             style={{
               padding: isMobile ? '6px 16px' : '8px 20px',
-              background: viewMode === 'flow' ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : 'transparent',
+              background: viewMode === 'flow' ? 'linear-gradient(145deg, #6366f1 0%, #8b5cf6 100%)' : 'transparent',
+              boxShadow: viewMode === 'flow' ? '0 4px 16px rgba(99, 102, 241, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)' : 'none',
               border: 'none',
               borderRadius: 999,
               color: '#EAF2FF',
@@ -669,7 +675,8 @@ function Header({ viewMode, setViewMode, isMobile, tenantRank, showSettingsModal
             onClick={() => setViewMode('tenant')}
             style={{
               padding: isMobile ? '6px 16px' : '8px 20px',
-              background: viewMode === 'tenant' ? 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)' : 'transparent',
+              background: viewMode === 'tenant' ? 'linear-gradient(145deg, #a855f7 0%, #9333ea 100%)' : 'transparent',
+              boxShadow: viewMode === 'tenant' ? '0 4px 16px rgba(168, 85, 247, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)' : 'none',
               border: 'none',
               borderRadius: 999,
               color: '#EAF2FF',
@@ -695,7 +702,9 @@ function Header({ viewMode, setViewMode, isMobile, tenantRank, showSettingsModal
           style={{
             width: 36,
             height: 36,
-            background: 'rgba(255,255,255,0.05)',
+            background: 'linear-gradient(145deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.04) 100%)',
+          border: '1px solid rgba(255, 255, 255, 0.15)',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
             border: '1px solid rgba(255,255,255,0.1)',
             borderRadius: 8,
             color: '#EAF2FF',
@@ -766,7 +775,9 @@ function Header({ viewMode, setViewMode, isMobile, tenantRank, showSettingsModal
                   }}
                   style={{
                     padding: '12px 16px',
-                    background: 'rgba(255,255,255,0.05)',
+                    background: 'linear-gradient(145deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.04) 100%)',
+          border: '1px solid rgba(255, 255, 255, 0.15)',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
                     border: '1px solid rgba(255,255,255,0.1)',
                     borderRadius: 8,
                     color: '#EAF2FF',
@@ -788,7 +799,9 @@ function Header({ viewMode, setViewMode, isMobile, tenantRank, showSettingsModal
                   }}
                   style={{
                     padding: '12px 16px',
-                    background: 'rgba(255,255,255,0.05)',
+                    background: 'linear-gradient(145deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.04) 100%)',
+          border: '1px solid rgba(255, 255, 255, 0.15)',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
                     border: '1px solid rgba(255,255,255,0.1)',
                     borderRadius: 8,
                     color: '#EAF2FF',
@@ -811,7 +824,9 @@ function Header({ viewMode, setViewMode, isMobile, tenantRank, showSettingsModal
                   }}
                   style={{
                     padding: '12px 16px',
-                    background: 'rgba(255,255,255,0.05)',
+                    background: 'linear-gradient(145deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.04) 100%)',
+          border: '1px solid rgba(255, 255, 255, 0.15)',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
                     border: '1px solid rgba(255,255,255,0.1)',
                     borderRadius: 8,
                     color: '#EAF2FF',
@@ -833,7 +848,9 @@ function Header({ viewMode, setViewMode, isMobile, tenantRank, showSettingsModal
                   }}
                   style={{
                     padding: '12px 16px',
-                    background: 'rgba(255,255,255,0.05)',
+                    background: 'linear-gradient(145deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.04) 100%)',
+          border: '1px solid rgba(255, 255, 255, 0.15)',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
                     border: '1px solid rgba(255,255,255,0.1)',
                     borderRadius: 8,
                     color: '#EAF2FF',
@@ -922,7 +939,9 @@ function Header({ viewMode, setViewMode, isMobile, tenantRank, showSettingsModal
                 {viewMode === 'tenant' && (
                   <button style={{
                     padding: '12px 16px',
-                    background: 'rgba(255,255,255,0.05)',
+                    background: 'linear-gradient(145deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.04) 100%)',
+          border: '1px solid rgba(255, 255, 255, 0.15)',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
                     border: '1px solid rgba(255,255,255,0.1)',
                     borderRadius: 8,
                     color: '#EAF2FF',
@@ -2079,7 +2098,9 @@ function SendForm({ isMobile, bulkSendRecipients, setBulkSendRecipients, handleA
           {/* JPYC */}
           <div style={{
             padding: isMobile ? '8px 10px' : '10px 12px',
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            background: 'linear-gradient(145deg, #6366f1 0%, #8b5cf6 100%)',
+            border: '1px solid rgba(99, 102, 241, 0.4)',
+            boxShadow: '0 4px 16px rgba(99, 102, 241, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)',
             borderRadius: 8,
             color: '#ffffff',
             position: 'relative',
@@ -2113,7 +2134,9 @@ function SendForm({ isMobile, bulkSendRecipients, setBulkSendRecipients, handleA
           {/* POL (旧MATIC) */}
           <div style={{
             padding: isMobile ? '8px 10px' : '10px 12px',
-            background: 'linear-gradient(135deg, #8247e5 0%, #6d28d9 100%)',
+            background: 'linear-gradient(145deg, #a855f7 0%, #9333ea 100%)',
+            border: '1px solid rgba(168, 85, 247, 0.4)',
+            boxShadow: '0 4px 16px rgba(168, 85, 247, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)',
             borderRadius: 8,
             color: '#ffffff',
             position: 'relative',
@@ -2988,7 +3011,9 @@ function SendForm({ isMobile, bulkSendRecipients, setBulkSendRecipients, handleA
               style={{
                 width: '100%',
                 padding: isMobile ? '14px' : '16px',
-                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                background: 'linear-gradient(145deg, #6366f1 0%, #8b5cf6 100%)',
+            border: '1px solid rgba(99, 102, 241, 0.4)',
+            boxShadow: '0 4px 16px rgba(99, 102, 241, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)',
                 border: 'none',
                 borderRadius: 12,
                 color: '#fff',
@@ -4940,7 +4965,9 @@ function WalletInfo({ isMobile }: { isMobile: boolean }) {
               >
                 <div style={{
                   aspectRatio: '1',
-                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  background: 'linear-gradient(145deg, #6366f1 0%, #8b5cf6 100%)',
+            border: '1px solid rgba(99, 102, 241, 0.4)',
+            boxShadow: '0 4px 16px rgba(99, 102, 241, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -5572,7 +5599,9 @@ function TenantDetailModal({ isMobile, tenant, onClose }: {
             justifyContent: 'center',
             fontSize: 80,
             marginBottom: 20,
-            background: 'rgba(255,255,255,0.05)',
+            background: 'linear-gradient(145deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.04) 100%)',
+          border: '1px solid rgba(255, 255, 255, 0.15)',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
             borderRadius: 12,
             border: '2px solid rgba(255,255,255,0.2)',
           }}>
@@ -5610,7 +5639,9 @@ function TenantDetailModal({ isMobile, tenant, onClose }: {
           <div style={{
             marginBottom: 24,
             padding: isMobile ? 16 : 20,
-            background: 'rgba(255,255,255,0.05)',
+            background: 'linear-gradient(145deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.04) 100%)',
+          border: '1px solid rgba(255, 255, 255, 0.15)',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
             borderRadius: 12,
             border: '1px solid rgba(255,255,255,0.1)',
           }}>
@@ -5704,7 +5735,9 @@ function TenantDetailModal({ isMobile, tenant, onClose }: {
         <div style={{
           marginBottom: 16,
           padding: isMobile ? 16 : 20,
-          background: 'rgba(255,255,255,0.05)',
+          background: 'linear-gradient(145deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.04) 100%)',
+          border: '1px solid rgba(255, 255, 255, 0.15)',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
           borderRadius: 12,
           border: '1px solid rgba(255,255,255,0.1)',
         }}>
@@ -5754,7 +5787,9 @@ function TenantDetailModal({ isMobile, tenant, onClose }: {
         <div style={{
           marginBottom: 24,
           padding: isMobile ? 16 : 20,
-          background: 'rgba(255,255,255,0.05)',
+          background: 'linear-gradient(145deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.04) 100%)',
+          border: '1px solid rgba(255, 255, 255, 0.15)',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
           borderRadius: 12,
           border: '1px solid rgba(255,255,255,0.1)',
         }}>
@@ -6004,7 +6039,9 @@ function AddTenantModal({ isMobile, onClose, onAddTenant }: {
               style={{
                 flex: 1,
                 padding: isMobile ? '10px 12px' : '12px 14px',
-                background: 'rgba(255,255,255,0.05)',
+                background: 'linear-gradient(145deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.04) 100%)',
+          border: '1px solid rgba(255, 255, 255, 0.15)',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
                 border: '2px solid rgba(255,255,255,0.2)',
                 borderRadius: 8,
                 color: '#EAF2FF',
@@ -6051,7 +6088,9 @@ function AddTenantModal({ isMobile, onClose, onAddTenant }: {
           <div style={{
             marginBottom: 24,
             padding: isMobile ? 16 : 20,
-            background: 'rgba(255,255,255,0.05)',
+            background: 'linear-gradient(145deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.04) 100%)',
+          border: '1px solid rgba(255, 255, 255, 0.15)',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
             border: '1px solid rgba(255,255,255,0.2)',
             borderRadius: 12,
           }}>
@@ -6357,7 +6396,9 @@ function LockCard({ isMobile }: { isMobile: boolean }) {
           申請受付中
         </h3>
         <div style={{
-          background: 'rgba(255,255,255,0.05)',
+          background: 'linear-gradient(145deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.04) 100%)',
+          border: '1px solid rgba(255, 255, 255, 0.15)',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
           borderRadius: 12,
           padding: isMobile ? 16 : 20,
           marginBottom: 16,
@@ -6427,7 +6468,9 @@ function LockCard({ isMobile }: { isMobile: boolean }) {
               alignItems: 'center',
               gap: 12,
               padding: isMobile ? '10px 12px' : '12px 16px',
-              background: 'rgba(255,255,255,0.05)',
+              background: 'linear-gradient(145deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.04) 100%)',
+          border: '1px solid rgba(255, 255, 255, 0.15)',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
               borderRadius: 8,
             }}>
               <div style={{ fontSize: 20 }}>🎁</div>
@@ -6441,7 +6484,9 @@ function LockCard({ isMobile }: { isMobile: boolean }) {
               alignItems: 'center',
               gap: 12,
               padding: isMobile ? '10px 12px' : '12px 16px',
-              background: 'rgba(255,255,255,0.05)',
+              background: 'linear-gradient(145deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.04) 100%)',
+          border: '1px solid rgba(255, 255, 255, 0.15)',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
               borderRadius: 8,
             }}>
               <div style={{ fontSize: 20 }}>🏪</div>
@@ -6455,7 +6500,9 @@ function LockCard({ isMobile }: { isMobile: boolean }) {
               alignItems: 'center',
               gap: 12,
               padding: isMobile ? '10px 12px' : '12px 16px',
-              background: 'rgba(255,255,255,0.05)',
+              background: 'linear-gradient(145deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.04) 100%)',
+          border: '1px solid rgba(255, 255, 255, 0.15)',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
               borderRadius: 8,
             }}>
               <div style={{ fontSize: 20 }}>🚩</div>
@@ -6469,7 +6516,9 @@ function LockCard({ isMobile }: { isMobile: boolean }) {
               alignItems: 'center',
               gap: 12,
               padding: isMobile ? '10px 12px' : '12px 16px',
-              background: 'rgba(255,255,255,0.05)',
+              background: 'linear-gradient(145deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.04) 100%)',
+          border: '1px solid rgba(255, 255, 255, 0.15)',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
               borderRadius: 8,
             }}>
               <div style={{ fontSize: 20 }}>🏅</div>
@@ -6548,7 +6597,9 @@ function LockCard({ isMobile }: { isMobile: boolean }) {
               style={{
                 width: '100%',
                 padding: isMobile ? '10px 12px' : '12px 14px',
-                background: 'rgba(255,255,255,0.05)',
+                background: 'linear-gradient(145deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.04) 100%)',
+          border: '1px solid rgba(255, 255, 255, 0.15)',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
                 border: '1px solid rgba(255,255,255,0.1)',
                 borderRadius: 8,
                 color: '#fff',
@@ -6574,7 +6625,9 @@ function LockCard({ isMobile }: { isMobile: boolean }) {
               style={{
                 width: '100%',
                 padding: isMobile ? '10px 12px' : '12px 14px',
-                background: 'rgba(255,255,255,0.05)',
+                background: 'linear-gradient(145deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.04) 100%)',
+          border: '1px solid rgba(255, 255, 255, 0.15)',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
                 border: '1px solid rgba(255,255,255,0.1)',
                 borderRadius: 8,
                 color: '#fff',
