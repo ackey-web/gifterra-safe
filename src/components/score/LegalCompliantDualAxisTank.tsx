@@ -301,7 +301,7 @@ export const LegalCompliantDualAxisTank: React.FC<LegalCompliantDualAxisTankProp
               <span>JPYC貢献</span>
             </div>
             <div style={{ fontSize: sizeConfig.fontSize + 4, fontWeight: 800, color: '#4a9eff', textShadow: '0 0 10px rgba(74, 158, 255, 0.5)' }}>
-              {formatNumber(jpycAmount)} JPYC
+              Lv.{jpycDisplayLevel}
             </div>
             <div
               style={{
