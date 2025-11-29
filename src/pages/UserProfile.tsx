@@ -3,8 +3,10 @@
 
 import { useState, useEffect } from 'react';
 import { useUserProfile } from '../hooks/useUserProfile';
+import { useUserKodomi } from '../hooks/useUserKodomi';
 import { getRankColor, getRankBadge, shortenAddress, formatRelativeTime, generateTwitterShareText } from '../utils/userProfile';
 import type { UserProfile } from '../types/user';
+import { ContributionGauge } from '../components/ContributionGauge';
 
 export function UserProfilePage({ address: propsAddress, mockProfile, mockActivities }: {
   address?: string;
@@ -29,6 +31,9 @@ export function UserProfilePage({ address: propsAddress, mockProfile, mockActivi
   const { profile: realProfile, activities: realActivities, isLoading, isError } = useUserProfile(
     mockProfile ? undefined : targetAddress
   );
+
+  // 対象ユーザーへの自分のkodomi値を取得
+  const userKodomi = useUserKodomi(targetAddress);
 
   const profile = mockProfile || realProfile;
   const activities = mockActivities || realActivities || [];
@@ -257,6 +262,87 @@ export function UserProfilePage({ address: propsAddress, mockProfile, mockActivi
             </button>
           </div>
         </div>
+
+        {/* このユーザーへの自分のkodomi（2軸ゲージ） */}
+        {!userKodomi.loading && !userKodomi.error && (
+          <div style={{ marginBottom: isMobile ? 48 : 80 }}>
+            <h2 style={{
+              fontSize: isMobile ? 20 : 28,
+              fontWeight: 700,
+              marginBottom: isMobile ? 24 : 32,
+              opacity: 0.9,
+              textAlign: 'center',
+            }}>
+              このユーザーへのあなたの kodomi
+            </h2>
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: isMobile ? 16 : 20,
+              maxWidth: 600,
+              margin: '0 auto',
+            }}>
+              {/* 💸 JPYC貢献ゲージ */}
+              <div>
+                <div style={{
+                  fontSize: isMobile ? 12 : 13,
+                  fontWeight: 700,
+                  color: 'rgba(255,255,255,0.7)',
+                  marginBottom: 8,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                }}>
+                  <span>💸</span>
+                  <span>JPYC貢献</span>
+                  <span style={{ fontSize: isMobile ? 11 : 12, opacity: 0.6 }}>
+                    （{userKodomi.jpyc.totalAmount.toLocaleString()} JPYC · {userKodomi.jpyc.tipCount}回）
+                  </span>
+                </div>
+                <ContributionGaugeCustom
+                  kodomi={Math.round(userKodomi.jpyc.totalAmount)}
+                  label="JPYC"
+                  icon="💸"
+                  isMobile={isMobile}
+                />
+              </div>
+
+              {/* ⚡ NHT応援熱量ゲージ */}
+              <div>
+                <div style={{
+                  fontSize: isMobile ? 12 : 13,
+                  fontWeight: 700,
+                  color: 'rgba(255,255,255,0.7)',
+                  marginBottom: 8,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                }}>
+                  <span>⚡</span>
+                  <span>応援熱量</span>
+                  <span style={{ fontSize: isMobile ? 11 : 12, opacity: 0.6 }}>
+                    （{userKodomi.resonance.supportCount}回 · {userKodomi.resonance.streakDays}日連続）
+                  </span>
+                </div>
+                <ContributionGaugeCustom
+                  kodomi={userKodomi.resonance.engagementScore}
+                  label="NHT"
+                  icon="⚡"
+                  isMobile={isMobile}
+                />
+                <div style={{
+                  fontSize: isMobile ? 10 : 11,
+                  color: 'rgba(255,255,255,0.5)',
+                  marginTop: 6,
+                  textAlign: 'center',
+                  fontStyle: 'italic',
+                }}>
+                  ※非金銭的な応援ポイント
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* メイン：タンク（主役） */}
         <div style={{
@@ -621,6 +707,204 @@ function StatItem({ icon, label, value, isMobile }: {
         opacity: 0.5,
       }}>
         {label}
+      </div>
+    </div>
+  );
+}
+
+// カスタマイズ可能なContributionGauge（JPYC/NHT用）
+function ContributionGaugeCustom({ kodomi, label, icon, isMobile }: {
+  kodomi: number;
+  label: string;
+  icon: string;
+  isMobile: boolean;
+}) {
+  // レベル計算（ContributionGaugeと同じロジック）
+  function calculateLevel(k: number): { level: number; progress: number; nextLevelThreshold: number } {
+    const thresholds = [0, 100, 300, 600, 1000];
+
+    for (let i = thresholds.length - 1; i >= 0; i--) {
+      if (k >= thresholds[i]) {
+        const level = i + 1;
+        const currentThreshold = thresholds[i];
+        const nextThreshold = i < thresholds.length - 1 ? thresholds[i + 1] : thresholds[i] + 500;
+        const progressInLevel = k - currentThreshold;
+        const levelRange = nextThreshold - currentThreshold;
+        const progress = Math.min(100, (progressInLevel / levelRange) * 100);
+
+        return { level, progress, nextLevelThreshold: nextThreshold };
+      }
+    }
+
+    return { level: 1, progress: 0, nextLevelThreshold: 100 };
+  }
+
+  const { level, progress, nextLevelThreshold } = calculateLevel(kodomi);
+
+  // レベルに応じた色を決定
+  const getLevelColor = (lvl: number) => {
+    switch (lvl) {
+      case 1: return '#94a3b8'; // Gray
+      case 2: return '#3b82f6'; // Blue
+      case 3: return '#8b5cf6'; // Purple
+      case 4: return '#f59e0b'; // Orange
+      case 5: return '#ef4444'; // Red
+      default: return '#94a3b8';
+    }
+  };
+
+  const levelColor = getLevelColor(level);
+  const remaining = nextLevelThreshold - kodomi;
+
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: isMobile ? '10px' : '14px',
+        padding: isMobile ? '10px 16px' : '12px 20px',
+        background: 'linear-gradient(135deg, rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0.3) 100%)',
+        borderRadius: 12,
+        backdropFilter: 'blur(12px)',
+        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
+        border: '1px solid rgba(255, 255, 255, 0.1)',
+      }}
+    >
+      {/* アイコン */}
+      <span
+        style={{
+          fontSize: isMobile ? 22 : 26,
+          filter: 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3))',
+        }}
+      >
+        {icon}
+      </span>
+
+      {/* ラベル */}
+      <div
+        style={{
+          fontSize: isMobile ? 10 : 11,
+          fontWeight: 800,
+          color: 'rgba(255, 255, 255, 0.6)',
+          letterSpacing: '1px',
+          textTransform: 'uppercase',
+          textShadow: '0 1px 2px rgba(0, 0, 0, 0.5)',
+          minWidth: isMobile ? 40 : 50,
+        }}
+      >
+        {label}
+      </div>
+
+      {/* レベル表示とプログレスバー */}
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 4,
+          flex: 1,
+          minWidth: 0,
+        }}
+      >
+        <div
+          style={{
+            fontSize: isMobile ? 11 : 12,
+            fontWeight: 700,
+            color: levelColor,
+            letterSpacing: '0.5px',
+            textShadow: `0 0 8px ${levelColor}80, 0 2px 4px rgba(0, 0, 0, 0.5)`,
+          }}
+        >
+          Lv.{level}
+        </div>
+
+        {/* プログレスバー */}
+        <div
+          style={{
+            width: '100%',
+            height: isMobile ? 10 : 12,
+            background: 'linear-gradient(180deg, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.2) 100%)',
+            borderRadius: 6,
+            overflow: 'hidden',
+            boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.5)',
+            border: '1px solid rgba(0, 0, 0, 0.3)',
+            position: 'relative',
+          }}
+        >
+          <div
+            style={{
+              width: `${progress}%`,
+              height: '100%',
+              background: `linear-gradient(180deg, ${levelColor} 0%, ${levelColor}cc 50%, ${levelColor}99 100%)`,
+              transition: 'width 0.5s ease',
+              boxShadow: `0 0 12px ${levelColor}, inset 0 1px 0 rgba(255, 255, 255, 0.4)`,
+              position: 'relative',
+              borderRadius: 4,
+            }}
+          >
+            <div
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                height: '40%',
+                background: 'linear-gradient(180deg, rgba(255, 255, 255, 0.3) 0%, transparent 100%)',
+                borderRadius: '4px 4px 0 0',
+              }}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* スコア表示 */}
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'flex-end',
+          gap: 2,
+        }}
+      >
+        <div
+          style={{
+            fontSize: isMobile ? 13 : 15,
+            fontWeight: 700,
+            color: '#fff',
+            textShadow: '0 2px 4px rgba(0, 0, 0, 0.5)',
+            letterSpacing: '0.3px',
+          }}
+        >
+          {kodomi}pt
+        </div>
+
+        {level < 5 && (
+          <div
+            style={{
+              fontSize: isMobile ? 9 : 10,
+              opacity: 0.6,
+              color: '#fff',
+              textShadow: '0 1px 2px rgba(0, 0, 0, 0.5)',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            次まで {remaining}pt
+          </div>
+        )}
+
+        {level >= 5 && (
+          <div
+            style={{
+              fontSize: isMobile ? 9 : 10,
+              opacity: 0.7,
+              color: '#fbbf24',
+              textShadow: '0 0 6px rgba(251, 191, 36, 0.5), 0 1px 2px rgba(0, 0, 0, 0.5)',
+              whiteSpace: 'nowrap',
+              fontWeight: 600,
+            }}
+          >
+            ✨ MAX
+          </div>
+        )}
       </div>
     </div>
   );
