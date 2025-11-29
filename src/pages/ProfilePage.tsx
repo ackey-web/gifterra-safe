@@ -628,8 +628,8 @@ export function ProfilePage() {
                     </button>
                   )}
 
-                  {/* Reward UIボタン（プロフィールオーナーが表示設定している場合のみ） */}
-                  {profile?.show_reward_button !== false && (
+                  {/* Reward UIボタン（テナント所有者・STUDIOプラン以上のみ） */}
+                  {shouldShowTenantFeatures && profile?.show_reward_button !== false && (
                     <button
                       onClick={() => {
                         window.location.href = `/reward?tenant=${walletAddress}`;
