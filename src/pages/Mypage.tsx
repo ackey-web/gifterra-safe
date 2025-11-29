@@ -1371,8 +1371,8 @@ function FlowModeContent({
 
       {/* 3. 全体kodomiタンク */}
       {console.log('🚨🚨🚨 [MYPAGE-DEBUG] OverallKodomiTankをレンダリングしようとしています')}
-      {console.log('🚨 [MYPAGE-DEBUG] displayAddress:', displayAddress)}
-      <OverallKodomiTank isMobile={isMobile} walletAddress={displayAddress} />
+      {console.log('🚨 [MYPAGE-DEBUG] connectedAddress:', connectedAddress)}
+      <OverallKodomiTank isMobile={isMobile} walletAddress={connectedAddress} />
 
       {/* 4. ウォレット情報（残高とNFT） */}
       <WalletInfo isMobile={isMobile} />
