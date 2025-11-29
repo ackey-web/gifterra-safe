@@ -4974,11 +4974,15 @@ function WalletInfo({ isMobile }: { isMobile: boolean }) {
   );
 }
 
-// 3. 全体kodomiタンク（法務対応版：JPYC/NHT分離表示）
+// 3. 全体kodomiタンク（法務対応版:JPYC/NHT分離表示）
 function OverallKodomiTank({ isMobile }: { isMobile: boolean }) {
+  console.log('🎯 OverallKodomiTank - コンポーネントがマウントされました');
   const { jpyc, resonance, loading, error } = useDualAxisKodomi();
 
+  console.log('🎯 OverallKodomiTank - フック結果:', { jpyc, resonance, loading, error });
+
   if (loading) {
+    console.log('⏳ OverallKodomiTank - 読み込み中...');
     return (
       <div style={{ display: 'flex', justifyContent: 'center', marginBottom: isMobile ? 40 : 60 }}>
         <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: 14 }}>読み込み中...</div>
@@ -4987,9 +4991,10 @@ function OverallKodomiTank({ isMobile }: { isMobile: boolean }) {
   }
 
   if (error) {
+    console.error('❌ OverallKodomiTank - エラー:', error);
     return (
       <div style={{ display: 'flex', justifyContent: 'center', marginBottom: isMobile ? 40 : 60 }}>
-        <div style={{ color: 'rgba(255,100,100,0.8)', fontSize: 14 }}>データ取得エラー</div>
+        <div style={{ color: 'rgba(255,100,100,0.8)', fontSize: 14 }}>データ取得エラー: {error}</div>
       </div>
     );
   }

@@ -142,6 +142,8 @@ function calculateResonanceRank(engagementScore: number): {
 export function useDualAxisKodomi() {
   const address = useAddress();
 
+  console.log('🚀 useDualAxisKodomi - フック呼び出し, address:', address);
+
   const [data, setData] = useState<DualAxisKodomiData>({
     jpyc: {
       totalAmount: 0,
