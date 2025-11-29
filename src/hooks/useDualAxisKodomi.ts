@@ -175,11 +175,16 @@ export function useDualAxisKodomi() {
     }
 
     fetchDualAxisData();
+  }, [address, contract]);
+
+  // リアルタイム更新の購読（addressのみに依存）
+  useEffect(() => {
+    if (!address) return;
 
     // Supabaseリアルタイムサブスクリプション設定
-    console.log('🔔 useDualAxisKodomi - リアルタイムサブスクリプション開始');
+    console.log('🔔 useDualAxisKodomi - リアルタイムサブスクリプション開始 for address:', address);
     const channel = supabase
-      .channel('kodomi-updates')
+      .channel(`kodomi-updates-${address.toLowerCase()}`)
       .on(
         'postgres_changes',
         {
@@ -189,7 +194,20 @@ export function useDualAxisKodomi() {
           filter: `from_address=eq.${address.toLowerCase()}`,
         },
         (payload) => {
-          console.log('🔔 リアルタイム更新検知:', payload);
+          console.log('🔔 リアルタイム更新検知 (from):', payload);
+          fetchDualAxisData(); // データ再取得
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'transfer_messages',
+          filter: `to_address=eq.${address.toLowerCase()}`,
+        },
+        (payload) => {
+          console.log('🔔 リアルタイム更新検知 (to):', payload);
           fetchDualAxisData(); // データ再取得
         }
       )
@@ -200,7 +218,7 @@ export function useDualAxisKodomi() {
       console.log('🔕 useDualAxisKodomi - リアルタイムサブスクリプション解除');
       supabase.removeChannel(channel);
     };
-  }, [address, contract]);
+  }, [address]);
 
   async function fetchDualAxisData() {
     if (!address) return;
