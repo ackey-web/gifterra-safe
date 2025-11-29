@@ -349,7 +349,7 @@ export function ProfilePage() {
     <div
       style={{
         minHeight: '100vh',
-        background: 'linear-gradient(135deg, #018a9a 0%, #017080 100%)',
+        background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%)',
         color: '#e0e0e0',
         padding: isMobile ? 16 : 24,
       }}
@@ -416,8 +416,8 @@ export function ProfilePage() {
                 onClick={() => setShowShareLinkModal(true)}
                 style={{
                   padding: isMobile ? '10px 16px' : '12px 20px',
-                  background: 'linear-gradient(145deg, #10b981 0%, #059669 100%)',
-                  border: '1px solid rgba(16, 185, 129, 0.4)',
+                  background: 'linear-gradient(145deg, #3b82f6 0%, #2563eb 100%)',
+                  border: '1px solid rgba(59, 130, 246, 0.4)',
                   borderRadius: 12,
                   color: '#fff',
                   fontSize: isMobile ? 14 : 15,
@@ -427,15 +427,15 @@ export function ProfilePage() {
                   display: 'flex',
                   alignItems: 'center',
                   gap: 6,
-                  boxShadow: '0 4px 16px rgba(16, 185, 129, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)',
+                  boxShadow: '0 4px 16px rgba(59, 130, 246, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)',
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.transform = 'translateY(-2px) scale(1.02)';
-                  e.currentTarget.style.boxShadow = '0 6px 24px rgba(16, 185, 129, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3)';
+                  e.currentTarget.style.boxShadow = '0 6px 24px rgba(59, 130, 246, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3)';
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.transform = 'translateY(0) scale(1)';
-                  e.currentTarget.style.boxShadow = '0 4px 16px rgba(16, 185, 129, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)';
+                  e.currentTarget.style.boxShadow = '0 4px 16px rgba(59, 130, 246, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)';
                 }}
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -747,10 +747,10 @@ export function ProfilePage() {
                         padding: isMobile ? '10px 16px' : '12px 20px',
                         background: shouldShowTenantFeatures
                           ? 'linear-gradient(145deg, #8b5cf6 0%, #7c3aed 100%)' // テナント専用は紫系
-                          : 'linear-gradient(145deg, #f59e0b 0%, #d97706 100%)',
+                          : 'linear-gradient(145deg, #06b6d4 0%, #0891b2 100%)',
                         border: shouldShowTenantFeatures
                           ? '1px solid rgba(139, 92, 246, 0.4)'
-                          : '1px solid rgba(245, 158, 11, 0.4)',
+                          : '1px solid rgba(6, 182, 212, 0.4)',
                         borderRadius: 12,
                         color: '#fff',
                         fontSize: isMobile ? 14 : 15,
@@ -759,7 +759,7 @@ export function ProfilePage() {
                         transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                         boxShadow: shouldShowTenantFeatures
                           ? '0 4px 16px rgba(139, 92, 246, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
-                          : '0 4px 16px rgba(245, 158, 11, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)',
+                          : '0 4px 16px rgba(6, 182, 212, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)',
                         display: 'flex',
                         alignItems: 'center',
                         gap: '6px',
@@ -767,14 +767,14 @@ export function ProfilePage() {
                       onMouseEnter={(e) => {
                         e.currentTarget.style.transform = 'translateY(-2px) scale(1.02)';
                         e.currentTarget.style.boxShadow = shouldShowTenantFeatures
-                          ? '0 6px 24px rgba(139, 92, 246, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3)'
-                          : '0 6px 24px rgba(245, 158, 11, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3)';
+                          ? '0 6px 24px rgba(139, 92, 246, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3)'
+                          : '0 6px 24px rgba(6, 182, 212, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3)';
                       }}
                       onMouseLeave={(e) => {
                         e.currentTarget.style.transform = 'translateY(0) scale(1)';
                         e.currentTarget.style.boxShadow = shouldShowTenantFeatures
                           ? '0 4px 16px rgba(139, 92, 246, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
-                          : '0 4px 16px rgba(245, 158, 11, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)';
+                          : '0 4px 16px rgba(6, 182, 212, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)';
                       }}
                     >
                       💰 チップを贈る
@@ -789,23 +789,23 @@ export function ProfilePage() {
                       }}
                       style={{
                         padding: isMobile ? '10px 16px' : '12px 20px',
-                        background: 'linear-gradient(145deg, #f59e0b 0%, #ef4444 100%)',
-                        border: '1px solid rgba(245, 158, 11, 0.4)',
+                        background: 'linear-gradient(145deg, #a855f7 0%, #9333ea 100%)',
+                        border: '1px solid rgba(168, 85, 247, 0.4)',
                         borderRadius: 12,
                         color: '#fff',
                         fontSize: isMobile ? 14 : 15,
                         fontWeight: 600,
                         cursor: 'pointer',
                         transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                        boxShadow: '0 4px 16px rgba(245, 158, 11, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)',
+                        boxShadow: '0 4px 16px rgba(168, 85, 247, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)',
                       }}
                       onMouseEnter={(e) => {
                         e.currentTarget.style.transform = 'translateY(-2px) scale(1.02)';
-                        e.currentTarget.style.boxShadow = '0 6px 24px rgba(245, 158, 11, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3)';
+                        e.currentTarget.style.boxShadow = '0 6px 24px rgba(168, 85, 247, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3)';
                       }}
                       onMouseLeave={(e) => {
                         e.currentTarget.style.transform = 'translateY(0) scale(1)';
-                        e.currentTarget.style.boxShadow = '0 4px 16px rgba(245, 158, 11, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)';
+                        e.currentTarget.style.boxShadow = '0 4px 16px rgba(168, 85, 247, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)';
                       }}
                     >
                       💎 Daily Reward
@@ -819,11 +819,11 @@ export function ProfilePage() {
                     style={{
                       padding: isMobile ? '10px 16px' : '12px 20px',
                       background: isFollowing
-                        ? 'linear-gradient(145deg, #ef4444 0%, #dc2626 100%)'
-                        : 'linear-gradient(145deg, #667eea 0%, #764ba2 100%)',
+                        ? 'linear-gradient(145deg, #64748b 0%, #475569 100%)'
+                        : 'linear-gradient(145deg, #3b82f6 0%, #2563eb 100%)',
                       border: isFollowing
-                        ? '1px solid rgba(239, 68, 68, 0.4)'
-                        : '1px solid rgba(102, 126, 234, 0.4)',
+                        ? '1px solid rgba(100, 116, 139, 0.4)'
+                        : '1px solid rgba(59, 130, 246, 0.4)',
                       borderRadius: 12,
                       color: '#fff',
                       fontSize: isMobile ? 14 : 15,
@@ -832,23 +832,23 @@ export function ProfilePage() {
                       transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                       opacity: isFollowLoading ? 0.6 : 1,
                       boxShadow: isFollowing
-                        ? '0 4px 16px rgba(239, 68, 68, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
-                        : '0 4px 16px rgba(102, 126, 234, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)',
+                        ? '0 4px 16px rgba(100, 116, 139, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
+                        : '0 4px 16px rgba(59, 130, 246, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)',
                     }}
                     onMouseEnter={(e) => {
                       if (!isFollowLoading) {
                         e.currentTarget.style.transform = 'translateY(-2px) scale(1.02)';
                         e.currentTarget.style.boxShadow = isFollowing
-                          ? '0 6px 24px rgba(239, 68, 68, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3)'
-                          : '0 6px 24px rgba(102, 126, 234, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3)';
+                          ? '0 6px 24px rgba(100, 116, 139, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3)'
+                          : '0 6px 24px rgba(59, 130, 246, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3)';
                       }
                     }}
                     onMouseLeave={(e) => {
                       if (!isFollowLoading) {
                         e.currentTarget.style.transform = 'translateY(0) scale(1)';
                         e.currentTarget.style.boxShadow = isFollowing
-                          ? '0 4px 16px rgba(239, 68, 68, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
-                          : '0 4px 16px rgba(102, 126, 234, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)';
+                          ? '0 4px 16px rgba(100, 116, 139, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
+                          : '0 4px 16px rgba(59, 130, 246, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)';
                       }
                     }}
                   >
@@ -876,7 +876,7 @@ export function ProfilePage() {
                       height: isMobile ? 80 : 100,
                       background: profile?.avatar_url
                         ? 'transparent'
-                        : 'linear-gradient(145deg, #667eea 0%, #764ba2 100%)',
+                        : 'linear-gradient(145deg, #6366f1 0%, #8b5cf6 100%)',
                       borderRadius: '50%',
                       overflow: 'hidden',
                       display: 'flex',
@@ -1011,8 +1011,8 @@ export function ProfilePage() {
                               display: 'inline-block',
                               padding: '8px 16px',
                               background: role === 'DEVELOPER'
-                                ? 'linear-gradient(145deg, #fbbf24 0%, #f59e0b 100%)'
-                                : 'linear-gradient(145deg, #667eea 0%, #764ba2 100%)',
+                                ? 'linear-gradient(145deg, #06b6d4 0%, #0891b2 100%)'
+                                : 'linear-gradient(145deg, #6366f1 0%, #4f46e5 100%)',
                               borderRadius: 24,
                               fontSize: isMobile ? 11 : 12,
                               fontWeight: 600,
@@ -1020,23 +1020,23 @@ export function ProfilePage() {
                               cursor: 'pointer',
                               transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                               border: role === 'DEVELOPER'
-                                ? '1px solid rgba(251, 191, 36, 0.4)'
-                                : '1px solid rgba(102, 126, 234, 0.4)',
+                                ? '1px solid rgba(6, 182, 212, 0.4)'
+                                : '1px solid rgba(99, 102, 241, 0.4)',
                               boxShadow: role === 'DEVELOPER'
-                                ? '0 4px 12px rgba(251, 191, 36, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
-                                : '0 4px 12px rgba(102, 126, 234, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)',
+                                ? '0 4px 12px rgba(6, 182, 212, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
+                                : '0 4px 12px rgba(99, 102, 241, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)',
                             }}
                             onMouseEnter={(e) => {
                               e.currentTarget.style.transform = 'translateY(-2px)';
                               e.currentTarget.style.boxShadow = role === 'DEVELOPER'
-                                ? '0 6px 16px rgba(251, 191, 36, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3)'
-                                : '0 6px 16px rgba(102, 126, 234, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3)';
+                                ? '0 6px 16px rgba(6, 182, 212, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3)'
+                                : '0 6px 16px rgba(99, 102, 241, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3)';
                             }}
                             onMouseLeave={(e) => {
                               e.currentTarget.style.transform = 'translateY(0)';
                               e.currentTarget.style.boxShadow = role === 'DEVELOPER'
-                                ? '0 4px 12px rgba(251, 191, 36, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
-                                : '0 4px 12px rgba(102, 126, 234, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)';
+                                ? '0 4px 12px rgba(6, 182, 212, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
+                                : '0 4px 12px rgba(99, 102, 241, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)';
                             }}
                           >
                             {ROLE_LABELS[role]}
