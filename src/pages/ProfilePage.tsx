@@ -746,7 +746,7 @@ export function ProfilePage() {
                         />
                       </div>
 
-                      {/* ⚡ NHT応援熱量ゲージ */}
+                      {/* ⚡ 応援熱量ゲージ */}
                       <div>
                         <div style={{
                           fontSize: isMobile ? 10 : 11,
@@ -765,7 +765,7 @@ export function ProfilePage() {
                         </div>
                         <ContributionGaugeCustom
                           kodomi={userKodomi.resonance.engagementScore}
-                          label="NHT"
+                          label="応援"
                           icon="⚡"
                           isMobile={isMobile}
                         />
@@ -776,7 +776,7 @@ export function ProfilePage() {
                           textAlign: 'center',
                           fontStyle: 'italic',
                         }}>
-                          ※非金銭的な応援ポイント
+                          ※メッセージや頻度などで評価
                         </div>
                       </div>
                     </div>
