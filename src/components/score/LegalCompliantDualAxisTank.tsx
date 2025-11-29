@@ -187,12 +187,18 @@ export const LegalCompliantDualAxisTank: React.FC<LegalCompliantDualAxisTankProp
               position: 'absolute',
               top: 6,
               left: 6,
-              fontSize: sizeConfig.fontSize + 6,
               zIndex: 10,
-              filter: 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4))',
             }}
           >
-            💸
+            <img
+              src="/JPYC-logo.png"
+              alt="JPYC"
+              style={{
+                width: sizeConfig.fontSize + 10,
+                height: sizeConfig.fontSize + 10,
+                filter: 'drop-shadow(0 2px 6px rgba(74, 158, 255, 0.8))',
+              }}
+            />
           </div>
 
           {/* 液体（青系JPYC） */}

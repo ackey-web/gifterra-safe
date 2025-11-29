@@ -35,22 +35,22 @@ export interface UserKodomiData {
  * JPYCランク定義（特定ユーザーへの送信総額ベース）
  */
 const JPYC_RANKS = {
-  BRONZE: { name: 'Bronze', threshold: 0, color: '#cd7f32', maxThreshold: 50 },      // 50 JPYC
-  SILVER: { name: 'Silver', threshold: 50, color: '#c0c0c0', maxThreshold: 200 },    // 200 JPYC
-  GOLD: { name: 'Gold', threshold: 200, color: '#ffd700', maxThreshold: 500 },       // 500 JPYC
-  PLATINUM: { name: 'Platinum', threshold: 500, color: '#e5e4e2', maxThreshold: 1000 }, // 1,000 JPYC
-  DIAMOND: { name: 'Diamond', threshold: 1000, color: '#b9f2ff', maxThreshold: Infinity }, // 1,000+ JPYC
+  BRONZE: { name: 'Bronze', threshold: 0, color: '#cd7f32', maxThreshold: 100 },      // 100 JPYC
+  SILVER: { name: 'Silver', threshold: 100, color: '#c0c0c0', maxThreshold: 300 },    // 300 JPYC
+  GOLD: { name: 'Gold', threshold: 300, color: '#ffd700', maxThreshold: 700 },       // 700 JPYC
+  PLATINUM: { name: 'Platinum', threshold: 700, color: '#e5e4e2', maxThreshold: 1500 }, // 1,500 JPYC
+  DIAMOND: { name: 'Diamond', threshold: 1500, color: '#b9f2ff', maxThreshold: Infinity }, // 1,500+ JPYC
 } as const;
 
 /**
  * Resonanceランク定義（特定ユーザーへの応援熱量）
  */
 const RESONANCE_RANKS = {
-  SPARK: { name: 'Spark', threshold: 0, color: '#ffa500', maxThreshold: 50 },      // 火花
-  FLAME: { name: 'Flame', threshold: 50, color: '#ff6b35', maxThreshold: 150 },    // 炎
-  BLAZE: { name: 'Blaze', threshold: 150, color: '#ff4500', maxThreshold: 300 },    // 業火
-  INFERNO: { name: 'Inferno', threshold: 300, color: '#dc143c', maxThreshold: 500 }, // 劫火
-  PHOENIX: { name: 'Phoenix', threshold: 500, color: '#ff00ff', maxThreshold: Infinity }, // 不死鳥
+  SPARK: { name: 'Spark', threshold: 0, color: '#ffa500', maxThreshold: 100 },      // 火花
+  FLAME: { name: 'Flame', threshold: 100, color: '#ff6b35', maxThreshold: 250 },    // 炎
+  BLAZE: { name: 'Blaze', threshold: 250, color: '#ff4500', maxThreshold: 500 },    // 業火
+  INFERNO: { name: 'Inferno', threshold: 500, color: '#dc143c', maxThreshold: 800 }, // 劫火
+  PHOENIX: { name: 'Phoenix', threshold: 800, color: '#ff00ff', maxThreshold: Infinity }, // 不死鳥
 } as const;
 
 /**
