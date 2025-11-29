@@ -294,10 +294,7 @@ export const LegalCompliantDualAxisTank: React.FC<LegalCompliantDualAxisTankProp
               💸 JPYC貢献
             </div>
             <div style={{ fontSize: sizeConfig.fontSize + 4, fontWeight: 800, color: '#4a9eff', textShadow: '0 0 10px rgba(74, 158, 255, 0.5)' }}>
-              {formatNumber(jpycAmount)}
-            </div>
-            <div style={{ fontSize: sizeConfig.fontSize - 1, opacity: 0.75, marginTop: 2 }}>
-              JPYC · {jpycTipCount}回
+              {formatNumber(jpycAmount)} JPYC
             </div>
             <div
               style={{
@@ -465,10 +462,7 @@ export const LegalCompliantDualAxisTank: React.FC<LegalCompliantDualAxisTankProp
               ⚡ 応援熱量
             </div>
             <div style={{ fontSize: sizeConfig.fontSize + 4, fontWeight: 800, color: resonanceColor, textShadow: `0 0 8px ${resonanceColor}66` }}>
-              {formatNumber(engagementScore)}
-            </div>
-            <div style={{ fontSize: sizeConfig.fontSize - 1, opacity: 0.75, marginTop: 2 }}>
-              応援 {supportCount}回 · 継続 {streakDays}日
+              {formatNumber(engagementScore)}pt
             </div>
             <div
               style={{

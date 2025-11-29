@@ -734,9 +734,6 @@ export function ProfilePage() {
                         }}>
                           <span>💸</span>
                           <span>JPYC貢献</span>
-                          <span style={{ fontSize: isMobile ? 9 : 10, opacity: 0.6 }}>
-                            {userKodomi.jpyc.totalAmount.toLocaleString()} JPYC · {userKodomi.jpyc.tipCount}回
-                          </span>
                         </div>
                         <ContributionGaugeCustom
                           kodomi={Math.round(userKodomi.jpyc.totalAmount)}
@@ -759,9 +756,6 @@ export function ProfilePage() {
                         }}>
                           <span>⚡</span>
                           <span>応援熱量</span>
-                          <span style={{ fontSize: isMobile ? 9 : 10, opacity: 0.6 }}>
-                            {userKodomi.resonance.supportCount}回 · {userKodomi.resonance.streakDays}日連続
-                          </span>
                         </div>
                         <ContributionGaugeCustom
                           kodomi={userKodomi.resonance.engagementScore}
