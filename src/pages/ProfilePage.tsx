@@ -375,21 +375,26 @@ export function ProfilePage() {
               display: 'flex',
               alignItems: 'center',
               gap: 8,
-              padding: isMobile ? '8px 12px' : '10px 16px',
-              background: 'rgba(255, 255, 255, 0.1)',
-              border: '1px solid rgba(255, 255, 255, 0.2)',
-              borderRadius: 8,
+              padding: isMobile ? '10px 16px' : '12px 20px',
+              background: 'linear-gradient(145deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.08) 100%)',
+              border: '1px solid rgba(255, 255, 255, 0.25)',
+              borderRadius: 12,
               color: '#EAF2FF',
               fontSize: isMobile ? 14 : 15,
               fontWeight: 600,
               cursor: 'pointer',
-              transition: 'all 0.2s',
+              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.2)',
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)';
+              e.currentTarget.style.background = 'linear-gradient(145deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0.12) 100%)';
+              e.currentTarget.style.transform = 'translateY(-2px)';
+              e.currentTarget.style.boxShadow = '0 6px 16px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.3)';
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+              e.currentTarget.style.background = 'linear-gradient(145deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.08) 100%)';
+              e.currentTarget.style.transform = 'translateY(0)';
+              e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.2)';
             }}
           >
             ← 戻る
@@ -410,24 +415,27 @@ export function ProfilePage() {
               <button
                 onClick={() => setShowShareLinkModal(true)}
                 style={{
-                  padding: isMobile ? '8px 12px' : '10px 16px',
-                  background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                  border: 'none',
-                  borderRadius: 8,
+                  padding: isMobile ? '10px 16px' : '12px 20px',
+                  background: 'linear-gradient(145deg, #10b981 0%, #059669 100%)',
+                  border: '1px solid rgba(16, 185, 129, 0.4)',
+                  borderRadius: 12,
                   color: '#fff',
                   fontSize: isMobile ? 14 : 15,
                   fontWeight: 600,
                   cursor: 'pointer',
-                  transition: 'all 0.2s',
+                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                   display: 'flex',
                   alignItems: 'center',
                   gap: 6,
+                  boxShadow: '0 4px 16px rgba(16, 185, 129, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)',
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = 'scale(1.05)';
+                  e.currentTarget.style.transform = 'translateY(-2px) scale(1.02)';
+                  e.currentTarget.style.boxShadow = '0 6px 24px rgba(16, 185, 129, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3)';
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = 'scale(1)';
+                  e.currentTarget.style.transform = 'translateY(0) scale(1)';
+                  e.currentTarget.style.boxShadow = '0 4px 16px rgba(16, 185, 129, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)';
                 }}
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -442,21 +450,24 @@ export function ProfilePage() {
               <button
                 onClick={() => setShowEditModal(true)}
                 style={{
-                  padding: isMobile ? '8px 12px' : '10px 16px',
-                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                  border: 'none',
-                  borderRadius: 8,
+                  padding: isMobile ? '10px 16px' : '12px 20px',
+                  background: 'linear-gradient(145deg, #667eea 0%, #764ba2 100%)',
+                  border: '1px solid rgba(102, 126, 234, 0.4)',
+                  borderRadius: 12,
                   color: '#fff',
                   fontSize: isMobile ? 14 : 15,
                   fontWeight: 600,
                   cursor: 'pointer',
-                  transition: 'all 0.2s',
+                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                  boxShadow: '0 4px 16px rgba(102, 126, 234, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)',
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = 'scale(1.05)';
+                  e.currentTarget.style.transform = 'translateY(-2px) scale(1.02)';
+                  e.currentTarget.style.boxShadow = '0 6px 24px rgba(102, 126, 234, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3)';
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = 'scale(1)';
+                  e.currentTarget.style.transform = 'translateY(0) scale(1)';
+                  e.currentTarget.style.boxShadow = '0 4px 16px rgba(102, 126, 234, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)';
                 }}
               >
                 編集
@@ -468,11 +479,12 @@ export function ProfilePage() {
         {/* プロフィールカード */}
         <div
           style={{
-            background: 'rgba(255, 255, 255, 0.1)',
-            border: '1px solid rgba(255, 255, 255, 0.2)',
-            borderRadius: isMobile ? 16 : 20,
+            background: 'linear-gradient(145deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.06) 100%)',
+            border: '1px solid rgba(255, 255, 255, 0.25)',
+            borderRadius: isMobile ? 20 : 24,
             overflow: 'hidden',
-            backdropFilter: 'blur(10px)',
+            backdropFilter: 'blur(20px)',
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3), 0 2px 8px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
           }}
         >
           {isLoading ? (
@@ -678,34 +690,42 @@ export function ProfilePage() {
                     onClick={handleToggleBookmark}
                     disabled={isBookmarkLoading}
                     style={{
-                      padding: isMobile ? '8px 16px' : '10px 20px',
+                      padding: isMobile ? '10px 16px' : '12px 20px',
                       background: isUserBookmarked
-                        ? 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)'
-                        : 'linear-gradient(135deg, #94a3b8 0%, #64748b 100%)',
-                      border: 'none',
-                      borderRadius: 8,
+                        ? 'linear-gradient(145deg, #fbbf24 0%, #f59e0b 100%)'
+                        : 'linear-gradient(145deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.08) 100%)',
+                      border: isUserBookmarked
+                        ? '1px solid rgba(251, 191, 36, 0.4)'
+                        : '1px solid rgba(255, 255, 255, 0.25)',
+                      borderRadius: 12,
                       color: '#fff',
                       fontSize: isMobile ? 18 : 20,
                       fontWeight: 600,
                       cursor: isBookmarkLoading ? 'not-allowed' : 'pointer',
-                      transition: 'all 0.2s',
-                      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
+                      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                      boxShadow: isUserBookmarked
+                        ? '0 4px 16px rgba(251, 191, 36, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
+                        : '0 4px 12px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.2)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
                       opacity: isBookmarkLoading ? 0.6 : 1,
-                      minWidth: isMobile ? 44 : 48,
+                      minWidth: isMobile ? 48 : 52,
                     }}
                     onMouseEnter={(e) => {
                       if (!isBookmarkLoading) {
-                        e.currentTarget.style.transform = 'scale(1.05)';
-                        e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.3)';
+                        e.currentTarget.style.transform = 'translateY(-2px) scale(1.05)';
+                        e.currentTarget.style.boxShadow = isUserBookmarked
+                          ? '0 6px 24px rgba(251, 191, 36, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3)'
+                          : '0 6px 16px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.3)';
                       }
                     }}
                     onMouseLeave={(e) => {
                       if (!isBookmarkLoading) {
-                        e.currentTarget.style.transform = 'scale(1)';
-                        e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.2)';
+                        e.currentTarget.style.transform = 'translateY(0) scale(1)';
+                        e.currentTarget.style.boxShadow = isUserBookmarked
+                          ? '0 4px 16px rgba(251, 191, 36, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
+                          : '0 4px 12px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.2)';
                       }
                     }}
                   >
@@ -724,29 +744,37 @@ export function ProfilePage() {
                         }
                       }}
                       style={{
-                        padding: isMobile ? '8px 16px' : '10px 20px',
+                        padding: isMobile ? '10px 16px' : '12px 20px',
                         background: shouldShowTenantFeatures
-                          ? 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)' // テナント専用は紫系
-                          : 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
-                        border: 'none',
-                        borderRadius: 8,
+                          ? 'linear-gradient(145deg, #8b5cf6 0%, #7c3aed 100%)' // テナント専用は紫系
+                          : 'linear-gradient(145deg, #f59e0b 0%, #d97706 100%)',
+                        border: shouldShowTenantFeatures
+                          ? '1px solid rgba(139, 92, 246, 0.4)'
+                          : '1px solid rgba(245, 158, 11, 0.4)',
+                        borderRadius: 12,
                         color: '#fff',
                         fontSize: isMobile ? 14 : 15,
                         fontWeight: 600,
                         cursor: 'pointer',
-                        transition: 'all 0.2s',
-                        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
+                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                        boxShadow: shouldShowTenantFeatures
+                          ? '0 4px 16px rgba(139, 92, 246, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
+                          : '0 4px 16px rgba(245, 158, 11, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)',
                         display: 'flex',
                         alignItems: 'center',
                         gap: '6px',
                       }}
                       onMouseEnter={(e) => {
-                        e.currentTarget.style.transform = 'scale(1.05)';
-                        e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.3)';
+                        e.currentTarget.style.transform = 'translateY(-2px) scale(1.02)';
+                        e.currentTarget.style.boxShadow = shouldShowTenantFeatures
+                          ? '0 6px 24px rgba(139, 92, 246, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3)'
+                          : '0 6px 24px rgba(245, 158, 11, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3)';
                       }}
                       onMouseLeave={(e) => {
-                        e.currentTarget.style.transform = 'scale(1)';
-                        e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.2)';
+                        e.currentTarget.style.transform = 'translateY(0) scale(1)';
+                        e.currentTarget.style.boxShadow = shouldShowTenantFeatures
+                          ? '0 4px 16px rgba(139, 92, 246, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
+                          : '0 4px 16px rgba(245, 158, 11, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)';
                       }}
                     >
                       💰 チップを贈る
@@ -760,24 +788,24 @@ export function ProfilePage() {
                         window.location.href = `/reward?tenant=${walletAddress}`;
                       }}
                       style={{
-                        padding: isMobile ? '8px 16px' : '10px 20px',
-                        background: 'linear-gradient(135deg, #f59e0b 0%, #ef4444 100%)',
-                        border: 'none',
-                        borderRadius: 8,
+                        padding: isMobile ? '10px 16px' : '12px 20px',
+                        background: 'linear-gradient(145deg, #f59e0b 0%, #ef4444 100%)',
+                        border: '1px solid rgba(245, 158, 11, 0.4)',
+                        borderRadius: 12,
                         color: '#fff',
                         fontSize: isMobile ? 14 : 15,
                         fontWeight: 600,
                         cursor: 'pointer',
-                        transition: 'all 0.2s',
-                        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
+                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                        boxShadow: '0 4px 16px rgba(245, 158, 11, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)',
                       }}
                       onMouseEnter={(e) => {
-                        e.currentTarget.style.transform = 'scale(1.05)';
-                        e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.3)';
+                        e.currentTarget.style.transform = 'translateY(-2px) scale(1.02)';
+                        e.currentTarget.style.boxShadow = '0 6px 24px rgba(245, 158, 11, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3)';
                       }}
                       onMouseLeave={(e) => {
-                        e.currentTarget.style.transform = 'scale(1)';
-                        e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.2)';
+                        e.currentTarget.style.transform = 'translateY(0) scale(1)';
+                        e.currentTarget.style.boxShadow = '0 4px 16px rgba(245, 158, 11, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)';
                       }}
                     >
                       💎 Daily Reward
@@ -789,30 +817,38 @@ export function ProfilePage() {
                     onClick={toggleFollow}
                     disabled={isFollowLoading}
                     style={{
-                      padding: isMobile ? '8px 16px' : '10px 20px',
+                      padding: isMobile ? '10px 16px' : '12px 20px',
                       background: isFollowing
-                        ? 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)'
-                        : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                      border: 'none',
-                      borderRadius: 8,
+                        ? 'linear-gradient(145deg, #ef4444 0%, #dc2626 100%)'
+                        : 'linear-gradient(145deg, #667eea 0%, #764ba2 100%)',
+                      border: isFollowing
+                        ? '1px solid rgba(239, 68, 68, 0.4)'
+                        : '1px solid rgba(102, 126, 234, 0.4)',
+                      borderRadius: 12,
                       color: '#fff',
                       fontSize: isMobile ? 14 : 15,
                       fontWeight: 600,
                       cursor: isFollowLoading ? 'not-allowed' : 'pointer',
-                      transition: 'all 0.2s',
+                      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                       opacity: isFollowLoading ? 0.6 : 1,
-                      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
+                      boxShadow: isFollowing
+                        ? '0 4px 16px rgba(239, 68, 68, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
+                        : '0 4px 16px rgba(102, 126, 234, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)',
                     }}
                     onMouseEnter={(e) => {
                       if (!isFollowLoading) {
-                        e.currentTarget.style.transform = 'scale(1.05)';
-                        e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.3)';
+                        e.currentTarget.style.transform = 'translateY(-2px) scale(1.02)';
+                        e.currentTarget.style.boxShadow = isFollowing
+                          ? '0 6px 24px rgba(239, 68, 68, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3)'
+                          : '0 6px 24px rgba(102, 126, 234, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3)';
                       }
                     }}
                     onMouseLeave={(e) => {
                       if (!isFollowLoading) {
-                        e.currentTarget.style.transform = 'scale(1)';
-                        e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.2)';
+                        e.currentTarget.style.transform = 'translateY(0) scale(1)';
+                        e.currentTarget.style.boxShadow = isFollowing
+                          ? '0 4px 16px rgba(239, 68, 68, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
+                          : '0 4px 16px rgba(102, 126, 234, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)';
                       }
                     }}
                   >
@@ -840,7 +876,7 @@ export function ProfilePage() {
                       height: isMobile ? 80 : 100,
                       background: profile?.avatar_url
                         ? 'transparent'
-                        : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                        : 'linear-gradient(145deg, #667eea 0%, #764ba2 100%)',
                       borderRadius: '50%',
                       overflow: 'hidden',
                       display: 'flex',
@@ -848,6 +884,8 @@ export function ProfilePage() {
                       justifyContent: 'center',
                       fontSize: isMobile ? 40 : 50,
                       flexShrink: 0,
+                      border: '3px solid rgba(255, 255, 255, 0.2)',
+                      boxShadow: '0 8px 24px rgba(0, 0, 0, 0.3), inset 0 2px 4px rgba(255, 255, 255, 0.1)',
                     }}
                   >
                     {profile?.avatar_url ? (
@@ -971,22 +1009,34 @@ export function ProfilePage() {
                             }}
                             style={{
                               display: 'inline-block',
-                              padding: '6px 12px',
+                              padding: '8px 16px',
                               background: role === 'DEVELOPER'
-                                ? 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)'
-                                : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                              borderRadius: 20,
+                                ? 'linear-gradient(145deg, #fbbf24 0%, #f59e0b 100%)'
+                                : 'linear-gradient(145deg, #667eea 0%, #764ba2 100%)',
+                              borderRadius: 24,
                               fontSize: isMobile ? 11 : 12,
                               fontWeight: 600,
                               color: '#fff',
                               cursor: 'pointer',
-                              transition: 'opacity 0.2s',
+                              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                              border: role === 'DEVELOPER'
+                                ? '1px solid rgba(251, 191, 36, 0.4)'
+                                : '1px solid rgba(102, 126, 234, 0.4)',
+                              boxShadow: role === 'DEVELOPER'
+                                ? '0 4px 12px rgba(251, 191, 36, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
+                                : '0 4px 12px rgba(102, 126, 234, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)',
                             }}
                             onMouseEnter={(e) => {
-                              e.currentTarget.style.opacity = '0.8';
+                              e.currentTarget.style.transform = 'translateY(-2px)';
+                              e.currentTarget.style.boxShadow = role === 'DEVELOPER'
+                                ? '0 6px 16px rgba(251, 191, 36, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3)'
+                                : '0 6px 16px rgba(102, 126, 234, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3)';
                             }}
                             onMouseLeave={(e) => {
-                              e.currentTarget.style.opacity = '1';
+                              e.currentTarget.style.transform = 'translateY(0)';
+                              e.currentTarget.style.boxShadow = role === 'DEVELOPER'
+                                ? '0 4px 12px rgba(251, 191, 36, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
+                                : '0 4px 12px rgba(102, 126, 234, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)';
                             }}
                           >
                             {ROLE_LABELS[role]}
@@ -1058,10 +1108,11 @@ export function ProfilePage() {
                         {profileTab === 'tenant' ? (
                           <div
                             style={{
-                              padding: isMobile ? 16 : 20,
-                              background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(124, 58, 237, 0.05) 100%)',
-                              borderRadius: 12,
-                              border: '1px solid rgba(139, 92, 246, 0.2)',
+                              padding: isMobile ? 20 : 24,
+                              background: 'linear-gradient(145deg, rgba(139, 92, 246, 0.12) 0%, rgba(124, 58, 237, 0.06) 100%)',
+                              borderRadius: 16,
+                              border: '1px solid rgba(139, 92, 246, 0.25)',
+                              boxShadow: '0 4px 16px rgba(139, 92, 246, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
                             }}
                           >
                             <div style={{ marginBottom: 12 }}>
@@ -1140,10 +1191,11 @@ export function ProfilePage() {
                         ) : (
                           <div
                             style={{
-                              padding: isMobile ? 16 : 20,
-                              background: 'rgba(255, 255, 255, 0.03)',
-                              borderRadius: 12,
-                              border: '1px solid rgba(255, 255, 255, 0.1)',
+                              padding: isMobile ? 20 : 24,
+                              background: 'linear-gradient(145deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.02) 100%)',
+                              borderRadius: 16,
+                              border: '1px solid rgba(255, 255, 255, 0.15)',
+                              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.08)',
                             }}
                           >
                             <p
@@ -1221,20 +1273,25 @@ export function ProfilePage() {
                             display: 'flex',
                             alignItems: 'center',
                             gap: 8,
-                            padding: isMobile ? '10px 14px' : '12px 16px',
-                            background: 'rgba(255, 255, 255, 0.05)',
-                            border: '1px solid rgba(255, 255, 255, 0.1)',
-                            borderRadius: 8,
+                            padding: isMobile ? '12px 16px' : '14px 20px',
+                            background: 'linear-gradient(145deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.04) 100%)',
+                            border: '1px solid rgba(255, 255, 255, 0.15)',
+                            borderRadius: 12,
                             color: '#93c5fd',
                             fontSize: isMobile ? 13 : 14,
                             textDecoration: 'none',
-                            transition: 'all 0.2s',
+                            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.08)',
                           }}
                           onMouseEnter={(e) => {
-                            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+                            e.currentTarget.style.background = 'linear-gradient(145deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.06) 100%)';
+                            e.currentTarget.style.transform = 'translateY(-2px)';
+                            e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.12)';
                           }}
                           onMouseLeave={(e) => {
-                            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+                            e.currentTarget.style.background = 'linear-gradient(145deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.04) 100%)';
+                            e.currentTarget.style.transform = 'translateY(0)';
+                            e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.08)';
                           }}
                         >
                           🌐 Webサイト
@@ -1252,20 +1309,25 @@ export function ProfilePage() {
                             display: 'flex',
                             alignItems: 'center',
                             gap: 8,
-                            padding: isMobile ? '10px 14px' : '12px 16px',
-                            background: 'rgba(255, 255, 255, 0.05)',
-                            border: '1px solid rgba(255, 255, 255, 0.1)',
-                            borderRadius: 8,
+                            padding: isMobile ? '12px 16px' : '14px 20px',
+                            background: 'linear-gradient(145deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.04) 100%)',
+                            border: '1px solid rgba(255, 255, 255, 0.15)',
+                            borderRadius: 12,
                             color: '#93c5fd',
                             fontSize: isMobile ? 13 : 14,
                             textDecoration: 'none',
-                            transition: 'all 0.2s',
+                            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.08)',
                           }}
                           onMouseEnter={(e) => {
-                            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+                            e.currentTarget.style.background = 'linear-gradient(145deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.06) 100%)';
+                            e.currentTarget.style.transform = 'translateY(-2px)';
+                            e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.12)';
                           }}
                           onMouseLeave={(e) => {
-                            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+                            e.currentTarget.style.background = 'linear-gradient(145deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.04) 100%)';
+                            e.currentTarget.style.transform = 'translateY(0)';
+                            e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.08)';
                           }}
                         >
                           🔗 {link.label}
