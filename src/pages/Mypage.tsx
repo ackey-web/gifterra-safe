@@ -1370,7 +1370,9 @@ function FlowModeContent({
       />
 
       {/* 3. 全体kodomiタンク */}
-      <OverallKodomiTank isMobile={isMobile} />
+      {console.log('🚨🚨🚨 [MYPAGE-DEBUG] OverallKodomiTankをレンダリングしようとしています')}
+      {console.log('🚨 [MYPAGE-DEBUG] displayAddress:', displayAddress)}
+      <OverallKodomiTank isMobile={isMobile} walletAddress={displayAddress} />
 
       {/* 4. ウォレット情報（残高とNFT） */}
       <WalletInfo isMobile={isMobile} />
@@ -4975,9 +4977,10 @@ function WalletInfo({ isMobile }: { isMobile: boolean }) {
 }
 
 // 3. 全体kodomiタンク（法務対応版:JPYC/NHT分離表示）
-function OverallKodomiTank({ isMobile }: { isMobile: boolean }) {
+function OverallKodomiTank({ isMobile, walletAddress }: { isMobile: boolean; walletAddress?: string }) {
   console.log('🎯🎯🎯 [TANK-DEBUG-v2] OverallKodomiTank - コンポーネントレンダリング');
-  const { jpyc, resonance, overall, loading, error } = useDualAxisKodomi();
+  console.log('🎯 [TANK-DEBUG-v2] 受け取ったwalletAddress:', walletAddress);
+  const { jpyc, resonance, overall, loading, error } = useDualAxisKodomi(walletAddress);
 
   console.log('[TANK-DEBUG-v2] フック結果:');
   console.log('  loading:', loading);
