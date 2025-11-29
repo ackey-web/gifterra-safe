@@ -11,6 +11,7 @@ import { useTokenBalances } from '../hooks/useTokenBalances';
 import { useUserNFTs } from '../hooks/useUserNFTs';
 import { useTransactionHistory, type Transaction } from '../hooks/useTransactionHistory';
 import { useIsMobile } from '../hooks/useIsMobile';
+import { useDualAxisKodomi } from '../hooks/useDualAxisKodomi';
 import { useMyTenantApplication, useSubmitTenantApplication } from '../hooks/useTenantApplications';
 import { useRankPlanPricing, getPlanPrice } from '../hooks/useRankPlanPricing';
 import { useTenantRankPlan } from '../hooks/useTenantRankPlan';
@@ -27,6 +28,7 @@ import { X402PaymentSection } from '../components/X402PaymentSection';
 import { UserSearchModal } from '../components/UserSearchModal';
 import { BookmarkUserModal } from '../components/BookmarkUserModal';
 import { MypageAssistant } from '../components/MypageAssistant';
+import { LegalCompliantDualAxisTank } from '../components/score/LegalCompliantDualAxisTank';
 import type { UserRole } from '../types/profile';
 import flowImage from '../assets/flow.png';
 import studioImage from '../assets/studio.png';
@@ -1367,11 +1369,11 @@ function FlowModeContent({
         tenantId={tenantId}
       />
 
-      {/* 3. ウォレット情報（残高とNFT） */}
-      <WalletInfo isMobile={isMobile} />
-
-      {/* 4. 全体kodomiタンク */}
+      {/* 3. 全体kodomiタンク */}
       <OverallKodomiTank isMobile={isMobile} />
+
+      {/* 4. ウォレット情報（残高とNFT） */}
+      <WalletInfo isMobile={isMobile} />
 
       {/* 5. 応援テナント別カード */}
       <ContributionTenants isMobile={isMobile} />
@@ -4972,237 +4974,45 @@ function WalletInfo({ isMobile }: { isMobile: boolean }) {
   );
 }
 
-// 3. 全体kodomiタンク（近日公開）
+// 3. 全体kodomiタンク（法務対応版：JPYC/NHT分離表示）
 function OverallKodomiTank({ isMobile }: { isMobile: boolean }) {
-  const color = '#667eea';
-  const percentage = 65; // TODO: 実データから算出
-  const kodomi = 5234; // TODO: 実データ
-  const rank = 'Gold'; // TODO: 実データ
+  const { jpyc, resonance, loading, error } = useDualAxisKodomi();
+
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: isMobile ? 40 : 60 }}>
+        <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: 14 }}>読み込み中...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: isMobile ? 40 : 60 }}>
+        <div style={{ color: 'rgba(255,100,100,0.8)', fontSize: 14 }}>データ取得エラー</div>
+      </div>
+    );
+  }
 
   return (
-    <div style={{
-      display: 'flex',
-      justifyContent: 'center',
-      marginBottom: isMobile ? 40 : 60,
-    }}>
-      <div style={{
-        position: 'relative',
-        width: isMobile ? '100%' : 400,
-        height: isMobile ? 320 : 420,
-      }}>
-        {/* タンク本体 */}
-        <div style={{
-          position: 'relative',
-          height: '100%',
-          background: 'linear-gradient(180deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%)',
-          border: '2px solid rgba(255,255,255,0.12)',
-          borderRadius: '50% 50% 40% 40% / 10% 10% 40% 40%',
-          overflow: 'hidden',
-          boxShadow: 'inset 0 0 60px rgba(0,0,0,0.4), 0 10px 40px rgba(0,0,0,0.5)',
-        }}>
-          {/* 液体 */}
-          <div style={{
-            position: 'absolute',
-            bottom: 0,
-            left: 0,
-            right: 0,
-            height: `${percentage}%`,
-            transition: 'height 2.5s cubic-bezier(0.4, 0, 0.2, 1)',
-          }}>
-            <div style={{
-              position: 'absolute',
-              inset: 0,
-              background: `linear-gradient(to top, ${color} 0%, ${color}dd 50%, ${color}aa 100%)`,
-              overflow: 'hidden',
-            }}>
-              {/* 2層波 */}
-              <div style={{
-                position: 'absolute',
-                top: -20,
-                left: '50%',
-                width: '200%',
-                height: 40,
-                background: `radial-gradient(ellipse at center, ${color} 0%, ${color}ee 50%, transparent 70%)`,
-                animation: 'liquidWave 10s ease-in-out infinite',
-              }} />
-              <div style={{
-                position: 'absolute',
-                top: -15,
-                left: '50%',
-                width: '200%',
-                height: 40,
-                background: `radial-gradient(ellipse at center, ${color}aa 0%, ${color}66 50%, transparent 70%)`,
-                animation: 'liquidWave 12s ease-in-out infinite reverse',
-              }} />
-
-              {/* バブルアニメーション（複数） */}
-              <div style={{
-                position: 'absolute',
-                left: '20%',
-                width: 8,
-                height: 8,
-                background: 'rgba(255,255,255,0.35)',
-                borderRadius: '50%',
-                animation: 'subtleBubbleRise 10s ease-in-out infinite',
-                animationDelay: '0s',
-                boxShadow: '0 0 10px rgba(255,255,255,0.3)',
-              }} />
-              <div style={{
-                position: 'absolute',
-                left: '45%',
-                width: 6,
-                height: 6,
-                background: 'rgba(255,255,255,0.3)',
-                borderRadius: '50%',
-                animation: 'subtleBubbleRise 12s ease-in-out infinite',
-                animationDelay: '3s',
-                boxShadow: '0 0 8px rgba(255,255,255,0.25)',
-              }} />
-              <div style={{
-                position: 'absolute',
-                left: '70%',
-                width: 7,
-                height: 7,
-                background: 'rgba(255,255,255,0.32)',
-                borderRadius: '50%',
-                animation: 'subtleBubbleRise 11s ease-in-out infinite',
-                animationDelay: '6s',
-                boxShadow: '0 0 9px rgba(255,255,255,0.28)',
-              }} />
-              <div style={{
-                position: 'absolute',
-                left: '85%',
-                width: 5,
-                height: 5,
-                background: 'rgba(255,255,255,0.28)',
-                borderRadius: '50%',
-                animation: 'subtleBubbleRise 13s ease-in-out infinite',
-                animationDelay: '9s',
-                boxShadow: '0 0 7px rgba(255,255,255,0.23)',
-              }} />
-
-              {/* 液体の揺らぎエフェクト */}
-              <div style={{
-                position: 'absolute',
-                inset: 0,
-                background: `linear-gradient(45deg, transparent 30%, ${color}33 50%, transparent 70%)`,
-                animation: 'liquidShimmer 8s ease-in-out infinite',
-                pointerEvents: 'none',
-              }} />
-
-              {/* 呼吸発光（強化） */}
-              <div style={{
-                position: 'absolute',
-                inset: 0,
-                background: `radial-gradient(ellipse at center, ${color}ff 0%, transparent 60%)`,
-                animation: 'breatheGlow 10s ease-in-out infinite',
-                pointerEvents: 'none',
-              }} />
-
-              {/* 光の反射エフェクト */}
-              <div style={{
-                position: 'absolute',
-                top: '10%',
-                left: '10%',
-                width: '30%',
-                height: '20%',
-                background: 'radial-gradient(ellipse at center, rgba(255,255,255,0.25) 0%, transparent 70%)',
-                borderRadius: '50%',
-                animation: 'breatheGlow 7s ease-in-out infinite',
-                pointerEvents: 'none',
-              }} />
-            </div>
-          </div>
-
-          {/* 中央ラベル */}
-          <div style={{
-            position: 'absolute',
-            inset: 0,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 3,
-          }}>
-            <div style={{
-              fontSize: isMobile ? 13 : 15,
-              opacity: 0.6,
-              marginBottom: 4,
-              letterSpacing: '0.05em',
-            }}>
-              全体kodomi
-            </div>
-            <div style={{
-              fontSize: isMobile ? 10 : 11,
-              opacity: 0.4,
-              marginBottom: 12,
-            }}>
-              貢献熱量ポイント
-            </div>
-            <div style={{
-              fontSize: isMobile ? 48 : 64,
-              fontWeight: 900,
-              letterSpacing: '-0.02em',
-              textShadow: '0 4px 20px rgba(0,0,0,0.8)',
-              marginBottom: 8,
-            }}>
-              {kodomi.toLocaleString()}
-            </div>
-            <div style={{
-              fontSize: isMobile ? 14 : 16,
-              opacity: 0.8,
-            }}>
-              pt
-            </div>
-            <div style={{
-              marginTop: 16,
-              padding: isMobile ? '6px 16px' : '8px 20px',
-              background: 'rgba(255, 215, 0, 0.2)',
-              border: '1px solid rgba(255, 215, 0, 0.3)',
-              borderRadius: 999,
-              fontSize: isMobile ? 13 : 14,
-              fontWeight: 700,
-            }}>
-              🏆 {rank}
-            </div>
-          </div>
-        </div>
-
-        {/* オーバーレイ */}
-        <div style={{
-          position: 'absolute',
-          inset: 0,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          background: 'rgba(0, 0, 0, 0.75)',
-          backdropFilter: 'blur(4px)',
-          borderRadius: '50% 50% 40% 40% / 10% 10% 40% 40%',
-          textAlign: 'center',
-          padding: isMobile ? 20 : 30,
-          zIndex: 10,
-        }}>
-          <div style={{
-            fontSize: isMobile ? 18 : 24,
-            fontWeight: 800,
-            color: '#ffffff',
-            marginBottom: isMobile ? 8 : 12,
-            textShadow: '0 2px 8px rgba(0,0,0,0.5)',
-            lineHeight: 1.4,
-          }}>
-            GIFTERRA STUDIOで全機能解放🔥
-          </div>
-          <div style={{
-            fontSize: isMobile ? 16 : 20,
-            fontWeight: 700,
-            color: '#fbbf24',
-            textShadow: '0 2px 8px rgba(0,0,0,0.5)',
-          }}>
-            近日公開！
-          </div>
-        </div>
-      </div>
+    <div style={{ marginBottom: isMobile ? 40 : 60 }}>
+      <LegalCompliantDualAxisTank
+        jpycAmount={jpyc.totalAmount}
+        jpycTipCount={jpyc.tipCount}
+        jpycLevel={jpyc.level}
+        jpycDisplayLevel={jpyc.displayLevel}
+        jpycRank={jpyc.rank}
+        jpycColor={jpyc.color}
+        supportCount={resonance.supportCount}
+        streakDays={resonance.streakDays}
+        engagementScore={resonance.engagementScore}
+        resonanceLevel={resonance.level}
+        resonanceDisplayLevel={resonance.displayLevel}
+        resonanceRank={resonance.rank}
+        resonanceColor={resonance.color}
+        showDetails={true}
+        size={isMobile ? 'small' : 'medium'}
+      />
     </div>
   );
 }
