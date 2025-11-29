@@ -5,6 +5,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { LegalCompliantDualAxisTank } from '../../components/score/LegalCompliantDualAxisTank';
+import { supabase } from '../../lib/supabase';
 
 // ========================================
 // 型定義
@@ -62,29 +63,67 @@ export const ScoreParametersPage: React.FC = () => {
 
   const fetchParams = async () => {
     try {
-      // TODO: 実際のAPIエンドポイントから取得
-      console.log('Fetching current params...');
+      console.log('📊 Fetching current params from Supabase...');
+
+      // 最新のパラメータを取得（last_updated順で最新のもの）
+      const { data, error } = await supabase
+        .from('score_params')
+        .select('*')
+        .order('last_updated', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (error) {
+        console.error('❌ Failed to fetch params:', error);
+        return;
+      }
+
+      if (data) {
+        console.log('✅ Params fetched:', data);
+        const fetchedParams: ScoreParams = {
+          weightEconomic: data.weight_economic,
+          weightResonance: data.weight_resonance,
+          curve: data.curve as Curve,
+          lastUpdated: data.last_updated,
+        };
+        setParams(fetchedParams);
+        setEditParams(fetchedParams);
+      }
     } catch (error) {
-      console.error('Failed to fetch params:', error);
+      console.error('❌ Failed to fetch params:', error);
     }
   };
 
   const fetchHistory = async () => {
     try {
-      // TODO: 実際のAPIから履歴取得
-      // モックデータ
-      setHistory([
-        {
-          id: '1',
-          weightEconomic: 100,
-          weightResonance: 100,
-          curve: 'Sqrt',
-          updatedAt: new Date().toISOString(),
-          updatedBy: 'Admin',
-        },
-      ]);
+      console.log('📜 Fetching params history from Supabase...');
+
+      // 過去10件のパラメータ変更履歴を取得
+      const { data, error } = await supabase
+        .from('score_params')
+        .select('*')
+        .order('last_updated', { ascending: false })
+        .limit(10);
+
+      if (error) {
+        console.error('❌ Failed to fetch history:', error);
+        return;
+      }
+
+      if (data) {
+        const historyData: ParamsHistory[] = data.map((item) => ({
+          id: item.id,
+          weightEconomic: item.weight_economic,
+          weightResonance: item.weight_resonance,
+          curve: item.curve as Curve,
+          updatedAt: item.last_updated,
+          updatedBy: 'Admin', // TODO: 実際のユーザー情報を保存する場合はDBスキーマを変更
+        }));
+        setHistory(historyData);
+        console.log('✅ History fetched:', historyData.length, 'records');
+      }
     } catch (error) {
-      console.error('Failed to fetch history:', error);
+      console.error('❌ Failed to fetch history:', error);
     }
   };
 
@@ -110,26 +149,46 @@ export const ScoreParametersPage: React.FC = () => {
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const response = await fetch('/api/admin/params', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': process.env.ADMIN_API_KEY || '',
-        },
-        body: JSON.stringify(editParams),
-      });
+      console.log('💾 Saving params to Supabase...', editParams);
 
-      if (response.ok) {
-        setParams(editParams);
-        setIsEditing(false);
-        await fetchHistory();
-        alert('✅ パラメータを更新しました\n\n⚠️ 全ユーザーのkodomi値が再計算されます。');
-      } else {
-        throw new Error('Failed to update params');
+      // 新しいパラメータレコードをINSERT（履歴として保存）
+      const { data, error } = await supabase
+        .from('score_params')
+        .insert({
+          weight_economic: editParams.weightEconomic,
+          weight_resonance: editParams.weightResonance,
+          curve: editParams.curve,
+          last_updated: new Date().toISOString(),
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('❌ Failed to save params:', error);
+        throw error;
       }
+
+      console.log('✅ Params saved successfully:', data);
+
+      // 状態を更新
+      const updatedParams: ScoreParams = {
+        weightEconomic: editParams.weightEconomic,
+        weightResonance: editParams.weightResonance,
+        curve: editParams.curve,
+        lastUpdated: data.last_updated,
+      };
+
+      setParams(updatedParams);
+      setEditParams(updatedParams);
+      setIsEditing(false);
+
+      // 履歴を再取得
+      await fetchHistory();
+
+      alert('✅ パラメータを更新しました\n\n⚠️ 全ユーザーのkodomi値が再計算されます。');
     } catch (error) {
-      console.error('Save error:', error);
-      alert('❌ 更新に失敗しました');
+      console.error('❌ Save error:', error);
+      alert('❌ 更新に失敗しました: ' + (error instanceof Error ? error.message : '不明なエラー'));
     } finally {
       setIsSaving(false);
     }
