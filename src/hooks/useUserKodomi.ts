@@ -279,10 +279,18 @@ export function useUserKodomi(targetAddress: string | undefined) {
       // メッセージ品質スコア
       const messageQuality = calculateMessageQuality(transactions || []);
 
-      // エンゲージメントスコア
+      // AI質的スコア: このユーザーへ送ったメッセージの平均スコア
+      let aiQualityScore = 0;
+      const messagesWithAI = transactions?.filter(tx => tx.ai_quality_score != null) || [];
+      if (messagesWithAI.length > 0) {
+        const totalAIScore = messagesWithAI.reduce((sum, tx) => sum + (tx.ai_quality_score || 0), 0);
+        aiQualityScore = Math.round(totalAIScore / messagesWithAI.length);
+      }
+
+      // エンゲージメントスコア (AI質的スコアを追加)
       const engagementScore = Math.min(
         500,
-        nhtCount * 2 + streakDays * 10 + messageQuality
+        nhtCount * 2 + streakDays * 10 + messageQuality + aiQualityScore
       );
 
       // ランク計算

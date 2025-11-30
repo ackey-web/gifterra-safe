@@ -321,11 +321,27 @@ export function useDualAxisKodomi(walletAddress?: string) {
       // メッセージ品質スコア（簡易版）
       const messageQuality = calculateMessageQuality(transactions || []);
 
-      // エンゲージメントスコア計算
-      // = 応援回数 × 2 + ストリーク日数 × 10 + メッセージ品質
+      // AI質的スコアを取得（全体的なスコア）
+      let aiQualityScore = 0;
+      try {
+        const { data: userScoreData } = await supabase
+          .from('user_scores')
+          .select('ai_quality_score')
+          .eq('user_address', address.toLowerCase())
+          .maybeSingle();
+
+        if (userScoreData?.ai_quality_score) {
+          aiQualityScore = userScoreData.ai_quality_score;
+        }
+      } catch (error) {
+        console.warn('⚠️ AI質的スコア取得エラー:', error);
+      }
+
+      // エンゲージメントスコア計算 (AI質的スコアを追加)
+      // = 応援回数 × 2 + ストリーク日数 × 10 + メッセージ品質 + AI質的スコア
       const engagementScore = Math.min(
         1000,
-        nhtCount * 2 + streakDays * 10 + messageQuality
+        nhtCount * 2 + streakDays * 10 + messageQuality + aiQualityScore
       );
 
       // JPYCランク計算
