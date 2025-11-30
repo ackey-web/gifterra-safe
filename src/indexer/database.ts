@@ -158,7 +158,22 @@ export class ScoreDatabase {
    */
   async recordTip(event: TippedEvent, tokenAddress: string): Promise<void> {
     const userLower = event.from.toLowerCase();
+    const recipientLower = event.to.toLowerCase();
     const tokenLower = tokenAddress.toLowerCase();
+
+    // 受取人がギフテラユーザー(profilesに登録済み)かチェック
+    const { data: recipientProfile } = await this.supabase
+      .from('profiles')
+      .select('wallet_address')
+      .eq('wallet_address', recipientLower)
+      .maybeSingle();
+
+    if (!recipientProfile) {
+      console.log(`⏭️ Skipping KODOMI: Recipient ${recipientLower} is not a registered Gifterra user`);
+      return; // 受取人が未登録の場合はKODOMI加算をスキップ
+    }
+
+    console.log(`✅ Recipient ${recipientLower} is a Gifterra user. Recording KODOMI...`);
 
     // ユーザースコアを取得または作成
     let userScore = await this.getUserScore(userLower);
