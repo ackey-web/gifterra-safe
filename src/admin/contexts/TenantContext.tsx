@@ -372,6 +372,21 @@ export function TenantProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    // 承認済みテナントオーナーも全権限を持つ（ファクトリー経由で作成されたテナント）
+    if (isApprovedTenant && application?.gifterra_address) {
+      console.log('✅ Approved Tenant Owner detected - granting all permissions for tenant:', application.tenant_id);
+      setOwnerStatus({
+        gifterra: true,
+        rewardEngine: true,
+        flagNFT: true,
+        rewardToken: true,
+        tipManager: true,
+        paymentSplitter: true,
+      });
+      setIsCheckingOwner(false);
+      return;
+    }
+
     console.log('⚠️ Not a super admin or configured tenant admin - checking contract ownership...');
 
     const newOwnerStatus = {
