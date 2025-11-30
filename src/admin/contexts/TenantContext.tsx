@@ -9,6 +9,9 @@ import { ethers } from 'ethers';
 import { CONTRACT_ADDRESS, CONTRACT_ABI, ERC20_MIN_ABI } from '../../contract';
 import { getDefaultToken } from '../../config/tokenHelpers';
 import { useMyTenantApplication } from '../../hooks/useTenantApplications';
+import PendingApprovalScreen from '../components/PendingApprovalScreen';
+import RejectedApplicationScreen from '../components/RejectedApplicationScreen';
+import ApplicationPromptScreen from '../components/ApplicationPromptScreen';
 
 /* =========================================
    開発環境用デバッグスーパーアドミン設定
@@ -762,19 +765,16 @@ export function RequireOwner({ children, contractType, fallback }: RequireOwnerP
     // 申請状態に応じて画面を出し分け
     if (application?.status === 'pending') {
       console.log('⏳ Application pending - showing pending screen');
-      const { PendingApprovalScreen } = require('../components/PendingApprovalScreen');
       return <PendingApprovalScreen application={application} />;
     }
 
     if (application?.status === 'rejected') {
       console.log('❌ Application rejected - showing rejection screen');
-      const { RejectedApplicationScreen } = require('../components/RejectedApplicationScreen');
       return <RejectedApplicationScreen application={application} />;
     }
 
     // 未申請またはその他の状態
     console.log('📝 No application - showing application prompt');
-    const { ApplicationPromptScreen } = require('../components/ApplicationPromptScreen');
     return <ApplicationPromptScreen />;
   }
 
