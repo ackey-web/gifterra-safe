@@ -5,6 +5,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { LegalCompliantDualAxisTank } from '../../components/score/LegalCompliantDualAxisTank';
+import { ContributionGauge } from '../../components/ContributionGauge';
 import { supabase } from '../../lib/supabase';
 import { saveScoreParams, type ScoreParamsData } from '../../lib/adminApi';
 
@@ -182,35 +183,18 @@ export const ScoreParametersPage: React.FC = () => {
   const handleGaugeSimpleBalanceChange = (value: number) => {
     setGaugeSimpleBalance(value);
 
-    // バランス値からゲージパラメーターを計算
-    // -100（回数重視）→ NHT: 5.0, Streak: 5.0, AI: 0.2, Message: 0.2
-    // 0（均等）→ NHT: 2.0, Streak: 10.0, AI: 1.0, Message: 1.0
-    // 100（質重視）→ NHT: 0.5, Streak: 5.0, AI: 3.0, Message: 3.0
+    // バランス値から重みを計算（タンクと同じロジック）
+    // -100（JPYC重視）→ Economic: 200, Resonance: 50
+    // 0（均等）→ Economic: 100, Resonance: 100
+    // 100（応援重視）→ Economic: 50, Resonance: 200
 
-    let nhtWeight, streakWeight, aiQualityWeight, messageQualityWeight;
-
-    if (value < 0) {
-      // 回数重視側
-      const ratio = Math.abs(value) / 100;
-      nhtWeight = 2.0 + (3.0 * ratio); // 2.0 → 5.0
-      streakWeight = 10.0 - (5.0 * ratio); // 10.0 → 5.0
-      aiQualityWeight = 1.0 - (0.8 * ratio); // 1.0 → 0.2
-      messageQualityWeight = 1.0 - (0.8 * ratio); // 1.0 → 0.2
-    } else {
-      // 質重視側
-      const ratio = value / 100;
-      nhtWeight = 2.0 - (1.5 * ratio); // 2.0 → 0.5
-      streakWeight = 10.0 - (5.0 * ratio); // 10.0 → 5.0
-      aiQualityWeight = 1.0 + (2.0 * ratio); // 1.0 → 3.0
-      messageQualityWeight = 1.0 + (2.0 * ratio); // 1.0 → 3.0
-    }
+    const economicWeight = Math.round(100 - (value * 0.5));
+    const resonanceWeight = Math.round(100 + (value * 0.5));
 
     setEditParams({
       ...editParams,
-      nhtWeight: Math.round(nhtWeight * 10) / 10,
-      streakWeight: Math.round(streakWeight * 10) / 10,
-      aiQualityWeight: Math.round(aiQualityWeight * 10) / 10,
-      messageQualityWeight: Math.round(messageQualityWeight * 10) / 10,
+      weightEconomic: economicWeight,
+      weightResonance: resonanceWeight,
     });
   };
 
@@ -389,6 +373,10 @@ export const ScoreParametersPage: React.FC = () => {
     const jpycRank = calculateJPYCRank(jpycScore);
     const resonanceRank = calculateResonanceRank(resonanceScore);
 
+    // KODOMIゲージ用の総合スコア計算
+    // Economic + Resonanceの合計
+    const totalKodomiScore = Math.round(jpycScore + resonanceScore);
+
     return {
       jpycAmount: jpycScore,
       jpycTipCount: 1,
@@ -403,6 +391,7 @@ export const ScoreParametersPage: React.FC = () => {
       resonanceDisplayLevel: resonanceRank.displayLevel,
       resonanceRank: resonanceRank.rank,
       resonanceColor: resonanceRank.color,
+      kodomiScore: totalKodomiScore, // ゲージ用
     };
   }, [editParams.weightEconomic, editParams.weightResonance]);
 
@@ -1084,10 +1073,10 @@ export const ScoreParametersPage: React.FC = () => {
                   border: '1px dashed rgba(255, 126, 51, 0.2)',
                 }}>
                   <div style={{ fontSize: 14, fontWeight: 600, color: '#ff7e33', marginBottom: 4 }}>
-                    📊 ゲージ計算パラメーター（詳細設定）
+                    🔥 応援熱量タンク（オレンジ）の詳細設定
                   </div>
                   <div style={{ fontSize: 12, color: '#718096' }}>
-                    応援熱量ゲージの計算に使用されるパラメーター
+                    KODOMIタンクの応援熱量（Resonance）評価の内訳パラメーター
                   </div>
                 </div>
 
@@ -1242,27 +1231,17 @@ export const ScoreParametersPage: React.FC = () => {
           ⚙️ 現在の設定
         </h2>
 
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-          gap: 16,
-          marginBottom: 24,
-        }}>
+        <div className="current-params">
           <div className="param-display">
-            <div className="param-label">🎁 NHT重み</div>
-            <div className="param-value">{params.nhtWeight.toFixed(1)}</div>
+            <div className="param-label">💸 JPYC貢献の重み</div>
+            <div className="param-value">{params.weightEconomic}</div>
+            <div className="param-unit">{(params.weightEconomic / 100).toFixed(1)}倍</div>
           </div>
+
           <div className="param-display">
-            <div className="param-label">🔥 ストリーク重み</div>
-            <div className="param-value">{params.streakWeight.toFixed(1)}</div>
-          </div>
-          <div className="param-display">
-            <div className="param-label">🤖 AI質的重み</div>
-            <div className="param-value">{params.aiQualityWeight.toFixed(1)}</div>
-          </div>
-          <div className="param-display">
-            <div className="param-label">💬 メッセージ重み</div>
-            <div className="param-value">{params.messageQualityWeight.toFixed(1)}</div>
+            <div className="param-label">⚡ 応援熱量の重み</div>
+            <div className="param-value">{params.weightResonance}</div>
+            <div className="param-unit">{(params.weightResonance / 100).toFixed(1)}倍</div>
           </div>
         </div>
 
@@ -1324,43 +1303,31 @@ export const ScoreParametersPage: React.FC = () => {
 
                 <div className="balance-markers">
                   <div className="balance-marker">
-                    <div className="balance-marker-icon">🔢</div>
-                    <div>回数重視</div>
+                    <div className="balance-marker-icon">💸</div>
+                    <div>JPYC重視</div>
                   </div>
                   <div className="balance-marker">
                     <div className="balance-marker-icon">⚖️</div>
                     <div>バランス</div>
                   </div>
                   <div className="balance-marker">
-                    <div className="balance-marker-icon">✨</div>
-                    <div>質重視</div>
+                    <div className="balance-marker-icon">⚡</div>
+                    <div>応援重視</div>
                   </div>
                 </div>
 
                 {/* 詳細プレビュー */}
                 <div className="balance-preview">
                   <div className="balance-preview-item">
-                    <div className="balance-preview-label">🎁 NHT重み</div>
-                    <div className="balance-preview-value" style={{ color: '#ff7e33' }}>
-                      {editParams.nhtWeight.toFixed(1)}
+                    <div className="balance-preview-label">💸 JPYC貢献</div>
+                    <div className="balance-preview-value" style={{ color: '#4a9eff' }}>
+                      {editParams.weightEconomic} ({(editParams.weightEconomic / 100).toFixed(1)}倍)
                     </div>
                   </div>
                   <div className="balance-preview-item">
-                    <div className="balance-preview-label">🔥 ストリーク重み</div>
+                    <div className="balance-preview-label">⚡ 応援熱量</div>
                     <div className="balance-preview-value" style={{ color: '#ff7e33' }}>
-                      {editParams.streakWeight.toFixed(1)}
-                    </div>
-                  </div>
-                  <div className="balance-preview-item">
-                    <div className="balance-preview-label">🤖 AI質的重み</div>
-                    <div className="balance-preview-value" style={{ color: '#ff7e33' }}>
-                      {editParams.aiQualityWeight.toFixed(1)}
-                    </div>
-                  </div>
-                  <div className="balance-preview-item">
-                    <div className="balance-preview-label">💬 メッセージ重み</div>
-                    <div className="balance-preview-value" style={{ color: '#ff7e33' }}>
-                      {editParams.messageQualityWeight.toFixed(1)}
+                      {editParams.weightResonance} ({(editParams.weightResonance / 100).toFixed(1)}倍)
                     </div>
                   </div>
                 </div>
@@ -1371,39 +1338,20 @@ export const ScoreParametersPage: React.FC = () => {
                     📊 リアルタイムプレビュー
                   </div>
                   <div className="preview-description">
-                    10回NHT応援 + 5日連続 + メッセージ品質80 + AI質的スコア60の場合
+                    50 JPYCのチップ + 10回のNHT応援を送った場合のKODOMI GAUGEの変化
                   </div>
-                  <div style={{
+                  <div className="preview-gauge-wrapper" style={{
                     marginTop: 16,
-                    padding: 24,
-                    background: 'white',
+                    display: 'flex',
+                    justifyContent: 'center',
+                    padding: '20px',
+                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                     borderRadius: 12,
-                    textAlign: 'center',
                   }}>
-                    <div style={{ fontSize: 14, color: '#718096', marginBottom: 12 }}>
-                      エンゲージメントスコア
-                    </div>
-                    <div style={{ fontSize: 36, fontWeight: 'bold', color: '#ff7e33', marginBottom: 8 }}>
-                      {Math.round(
-                        10 * editParams.nhtWeight +
-                        5 * editParams.streakWeight +
-                        80 * editParams.messageQualityWeight +
-                        60 * editParams.aiQualityWeight
-                      )}
-                    </div>
-                    <div style={{
-                      marginTop: 16,
-                      padding: 12,
-                      background: '#f7fafc',
-                      borderRadius: 8,
-                      fontSize: 11,
-                      color: '#4a5568',
-                      textAlign: 'left',
-                      fontFamily: 'monospace',
-                    }}>
-                      = 10 × {editParams.nhtWeight.toFixed(1)} + 5 × {editParams.streakWeight.toFixed(1)} + 80 × {editParams.messageQualityWeight.toFixed(1)} + 60 × {editParams.aiQualityWeight.toFixed(1)}<br />
-                      = {(10 * editParams.nhtWeight).toFixed(1)} + {(5 * editParams.streakWeight).toFixed(1)} + {(80 * editParams.messageQualityWeight).toFixed(1)} + {(60 * editParams.aiQualityWeight).toFixed(1)}
-                    </div>
+                    <ContributionGauge
+                      kodomi={previewData.kodomiScore}
+                      isMobile={false}
+                    />
                   </div>
                 </div>
               </div>
@@ -1412,107 +1360,59 @@ export const ScoreParametersPage: React.FC = () => {
             {/* カスタムモード */}
             {gaugeMode === 'custom' && (
               <div className="edit-form">
-                {/* NHT Weight */}
+                {/* Economic Weight */}
                 <div className="form-group">
                   <label className="form-label">
-                    🎁 NHT応援回数の重み
+                    💸 JPYC貢献の重み
                     <span className="form-help">
-                      (応援回数の評価重み - デフォルト: 2.0)
+                      (金銭的貢献の評価重み - 100 = 1.0倍)
                     </span>
                   </label>
                   <input
                     type="range"
                     min="0"
-                    max="10"
-                    step="0.5"
-                    value={editParams.nhtWeight}
+                    max="300"
+                    step="10"
+                    value={editParams.weightEconomic}
                     onChange={(e) =>
-                      setEditParams({ ...editParams, nhtWeight: parseFloat(e.target.value) })
+                      setEditParams({ ...editParams, weightEconomic: parseInt(e.target.value) })
                     }
                     className="range-input"
                   />
                   <div className="range-display">
-                    <span>0.0</span>
-                    <span className="range-value">{editParams.nhtWeight.toFixed(1)}</span>
-                    <span>10.0</span>
+                    <span>0 (無視)</span>
+                    <span className="range-value">
+                      {editParams.weightEconomic} ({(editParams.weightEconomic / 100).toFixed(1)}倍)
+                    </span>
+                    <span>300 (3倍)</span>
                   </div>
                 </div>
 
-                {/* Streak Weight */}
+                {/* Resonance Weight */}
                 <div className="form-group">
                   <label className="form-label">
-                    🔥 連続応援日数の重み
+                    ⚡ 応援熱量の重み
                     <span className="form-help">
-                      (継続性の評価重み - デフォルト: 10.0)
+                      (継続的応援の評価重み - 100 = 1.0倍)
                     </span>
                   </label>
                   <input
                     type="range"
                     min="0"
-                    max="20"
-                    step="1"
-                    value={editParams.streakWeight}
+                    max="300"
+                    step="10"
+                    value={editParams.weightResonance}
                     onChange={(e) =>
-                      setEditParams({ ...editParams, streakWeight: parseFloat(e.target.value) })
+                      setEditParams({ ...editParams, weightResonance: parseInt(e.target.value) })
                     }
                     className="range-input"
                   />
                   <div className="range-display">
-                    <span>0.0</span>
-                    <span className="range-value">{editParams.streakWeight.toFixed(1)}</span>
-                    <span>20.0</span>
-                  </div>
-                </div>
-
-                {/* AI Quality Weight */}
-                <div className="form-group">
-                  <label className="form-label">
-                    🤖 AI質的スコアの重み
-                    <span className="form-help">
-                      (メッセージのAI評価の重み - デフォルト: 1.0)
+                    <span>0 (無視)</span>
+                    <span className="range-value">
+                      {editParams.weightResonance} ({(editParams.weightResonance / 100).toFixed(1)}倍)
                     </span>
-                  </label>
-                  <input
-                    type="range"
-                    min="0"
-                    max="5"
-                    step="0.1"
-                    value={editParams.aiQualityWeight}
-                    onChange={(e) =>
-                      setEditParams({ ...editParams, aiQualityWeight: parseFloat(e.target.value) })
-                    }
-                    className="range-input"
-                  />
-                  <div className="range-display">
-                    <span>0.0</span>
-                    <span className="range-value">{editParams.aiQualityWeight.toFixed(1)}</span>
-                    <span>5.0</span>
-                  </div>
-                </div>
-
-                {/* Message Quality Weight */}
-                <div className="form-group">
-                  <label className="form-label">
-                    💬 メッセージ品質の重み
-                    <span className="form-help">
-                      (メッセージの量的評価の重み - デフォルト: 1.0)
-                    </span>
-                  </label>
-                  <input
-                    type="range"
-                    min="0"
-                    max="5"
-                    step="0.1"
-                    value={editParams.messageQualityWeight}
-                    onChange={(e) =>
-                      setEditParams({ ...editParams, messageQualityWeight: parseFloat(e.target.value) })
-                    }
-                    className="range-input"
-                  />
-                  <div className="range-display">
-                    <span>0.0</span>
-                    <span className="range-value">{editParams.messageQualityWeight.toFixed(1)}</span>
-                    <span>5.0</span>
+                    <span>300 (3倍)</span>
                   </div>
                 </div>
 
@@ -1522,39 +1422,20 @@ export const ScoreParametersPage: React.FC = () => {
                     📊 リアルタイムプレビュー
                   </div>
                   <div className="preview-description">
-                    10回NHT応援 + 5日連続 + メッセージ品質80 + AI質的スコア60の場合
+                    50 JPYCのチップ + 10回のNHT応援を送った場合のKODOMI GAUGEの変化
                   </div>
-                  <div style={{
+                  <div className="preview-gauge-wrapper" style={{
                     marginTop: 16,
-                    padding: 24,
-                    background: 'white',
+                    display: 'flex',
+                    justifyContent: 'center',
+                    padding: '20px',
+                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                     borderRadius: 12,
-                    textAlign: 'center',
                   }}>
-                    <div style={{ fontSize: 14, color: '#718096', marginBottom: 12 }}>
-                      エンゲージメントスコア
-                    </div>
-                    <div style={{ fontSize: 36, fontWeight: 'bold', color: '#ff7e33', marginBottom: 8 }}>
-                      {Math.round(
-                        10 * editParams.nhtWeight +
-                        5 * editParams.streakWeight +
-                        80 * editParams.messageQualityWeight +
-                        60 * editParams.aiQualityWeight
-                      )}
-                    </div>
-                    <div style={{
-                      marginTop: 16,
-                      padding: 12,
-                      background: '#f7fafc',
-                      borderRadius: 8,
-                      fontSize: 11,
-                      color: '#4a5568',
-                      textAlign: 'left',
-                      fontFamily: 'monospace',
-                    }}>
-                      = 10 × {editParams.nhtWeight.toFixed(1)} + 5 × {editParams.streakWeight.toFixed(1)} + 80 × {editParams.messageQualityWeight.toFixed(1)} + 60 × {editParams.aiQualityWeight.toFixed(1)}<br />
-                      = {(10 * editParams.nhtWeight).toFixed(1)} + {(5 * editParams.streakWeight).toFixed(1)} + {(80 * editParams.messageQualityWeight).toFixed(1)} + {(60 * editParams.aiQualityWeight).toFixed(1)}
-                    </div>
+                    <ContributionGauge
+                      kodomi={previewData.kodomiScore}
+                      isMobile={false}
+                    />
                   </div>
                 </div>
               </div>
