@@ -1869,6 +1869,36 @@ function SendForm({ isMobile, bulkSendRecipients, setBulkSendRecipients, handleA
           return;
         }
 
+        // KODOMI加算処理（受取人がギフテラユーザーの場合のみ）
+        try {
+          const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+          const kodomiResponse = await fetch(`${API_BASE_URL}/api/kodomi/add`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              fromAddress: actualAddress,
+              toAddress: normalizedAddress,
+              tokenSymbol: 'POL',
+              amount: amount,
+              message: message || undefined,
+            })
+          });
+
+          if (kodomiResponse.ok) {
+            const kodomiData = await kodomiResponse.json();
+            if (kodomiData.success && !kodomiData.skipped) {
+              console.log('✅ KODOMI加算成功:', kodomiData.kodomi);
+            } else if (kodomiData.skipped) {
+              console.log('⏭️ KODOMI加算スキップ:', kodomiData.reason);
+            }
+          } else {
+            console.error('❌ KODOMI加算失敗:', await kodomiResponse.text());
+          }
+        } catch (kodomiError) {
+          console.error('❌ KODOMI加算エラー:', kodomiError);
+          // KODOMI加算失敗は送金成功に影響しないのでエラーは無視
+        }
+
         alert(
           `✅ 送金が完了しました！\n\n` +
           `送金先: ${trimmedAddress.slice(0, 6)}...${trimmedAddress.slice(-4)}\n` +
@@ -1967,6 +1997,36 @@ function SendForm({ isMobile, bulkSendRecipients, setBulkSendRecipients, handleA
             `エラー: ${saveError.message || '不明なエラー'}`
           );
           // 保存失敗してもトランザクション自体は成功しているので処理を継続
+        }
+
+        // KODOMI加算処理（受取人がギフテラユーザーの場合のみ）
+        try {
+          const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+          const kodomiResponse = await fetch(`${API_BASE_URL}/api/kodomi/add`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              fromAddress: walletAddress,
+              toAddress: trimmedAddress,
+              tokenSymbol: selectedToken,
+              amount: amount,
+              message: message || undefined,
+            })
+          });
+
+          if (kodomiResponse.ok) {
+            const kodomiData = await kodomiResponse.json();
+            if (kodomiData.success && !kodomiData.skipped) {
+              console.log('✅ KODOMI加算成功:', kodomiData.kodomi);
+            } else if (kodomiData.skipped) {
+              console.log('⏭️ KODOMI加算スキップ:', kodomiData.reason);
+            }
+          } else {
+            console.error('❌ KODOMI加算失敗:', await kodomiResponse.text());
+          }
+        } catch (kodomiError) {
+          console.error('❌ KODOMI加算エラー:', kodomiError);
+          // KODOMI加算失敗は送金成功に影響しないのでエラーは無視
         }
 
         // 送金完了後、GIFTERRAユーザーへの送金なら受取メッセージを表示

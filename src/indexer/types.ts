@@ -21,6 +21,7 @@ export interface TippedEvent {
   timestamp: Date;
 
   from: string;
+  to: string; // 受取人アドレス（コントラクトのowner = テナント/ギフテラユーザー）
   amount: bigint;
   message?: string; // 将来のメッセージ機能用（現在はundefined）
 }

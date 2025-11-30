@@ -444,12 +444,16 @@ export class GifterraEventListener {
   ): Promise<TippedEvent> {
     const block = await event.getBlock();
 
+    // コントラクトのownerを取得（受取人）
+    const owner = await this.contract.owner();
+
     return {
       blockNumber: event.blockNumber,
       transactionHash: event.transactionHash,
       logIndex: event.logIndex,
       timestamp: new Date(block.timestamp * 1000),
       from: from.toLowerCase(),
+      to: owner.toLowerCase(), // 受取人 = コントラクトのowner
       amount,
       message: undefined, // 現在のコントラクトにはメッセージフィールドがない
     };
