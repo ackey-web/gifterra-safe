@@ -59,7 +59,8 @@ export default async function handler(
       from: fromLower,
       to: toLower,
       token: params.tokenSymbol,
-      amount: params.amount
+      amount: params.amount,
+      hasMessage: !!params.message
     });
 
     // 1. 受取人がギフテラユーザー（profilesに登録済み）かチェック
@@ -150,8 +151,36 @@ export default async function handler(
     // 連続ボーナス（7日ごとに10%加算）
     const streakBonus = Math.floor(newStreakDays / 7) * 0.1;
 
-    // AI質的スコア（将来実装、現在は0）
-    const aiQualityScore = 0;
+    // AI質的スコア（メッセージがある場合のみ分析）
+    let aiQualityScore = 0;
+    let aiAnalysis = null;
+
+    if (params.message && params.message.trim().length > 0) {
+      try {
+        // AI分析APIを呼び出し
+        const API_BASE_URL = process.env.VITE_API_BASE_URL || '';
+        const aiResponse = await fetch(`${API_BASE_URL}/api/ai/analyze-message`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: params.message })
+        });
+
+        if (aiResponse.ok) {
+          aiAnalysis = await aiResponse.json();
+          aiQualityScore = aiAnalysis.totalScore || 0;
+          console.log('🤖 AI質的スコア:', {
+            contextScore: aiAnalysis.contextScore,
+            sentimentScore: aiAnalysis.sentimentScore,
+            totalScore: aiQualityScore,
+            sentimentLabel: aiAnalysis.sentimentLabel
+          });
+        } else {
+          console.warn('⚠️ AI分析APIの呼び出しに失敗しました。スコアは0として処理します。');
+        }
+      } catch (error) {
+        console.warn('⚠️ AI分析でエラーが発生しました。スコアは0として処理します。', error);
+      }
+    }
 
     // 正規化されたKODOMI = (回数 × (1 + 連続ボーナス)) + AI質的スコア
     const normalizedKodomi = Math.round(newResonanceCount * (1 + streakBonus) + aiQualityScore);
@@ -183,6 +212,7 @@ export default async function handler(
       resonanceScore: normalizedKodomi,
       streakDays: newStreakDays,
       longestStreak: newLongestStreak,
+      aiQualityScore: aiQualityScore
     });
 
     return res.status(200).json({
@@ -193,6 +223,8 @@ export default async function handler(
         streakDays: newStreakDays,
         longestStreak: newLongestStreak,
         resonanceLevel: resonanceLevel,
+        aiQualityScore: aiQualityScore,
+        aiAnalysis: aiAnalysis
       }
     });
 

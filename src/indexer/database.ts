@@ -315,21 +315,98 @@ export class ScoreDatabase {
 
     userScore.resonance.lastDate = timestamp;
 
-    // ai_quality_scoreを取得（フロントエンドが既に計算済み）
-    const aiQualityScore = await this.getAIQualityScore(userScore.address);
+    // AI質的スコア: メッセージがある場合は分析、ない場合はDBから取得
+    let aiQualityScore = 0;
+
+    if (message && message.trim().length > 0) {
+      // メッセージをAI分析
+      aiQualityScore = await this.analyzeMessageQuality(message, userScore.address);
+    } else {
+      // メッセージがない場合は既存のスコアを取得
+      aiQualityScore = await this.getAIQualityScore(userScore.address);
+    }
 
     // 正規化（新しいkodomi算出: 案A + AI質的スコア + 時間減衰）
     userScore.resonance.normalized = normalizeResonanceScore(
       userScore.resonance.actions.utilityTokenTips,  // 全トークン重み1.0
       userScore.resonance.actions.economicTokenTips, // 全トークン重み1.0
       userScore.resonance.streak,
-      aiQualityScore, // DBから取得したAI質的スコア
+      aiQualityScore, // AI質的スコア
       userScore.resonance.lastDate // 最終応援日（時間減衰用）
     );
+
+    // AI質的スコアとメッセージ情報をuserScoreに保存
+    userScore.resonance.aiQualityScore = aiQualityScore;
+    if (message) {
+      userScore.resonance.messageCount = (userScore.resonance.messageCount || 0) + 1;
+    }
 
     // レベル計算
     userScore.resonance.level = calculateResonanceLevel(userScore.resonance.normalized);
     userScore.resonance.displayLevel = getDisplayLevel(userScore.resonance.level);
+  }
+
+  /**
+   * メッセージのAI質的分析を実行
+   */
+  private async analyzeMessageQuality(message: string, userAddress: string): Promise<number> {
+    try {
+      const API_BASE_URL = process.env.VITE_API_BASE_URL || '';
+      const response = await fetch(`${API_BASE_URL}/api/ai/analyze-message`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message })
+      });
+
+      if (!response.ok) {
+        console.warn('⚠️ AI分析APIの呼び出しに失敗しました');
+        return 0;
+      }
+
+      const analysis = await response.json();
+      const totalScore = analysis.totalScore || 0;
+
+      console.log(`🤖 AI質的スコア (${userAddress}):`, {
+        contextScore: analysis.contextScore,
+        sentimentScore: analysis.sentimentScore,
+        totalScore: totalScore,
+        sentimentLabel: analysis.sentimentLabel
+      });
+
+      // スコアをDBに保存
+      await this.saveAIQualityScore(userAddress, totalScore, analysis);
+
+      return totalScore;
+    } catch (error) {
+      console.error('❌ AI分析エラー:', error);
+      return 0;
+    }
+  }
+
+  /**
+   * AI質的スコアをDBに保存
+   */
+  private async saveAIQualityScore(
+    address: string,
+    score: number,
+    analysis: any
+  ): Promise<void> {
+    try {
+      const { error } = await this.supabase
+        .from('user_scores')
+        .update({
+          ai_quality_score: score,
+          avg_sentiment: analysis.sentimentScore || 50,
+          last_updated: new Date().toISOString()
+        })
+        .eq('address', address.toLowerCase());
+
+      if (error) {
+        console.error('❌ AI質的スコア保存エラー:', error);
+      }
+    } catch (error) {
+      console.error('❌ AI質的スコア保存エラー:', error);
+    }
   }
 
   /**
