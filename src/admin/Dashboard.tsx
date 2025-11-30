@@ -355,6 +355,17 @@ export default function AdminDashboard() {
   // テナントランクプラン取得（機能制限チェック用）
   const { plan: tenantRankPlan } = useTenantRankPlan(tenant?.id);
 
+  // デバッグ: ランクプラン情報をログ出力
+  useEffect(() => {
+    console.log('🎯 [Dashboard] Tenant Rank Plan Debug:', {
+      tenantId: tenant?.id,
+      tenantName: tenant?.name,
+      planObject: tenantRankPlan,
+      rankPlan: tenantRankPlan?.rank_plan,
+      isActive: tenantRankPlan?.is_active,
+    });
+  }, [tenant?.id, tenantRankPlan]);
+
   // マルチトークン対応：環境に応じたトークン設定
   const activeTokens = getActiveTokens().filter(t => t && t.id); // nullチェック
   const defaultToken = getDefaultToken();
