@@ -9,9 +9,9 @@ import { ethers } from 'ethers';
 import { CONTRACT_ADDRESS, CONTRACT_ABI, ERC20_MIN_ABI } from '../../contract';
 import { getDefaultToken } from '../../config/tokenHelpers';
 import { useMyTenantApplication } from '../../hooks/useTenantApplications';
-import PendingApprovalScreen from '../components/PendingApprovalScreen';
-import RejectedApplicationScreen from '../components/RejectedApplicationScreen';
-import ApplicationPromptScreen from '../components/ApplicationPromptScreen';
+import { PendingApprovalScreen } from '../components/PendingApprovalScreen';
+import { RejectedApplicationScreen } from '../components/RejectedApplicationScreen';
+import { ApplicationPromptScreen } from '../components/ApplicationPromptScreen';
 
 /* =========================================
    開発環境用デバッグスーパーアドミン設定
