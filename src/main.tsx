@@ -27,7 +27,7 @@ const PaymentTerminalMobile = lazy(() => import("./admin/components/PaymentTermi
 const AppWrapper = lazy(() => import("./components/AppWrapper").then(m => ({ default: m.AppWrapper })));
 const TermsOfServicePage = lazy(() => import("./pages/TermsOfService").then(m => ({ default: m.TermsOfServicePage })));
 const PrivacyPolicyPage = lazy(() => import("./pages/PrivacyPolicy").then(m => ({ default: m.PrivacyPolicyPage })));
-const ProfilePage = lazy(() => import("./pages/ProfilePage").then(m => ({ default: m.ProfilePage })));
+const UserProfilePage = lazy(() => import("./pages/UserProfile").then(m => ({ default: m.UserProfilePage })));
 const NotificationsPage = lazy(() => import("./pages/NotificationsPage").then(m => ({ default: m.NotificationsPage })));
 const GaslessQRGeneratorTest = lazy(() => import("./pages/GaslessQRGeneratorTest").then(m => ({ default: m.GaslessQRGeneratorTest })));
 const GaslessScannerTest = lazy(() => import("./pages/GaslessScannerTest").then(m => ({ default: m.GaslessScannerTest })));
@@ -443,7 +443,7 @@ if (wantsTerms) {
               ) : wantsMypage ? (
                 <MypagePage />
               ) : wantsProfile ? (
-                <ProfilePage />
+                <UserProfilePage />
               ) : wantsNotifications ? (
                 <NotificationsPage />
               ) : wantsGaslessQRTest ? (
