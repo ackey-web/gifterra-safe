@@ -239,6 +239,27 @@ export function useUserKodomi(targetAddress: string | undefined) {
       console.log('📊 fetchUserKodomiData - 開始');
       setData(prev => ({ ...prev, loading: true, error: null }));
 
+      // スコアパラメーターを取得
+      const { data: scoreParams } = await supabase
+        .from('score_params')
+        .select('nht_weight, streak_weight, ai_quality_weight, message_quality_weight')
+        .order('last_updated', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      // デフォルト値（パラメーターが未設定の場合）
+      const nhtWeight = scoreParams?.nht_weight ?? 2.0;
+      const streakWeight = scoreParams?.streak_weight ?? 10.0;
+      const aiQualityWeight = scoreParams?.ai_quality_weight ?? 1.0;
+      const messageQualityWeight = scoreParams?.message_quality_weight ?? 1.0;
+
+      console.log('⚙️ 使用するスコアパラメーター:', {
+        nhtWeight,
+        streakWeight,
+        aiQualityWeight,
+        messageQualityWeight
+      });
+
       // Supabaseから自分→対象ユーザーへの送信履歴を取得
       const { data: transactions, error: txError } = await supabase
         .from('transfer_messages')
@@ -287,10 +308,13 @@ export function useUserKodomi(targetAddress: string | undefined) {
         aiQualityScore = Math.round(totalAIScore / messagesWithAI.length);
       }
 
-      // エンゲージメントスコア (AI質的スコアを追加)
+      // エンゲージメントスコア (動的パラメーターを使用)
       const engagementScore = Math.min(
         500,
-        nhtCount * 2 + streakDays * 10 + messageQuality + aiQualityScore
+        nhtCount * nhtWeight +
+        streakDays * streakWeight +
+        messageQuality * messageQualityWeight +
+        aiQualityScore * aiQualityWeight
       );
 
       // ランク計算

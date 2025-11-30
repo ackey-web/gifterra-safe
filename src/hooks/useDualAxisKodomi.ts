@@ -270,6 +270,27 @@ export function useDualAxisKodomi(walletAddress?: string) {
 
       setData(prev => ({ ...prev, loading: true, error: null }));
 
+      // スコアパラメーターを取得
+      const { data: scoreParams } = await supabase
+        .from('score_params')
+        .select('nht_weight, streak_weight, ai_quality_weight, message_quality_weight')
+        .order('last_updated', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      // デフォルト値（パラメーターが未設定の場合）
+      const nhtWeight = scoreParams?.nht_weight ?? 2.0;
+      const streakWeight = scoreParams?.streak_weight ?? 10.0;
+      const aiQualityWeight = scoreParams?.ai_quality_weight ?? 1.0;
+      const messageQualityWeight = scoreParams?.message_quality_weight ?? 1.0;
+
+      console.log('⚙️ [KODOMI-DEBUG-v2] 使用するスコアパラメーター:', {
+        nhtWeight,
+        streakWeight,
+        aiQualityWeight,
+        messageQualityWeight
+      });
+
       // Supabaseからトランザクション履歴を取得
       console.log('[KODOMI-DEBUG-v2] Supabaseクエリ実行中...');
       const { data: transactions, error: txError } = await supabase
@@ -337,11 +358,13 @@ export function useDualAxisKodomi(walletAddress?: string) {
         console.warn('⚠️ AI質的スコア取得エラー:', error);
       }
 
-      // エンゲージメントスコア計算 (AI質的スコアを追加)
-      // = 応援回数 × 2 + ストリーク日数 × 10 + メッセージ品質 + AI質的スコア
+      // エンゲージメントスコア計算 (動的パラメーターを使用)
       const engagementScore = Math.min(
         1000,
-        nhtCount * 2 + streakDays * 10 + messageQuality + aiQualityScore
+        nhtCount * nhtWeight +
+        streakDays * streakWeight +
+        messageQuality * messageQualityWeight +
+        aiQualityScore * aiQualityWeight
       );
 
       // JPYCランク計算

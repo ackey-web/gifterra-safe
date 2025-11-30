@@ -81,7 +81,28 @@ export default async function handler(
 
     console.log('✅ 受取人はギフテラユーザー。KODOMI加算を開始...');
 
-    // 2. 送金者のuser_scoresレコードを取得または作成
+    // 2. スコアパラメーターを取得
+    const { data: scoreParams } = await supabase
+      .from('score_params')
+      .select('nht_weight, streak_weight, ai_quality_weight, message_quality_weight')
+      .order('last_updated', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    // デフォルト値（パラメーターが未設定の場合）
+    const nhtWeight = scoreParams?.nht_weight ?? 2.0;
+    const streakWeight = scoreParams?.streak_weight ?? 10.0;
+    const aiQualityWeight = scoreParams?.ai_quality_weight ?? 1.0;
+    const messageQualityWeight = scoreParams?.message_quality_weight ?? 1.0;
+
+    console.log('⚙️ 使用するスコアパラメーター:', {
+      nhtWeight,
+      streakWeight,
+      aiQualityWeight,
+      messageQualityWeight
+    });
+
+    // 3. 送金者のuser_scoresレコードを取得または作成
     let { data: userScore, error: fetchError } = await supabase
       .from('user_scores')
       .select('*')
@@ -118,9 +139,7 @@ export default async function handler(
       userScore = newScore;
     }
 
-    // 3. トークンに応じてKODOMI加算
-    const isEconomicToken = params.tokenSymbol === 'JPYC';
-
+    // 4. トークンに応じてKODOMI加算
     // 共鳴スコア（KODOMI）: 回数+1
     const newResonanceCount = (userScore.resonance_count || 0) + 1;
 
@@ -147,9 +166,6 @@ export default async function handler(
     }
 
     const newLongestStreak = Math.max(userScore.longest_streak || 0, newStreakDays);
-
-    // 連続ボーナス（7日ごとに10%加算）
-    const streakBonus = Math.floor(newStreakDays / 7) * 0.1;
 
     // AI質的スコア（メッセージがある場合のみ分析）
     let aiQualityScore = 0;
@@ -182,13 +198,18 @@ export default async function handler(
       }
     }
 
-    // 正規化されたKODOMI = (回数 × (1 + 連続ボーナス)) + AI質的スコア
-    const normalizedKodomi = Math.round(newResonanceCount * (1 + streakBonus) + aiQualityScore);
+    // KODOMI スコア計算（動的パラメーターを使用）
+    // 注: この計算は簡易版で、フックは全トランザクションから再計算します
+    const normalizedKodomi = Math.round(
+      newResonanceCount * nhtWeight +
+      newStreakDays * streakWeight +
+      aiQualityScore * aiQualityWeight
+    );
 
-    // レベル計算（100回でLv.100）
-    const resonanceLevel = Math.min(100, Math.floor(normalizedKodomi * 1.0));
+    // レベル計算（1000ポイントでLv.100）
+    const resonanceLevel = Math.min(100, Math.floor(normalizedKodomi / 10));
 
-    // 4. user_scoresを更新
+    // 5. user_scoresを更新
     const { error: updateError } = await supabase
       .from('user_scores')
       .update({

@@ -148,6 +148,10 @@ export interface ScoreParamsData {
   weightEconomic: number;
   weightResonance: number;
   curve: 'Linear' | 'Sqrt' | 'Log';
+  nhtWeight?: number;
+  streakWeight?: number;
+  aiQualityWeight?: number;
+  messageQualityWeight?: number;
 }
 
 export interface ScoreParamsRecord extends ScoreParamsData {

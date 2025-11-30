@@ -19,6 +19,10 @@ interface ScoreParamsRequest {
   weightEconomic: number;
   weightResonance: number;
   curve: 'Linear' | 'Sqrt' | 'Log';
+  nhtWeight?: number;
+  streakWeight?: number;
+  aiQualityWeight?: number;
+  messageQualityWeight?: number;
 }
 
 export default async function handler(
@@ -51,12 +55,16 @@ export default async function handler(
       console.log('💾 Saving score params:', params);
 
       // 新しいパラメータレコードをINSERT（履歴として保存）
-      const { data, error } = await supabase
+      const { data, error} = await supabase
         .from('score_params')
         .insert({
           weight_economic: params.weightEconomic,
           weight_resonance: params.weightResonance,
           curve: params.curve,
+          nht_weight: params.nhtWeight ?? 2.0,
+          streak_weight: params.streakWeight ?? 10.0,
+          ai_quality_weight: params.aiQualityWeight ?? 1.0,
+          message_quality_weight: params.messageQualityWeight ?? 1.0,
           last_updated: new Date().toISOString(),
         })
         .select()
@@ -78,6 +86,10 @@ export default async function handler(
           weightEconomic: data.weight_economic,
           weightResonance: data.weight_resonance,
           curve: data.curve,
+          nhtWeight: data.nht_weight,
+          streakWeight: data.streak_weight,
+          aiQualityWeight: data.ai_quality_weight,
+          messageQualityWeight: data.message_quality_weight,
           lastUpdated: data.last_updated,
         }
       });
