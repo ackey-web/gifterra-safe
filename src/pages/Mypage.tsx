@@ -318,13 +318,26 @@ export function MypagePage() {
   };
 
   return (
-    <div style={{
+    <div className="mypage-container" style={{
       minHeight: '100vh',
-      background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%)',
+      backgroundImage: 'url(/UI-back.jpg)',
+      backgroundSize: 'cover',
+      backgroundPosition: 'center',
+      backgroundAttachment: 'fixed',
+      backgroundRepeat: 'no-repeat',
       color: '#e0e0e0',
       position: 'relative',
       overflow: 'hidden',
     }}>
+      {/* 高級感のあるグラデーションオーバーレイ */}
+      <div style={{
+        position: 'fixed',
+        inset: 0,
+        background: 'linear-gradient(135deg, rgba(0, 0, 0, 0.6) 0%, rgba(30, 20, 50, 0.75) 50%, rgba(20, 10, 40, 0.8) 100%)',
+        pointerEvents: 'none',
+        zIndex: 0,
+      }} />
+
       {/* CSSアニメーション定義 */}
       <style>{`
         @keyframes liquidWave {
@@ -386,29 +399,6 @@ export function MypagePage() {
           }
         }
       `}</style>
-
-      {/* 前景オーバーレイ */}
-      <div style={{
-        position: 'fixed',
-        inset: 0,
-        background: 'linear-gradient(145deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.06) 100%)',
-        backdropFilter: 'blur(20px)',
-        border: '1px solid rgba(255, 255, 255, 0.25)',
-        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3), 0 2px 8px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
-        pointerEvents: 'none',
-        zIndex: 0,
-      }} />
-
-      {/* グリッド背景 */}
-      <div style={{
-        position: 'fixed',
-        inset: 0,
-        backgroundImage: 'linear-gradient(rgba(234, 242, 255, 0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(234, 242, 255, 0.02) 1px, transparent 1px)',
-        backgroundSize: '50px 50px',
-        opacity: 0.5,
-        pointerEvents: 'none',
-        zIndex: 0,
-      }} />
 
       {/* メインコンテンツ */}
       {/* [A] ヘッダー - ガラスモーフィズム */}
@@ -2067,15 +2057,16 @@ function SendForm({ isMobile, bulkSendRecipients, setBulkSendRecipients, handleA
     <div
       id="send-form-section"
       style={{
-        background: 'linear-gradient(135deg, #f0f7ff 0%, #e0f0ff 100%)',
-        border: '2px solid rgba(59, 130, 246, 0.2)',
+        background: 'linear-gradient(145deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.06) 100%)',
+        border: '1px solid rgba(255, 255, 255, 0.25)',
         borderRadius: isMobile ? 16 : 24,
         padding: isMobile ? 14 : 28,
-        boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
+        backdropFilter: 'blur(20px)',
+        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3), 0 2px 8px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
         position: 'relative',
       }}
     >
-      <h2 style={{ margin: '0 0 14px 0', fontSize: isMobile ? 18 : 22, fontWeight: 700, color: '#1a1a1a' }}>
+      <h2 style={{ margin: '0 0 14px 0', fontSize: isMobile ? 18 : 22, fontWeight: 700, color: '#e0e0e0' }}>
         送金
       </h2>
 
@@ -2083,9 +2074,10 @@ function SendForm({ isMobile, bulkSendRecipients, setBulkSendRecipients, handleA
       <div style={{
         marginBottom: 20,
         padding: isMobile ? '12px 14px' : '14px 16px',
-        background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.08) 0%, rgba(118, 75, 162, 0.08) 100%)',
-        border: '1px solid rgba(102, 126, 234, 0.2)',
+        background: 'linear-gradient(145deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.04) 100%)',
+        border: '1px solid rgba(255, 255, 255, 0.15)',
         borderRadius: 12,
+        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.08)',
       }}>
         <div style={{
           display: 'flex',
@@ -2096,7 +2088,7 @@ function SendForm({ isMobile, bulkSendRecipients, setBulkSendRecipients, handleA
           <div style={{
             fontSize: isMobile ? 11 : 13,
             fontWeight: 700,
-            color: '#1a1a1a',
+            color: '#e0e0e0',
           }}>
             {isMobile ? '🔓 ウォレット資産（読み取りのみ）' : '🔓 あなたのウォレット内の資産（読み取りのみ）'}
           </div>
@@ -2104,20 +2096,25 @@ function SendForm({ isMobile, bulkSendRecipients, setBulkSendRecipients, handleA
             onClick={() => setBalanceVisible(!balanceVisible)}
             style={{
               padding: '4px 10px',
-              background: 'rgba(102, 126, 234, 0.1)',
-              border: '1px solid rgba(102, 126, 234, 0.3)',
+              background: 'linear-gradient(145deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.08) 100%)',
+              border: '1px solid rgba(255, 255, 255, 0.25)',
               borderRadius: 6,
-              color: '#667eea',
+              color: '#93c5fd',
               fontSize: isMobile ? 11 : 12,
               fontWeight: 600,
               cursor: 'pointer',
-              transition: 'all 0.2s',
+              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+              boxShadow: '0 2px 6px rgba(0, 0, 0, 0.1)',
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.background = 'rgba(102, 126, 234, 0.2)';
+              e.currentTarget.style.background = 'linear-gradient(145deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0.12) 100%)';
+              e.currentTarget.style.transform = 'translateY(-1px)';
+              e.currentTarget.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.15)';
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'rgba(102, 126, 234, 0.1)';
+              e.currentTarget.style.background = 'linear-gradient(145deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.08) 100%)';
+              e.currentTarget.style.transform = 'translateY(0)';
+              e.currentTarget.style.boxShadow = '0 2px 6px rgba(0, 0, 0, 0.1)';
             }}
           >
             {balanceVisible ? '👁️ 隠す' : '👁️ 表示'}
@@ -2197,41 +2194,52 @@ function SendForm({ isMobile, bulkSendRecipients, setBulkSendRecipients, handleA
         </div>
       </div>
 
-      {/* JPYC/MATIC準備ボタン */}
-      <button
-        onClick={() => setShowPrepModal(true)}
-        style={{
-          width: '100%',
-          padding: isMobile ? '14px 18px' : '16px 20px',
-          marginBottom: 20,
-          background: parseFloat(balances.jpyc.formatted) === 0 || parseFloat(balances.matic.formatted) < 0.02
-            ? 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)'
-            : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-          border: 'none',
-          borderRadius: 12,
-          color: '#ffffff',
-          fontSize: isMobile ? 14 : 15,
-          fontWeight: 600,
-          cursor: 'pointer',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-          transition: 'all 0.2s',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: 8,
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.transform = 'translateY(-2px)';
-          e.currentTarget.style.boxShadow = '0 6px 16px rgba(0,0,0,0.2)';
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.transform = 'translateY(0)';
-          e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
-        }}
-      >
-        {parseFloat(balances.jpyc.formatted) === 0 || parseFloat(balances.matic.formatted) < 0.02 ? '🟡' : '💡'}
-        <span>JPYCやガス(MATIC)がまだの方はこちら</span>
-      </button>
+      {/* JPYC/POL準備ボタン */}
+      <div style={{ marginBottom: 20 }}>
+        <button
+          onClick={() => setShowPrepModal(true)}
+          style={{
+            width: '100%',
+            padding: isMobile ? '14px 18px' : '16px 20px',
+            marginBottom: 8,
+            background: parseFloat(balances.jpyc.formatted) === 0 || parseFloat(balances.matic.formatted) < 0.02
+              ? 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)'
+              : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            border: 'none',
+            borderRadius: 12,
+            color: '#ffffff',
+            fontSize: isMobile ? 14 : 15,
+            fontWeight: 600,
+            cursor: 'pointer',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+            transition: 'all 0.2s',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 8,
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = 'translateY(-2px)';
+            e.currentTarget.style.boxShadow = '0 6px 16px rgba(0,0,0,0.2)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = 'translateY(0)';
+            e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+          }}
+        >
+          {parseFloat(balances.jpyc.formatted) === 0 || parseFloat(balances.matic.formatted) < 0.02 ? '🟡' : '💡'}
+          <span>JPYCやガス代(POL)がまだの方はこちら</span>
+        </button>
+        <div style={{
+          fontSize: isMobile ? 11 : 12,
+          color: 'rgba(255, 255, 255, 0.7)',
+          textAlign: 'center',
+          paddingLeft: 8,
+          paddingRight: 8,
+        }}>
+          JPYCの送金には少額のガス代（手数料）が必要になります。1回の送金あたり約0.01〜0.02 POLが必要です。
+        </div>
+      </div>
 
       {/* 送金モード表示 */}
       {sendMode && (
@@ -2239,20 +2247,24 @@ function SendForm({ isMobile, bulkSendRecipients, setBulkSendRecipients, handleA
           marginBottom: 20,
           padding: isMobile ? '14px 16px' : '16px 20px',
           background: sendMode === 'tenant'
-            ? 'linear-gradient(135deg, #764ba2 0%, #667eea 100%)'
+            ? 'linear-gradient(145deg, #8b5cf6 0%, #7c3aed 100%)'
             : sendMode === 'simple'
-            ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
-            : 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+            ? 'linear-gradient(145deg, #06b6d4 0%, #0891b2 100%)'
+            : 'linear-gradient(145deg, #6366f1 0%, #4f46e5 100%)',
           border: sendMode === 'tenant'
-            ? '3px solid #764ba2'
+            ? '1px solid rgba(139, 92, 246, 0.4)'
             : sendMode === 'simple'
-            ? '3px solid #10b981'
-            : '3px solid #3b82f6',
+            ? '1px solid rgba(6, 182, 212, 0.4)'
+            : '1px solid rgba(99, 102, 241, 0.4)',
           borderRadius: 12,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          boxShadow: '0 6px 20px rgba(0, 0, 0, 0.25)',
+          boxShadow: sendMode === 'tenant'
+            ? '0 6px 20px rgba(139, 92, 246, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
+            : sendMode === 'simple'
+            ? '0 6px 20px rgba(6, 182, 212, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
+            : '0 6px 20px rgba(99, 102, 241, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2)',
         }}>
           <div>
             <div style={{
@@ -2288,23 +2300,23 @@ function SendForm({ isMobile, bulkSendRecipients, setBulkSendRecipients, handleA
             }}
             style={{
               padding: isMobile ? '8px 14px' : '10px 18px',
-              background: '#ffffff',
-              border: '2px solid rgba(255,255,255,0.9)',
+              background: 'linear-gradient(145deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.85) 100%)',
+              border: '1px solid rgba(255, 255, 255, 0.6)',
               borderRadius: 8,
-              color: sendMode === 'tenant' ? '#764ba2' : sendMode === 'simple' ? '#10b981' : '#3b82f6',
+              color: sendMode === 'tenant' ? '#8b5cf6' : sendMode === 'simple' ? '#06b6d4' : '#6366f1',
               fontSize: isMobile ? 13 : 14,
               fontWeight: 700,
               cursor: 'pointer',
-              transition: 'all 0.2s',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255, 255, 255, 0.5)',
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.transform = 'scale(1.05)';
-              e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.25)';
+              e.currentTarget.style.transform = 'translateY(-2px) scale(1.05)';
+              e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255, 255, 255, 0.6)';
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.transform = 'scale(1)';
-              e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)';
+              e.currentTarget.style.transform = 'translateY(0) scale(1)';
+              e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255, 255, 255, 0.5)';
             }}
           >
             変更
@@ -2317,11 +2329,13 @@ function SendForm({ isMobile, bulkSendRecipients, setBulkSendRecipients, handleA
         <div style={{
           marginBottom: 16,
           padding: isMobile ? '10px 12px' : '12px 14px',
-          background: 'rgba(255, 215, 0, 0.1)',
-          border: '1px solid rgba(255, 215, 0, 0.2)',
+          background: 'linear-gradient(145deg, rgba(251, 191, 36, 0.15) 0%, rgba(245, 158, 11, 0.1) 100%)',
+          border: '1px solid rgba(251, 191, 36, 0.3)',
           borderRadius: 8,
           fontSize: isMobile ? 11 : 12,
           lineHeight: 1.5,
+          color: '#fbbf24',
+          boxShadow: '0 2px 6px rgba(251, 191, 36, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
         }}>
           💡 メッセージを書くとkodomi算出に有利になります
         </div>
@@ -4559,13 +4573,14 @@ function ReceiveAddress({ isMobile }: { isMobile: boolean }) {
   return (
     <>
       <div style={{
-        background: '#ffffff',
-        border: '2px solid rgba(59, 130, 246, 0.2)',
+        background: 'linear-gradient(145deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.06) 100%)',
+        border: '1px solid rgba(255, 255, 255, 0.25)',
         borderRadius: isMobile ? 16 : 20,
         padding: isMobile ? '16px 20px' : '20px 28px',
-        boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
+        backdropFilter: 'blur(20px)',
+        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3), 0 2px 8px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
       }}>
-        <h2 style={{ margin: '0 0 8px 0', fontSize: isMobile ? 18 : 20, fontWeight: 700, color: '#1a1a1a' }}>
+        <h2 style={{ margin: '0 0 8px 0', fontSize: isMobile ? 18 : 20, fontWeight: 700, color: '#e0e0e0' }}>
           💴 受け取りアドレス
         </h2>
 
@@ -4575,17 +4590,24 @@ function ReceiveAddress({ isMobile }: { isMobile: boolean }) {
             onClick={handleCopy}
             style={{
               padding: isMobile ? '10px' : '12px',
-              background: copySuccess ? '#d1fae5' : '#f7fafc',
-              border: copySuccess ? '2px solid #10b981' : '2px solid #e2e8f0',
+              background: copySuccess
+                ? 'linear-gradient(145deg, rgba(6, 182, 212, 0.2) 0%, rgba(8, 145, 178, 0.15) 100%)'
+                : 'linear-gradient(145deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.04) 100%)',
+              border: copySuccess
+                ? '1px solid rgba(6, 182, 212, 0.4)'
+                : '1px solid rgba(255, 255, 255, 0.15)',
               borderRadius: 12,
               marginBottom: 8,
               cursor: 'pointer',
-              transition: 'all 0.2s',
+              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+              boxShadow: copySuccess
+                ? '0 4px 12px rgba(6, 182, 212, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1)'
+                : '0 2px 8px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.05)',
             }}
           >
             <div style={{
               fontSize: isMobile ? 11 : 12,
-              color: '#718096',
+              color: copySuccess ? '#06b6d4' : 'rgba(255, 255, 255, 0.6)',
               marginBottom: 4,
               fontWeight: 600,
             }}>
@@ -4595,7 +4617,7 @@ function ReceiveAddress({ isMobile }: { isMobile: boolean }) {
               wordBreak: 'break-all',
               fontSize: isMobile ? 13 : 14,
               fontFamily: 'monospace',
-              color: '#1a1a1a',
+              color: '#e0e0e0',
               fontWeight: 500,
             }}>
               {address}
@@ -4610,16 +4632,31 @@ function ReceiveAddress({ isMobile }: { isMobile: boolean }) {
             width: '100%',
             padding: isMobile ? '12px' : '14px',
             background: address
-              ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
-              : '#cccccc',
-            border: 'none',
+              ? 'linear-gradient(145deg, #6366f1 0%, #4f46e5 100%)'
+              : 'linear-gradient(145deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%)',
+            border: address ? '1px solid rgba(99, 102, 241, 0.4)' : '1px solid rgba(255, 255, 255, 0.1)',
             borderRadius: 12,
             color: '#ffffff',
             fontSize: isMobile ? 15 : 16,
             fontWeight: 700,
             cursor: address ? 'pointer' : 'not-allowed',
-            boxShadow: address ? '0 4px 12px rgba(16, 185, 129, 0.3)' : 'none',
-            opacity: address ? 1 : 0.6,
+            boxShadow: address
+              ? '0 4px 16px rgba(99, 102, 241, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
+              : 'none',
+            opacity: address ? 1 : 0.4,
+            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+          }}
+          onMouseEnter={(e) => {
+            if (address) {
+              e.currentTarget.style.transform = 'translateY(-2px)';
+              e.currentTarget.style.boxShadow = '0 6px 24px rgba(99, 102, 241, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3)';
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (address) {
+              e.currentTarget.style.transform = 'translateY(0)';
+              e.currentTarget.style.boxShadow = '0 4px 16px rgba(99, 102, 241, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)';
+            }
           }}
         >
           {address ? '📱 QRコードを表示' : 'ウォレット未接続'}
@@ -6256,14 +6293,15 @@ function HistorySection({
 
   return (
     <div style={{
-      background: 'linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)',
-      border: '1px solid rgba(0,0,0,0.08)',
+      background: 'linear-gradient(145deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.06) 100%)',
+      border: '1px solid rgba(255, 255, 255, 0.25)',
       borderRadius: isMobile ? 16 : 24,
       padding: isMobile ? 20 : 28,
       marginBottom: isMobile ? 24 : 32,
-      boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+      backdropFilter: 'blur(20px)',
+      boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3), 0 2px 8px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
     }}>
-      <h2 style={{ margin: '0 0 16px 0', fontSize: isMobile ? 18 : 22, fontWeight: 700 }}>
+      <h2 style={{ margin: '0 0 16px 0', fontSize: isMobile ? 18 : 22, fontWeight: 700, color: '#e0e0e0' }}>
         📥📤 送受信履歴
       </h2>
 
@@ -6279,30 +6317,41 @@ function HistorySection({
             flex: 1,
             padding: isMobile ? '10px 16px' : '12px 20px',
             background: activeTab === 'received'
-              ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
-              : 'rgba(255, 255, 255, 0.1)',
+              ? 'linear-gradient(145deg, #6366f1 0%, #8b5cf6 100%)'
+              : 'linear-gradient(145deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.04) 100%)',
             border: activeTab === 'received'
-              ? 'none'
-              : '1px solid rgba(255, 255, 255, 0.2)',
+              ? '1px solid rgba(99, 102, 241, 0.4)'
+              : '1px solid rgba(255, 255, 255, 0.15)',
             borderRadius: 8,
             color: '#ffffff',
             fontSize: isMobile ? 14 : 15,
             fontWeight: 600,
             cursor: 'pointer',
-            transition: 'all 0.2s',
+            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             gap: 6,
+            boxShadow: activeTab === 'received'
+              ? '0 4px 16px rgba(99, 102, 241, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
+              : '0 2px 6px rgba(0, 0, 0, 0.1)',
           }}
           onMouseEnter={(e) => {
             if (activeTab !== 'received') {
-              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)';
+              e.currentTarget.style.background = 'linear-gradient(145deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.06) 100%)';
+              e.currentTarget.style.transform = 'translateY(-1px)';
+            } else {
+              e.currentTarget.style.transform = 'translateY(-2px)';
+              e.currentTarget.style.boxShadow = '0 6px 24px rgba(99, 102, 241, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3)';
             }
           }}
           onMouseLeave={(e) => {
             if (activeTab !== 'received') {
-              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+              e.currentTarget.style.background = 'linear-gradient(145deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.04) 100%)';
+              e.currentTarget.style.transform = 'translateY(0)';
+            } else {
+              e.currentTarget.style.transform = 'translateY(0)';
+              e.currentTarget.style.boxShadow = '0 4px 16px rgba(99, 102, 241, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)';
             }
           }}
         >
@@ -6327,26 +6376,37 @@ function HistorySection({
             flex: 1,
             padding: isMobile ? '10px 16px' : '12px 20px',
             background: activeTab === 'sent'
-              ? 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)'
-              : 'rgba(255, 255, 255, 0.1)',
+              ? 'linear-gradient(145deg, #a855f7 0%, #9333ea 100%)'
+              : 'linear-gradient(145deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.04) 100%)',
             border: activeTab === 'sent'
-              ? 'none'
-              : '1px solid rgba(255, 255, 255, 0.2)',
+              ? '1px solid rgba(168, 85, 247, 0.4)'
+              : '1px solid rgba(255, 255, 255, 0.15)',
             borderRadius: 8,
             color: '#ffffff',
             fontSize: isMobile ? 14 : 15,
             fontWeight: 600,
             cursor: 'pointer',
-            transition: 'all 0.2s',
+            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+            boxShadow: activeTab === 'sent'
+              ? '0 4px 16px rgba(168, 85, 247, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
+              : '0 2px 6px rgba(0, 0, 0, 0.1)',
           }}
           onMouseEnter={(e) => {
             if (activeTab !== 'sent') {
-              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)';
+              e.currentTarget.style.background = 'linear-gradient(145deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.06) 100%)';
+              e.currentTarget.style.transform = 'translateY(-1px)';
+            } else {
+              e.currentTarget.style.transform = 'translateY(-2px)';
+              e.currentTarget.style.boxShadow = '0 6px 24px rgba(168, 85, 247, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3)';
             }
           }}
           onMouseLeave={(e) => {
             if (activeTab !== 'sent') {
-              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+              e.currentTarget.style.background = 'linear-gradient(145deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.04) 100%)';
+              e.currentTarget.style.transform = 'translateY(0)';
+            } else {
+              e.currentTarget.style.transform = 'translateY(0)';
+              e.currentTarget.style.boxShadow = '0 4px 16px rgba(168, 85, 247, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)';
             }
           }}
         >

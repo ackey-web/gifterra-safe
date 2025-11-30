@@ -349,15 +349,30 @@ export function ProfilePage() {
     <div
       style={{
         minHeight: '100vh',
-        background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%)',
+        backgroundImage: 'url(/UI-back.jpg)',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundAttachment: 'fixed',
+        backgroundRepeat: 'no-repeat',
         color: '#e0e0e0',
         padding: isMobile ? 16 : 24,
+        position: 'relative',
       }}
     >
+      {/* 高級感のあるグラデーションオーバーレイ */}
+      <div style={{
+        position: 'fixed',
+        inset: 0,
+        background: 'linear-gradient(135deg, rgba(0, 0, 0, 0.6) 0%, rgba(30, 20, 50, 0.75) 50%, rgba(20, 10, 40, 0.8) 100%)',
+        pointerEvents: 'none',
+        zIndex: 0,
+      }} />
       <div
         style={{
           maxWidth: 800,
           margin: '0 auto',
+          position: 'relative',
+          zIndex: 1,
         }}
       >
         {/* ヘッダー */}
