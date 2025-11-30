@@ -2406,15 +2406,15 @@ function SendForm({ isMobile, bulkSendRecipients, setBulkSendRecipients, handleA
         <div style={{
           marginBottom: 16,
           padding: isMobile ? '12px 14px' : '14px 16px',
-          background: 'rgba(251, 191, 36, 0.1)',
-          border: '1px solid rgba(251, 191, 36, 0.3)',
+          background: '#ffffff',
+          border: '2px solid #dc2626',
           borderRadius: 12,
         }}>
           <div style={{
             fontSize: isMobile ? 13 : 14,
             fontWeight: 600,
             marginBottom: 8,
-            color: '#d97706',
+            color: '#dc2626',
             display: 'flex',
             alignItems: 'center',
             gap: 6,
@@ -2425,7 +2425,7 @@ function SendForm({ isMobile, bulkSendRecipients, setBulkSendRecipients, handleA
           <div style={{
             fontSize: isMobile ? 11 : 12,
             lineHeight: 1.6,
-            color: '#92400e',
+            color: '#dc2626',
           }}>
             • アプリ内では送信者情報が非表示になります<br />
             • ブロックチェーン上は公開されます（Polygonscan等で確認可能）<br />
