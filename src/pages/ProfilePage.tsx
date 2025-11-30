@@ -1,0 +1,1907 @@
+// src/pages/ProfilePage.tsx
+// プロフィールページ
+
+import { useState, useEffect } from 'react';
+import { usePrivy } from '@privy-io/react-auth';
+import { useAddress } from '@thirdweb-dev/react';
+import { supabase } from '../lib/supabase';
+import { ProfileEditModal } from '../components/ProfileEditModal';
+import { useIsMobile } from '../hooks/useIsMobile';
+import { ROLE_LABELS } from '../types/profile';
+import type { UserRole, CustomLink } from '../types/profile';
+import { useFollow } from '../hooks/useFollow';
+import { useFollowLists } from '../hooks/useFollowLists';
+import { FollowListModal } from '../components/FollowListModal';
+import { TipModal } from '../components/TipModal';
+import { TenantTipModal } from '../components/TenantTipModal';
+import { ContributionGauge } from '../components/ContributionGauge';
+import { useRoleUsers } from '../hooks/useRoleUsers';
+import { RoleUsersModal } from '../components/RoleUsersModal';
+import { addBookmark, removeBookmark, isBookmarked } from '../hooks/useUserBookmarks';
+import { useMyTenantApplication } from '../hooks/useTenantApplications';
+import { useUserContribution } from '../hooks/useUserContribution';
+import { useUserKodomi } from '../hooks/useUserKodomi';
+
+interface UserProfile {
+  display_name: string;
+  bio: string;
+  avatar_url?: string;
+  receive_message?: string;
+  cover_image_url?: string;
+  website_url?: string;
+  custom_links?: CustomLink[];
+  roles?: UserRole[];
+  location?: string;
+  twitter_id?: string;
+  wallet_address: string;
+  show_wallet_address?: boolean;
+  reject_anonymous_transfers?: boolean;
+  show_reward_button?: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export function ProfilePage() {
+  const isMobile = useIsMobile(); // Capacitorネイティブ & レスポンシブWeb対応
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [showFollowListModal, setShowFollowListModal] = useState(false);
+  const [followListTab, setFollowListTab] = useState<'followers' | 'following'>('followers');
+  const [showTipModal, setShowTipModal] = useState(false);
+  const [showTenantTipModal, setShowTenantTipModal] = useState(false);
+  const [showRoleUsersModal, setShowRoleUsersModal] = useState(false);
+  const [profileTab, setProfileTab] = useState<'tenant' | 'bio'>('tenant');
+  const [selectedRole, setSelectedRole] = useState<UserRole | null>(null);
+  const [isUserBookmarked, setIsUserBookmarked] = useState(false);
+  const [isBookmarkLoading, setIsBookmarkLoading] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [showShareLinkModal, setShowShareLinkModal] = useState(false);
+
+  // viewModeをlocalStorageから取得（Mypageと共有）
+  const [viewMode, setViewMode] = useState<'flow' | 'tenant'>(() => {
+    const saved = localStorage.getItem('gifterra_view_mode');
+    return (saved === 'tenant' || saved === 'flow') ? saved : 'flow';
+  });
+
+  // localStorageの変更を監視してviewModeを同期
+  useEffect(() => {
+    const handleStorageChange = () => {
+      const saved = localStorage.getItem('gifterra_view_mode');
+      if (saved === 'tenant' || saved === 'flow') {
+        setViewMode(saved);
+      }
+    };
+
+    // storage イベントは他のタブからの変更のみを検出するため、
+    // 同じタブ内の変更を検出するには定期的にチェック
+    const interval = setInterval(handleStorageChange, 500);
+    window.addEventListener('storage', handleStorageChange);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, []);
+
+  const { user } = usePrivy();
+  const thirdwebAddress = useAddress(); // Thirdwebウォレット（MetaMaskなど）
+
+  // URLパラメータからアドレスを取得（他のユーザーのプロフィール表示用）
+  const path = location.pathname;
+  const pathAddress = path.split('/profile/')[1] || '';
+
+  // ウォレットアドレスを取得（Privy埋め込みウォレット優先、なければThirdweb）
+  // Mypageと同じロジックで、メタマスクアカウント切り替えに対応
+  const privyEmbeddedWalletAddress = user?.wallet?.address;
+  const currentUserWalletAddress = privyEmbeddedWalletAddress || thirdwebAddress || '';
+
+  // 表示するウォレットアドレス（URLパラメータがあればそれ、なければ自分のアドレス）
+  const walletAddress = pathAddress || currentUserWalletAddress;
+
+  // 他のユーザーのプロフィールを見ているかどうか（自分のアドレスと異なる場合）
+  const isViewingOtherProfile = pathAddress &&
+    pathAddress.length > 0 &&
+    pathAddress.toLowerCase() !== currentUserWalletAddress.toLowerCase();
+
+  // 対象ユーザーへの自分のkodomi値を取得
+  const userKodomi = useUserKodomi(walletAddress);
+
+  // テナント申請状況を取得（自分がテナントオーナーかどうか確認用）
+  const { application: myApplication } = useMyTenantApplication();
+  const isMyProfileAndTenantOwner = !isViewingOtherProfile && myApplication?.status === 'approved';
+
+  // 表示中のプロフィールのテナント申請状況を取得（表示ユーザーがテナントオーナーかどうか）
+  const [profileOwnerApplication, setProfileOwnerApplication] = useState<any>(null);
+  const [loadingProfileOwnerTenant, setLoadingProfileOwnerTenant] = useState(true);
+
+  useEffect(() => {
+    async function fetchProfileOwnerTenantStatus() {
+      if (!walletAddress) {
+        setProfileOwnerApplication(null);
+        setLoadingProfileOwnerTenant(false);
+        return;
+      }
+
+      try {
+        setLoadingProfileOwnerTenant(true);
+        const { supabase } = await import('../lib/supabase');
+        const { data, error } = await supabase
+          .from('tenant_applications')
+          .select('*')
+          .eq('applicant_address', walletAddress.toLowerCase())
+          .eq('status', 'approved')
+          .maybeSingle();
+
+        if (error) throw error;
+        setProfileOwnerApplication(data);
+      } catch (err) {
+        console.error('❌ プロフィール所有者のテナント状態取得エラー:', err);
+        setProfileOwnerApplication(null);
+      } finally {
+        setLoadingProfileOwnerTenant(false);
+      }
+    }
+
+    fetchProfileOwnerTenantStatus();
+  }, [walletAddress]);
+
+  // プロフィール所有者がテナントオーナーかどうか
+  const isProfileOwnerTenantApproved = !!profileOwnerApplication;
+
+  // テナント機能を表示するかどうか
+  // 条件: プロフィール所有者が自分 かつ viewMode === 'tenant' の場合のみ表示
+  // 他人のプロフィールの場合は、相手がテナントならSTUDIO表示
+  const shouldShowTenantFeatures = isViewingOtherProfile
+    ? isProfileOwnerTenantApproved  // 他人のプロフィール: テナント承認済みなら表示
+    : (viewMode === 'tenant' && isProfileOwnerTenantApproved); // 自分のプロフィール: STUDIOモード かつ テナント承認済み
+
+  // 貢献度データを取得（他人のプロフィール & テナント承認済みの場合のみ）
+  const { kodomi, isLoading: isContributionLoading } = useUserContribution(
+    isViewingOtherProfile ? currentUserWalletAddress : null,
+    shouldShowTenantFeatures ? walletAddress : null
+  );
+
+  // フォロー機能（常にフォロワー数・フォロー中の数を取得、フォローボタンは他人のみ）
+  const {
+    isFollowing,
+    followerCount,
+    followingCount,
+    isLoading: isFollowLoading,
+    toggleFollow,
+  } = useFollow(
+    walletAddress, // 表示中のプロフィールのアドレス（自分・他人問わず）
+    isViewingOtherProfile ? currentUserWalletAddress : null // 他人の場合のみ自分のアドレスを渡す
+  );
+
+  // フォロー/フォロワーリストを取得（相互フォロー判定のためcurrentUserAddressも渡す）
+  const {
+    followers,
+    following,
+    isLoading: isFollowListsLoading,
+    refetch: refetchFollowLists,
+  } = useFollowLists(walletAddress, currentUserWalletAddress);
+
+  // ロール別ユーザーリストを取得
+  const {
+    users: roleUsers,
+    isLoading: isRoleUsersLoading,
+  } = useRoleUsers(selectedRole, showRoleUsersModal);
+
+  // プロフィールデータ取得
+  const fetchProfile = async () => {
+    if (!walletAddress) {
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      console.log('📖 プロフィール読み込み開始:', walletAddress.toLowerCase());
+
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .eq('tenant_id', 'default')
+        .eq('wallet_address', walletAddress.toLowerCase())
+        .maybeSingle(); // single() の代わりに maybeSingle() を使用
+
+      if (error) {
+        console.error('❌ プロフィール読み込みエラー:', error);
+        setProfile(null);
+      } else {
+        console.log('✅ プロフィール読み込み成功:', {
+          twitter_id: data?.twitter_id,
+          reject_anonymous_transfers: data?.reject_anonymous_transfers,
+          location: data?.location,
+          roles: data?.roles,
+          full_data: data,
+        });
+        setProfile(data || null);
+      }
+    } catch (err) {
+      console.error('❌ プロフィール読み込み例外:', err);
+      setProfile(null);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchProfile();
+  }, [walletAddress]);
+
+  // ブックマーク状態をチェック
+  useEffect(() => {
+    const checkBookmarkStatus = async () => {
+      if (!currentUserWalletAddress || !walletAddress || !isViewingOtherProfile) {
+        setIsUserBookmarked(false);
+        return;
+      }
+
+      const bookmarked = await isBookmarked(currentUserWalletAddress, walletAddress);
+      setIsUserBookmarked(bookmarked);
+    };
+
+    checkBookmarkStatus();
+  }, [currentUserWalletAddress, walletAddress, isViewingOtherProfile]);
+
+  // トースト通知の自動非表示
+  useEffect(() => {
+    if (toastMessage) {
+      const timer = setTimeout(() => {
+        setToastMessage(null);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [toastMessage]);
+
+  const handleBack = () => {
+    // マイページに戻る
+    window.location.href = '/';
+  };
+
+  // フォローバック用のコールバック関数
+  const handleFollowUser = async (targetAddress: string) => {
+    if (!currentUserWalletAddress) {
+      return;
+    }
+
+    try {
+      // フォロー処理
+      const { error } = await supabase.from('user_follows').insert({
+        tenant_id: 'default',
+        follower_address: currentUserWalletAddress.toLowerCase(),
+        following_address: targetAddress.toLowerCase(),
+      });
+
+      if (error) {
+        throw error;
+      }
+    } catch (err) {
+      throw err;
+    }
+  };
+
+  // ブックマーク追加・削除
+  const handleToggleBookmark = async () => {
+    if (!currentUserWalletAddress || !walletAddress) {
+      return;
+    }
+
+    setIsBookmarkLoading(true);
+
+    try {
+      if (isUserBookmarked) {
+        // ブックマークから削除
+        // まず現在のブックマークIDを取得する必要がある
+        const { data } = await supabase
+          .from('user_bookmarks')
+          .select('id')
+          .eq('user_address', currentUserWalletAddress.toLowerCase())
+          .eq('bookmarked_address', walletAddress.toLowerCase())
+          .single();
+
+        if (data) {
+          const result = await removeBookmark(data.id);
+          if (result.success) {
+            setIsUserBookmarked(false);
+            setToastMessage('ブックマークから除外しました');
+          }
+        }
+      } else {
+        // ブックマークに追加
+        const result = await addBookmark(currentUserWalletAddress, walletAddress);
+        if (result.success) {
+          setIsUserBookmarked(true);
+          setToastMessage('このユーザーをブックマークに追加しました');
+        } else if (result.error) {
+          setToastMessage(result.error);
+        }
+      }
+    } catch (err) {
+      console.error('ブックマーク操作エラー:', err);
+      setToastMessage('エラーが発生しました');
+    } finally {
+      setIsBookmarkLoading(false);
+    }
+  };
+
+  // チップ送信処理
+  const handleSendTip = (amount: number) => {
+    if (!walletAddress) {
+      alert('送信先のアドレスが取得できません');
+      return Promise.reject(new Error('送信先のアドレスが取得できません'));
+    }
+
+    // 送金ページに遷移（金額とアドレスを含む）
+    const params = new URLSearchParams({
+      to: walletAddress,
+      amount: amount.toString(),
+      isTip: 'true',
+    });
+    window.location.href = `/mypage?${params.toString()}`;
+
+    // ページ遷移が完了するまでPromiseを解決しない
+    return new Promise<void>(() => {});
+  };
+
+  return (
+    <div
+      style={{
+        minHeight: '100vh',
+        backgroundImage: 'url(/UI-back.jpg)',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundAttachment: 'fixed',
+        backgroundRepeat: 'no-repeat',
+        color: '#e0e0e0',
+        padding: isMobile ? 16 : 24,
+        position: 'relative',
+      }}
+    >
+      {/* 高級感のあるグラデーションオーバーレイ */}
+      <div style={{
+        position: 'fixed',
+        inset: 0,
+        background: 'linear-gradient(135deg, rgba(0, 0, 0, 0.6) 0%, rgba(30, 20, 50, 0.75) 50%, rgba(20, 10, 40, 0.8) 100%)',
+        pointerEvents: 'none',
+        zIndex: 0,
+      }} />
+      <div
+        style={{
+          maxWidth: 800,
+          margin: '0 auto',
+          position: 'relative',
+          zIndex: 1,
+        }}
+      >
+        {/* ヘッダー */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: 24,
+          }}
+        >
+          <button
+            onClick={handleBack}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: isMobile ? '10px 16px' : '12px 20px',
+              background: 'linear-gradient(145deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.08) 100%)',
+              border: '1px solid rgba(255, 255, 255, 0.25)',
+              borderRadius: 12,
+              color: '#EAF2FF',
+              fontSize: isMobile ? 14 : 15,
+              fontWeight: 600,
+              cursor: 'pointer',
+              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.2)',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'linear-gradient(145deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0.12) 100%)';
+              e.currentTarget.style.transform = 'translateY(-2px)';
+              e.currentTarget.style.boxShadow = '0 6px 16px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.3)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'linear-gradient(145deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.08) 100%)';
+              e.currentTarget.style.transform = 'translateY(0)';
+              e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.2)';
+            }}
+          >
+            ← 戻る
+          </button>
+          <h1
+            style={{
+              margin: 0,
+              fontSize: isMobile ? 20 : 24,
+              fontWeight: 700,
+              color: '#EAF2FF',
+            }}
+          >
+            プロフィール
+          </h1>
+          {/* 自分のプロフィールの場合のみ編集ボタンとシェアボタンを表示 */}
+          {!isViewingOtherProfile && (
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                onClick={() => setShowShareLinkModal(true)}
+                style={{
+                  padding: isMobile ? '10px 16px' : '12px 20px',
+                  background: 'linear-gradient(145deg, #3b82f6 0%, #2563eb 100%)',
+                  border: '1px solid rgba(59, 130, 246, 0.4)',
+                  borderRadius: 12,
+                  color: '#fff',
+                  fontSize: isMobile ? 14 : 15,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  boxShadow: '0 4px 16px rgba(59, 130, 246, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-2px) scale(1.02)';
+                  e.currentTarget.style.boxShadow = '0 6px 24px rgba(59, 130, 246, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0) scale(1)';
+                  e.currentTarget.style.boxShadow = '0 4px 16px rgba(59, 130, 246, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)';
+                }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="18" cy="5" r="3"/>
+                  <circle cx="6" cy="12" r="3"/>
+                  <circle cx="18" cy="19" r="3"/>
+                  <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
+                  <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+                </svg>
+                シェア
+              </button>
+              <button
+                onClick={() => setShowEditModal(true)}
+                style={{
+                  padding: isMobile ? '10px 16px' : '12px 20px',
+                  background: 'linear-gradient(145deg, #667eea 0%, #764ba2 100%)',
+                  border: '1px solid rgba(102, 126, 234, 0.4)',
+                  borderRadius: 12,
+                  color: '#fff',
+                  fontSize: isMobile ? 14 : 15,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                  boxShadow: '0 4px 16px rgba(102, 126, 234, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-2px) scale(1.02)';
+                  e.currentTarget.style.boxShadow = '0 6px 24px rgba(102, 126, 234, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0) scale(1)';
+                  e.currentTarget.style.boxShadow = '0 4px 16px rgba(102, 126, 234, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)';
+                }}
+              >
+                編集
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* プロフィールカード */}
+        <div
+          style={{
+            background: 'linear-gradient(145deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.06) 100%)',
+            border: '1px solid rgba(255, 255, 255, 0.25)',
+            borderRadius: isMobile ? 20 : 24,
+            overflow: 'hidden',
+            backdropFilter: 'blur(20px)',
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3), 0 2px 8px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
+          }}
+        >
+          {isLoading ? (
+            <div style={{ textAlign: 'center', padding: 40 }}>
+              <p style={{ fontSize: 14, color: 'rgba(255, 255, 255, 0.6)' }}>
+                読み込み中...
+              </p>
+            </div>
+          ) : (
+            <>
+              {/* カバー画像 */}
+              <div
+                style={{
+                  width: '100%',
+                  aspectRatio: '16 / 9',
+                  overflow: 'hidden',
+                  background: profile?.cover_image_url
+                    ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+                    : '#f3f4f6',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  position: 'relative',
+                }}
+              >
+                {profile?.cover_image_url ? (
+                  <img
+                    src={profile.cover_image_url}
+                    alt="カバー画像"
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover',
+                    }}
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                    }}
+                  />
+                ) : (
+                  <img
+                    src="/mas.png"
+                    alt=""
+                    style={{
+                      maxWidth: '30%',
+                      maxHeight: '30%',
+                      opacity: 0.3,
+                      objectFit: 'contain',
+                    }}
+                  />
+                )}
+              </div>
+
+              {/* チップボタンとフォローボタン（カバー画像の下） */}
+              {isViewingOtherProfile && currentUserWalletAddress && (
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    gap: isMobile ? '8px' : '12px',
+                    padding: isMobile ? '12px 16px' : '16px 20px',
+                    borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+                  }}
+                >
+                  {/* 左側: 貢献度ゲージ（テナント承認済みの場合のみ表示） */}
+                  <div style={{ flex: '0 0 auto' }}>
+                    {shouldShowTenantFeatures && !isContributionLoading && (
+                      <ContributionGauge kodomi={kodomi} tenantAddress={walletAddress} isMobile={isMobile} />
+                    )}
+                  </div>
+
+                  {/* 中央: このユーザーへのkodomiゲージ（横伸びゲージ） */}
+                  {!userKodomi.loading && !userKodomi.error && (
+                    <div style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: isMobile ? 6 : 8,
+                      marginLeft: isMobile ? 0 : 16,
+                      flex: 1,
+                      maxWidth: isMobile ? '100%' : 280,
+                    }}>
+                      {/* 💸 JPYC ゲージ */}
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: isMobile ? 10 : 12,
+                      }}>
+                        <img
+                          src="/JPYC-logo.png"
+                          alt="JPYC"
+                          style={{
+                            width: isMobile ? 20 : 24,
+                            height: isMobile ? 20 : 24,
+                            filter: 'drop-shadow(0 2px 4px rgba(74, 158, 255, 0.5))',
+                          }}
+                        />
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{
+                            height: isMobile ? 12 : 16,
+                            background: 'linear-gradient(180deg, rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0.7) 100%)',
+                            borderRadius: 10,
+                            overflow: 'hidden',
+                            position: 'relative',
+                            border: '2px solid rgba(74, 158, 255, 0.3)',
+                            boxShadow: 'inset 0 2px 8px rgba(0, 0, 0, 0.6), 0 4px 12px rgba(0, 0, 0, 0.3)',
+                          }}>
+                            <div style={{
+                              width: `${Math.min(100, (userKodomi.jpyc.level / 100) * 100)}%`,
+                              height: '100%',
+                              background: 'linear-gradient(135deg, #4a9eff 0%, #2d7dd2 50%, #1e5fa0 100%)',
+                              transition: 'width 0.5s ease',
+                              boxShadow: '0 0 20px rgba(74, 158, 255, 0.8), inset 0 2px 4px rgba(255, 255, 255, 0.3)',
+                              position: 'relative',
+                            }}>
+                              <div style={{
+                                position: 'absolute',
+                                top: 0,
+                                left: 0,
+                                right: 0,
+                                height: '40%',
+                                background: 'linear-gradient(180deg, rgba(255, 255, 255, 0.4) 0%, transparent 100%)',
+                                borderRadius: '10px 10px 0 0',
+                              }} />
+                            </div>
+                          </div>
+                        </div>
+                        <span style={{
+                          fontSize: isMobile ? 13 : 15,
+                          fontWeight: 800,
+                          color: '#4a9eff',
+                          minWidth: isMobile ? 40 : 50,
+                          textAlign: 'right',
+                          textShadow: '0 2px 8px rgba(74, 158, 255, 0.8), 0 0 20px rgba(74, 158, 255, 0.5)',
+                        }}>
+                          Lv.{userKodomi.jpyc.displayLevel}
+                        </span>
+                      </div>
+
+                      {/* ⚡ 応援 ゲージ */}
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: isMobile ? 10 : 12,
+                      }}>
+                        <span style={{
+                          fontSize: isMobile ? 20 : 24,
+                          filter: 'drop-shadow(0 2px 4px rgba(255, 126, 51, 0.6))',
+                        }}>⚡</span>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{
+                            height: isMobile ? 12 : 16,
+                            background: 'linear-gradient(180deg, rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0.7) 100%)',
+                            borderRadius: 10,
+                            overflow: 'hidden',
+                            position: 'relative',
+                            border: '2px solid rgba(255, 126, 51, 0.3)',
+                            boxShadow: 'inset 0 2px 8px rgba(0, 0, 0, 0.6), 0 4px 12px rgba(0, 0, 0, 0.3)',
+                          }}>
+                            <div style={{
+                              width: `${Math.min(100, (userKodomi.resonance.level / 100) * 100)}%`,
+                              height: '100%',
+                              background: 'linear-gradient(135deg, #ff7e33 0%, #ff5722 50%, #d84315 100%)',
+                              transition: 'width 0.5s ease',
+                              boxShadow: '0 0 20px rgba(255, 126, 51, 0.8), inset 0 2px 4px rgba(255, 255, 255, 0.3)',
+                              position: 'relative',
+                            }}>
+                              <div style={{
+                                position: 'absolute',
+                                top: 0,
+                                left: 0,
+                                right: 0,
+                                height: '40%',
+                                background: 'linear-gradient(180deg, rgba(255, 255, 255, 0.4) 0%, transparent 100%)',
+                                borderRadius: '10px 10px 0 0',
+                              }} />
+                            </div>
+                          </div>
+                        </div>
+                        <span style={{
+                          fontSize: isMobile ? 13 : 15,
+                          fontWeight: 800,
+                          color: '#ff7e33',
+                          minWidth: isMobile ? 40 : 50,
+                          textAlign: 'right',
+                          textShadow: '0 2px 8px rgba(255, 126, 51, 0.8), 0 0 20px rgba(255, 126, 51, 0.5)',
+                        }}>
+                          {userKodomi.resonance.engagementScore}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 右側: ボタン群 */}
+                  <div
+                    style={{
+                      display: 'flex',
+                      gap: isMobile ? '8px' : '12px',
+                      marginLeft: 'auto',
+                    }}
+                  >
+                    {/* ブックマークボタン */}
+                    <button
+                    onClick={handleToggleBookmark}
+                    disabled={isBookmarkLoading}
+                    style={{
+                      padding: isMobile ? '10px 16px' : '12px 20px',
+                      background: isUserBookmarked
+                        ? 'linear-gradient(145deg, #fbbf24 0%, #f59e0b 100%)'
+                        : 'linear-gradient(145deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.08) 100%)',
+                      border: isUserBookmarked
+                        ? '1px solid rgba(251, 191, 36, 0.4)'
+                        : '1px solid rgba(255, 255, 255, 0.25)',
+                      borderRadius: 12,
+                      color: '#fff',
+                      fontSize: isMobile ? 18 : 20,
+                      fontWeight: 600,
+                      cursor: isBookmarkLoading ? 'not-allowed' : 'pointer',
+                      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                      boxShadow: isUserBookmarked
+                        ? '0 4px 16px rgba(251, 191, 36, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
+                        : '0 4px 12px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.2)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      opacity: isBookmarkLoading ? 0.6 : 1,
+                      minWidth: isMobile ? 48 : 52,
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!isBookmarkLoading) {
+                        e.currentTarget.style.transform = 'translateY(-2px) scale(1.05)';
+                        e.currentTarget.style.boxShadow = isUserBookmarked
+                          ? '0 6px 24px rgba(251, 191, 36, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3)'
+                          : '0 6px 16px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.3)';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!isBookmarkLoading) {
+                        e.currentTarget.style.transform = 'translateY(0) scale(1)';
+                        e.currentTarget.style.boxShadow = isUserBookmarked
+                          ? '0 4px 16px rgba(251, 191, 36, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
+                          : '0 4px 12px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.2)';
+                      }
+                    }}
+                  >
+                    ⭐
+                  </button>
+
+                  {/* チップボタン（ウォレットアドレスが公開されている場合のみ表示） */}
+                  {profile?.show_wallet_address !== false && (
+                    <button
+                      onClick={() => {
+                        // テナント承認済みユーザーにはTenantTipModal、それ以外は通常のTipModalを表示
+                        if (shouldShowTenantFeatures) {
+                          setShowTenantTipModal(true);
+                        } else {
+                          setShowTipModal(true);
+                        }
+                      }}
+                      style={{
+                        padding: isMobile ? '10px 16px' : '12px 20px',
+                        background: shouldShowTenantFeatures
+                          ? 'linear-gradient(145deg, #8b5cf6 0%, #7c3aed 100%)' // テナント専用は紫系
+                          : 'linear-gradient(145deg, #06b6d4 0%, #0891b2 100%)',
+                        border: shouldShowTenantFeatures
+                          ? '1px solid rgba(139, 92, 246, 0.4)'
+                          : '1px solid rgba(6, 182, 212, 0.4)',
+                        borderRadius: 12,
+                        color: '#fff',
+                        fontSize: isMobile ? 14 : 15,
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                        boxShadow: shouldShowTenantFeatures
+                          ? '0 4px 16px rgba(139, 92, 246, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
+                          : '0 4px 16px rgba(6, 182, 212, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.transform = 'translateY(-2px) scale(1.02)';
+                        e.currentTarget.style.boxShadow = shouldShowTenantFeatures
+                          ? '0 6px 24px rgba(139, 92, 246, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3)'
+                          : '0 6px 24px rgba(6, 182, 212, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = 'translateY(0) scale(1)';
+                        e.currentTarget.style.boxShadow = shouldShowTenantFeatures
+                          ? '0 4px 16px rgba(139, 92, 246, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
+                          : '0 4px 16px rgba(6, 182, 212, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)';
+                      }}
+                    >
+                      💰 チップを贈る
+                    </button>
+                  )}
+
+                  {/* Reward UIボタン（テナント所有者・STUDIOプラン以上のみ） */}
+                  {shouldShowTenantFeatures && profile?.show_reward_button !== false && (
+                    <button
+                      onClick={() => {
+                        window.location.href = `/reward?tenant=${walletAddress}`;
+                      }}
+                      style={{
+                        padding: isMobile ? '10px 16px' : '12px 20px',
+                        background: 'linear-gradient(145deg, #a855f7 0%, #9333ea 100%)',
+                        border: '1px solid rgba(168, 85, 247, 0.4)',
+                        borderRadius: 12,
+                        color: '#fff',
+                        fontSize: isMobile ? 14 : 15,
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                        boxShadow: '0 4px 16px rgba(168, 85, 247, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.transform = 'translateY(-2px) scale(1.02)';
+                        e.currentTarget.style.boxShadow = '0 6px 24px rgba(168, 85, 247, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = 'translateY(0) scale(1)';
+                        e.currentTarget.style.boxShadow = '0 4px 16px rgba(168, 85, 247, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)';
+                      }}
+                    >
+                      💎 Daily Reward
+                    </button>
+                  )}
+
+                  {/* フォローボタン */}
+                  <button
+                    onClick={toggleFollow}
+                    disabled={isFollowLoading}
+                    style={{
+                      padding: isMobile ? '10px 16px' : '12px 20px',
+                      background: isFollowing
+                        ? 'linear-gradient(145deg, #64748b 0%, #475569 100%)'
+                        : 'linear-gradient(145deg, #3b82f6 0%, #2563eb 100%)',
+                      border: isFollowing
+                        ? '1px solid rgba(100, 116, 139, 0.4)'
+                        : '1px solid rgba(59, 130, 246, 0.4)',
+                      borderRadius: 12,
+                      color: '#fff',
+                      fontSize: isMobile ? 14 : 15,
+                      fontWeight: 600,
+                      cursor: isFollowLoading ? 'not-allowed' : 'pointer',
+                      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                      opacity: isFollowLoading ? 0.6 : 1,
+                      boxShadow: isFollowing
+                        ? '0 4px 16px rgba(100, 116, 139, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
+                        : '0 4px 16px rgba(59, 130, 246, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)',
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!isFollowLoading) {
+                        e.currentTarget.style.transform = 'translateY(-2px) scale(1.02)';
+                        e.currentTarget.style.boxShadow = isFollowing
+                          ? '0 6px 24px rgba(100, 116, 139, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3)'
+                          : '0 6px 24px rgba(59, 130, 246, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3)';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!isFollowLoading) {
+                        e.currentTarget.style.transform = 'translateY(0) scale(1)';
+                        e.currentTarget.style.boxShadow = isFollowing
+                          ? '0 4px 16px rgba(100, 116, 139, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
+                          : '0 4px 16px rgba(59, 130, 246, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)';
+                      }
+                    }}
+                  >
+                    {isFollowLoading ? '処理中...' : isFollowing ? 'フォロー解除' : 'フォロー'}
+                  </button>
+                  </div>
+                </div>
+              )}
+
+              <div style={{ padding: isMobile ? 20 : 32 }}>
+                {/* アイコンと基本情報 */}
+                <div
+                  style={{
+                    display: 'flex',
+                    flexDirection: isMobile ? 'column' : 'row',
+                    gap: 20,
+                    alignItems: isMobile ? 'center' : 'flex-start',
+                    marginBottom: 24,
+                  }}
+                >
+                  {/* アイコン */}
+                  <div
+                    style={{
+                      width: isMobile ? 80 : 100,
+                      height: isMobile ? 80 : 100,
+                      background: profile?.avatar_url
+                        ? 'transparent'
+                        : 'linear-gradient(145deg, #6366f1 0%, #8b5cf6 100%)',
+                      borderRadius: '50%',
+                      overflow: 'hidden',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: isMobile ? 40 : 50,
+                      flexShrink: 0,
+                      border: '3px solid rgba(255, 255, 255, 0.2)',
+                      boxShadow: '0 8px 24px rgba(0, 0, 0, 0.3), inset 0 2px 4px rgba(255, 255, 255, 0.1)',
+                    }}
+                  >
+                    {profile?.avatar_url ? (
+                      <img
+                        src={profile.avatar_url}
+                        alt="プロフィール画像"
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'cover',
+                        }}
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                          e.currentTarget.parentElement!.innerHTML = '👤';
+                        }}
+                      />
+                    ) : (
+                      '👤'
+                    )}
+                  </div>
+
+                  {/* 表示名とロール */}
+                  <div style={{ flex: 1, textAlign: isMobile ? 'center' : 'left' }}>
+                    <h2
+                      style={{
+                        margin: '0 0 8px 0',
+                        fontSize: isMobile ? 20 : 24,
+                        fontWeight: 700,
+                        color: '#EAF2FF',
+                      }}
+                    >
+                      {profile?.display_name || '未設定'}
+                    </h2>
+
+                    {/* フォロワー数・フォロー中の数 */}
+                    <div
+                      style={{
+                        display: 'flex',
+                        gap: 16,
+                        marginBottom: 12,
+                        justifyContent: isMobile ? 'center' : 'flex-start',
+                      }}
+                    >
+                      <div
+                        onClick={() => {
+                          setFollowListTab('followers');
+                          setShowFollowListModal(true);
+                        }}
+                        style={{
+                          fontSize: isMobile ? 13 : 14,
+                          color: 'rgba(255, 255, 255, 0.8)',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s',
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.color = '#667eea';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.color = 'rgba(255, 255, 255, 0.8)';
+                        }}
+                      >
+                        <span style={{ fontWeight: 700, color: '#EAF2FF' }}>
+                          {followerCount}
+                        </span>{' '}
+                        フォロワー
+                      </div>
+                      <div
+                        onClick={() => {
+                          setFollowListTab('following');
+                          setShowFollowListModal(true);
+                        }}
+                        style={{
+                          fontSize: isMobile ? 13 : 14,
+                          color: 'rgba(255, 255, 255, 0.8)',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s',
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.color = '#667eea';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.color = 'rgba(255, 255, 255, 0.8)';
+                        }}
+                      >
+                        <span style={{ fontWeight: 700, color: '#EAF2FF' }}>
+                          {followingCount}
+                        </span>{' '}
+                        フォロー中
+                      </div>
+                    </div>
+
+                    {/* 所在地 */}
+                    {profile?.location && (
+                      <p
+                        style={{
+                          margin: '0 0 12px 0',
+                          fontSize: isMobile ? 13 : 14,
+                          color: 'rgba(255, 255, 255, 0.7)',
+                        }}
+                      >
+                        📍 {profile.location}
+                      </p>
+                    )}
+
+                    {/* ロール */}
+                    {profile?.roles && profile.roles.length > 0 && (
+                      <div
+                        style={{
+                          display: 'flex',
+                          flexWrap: 'wrap',
+                          gap: 8,
+                          justifyContent: isMobile ? 'center' : 'flex-start',
+                        }}
+                      >
+                        {profile.roles.map((role) => (
+                          <span
+                            key={role}
+                            onClick={() => {
+                              setSelectedRole(role);
+                              setShowRoleUsersModal(true);
+                            }}
+                            style={{
+                              display: 'inline-block',
+                              padding: '8px 16px',
+                              background: role === 'DEVELOPER'
+                                ? 'linear-gradient(145deg, #06b6d4 0%, #0891b2 100%)'
+                                : 'linear-gradient(145deg, #6366f1 0%, #4f46e5 100%)',
+                              borderRadius: 24,
+                              fontSize: isMobile ? 11 : 12,
+                              fontWeight: 600,
+                              color: '#fff',
+                              cursor: 'pointer',
+                              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                              border: role === 'DEVELOPER'
+                                ? '1px solid rgba(6, 182, 212, 0.4)'
+                                : '1px solid rgba(99, 102, 241, 0.4)',
+                              boxShadow: role === 'DEVELOPER'
+                                ? '0 4px 12px rgba(6, 182, 212, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
+                                : '0 4px 12px rgba(99, 102, 241, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)',
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.transform = 'translateY(-2px)';
+                              e.currentTarget.style.boxShadow = role === 'DEVELOPER'
+                                ? '0 6px 16px rgba(6, 182, 212, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3)'
+                                : '0 6px 16px rgba(99, 102, 241, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3)';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.transform = 'translateY(0)';
+                              e.currentTarget.style.boxShadow = role === 'DEVELOPER'
+                                ? '0 4px 12px rgba(6, 182, 212, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
+                                : '0 4px 12px rgba(99, 102, 241, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)';
+                            }}
+                          >
+                            {ROLE_LABELS[role]}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* 自己紹介 / テナント情報タブ */}
+                {(profile?.bio || shouldShowTenantFeatures) && (
+                  <div style={{ marginBottom: 20 }}>
+                    {/* タブヘッダー（テナント承認済みの場合のみ表示） */}
+                    {shouldShowTenantFeatures ? (
+                      <>
+                        <div
+                          style={{
+                            display: 'flex',
+                            gap: isMobile ? 8 : 12,
+                            marginBottom: 16,
+                            borderBottom: '2px solid rgba(255, 255, 255, 0.1)',
+                          }}
+                        >
+                          {/* テナント情報タブ */}
+                          <button
+                            onClick={() => setProfileTab('tenant')}
+                            style={{
+                              padding: isMobile ? '8px 16px' : '10px 20px',
+                              background: 'none',
+                              border: 'none',
+                              borderBottom: profileTab === 'tenant' ? '3px solid #8b5cf6' : '3px solid transparent',
+                              color: profileTab === 'tenant' ? '#8b5cf6' : 'rgba(255, 255, 255, 0.6)',
+                              fontSize: isMobile ? 13 : 14,
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              transition: 'all 0.2s',
+                              textTransform: 'uppercase',
+                              letterSpacing: '0.5px',
+                            }}
+                          >
+                            テナント情報
+                          </button>
+
+                          {/* 自己紹介タブ */}
+                          {profile?.bio && (
+                            <button
+                              onClick={() => setProfileTab('bio')}
+                              style={{
+                                padding: isMobile ? '8px 16px' : '10px 20px',
+                                background: 'none',
+                                border: 'none',
+                                borderBottom: profileTab === 'bio' ? '3px solid #8b5cf6' : '3px solid transparent',
+                                color: profileTab === 'bio' ? '#8b5cf6' : 'rgba(255, 255, 255, 0.6)',
+                                fontSize: isMobile ? 13 : 14,
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                transition: 'all 0.2s',
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.5px',
+                              }}
+                            >
+                              自己紹介
+                            </button>
+                          )}
+                        </div>
+
+                        {/* タブコンテンツ */}
+                        {profileTab === 'tenant' ? (
+                          <div
+                            style={{
+                              padding: isMobile ? 20 : 24,
+                              background: 'linear-gradient(145deg, rgba(139, 92, 246, 0.12) 0%, rgba(124, 58, 237, 0.06) 100%)',
+                              borderRadius: 16,
+                              border: '1px solid rgba(139, 92, 246, 0.25)',
+                              boxShadow: '0 4px 16px rgba(139, 92, 246, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
+                            }}
+                          >
+                            <div style={{ marginBottom: 12 }}>
+                              <div
+                                style={{
+                                  fontSize: isMobile ? 11 : 12,
+                                  fontWeight: 600,
+                                  color: 'rgba(255, 255, 255, 0.5)',
+                                  textTransform: 'uppercase',
+                                  letterSpacing: '0.5px',
+                                  marginBottom: 4,
+                                }}
+                              >
+                                プラン
+                              </div>
+                              <div
+                                style={{
+                                  fontSize: isMobile ? 14 : 15,
+                                  fontWeight: 700,
+                                  color: '#8b5cf6',
+                                  textShadow: '0 0 8px rgba(139, 92, 246, 0.5)',
+                                }}
+                              >
+                                {profileOwnerApplication?.rank_plan || 'STUDIO_PRO_MAX'}
+                              </div>
+                            </div>
+
+                            <div style={{ marginBottom: 12 }}>
+                              <div
+                                style={{
+                                  fontSize: isMobile ? 11 : 12,
+                                  fontWeight: 600,
+                                  color: 'rgba(255, 255, 255, 0.5)',
+                                  textTransform: 'uppercase',
+                                  letterSpacing: '0.5px',
+                                  marginBottom: 4,
+                                }}
+                              >
+                                テナント名
+                              </div>
+                              <div
+                                style={{
+                                  fontSize: isMobile ? 14 : 15,
+                                  fontWeight: 600,
+                                  color: '#EAF2FF',
+                                }}
+                              >
+                                {profileOwnerApplication?.tenant_name || profile?.display_name}
+                              </div>
+                            </div>
+
+                            <div>
+                              <div
+                                style={{
+                                  fontSize: isMobile ? 11 : 12,
+                                  fontWeight: 600,
+                                  color: 'rgba(255, 255, 255, 0.5)',
+                                  textTransform: 'uppercase',
+                                  letterSpacing: '0.5px',
+                                  marginBottom: 4,
+                                }}
+                              >
+                                説明
+                              </div>
+                              <div
+                                style={{
+                                  fontSize: isMobile ? 13 : 14,
+                                  lineHeight: 1.6,
+                                  color: 'rgba(234, 242, 255, 0.9)',
+                                }}
+                              >
+                                {profileOwnerApplication?.description || '（説明なし）'}
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <div
+                            style={{
+                              padding: isMobile ? 20 : 24,
+                              background: 'linear-gradient(145deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.02) 100%)',
+                              borderRadius: 16,
+                              border: '1px solid rgba(255, 255, 255, 0.15)',
+                              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.08)',
+                            }}
+                          >
+                            <p
+                              style={{
+                                margin: 0,
+                                fontSize: isMobile ? 14 : 15,
+                                lineHeight: 1.6,
+                                color: '#EAF2FF',
+                                whiteSpace: 'pre-wrap',
+                              }}
+                            >
+                              {profile?.bio}
+                            </p>
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      /* 通常ユーザー（テナントでない場合）は従来通りの表示 */
+                      profile?.bio && (
+                        <>
+                          <label
+                            style={{
+                              display: 'block',
+                              marginBottom: 8,
+                              fontSize: isMobile ? 12 : 13,
+                              fontWeight: 600,
+                              color: 'rgba(255, 255, 255, 0.7)',
+                              textTransform: 'uppercase',
+                              letterSpacing: '0.05em',
+                            }}
+                          >
+                            自己紹介
+                          </label>
+                          <p
+                            style={{
+                              margin: 0,
+                              fontSize: isMobile ? 14 : 15,
+                              lineHeight: 1.6,
+                              color: '#EAF2FF',
+                              whiteSpace: 'pre-wrap',
+                            }}
+                          >
+                            {profile.bio}
+                          </p>
+                        </>
+                      )
+                    )}
+                  </div>
+                )}
+
+                {/* リンク */}
+                {(profile?.website_url || (profile?.custom_links && profile.custom_links.length > 0)) && (
+                  <div style={{ marginBottom: 20 }}>
+                    <label
+                      style={{
+                        display: 'block',
+                        marginBottom: 12,
+                        fontSize: isMobile ? 12 : 13,
+                        fontWeight: 600,
+                        color: 'rgba(255, 255, 255, 0.7)',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.05em',
+                      }}
+                    >
+                      リンク
+                    </label>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {/* Webサイト */}
+                      {profile?.website_url && (
+                        <a
+                          href={profile.website_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 8,
+                            padding: isMobile ? '12px 16px' : '14px 20px',
+                            background: 'linear-gradient(145deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.04) 100%)',
+                            border: '1px solid rgba(255, 255, 255, 0.15)',
+                            borderRadius: 12,
+                            color: '#93c5fd',
+                            fontSize: isMobile ? 13 : 14,
+                            textDecoration: 'none',
+                            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.08)',
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.background = 'linear-gradient(145deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.06) 100%)';
+                            e.currentTarget.style.transform = 'translateY(-2px)';
+                            e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.12)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = 'linear-gradient(145deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.04) 100%)';
+                            e.currentTarget.style.transform = 'translateY(0)';
+                            e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.08)';
+                          }}
+                        >
+                          🌐 Webサイト
+                        </a>
+                      )}
+
+                      {/* カスタムリンク */}
+                      {profile?.custom_links && profile.custom_links.map((link, index) => (
+                        <a
+                          key={index}
+                          href={link.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 8,
+                            padding: isMobile ? '12px 16px' : '14px 20px',
+                            background: 'linear-gradient(145deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.04) 100%)',
+                            border: '1px solid rgba(255, 255, 255, 0.15)',
+                            borderRadius: 12,
+                            color: '#93c5fd',
+                            fontSize: isMobile ? 13 : 14,
+                            textDecoration: 'none',
+                            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.08)',
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.background = 'linear-gradient(145deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.06) 100%)';
+                            e.currentTarget.style.transform = 'translateY(-2px)';
+                            e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.12)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = 'linear-gradient(145deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.04) 100%)';
+                            e.currentTarget.style.transform = 'translateY(0)';
+                            e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.08)';
+                          }}
+                        >
+                          🔗 {link.label}
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* ウォレットアドレス（公開設定がtrueの場合のみ表示） */}
+                {profile?.show_wallet_address !== false && (
+                  <div
+                    style={{
+                      paddingTop: 20,
+                      borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+                    }}
+                  >
+                    <label
+                      style={{
+                        display: 'block',
+                        marginBottom: 8,
+                        fontSize: isMobile ? 12 : 13,
+                        fontWeight: 600,
+                        color: 'rgba(255, 255, 255, 0.7)',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.05em',
+                      }}
+                    >
+                      ウォレットアドレス
+                    </label>
+                    <p
+                      style={{
+                        margin: 0,
+                        fontSize: isMobile ? 12 : 13,
+                        fontFamily: 'monospace',
+                        color: 'rgba(255, 255, 255, 0.8)',
+                        wordBreak: 'break-all',
+                      }}
+                    >
+                      {walletAddress || '未接続'}
+                    </p>
+                  </div>
+                )}
+
+                {/* プロフィール未設定の場合のメッセージ */}
+                {!profile && (
+                  <div
+                    style={{
+                      marginTop: 24,
+                      padding: 16,
+                      background: 'rgba(255, 255, 255, 0.1)',
+                      border: '1px solid rgba(255, 255, 255, 0.2)',
+                      borderRadius: 8,
+                      textAlign: 'center',
+                    }}
+                  >
+                    <p
+                      style={{
+                        margin: 0,
+                        fontSize: isMobile ? 13 : 14,
+                        color: '#EAF2FF',
+                      }}
+                    >
+                      プロフィールを設定して、GIFTERRAでの活動を始めましょう
+                    </p>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+
+      </div>
+
+      {/* 編集モーダル（自分のプロフィールの場合のみ） */}
+      {showEditModal && !isViewingOtherProfile && (
+        <ProfileEditModal
+          onClose={() => setShowEditModal(false)}
+          onSave={() => {
+            fetchProfile(); // プロフィール再取得
+          }}
+          isMobile={isMobile}
+          currentProfile={{
+            display_name: profile?.display_name || '',
+            bio: profile?.bio || '',
+            avatar_url: profile?.avatar_url || '',
+            receive_message: profile?.receive_message || 'ありがとうございました。',
+            cover_image_url: profile?.cover_image_url || '',
+            website_url: profile?.website_url || '',
+            custom_links: profile?.custom_links || [],
+            roles: profile?.roles || [],
+            location: profile?.location || '',
+            show_wallet_address: profile?.show_wallet_address,
+            reject_anonymous_transfers: profile?.reject_anonymous_transfers,
+            twitter_id: profile?.twitter_id || '',
+          }}
+          walletAddress={currentUserWalletAddress}
+        />
+      )}
+
+      {/* フォロー/フォロワーリストモーダル */}
+      <FollowListModal
+        isOpen={showFollowListModal}
+        onClose={() => setShowFollowListModal(false)}
+        type={followListTab}
+        users={followListTab === 'followers' ? followers : following}
+        isLoading={isFollowListsLoading}
+        isMobile={isMobile}
+        onFollowUser={handleFollowUser}
+        onRefresh={refetchFollowLists}
+      />
+
+      {/* チップ送信モーダル */}
+      <TipModal
+        isOpen={showTipModal}
+        onClose={() => setShowTipModal(false)}
+        recipientAddress={walletAddress}
+        recipientName={profile?.display_name || `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`}
+        onSendTip={handleSendTip}
+        isMobile={isMobile}
+      />
+
+      {/* テナント専用チップモーダル（kodomi解析 & SBT連動） */}
+      {shouldShowTenantFeatures && (
+        <TenantTipModal
+          isOpen={showTenantTipModal}
+          onClose={() => setShowTenantTipModal(false)}
+          recipientAddress={walletAddress}
+          recipientName={profile?.display_name || `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`}
+          isMobile={isMobile}
+        />
+      )}
+
+      {/* ロール別ユーザーリストモーダル */}
+      <RoleUsersModal
+        isOpen={showRoleUsersModal}
+        onClose={() => {
+          setShowRoleUsersModal(false);
+          setSelectedRole(null);
+        }}
+        role={selectedRole}
+        roleLabel={selectedRole ? ROLE_LABELS[selectedRole] : ''}
+        users={roleUsers}
+        isLoading={isRoleUsersLoading}
+        isMobile={isMobile}
+      />
+
+      {/* トースト通知 */}
+      {toastMessage && (
+        <div
+          style={{
+            position: 'fixed',
+            bottom: isMobile ? 80 : 40,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            background: 'rgba(0, 0, 0, 0.9)',
+            color: '#fff',
+            padding: isMobile ? '12px 20px' : '14px 24px',
+            borderRadius: 8,
+            fontSize: isMobile ? 13 : 14,
+            fontWeight: 500,
+            boxShadow: '0 4px 16px rgba(0, 0, 0, 0.3)',
+            zIndex: 10001,
+            maxWidth: '90%',
+            textAlign: 'center',
+            animation: 'fadeIn 0.3s ease-in-out',
+          }}
+        >
+          {toastMessage}
+        </div>
+      )}
+
+      {/* 投げ銭リンクシェアモーダル */}
+      {showShareLinkModal && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.85)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 10000,
+            padding: '20px',
+          }}
+          onClick={() => setShowShareLinkModal(false)}
+        >
+          <div
+            style={{
+              background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)',
+              borderRadius: 20,
+              padding: 'clamp(24px, 5vw, 32px)',
+              maxWidth: 500,
+              width: '90%',
+              boxShadow: '0 20px 60px rgba(0, 0, 0, 0.5)',
+              border: '2px solid rgba(102, 126, 234, 0.3)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2
+              style={{
+                fontSize: 'clamp(20px, 4vw, 24px)',
+                marginBottom: 16,
+                textAlign: 'center',
+                color: '#fff',
+                fontWeight: 700,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+              }}
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="18" cy="5" r="3"/>
+                <circle cx="6" cy="12" r="3"/>
+                <circle cx="18" cy="19" r="3"/>
+                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
+                <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+              </svg>
+              TIP LINK
+            </h2>
+
+            <p
+              style={{
+                fontSize: 'clamp(14px, 2.5vw, 16px)',
+                color: 'rgba(255, 255, 255, 0.8)',
+                textAlign: 'center',
+                marginBottom: 24,
+                lineHeight: 1.6,
+              }}
+            >
+              あなたのチップリンクをコピーして、<br />
+              Xやその他のSNSでシェアしましょう！
+            </p>
+
+            {/* リンク表示エリア */}
+            <div
+              style={{
+                background: 'rgba(255, 255, 255, 0.05)',
+                border: '1px solid rgba(255, 255, 255, 0.2)',
+                borderRadius: 12,
+                padding: '16px',
+                marginBottom: 20,
+                wordBreak: 'break-all',
+                fontSize: 'clamp(12px, 2vw, 14px)',
+                color: '#93c5fd',
+                fontFamily: 'monospace',
+              }}
+            >
+              {`https://gifterra-safe.vercel.app/receive/${walletAddress}`}
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {/* リンクをコピーボタン */}
+              <button
+                onClick={() => {
+                  const tipLink = `https://gifterra-safe.vercel.app/receive/${walletAddress}`;
+                  navigator.clipboard.writeText(tipLink).then(() => {
+                    setToastMessage('リンクをコピーしました！');
+                    setShowShareLinkModal(false);
+                  }).catch(() => {
+                    setToastMessage('コピーに失敗しました');
+                  });
+                }}
+                style={{
+                  padding: 'clamp(12px, 2.5vw, 16px)',
+                  background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 12,
+                  fontSize: 'clamp(14px, 2.5vw, 16px)',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 16px rgba(16, 185, 129, 0.4)',
+                  transition: 'all 0.2s',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 6px 20px rgba(16, 185, 129, 0.6)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 4px 16px rgba(16, 185, 129, 0.4)';
+                }}
+              >
+                📋 リンクをコピー
+              </button>
+
+              {/* Xでシェアボタン */}
+              <button
+                onClick={() => {
+                  const displayName = profile?.display_name || 'ギフテラユーザー';
+                  const twitterId = profile?.twitter_id;
+                  const mentionText = twitterId ? `${displayName} @${twitterId} さんへ投げ銭` : `${displayName} さんへ投げ銭`;
+                  const tipLink = `https://gifterra-safe.vercel.app/receive/${walletAddress}`;
+                  const text = `${mentionText}\n${tipLink}\n\n#GIFTERRA #投げ銭 #JPYC`;
+                  const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
+                  window.open(url, '_blank');
+                  setShowShareLinkModal(false);
+                }}
+                style={{
+                  padding: 'clamp(12px, 2.5vw, 16px)',
+                  background: 'linear-gradient(135deg, #1DA1F2 0%, #0d8bd9 100%)',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 12,
+                  fontSize: 'clamp(14px, 2.5vw, 16px)',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 16px rgba(29, 161, 242, 0.4)',
+                  transition: 'all 0.2s',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 6px 20px rgba(29, 161, 242, 0.6)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 4px 16px rgba(29, 161, 242, 0.4)';
+                }}
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                </svg>
+                Xでシェアする
+              </button>
+
+              {/* 閉じるボタン */}
+              <button
+                onClick={() => setShowShareLinkModal(false)}
+                style={{
+                  padding: 'clamp(10px, 2vw, 12px)',
+                  background: 'rgba(255, 255, 255, 0.1)',
+                  color: 'rgba(255, 255, 255, 0.7)',
+                  border: '1px solid rgba(255, 255, 255, 0.2)',
+                  borderRadius: 10,
+                  fontSize: 'clamp(13px, 2vw, 14px)',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+                }}
+              >
+                閉じる
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// カスタマイズ可能なContributionGauge（JPYC/NHT用）
+function ContributionGaugeCustom({ kodomi, label, icon, isMobile }: {
+  kodomi: number;
+  label: string;
+  icon: string;
+  isMobile: boolean;
+}) {
+  // レベル計算（ContributionGaugeと同じロジック）
+  function calculateLevel(k: number): { level: number; progress: number; nextLevelThreshold: number } {
+    const thresholds = [0, 100, 300, 600, 1000];
+
+    for (let i = thresholds.length - 1; i >= 0; i--) {
+      if (k >= thresholds[i]) {
+        const level = i + 1;
+        const currentThreshold = thresholds[i];
+        const nextThreshold = i < thresholds.length - 1 ? thresholds[i + 1] : thresholds[i] + 500;
+        const progressInLevel = k - currentThreshold;
+        const levelRange = nextThreshold - currentThreshold;
+        const progress = Math.min(100, (progressInLevel / levelRange) * 100);
+
+        return { level, progress, nextLevelThreshold: nextThreshold };
+      }
+    }
+
+    return { level: 1, progress: 0, nextLevelThreshold: 100 };
+  }
+
+  const { level, progress, nextLevelThreshold } = calculateLevel(kodomi);
+
+  // レベルに応じた色を決定
+  const getLevelColor = (lvl: number) => {
+    switch (lvl) {
+      case 1: return '#94a3b8'; // Gray
+      case 2: return '#3b82f6'; // Blue
+      case 3: return '#8b5cf6'; // Purple
+      case 4: return '#f59e0b'; // Orange
+      case 5: return '#ef4444'; // Red
+      default: return '#94a3b8';
+    }
+  };
+
+  const levelColor = getLevelColor(level);
+  const remaining = nextLevelThreshold - kodomi;
+
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: isMobile ? '6px' : '8px',
+        padding: isMobile ? '6px 10px' : '8px 12px',
+        background: 'linear-gradient(135deg, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.2) 100%)',
+        borderRadius: 8,
+        backdropFilter: 'blur(8px)',
+        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.08)',
+        border: '1px solid rgba(255, 255, 255, 0.08)',
+      }}
+    >
+      {/* アイコン */}
+      <span
+        style={{
+          fontSize: isMobile ? 16 : 18,
+          filter: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3))',
+        }}
+      >
+        {icon}
+      </span>
+
+      {/* ラベル */}
+      <div
+        style={{
+          fontSize: isMobile ? 9 : 10,
+          fontWeight: 700,
+          color: 'rgba(255, 255, 255, 0.5)',
+          letterSpacing: '0.5px',
+          textTransform: 'uppercase',
+          textShadow: '0 1px 2px rgba(0, 0, 0, 0.4)',
+          minWidth: isMobile ? 30 : 35,
+        }}
+      >
+        {label}
+      </div>
+
+      {/* レベル表示とプログレスバー */}
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 2,
+          flex: 1,
+          minWidth: 0,
+        }}
+      >
+        <div
+          style={{
+            fontSize: isMobile ? 9 : 10,
+            fontWeight: 600,
+            color: levelColor,
+            letterSpacing: '0.3px',
+            textShadow: `0 0 6px ${levelColor}60, 0 1px 2px rgba(0, 0, 0, 0.4)`,
+          }}
+        >
+          Lv.{level}
+        </div>
+
+        {/* プログレスバー */}
+        <div
+          style={{
+            width: '100%',
+            height: isMobile ? 6 : 8,
+            background: 'linear-gradient(180deg, rgba(0, 0, 0, 0.3) 0%, rgba(0, 0, 0, 0.15) 100%)',
+            borderRadius: 4,
+            overflow: 'hidden',
+            boxShadow: 'inset 0 1px 3px rgba(0, 0, 0, 0.4)',
+            border: '1px solid rgba(0, 0, 0, 0.2)',
+            position: 'relative',
+          }}
+        >
+          <div
+            style={{
+              width: `${progress}%`,
+              height: '100%',
+              background: `linear-gradient(180deg, ${levelColor} 0%, ${levelColor}cc 50%, ${levelColor}99 100%)`,
+              transition: 'width 0.5s ease',
+              boxShadow: `0 0 8px ${levelColor}80, inset 0 1px 0 rgba(255, 255, 255, 0.3)`,
+              position: 'relative',
+              borderRadius: 3,
+            }}
+          >
+            <div
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                height: '40%',
+                background: 'linear-gradient(180deg, rgba(255, 255, 255, 0.2) 0%, transparent 100%)',
+                borderRadius: '3px 3px 0 0',
+              }}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* スコア表示 */}
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'flex-end',
+          gap: 1,
+        }}
+      >
+        <div
+          style={{
+            fontSize: isMobile ? 11 : 12,
+            fontWeight: 700,
+            color: '#fff',
+            textShadow: '0 1px 3px rgba(0, 0, 0, 0.4)',
+            letterSpacing: '0.2px',
+          }}
+        >
+          {kodomi}pt
+        </div>
+
+        {level < 5 && (
+          <div
+            style={{
+              fontSize: isMobile ? 8 : 9,
+              opacity: 0.5,
+              color: '#fff',
+              textShadow: '0 1px 2px rgba(0, 0, 0, 0.4)',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            次まで {remaining}pt
+          </div>
+        )}
+
+        {level >= 5 && (
+          <div
+            style={{
+              fontSize: isMobile ? 8 : 9,
+              opacity: 0.7,
+              color: '#fbbf24',
+              textShadow: '0 0 4px rgba(251, 191, 36, 0.4), 0 1px 2px rgba(0, 0, 0, 0.4)',
+              whiteSpace: 'nowrap',
+              fontWeight: 600,
+            }}
+          >
+            ✨ MAX
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
