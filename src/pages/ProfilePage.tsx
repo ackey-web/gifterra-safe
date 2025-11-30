@@ -581,6 +581,15 @@ export function ProfilePage() {
                       flex: 1,
                       maxWidth: isMobile ? '100%' : 280,
                     }}>
+                      {/* KODOMI指数ラベル */}
+                      <div style={{
+                        fontSize: isMobile ? 10 : 11,
+                        color: 'rgba(255, 255, 255, 0.6)',
+                        marginBottom: isMobile ? 4 : 6,
+                        textAlign: 'center',
+                      }}>
+                        このユーザーに対するあなたのKODOMI指数
+                      </div>
                       {/* 💸 JPYC ゲージ */}
                       <div style={{
                         display: 'flex',
