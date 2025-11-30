@@ -2,6 +2,7 @@
 // プロフィールページ
 
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { usePrivy } from '@privy-io/react-auth';
 import { useAddress } from '@thirdweb-dev/react';
 import { supabase } from '../lib/supabase';
@@ -84,6 +85,7 @@ export function ProfilePage() {
     };
   }, []);
 
+  const navigate = useNavigate();
   const { user } = usePrivy();
   const thirdwebAddress = useAddress(); // Thirdwebウォレット（MetaMaskなど）
 
@@ -256,8 +258,8 @@ export function ProfilePage() {
   }, [toastMessage]);
 
   const handleBack = () => {
-    // ブラウザ履歴で一つ前の画面に戻る
-    window.history.back();
+    // マイページに戻る
+    navigate('/');
   };
 
   // フォローバック用のコールバック関数
