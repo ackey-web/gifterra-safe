@@ -7269,15 +7269,8 @@ function Footer({ isMobile }: { isMobile: boolean }) {
       <div style={{
         fontSize: isMobile ? 10 : 11,
         opacity: 0.4,
-        marginBottom: 4,
       }}>
         Powerd by GIFTERRA
-      </div>
-      <div style={{
-        fontSize: isMobile ? 10 : 11,
-        opacity: 0.4,
-      }}>
-        Presented by METATRON.
       </div>
     </div>
   );
