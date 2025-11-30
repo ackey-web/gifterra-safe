@@ -2,6 +2,7 @@
 // ユーザープロフィールページ - モバイルファーストのレスポンシブデザイン
 
 import { useState, useEffect } from 'react';
+import { usePrivy } from '@privy-io/react-auth';
 import { useAddress } from '@thirdweb-dev/react';
 import { useUserProfile } from '../hooks/useUserProfile';
 import { useUserKodomi } from '../hooks/useUserKodomi';
@@ -14,15 +15,23 @@ export function UserProfilePage({ address: propsAddress, mockProfile, mockActivi
   mockProfile?: UserProfile | null;
   mockActivities?: any[];
 } = {}) {
-  const myAddress = useAddress(); // ログイン中のユーザーアドレス
+  const { user } = usePrivy();
+  const thirdwebAddress = useAddress(); // Thirdwebウォレット（MetaMaskなど）
+
+  // ウォレットアドレスを取得（Privy埋め込みウォレット優先、なければThirdweb）
+  const privyEmbeddedWalletAddress = user?.wallet?.address;
+  const myAddress = privyEmbeddedWalletAddress || thirdwebAddress || '';
+
   const path = window.location.pathname;
 
   // /user/:address または /profile/:address のパターンに対応
   const addressFromUrl = path.split('/user/')[1] || path.split('/profile/')[1] || '';
-  const targetAddress = propsAddress || addressFromUrl;
+
+  // 表示するウォレットアドレス（propsAddress優先、次にURL、最後に自分のアドレス）
+  const targetAddress = propsAddress || addressFromUrl || myAddress;
 
   // 他のユーザーのプロフィールを閲覧しているかチェック
-  const isViewingOtherProfile = myAddress && targetAddress && myAddress.toLowerCase() !== targetAddress.toLowerCase();
+  const isViewingOtherProfile = addressFromUrl && addressFromUrl.length > 0 && myAddress && addressFromUrl.toLowerCase() !== myAddress.toLowerCase();
 
   // レスポンシブ対応：画面幅を検知
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
