@@ -65,12 +65,19 @@ export const ScoreParametersPage: React.FC = () => {
   const [history, setHistory] = useState<ParamsHistory[]>([]);
   const [showHistory, setShowHistory] = useState(false);
 
-  // 新機能：バランスモード切り替え
+  // 新機能：バランスモード切り替え（タンク設定用）
   const [balanceMode, setBalanceMode] = useState<BalanceMode>('simple');
 
   // シンプルモード用のバランス値（-100〜100）
   // -100: JPYC重視、0: 均等、100: 応援重視
   const [simpleBalance, setSimpleBalance] = useState(0);
+
+  // ゲージ設定用のモード切り替え
+  const [gaugeMode, setGaugeMode] = useState<BalanceMode>('simple');
+
+  // ゲージのシンプルモード用バランス値（-100〜100）
+  // -100: 回数重視、0: 均等、100: 質重視
+  const [gaugeSimpleBalance, setGaugeSimpleBalance] = useState(0);
 
   // パラメータ取得
   useEffect(() => {
@@ -152,7 +159,7 @@ export const ScoreParametersPage: React.FC = () => {
     }
   };
 
-  // シンプルバランススライダーが変更されたとき
+  // シンプルバランススライダーが変更されたとき（タンク設定用）
   const handleSimpleBalanceChange = (value: number) => {
     setSimpleBalance(value);
 
@@ -168,6 +175,42 @@ export const ScoreParametersPage: React.FC = () => {
       ...editParams,
       weightEconomic: economicWeight,
       weightResonance: resonanceWeight,
+    });
+  };
+
+  // ゲージ設定のシンプルバランススライダーが変更されたとき
+  const handleGaugeSimpleBalanceChange = (value: number) => {
+    setGaugeSimpleBalance(value);
+
+    // バランス値からゲージパラメーターを計算
+    // -100（回数重視）→ NHT: 5.0, Streak: 5.0, AI: 0.2, Message: 0.2
+    // 0（均等）→ NHT: 2.0, Streak: 10.0, AI: 1.0, Message: 1.0
+    // 100（質重視）→ NHT: 0.5, Streak: 5.0, AI: 3.0, Message: 3.0
+
+    let nhtWeight, streakWeight, aiQualityWeight, messageQualityWeight;
+
+    if (value < 0) {
+      // 回数重視側
+      const ratio = Math.abs(value) / 100;
+      nhtWeight = 2.0 + (3.0 * ratio); // 2.0 → 5.0
+      streakWeight = 10.0 - (5.0 * ratio); // 10.0 → 5.0
+      aiQualityWeight = 1.0 - (0.8 * ratio); // 1.0 → 0.2
+      messageQualityWeight = 1.0 - (0.8 * ratio); // 1.0 → 0.2
+    } else {
+      // 質重視側
+      const ratio = value / 100;
+      nhtWeight = 2.0 - (1.5 * ratio); // 2.0 → 0.5
+      streakWeight = 10.0 - (5.0 * ratio); // 10.0 → 5.0
+      aiQualityWeight = 1.0 + (2.0 * ratio); // 1.0 → 3.0
+      messageQualityWeight = 1.0 + (2.0 * ratio); // 1.0 → 3.0
+    }
+
+    setEditParams({
+      ...editParams,
+      nhtWeight: Math.round(nhtWeight * 10) / 10,
+      streakWeight: Math.round(streakWeight * 10) / 10,
+      aiQualityWeight: Math.round(aiQualityWeight * 10) / 10,
+      messageQualityWeight: Math.round(messageQualityWeight * 10) / 10,
     });
   };
 
@@ -234,7 +277,7 @@ export const ScoreParametersPage: React.FC = () => {
     editParams.aiQualityWeight !== params.aiQualityWeight ||
     editParams.messageQualityWeight !== params.messageQualityWeight;
 
-  // バランス状態を表示用の文字列に変換
+  // バランス状態を表示用の文字列に変換（タンク設定用）
   const getBalanceLabel = () => {
     if (simpleBalance < -50) return 'JPYC重視';
     if (simpleBalance < -20) return 'JPYC やや重視';
@@ -246,6 +289,21 @@ export const ScoreParametersPage: React.FC = () => {
   const getBalanceColor = () => {
     if (simpleBalance < -20) return '#4a9eff'; // JPYC blue
     if (simpleBalance > 20) return '#ff7e33'; // Resonance orange
+    return '#8b5cf6'; // Balanced purple
+  };
+
+  // ゲージバランス状態を表示用の文字列に変換
+  const getGaugeBalanceLabel = () => {
+    if (gaugeSimpleBalance < -50) return '回数重視';
+    if (gaugeSimpleBalance < -20) return '回数 やや重視';
+    if (gaugeSimpleBalance > 50) return '質重視';
+    if (gaugeSimpleBalance > 20) return '質 やや重視';
+    return 'バランス均等';
+  };
+
+  const getGaugeBalanceColor = () => {
+    if (gaugeSimpleBalance < -20) return '#4a9eff'; // 回数重視 blue
+    if (gaugeSimpleBalance > 20) return '#ff7e33'; // 質重視 orange
     return '#8b5cf6'; // Balanced purple
   };
 
@@ -1017,6 +1075,126 @@ export const ScoreParametersPage: React.FC = () => {
                   </div>
                 </div>
 
+                {/* セパレーター */}
+                <div style={{
+                  margin: '32px 0',
+                  padding: '16px',
+                  background: 'linear-gradient(135deg, rgba(255, 126, 51, 0.05), rgba(255, 87, 34, 0.02))',
+                  borderRadius: 12,
+                  border: '1px dashed rgba(255, 126, 51, 0.2)',
+                }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: '#ff7e33', marginBottom: 4 }}>
+                    📊 ゲージ計算パラメーター（詳細設定）
+                  </div>
+                  <div style={{ fontSize: 12, color: '#718096' }}>
+                    応援熱量ゲージの計算に使用されるパラメーター
+                  </div>
+                </div>
+
+                {/* NHT Weight */}
+                <div className="form-group">
+                  <label className="form-label">
+                    🎁 NHT応援回数の重み
+                    <span className="form-help">
+                      (応援回数の評価重み - デフォルト: 2.0)
+                    </span>
+                  </label>
+                  <input
+                    type="range"
+                    min="0"
+                    max="10"
+                    step="0.5"
+                    value={editParams.nhtWeight}
+                    onChange={(e) =>
+                      setEditParams({ ...editParams, nhtWeight: parseFloat(e.target.value) })
+                    }
+                    className="range-input"
+                  />
+                  <div className="range-display">
+                    <span>0.0</span>
+                    <span className="range-value">{editParams.nhtWeight.toFixed(1)}</span>
+                    <span>10.0</span>
+                  </div>
+                </div>
+
+                {/* Streak Weight */}
+                <div className="form-group">
+                  <label className="form-label">
+                    🔥 連続応援日数の重み
+                    <span className="form-help">
+                      (継続性の評価重み - デフォルト: 10.0)
+                    </span>
+                  </label>
+                  <input
+                    type="range"
+                    min="0"
+                    max="20"
+                    step="1"
+                    value={editParams.streakWeight}
+                    onChange={(e) =>
+                      setEditParams({ ...editParams, streakWeight: parseFloat(e.target.value) })
+                    }
+                    className="range-input"
+                  />
+                  <div className="range-display">
+                    <span>0.0</span>
+                    <span className="range-value">{editParams.streakWeight.toFixed(1)}</span>
+                    <span>20.0</span>
+                  </div>
+                </div>
+
+                {/* AI Quality Weight */}
+                <div className="form-group">
+                  <label className="form-label">
+                    🤖 AI質的スコアの重み
+                    <span className="form-help">
+                      (メッセージのAI評価の重み - デフォルト: 1.0)
+                    </span>
+                  </label>
+                  <input
+                    type="range"
+                    min="0"
+                    max="5"
+                    step="0.1"
+                    value={editParams.aiQualityWeight}
+                    onChange={(e) =>
+                      setEditParams({ ...editParams, aiQualityWeight: parseFloat(e.target.value) })
+                    }
+                    className="range-input"
+                  />
+                  <div className="range-display">
+                    <span>0.0</span>
+                    <span className="range-value">{editParams.aiQualityWeight.toFixed(1)}</span>
+                    <span>5.0</span>
+                  </div>
+                </div>
+
+                {/* Message Quality Weight */}
+                <div className="form-group">
+                  <label className="form-label">
+                    💬 メッセージ品質の重み
+                    <span className="form-help">
+                      (メッセージの量的評価の重み - デフォルト: 1.0)
+                    </span>
+                  </label>
+                  <input
+                    type="range"
+                    min="0"
+                    max="5"
+                    step="0.1"
+                    value={editParams.messageQualityWeight}
+                    onChange={(e) =>
+                      setEditParams({ ...editParams, messageQualityWeight: parseFloat(e.target.value) })
+                    }
+                    className="range-input"
+                  />
+                  <div className="range-display">
+                    <span>0.0</span>
+                    <span className="range-value">{editParams.messageQualityWeight.toFixed(1)}</span>
+                    <span>5.0</span>
+                  </div>
+                </div>
+
                 {/* リアルタイムプレビュー（カスタムモード） */}
                 <div className="preview-section">
                   <div className="preview-title">
@@ -1058,189 +1236,142 @@ export const ScoreParametersPage: React.FC = () => {
       {/* ゲージ設定タブ */}
       {activeTab === 'gauge' && (
         <>
-          {/* KODOMI ゲージ パラメーター設定 */}
-          <div className="card">
-            <h2 className="card-title">
-              ⚙️ KODOMIゲージ計算パラメーター
-            </h2>
+      {/* 現在の設定 */}
+      <div className="card">
+        <h2 className="card-title">
+          ⚙️ 現在の設定
+        </h2>
 
-            {!isEditing ? (
-              <>
-                {/* 現在の設定表示 */}
-                <div style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-                  gap: 16,
-                  marginBottom: 24,
-                }}>
-                  <div style={{
-                    textAlign: 'center',
-                    padding: 20,
-                    background: 'linear-gradient(135deg, rgba(255, 126, 51, 0.08), rgba(255, 87, 34, 0.03))',
-                    borderRadius: 12,
-                    border: '1px solid rgba(255, 126, 51, 0.15)',
-                  }}>
-                    <div style={{ fontSize: 12, color: '#999', marginBottom: 4 }}>🎁 NHT重み</div>
-                    <div style={{ fontSize: 24, fontWeight: 'bold', color: '#ff7e33' }}>{params.nhtWeight.toFixed(1)}</div>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+          gap: 16,
+          marginBottom: 24,
+        }}>
+          <div className="param-display">
+            <div className="param-label">🎁 NHT重み</div>
+            <div className="param-value">{params.nhtWeight.toFixed(1)}</div>
+          </div>
+          <div className="param-display">
+            <div className="param-label">🔥 ストリーク重み</div>
+            <div className="param-value">{params.streakWeight.toFixed(1)}</div>
+          </div>
+          <div className="param-display">
+            <div className="param-label">🤖 AI質的重み</div>
+            <div className="param-value">{params.aiQualityWeight.toFixed(1)}</div>
+          </div>
+          <div className="param-display">
+            <div className="param-label">💬 メッセージ重み</div>
+            <div className="param-value">{params.messageQualityWeight.toFixed(1)}</div>
+          </div>
+        </div>
+
+        {!isEditing ? (
+          <div className="button-group">
+            <button className="button button-primary" onClick={() => setIsEditing(true)}>
+              ✏️ バランスを調整する
+            </button>
+          </div>
+        ) : (
+          <>
+            {/* 警告 */}
+            <div className="warning-box">
+              <div className="warning-title">⚠️ 重要な注意事項</div>
+              <div className="warning-text">
+                ゲージパラメーターを変更すると、全ユーザーのエンゲージメントスコアが再計算されます。<br />
+                ランキングが大きく変動する可能性があるため、慎重に変更してください。
+              </div>
+            </div>
+
+            {/* モード切り替えタブ */}
+            <div className="mode-tabs">
+              <button
+                className={`mode-tab ${gaugeMode === 'simple' ? 'active' : ''}`}
+                onClick={() => setGaugeMode('simple')}
+              >
+                🎯 シンプル設定
+              </button>
+              <button
+                className={`mode-tab ${gaugeMode === 'custom' ? 'active' : ''}`}
+                onClick={() => setGaugeMode('custom')}
+              >
+                🔧 カスタム設定
+              </button>
+            </div>
+
+            {/* シンプルモード */}
+            {gaugeMode === 'simple' && (
+              <div className="balance-slider-container">
+                <div className="balance-label-main">
+                  📊 評価バランス
+                </div>
+                <div className="balance-status" style={{ color: getGaugeBalanceColor() }}>
+                  {getGaugeBalanceLabel()}
+                </div>
+
+                <div className="balance-slider-wrapper">
+                  <input
+                    type="range"
+                    min="-100"
+                    max="100"
+                    step="10"
+                    value={gaugeSimpleBalance}
+                    onChange={(e) => handleGaugeSimpleBalanceChange(parseInt(e.target.value))}
+                    className="balance-slider"
+                    style={{ color: getGaugeBalanceColor() }}
+                  />
+                </div>
+
+                <div className="balance-markers">
+                  <div className="balance-marker">
+                    <div className="balance-marker-icon">🔢</div>
+                    <div>回数重視</div>
                   </div>
-                  <div style={{
-                    textAlign: 'center',
-                    padding: 20,
-                    background: 'linear-gradient(135deg, rgba(255, 126, 51, 0.08), rgba(255, 87, 34, 0.03))',
-                    borderRadius: 12,
-                    border: '1px solid rgba(255, 126, 51, 0.15)',
-                  }}>
-                    <div style={{ fontSize: 12, color: '#999', marginBottom: 4 }}>🔥 ストリーク重み</div>
-                    <div style={{ fontSize: 24, fontWeight: 'bold', color: '#ff7e33' }}>{params.streakWeight.toFixed(1)}</div>
+                  <div className="balance-marker">
+                    <div className="balance-marker-icon">⚖️</div>
+                    <div>バランス</div>
                   </div>
-                  <div style={{
-                    textAlign: 'center',
-                    padding: 20,
-                    background: 'linear-gradient(135deg, rgba(255, 126, 51, 0.08), rgba(255, 87, 34, 0.03))',
-                    borderRadius: 12,
-                    border: '1px solid rgba(255, 126, 51, 0.15)',
-                  }}>
-                    <div style={{ fontSize: 12, color: '#999', marginBottom: 4 }}>🤖 AI質的重み</div>
-                    <div style={{ fontSize: 24, fontWeight: 'bold', color: '#ff7e33' }}>{params.aiQualityWeight.toFixed(1)}</div>
-                  </div>
-                  <div style={{
-                    textAlign: 'center',
-                    padding: 20,
-                    background: 'linear-gradient(135deg, rgba(255, 126, 51, 0.08), rgba(255, 87, 34, 0.03))',
-                    borderRadius: 12,
-                    border: '1px solid rgba(255, 126, 51, 0.15)',
-                  }}>
-                    <div style={{ fontSize: 12, color: '#999', marginBottom: 4 }}>💬 メッセージ重み</div>
-                    <div style={{ fontSize: 24, fontWeight: 'bold', color: '#ff7e33' }}>{params.messageQualityWeight.toFixed(1)}</div>
+                  <div className="balance-marker">
+                    <div className="balance-marker-icon">✨</div>
+                    <div>質重視</div>
                   </div>
                 </div>
 
-                <div style={{
-                  padding: 16,
-                  background: '#f7fafc',
-                  borderRadius: 12,
-                  marginBottom: 16,
-                }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: '#2d3748', marginBottom: 8 }}>
-                    📐 計算式
-                  </div>
-                  <div style={{ fontSize: 12, color: '#4a5568', fontFamily: 'monospace', lineHeight: 1.8 }}>
-                    エンゲージメントスコア =<br />
-                    &nbsp;&nbsp;NHT回数 × {params.nhtWeight.toFixed(1)} +<br />
-                    &nbsp;&nbsp;ストリーク日数 × {params.streakWeight.toFixed(1)} +<br />
-                    &nbsp;&nbsp;メッセージ品質 × {params.messageQualityWeight.toFixed(1)} +<br />
-                    &nbsp;&nbsp;AI質的スコア × {params.aiQualityWeight.toFixed(1)}
-                  </div>
-                </div>
-
-                <button className="button button-primary" onClick={() => setIsEditing(true)}>
-                  ✏️ 設定を変更する
-                </button>
-              </>
-            ) : (
-              <>
-                {/* 編集モード */}
-                <div style={{ marginBottom: 24 }}>
-                  <div className="form-group">
-                    <label className="form-label">
-                      🎁 NHT応援回数の重み
-                      <span className="form-help">(デフォルト: 2.0)</span>
-                    </label>
-                    <input
-                      type="range"
-                      min="0"
-                      max="10"
-                      step="0.5"
-                      value={editParams.nhtWeight}
-                      onChange={(e) =>
-                        setEditParams({ ...editParams, nhtWeight: parseFloat(e.target.value) })
-                      }
-                      className="range-input"
-                    />
-                    <div className="range-display">
-                      <span>0.0</span>
-                      <span className="range-value">{editParams.nhtWeight.toFixed(1)}</span>
-                      <span>10.0</span>
+                {/* 詳細プレビュー */}
+                <div className="balance-preview">
+                  <div className="balance-preview-item">
+                    <div className="balance-preview-label">🎁 NHT重み</div>
+                    <div className="balance-preview-value" style={{ color: '#ff7e33' }}>
+                      {editParams.nhtWeight.toFixed(1)}
                     </div>
                   </div>
-
-                  <div className="form-group">
-                    <label className="form-label">
-                      🔥 連続応援日数の重み
-                      <span className="form-help">(デフォルト: 10.0)</span>
-                    </label>
-                    <input
-                      type="range"
-                      min="0"
-                      max="20"
-                      step="1"
-                      value={editParams.streakWeight}
-                      onChange={(e) =>
-                        setEditParams({ ...editParams, streakWeight: parseFloat(e.target.value) })
-                      }
-                      className="range-input"
-                    />
-                    <div className="range-display">
-                      <span>0.0</span>
-                      <span className="range-value">{editParams.streakWeight.toFixed(1)}</span>
-                      <span>20.0</span>
+                  <div className="balance-preview-item">
+                    <div className="balance-preview-label">🔥 ストリーク重み</div>
+                    <div className="balance-preview-value" style={{ color: '#ff7e33' }}>
+                      {editParams.streakWeight.toFixed(1)}
                     </div>
                   </div>
-
-                  <div className="form-group">
-                    <label className="form-label">
-                      🤖 AI質的スコアの重み
-                      <span className="form-help">(デフォルト: 1.0)</span>
-                    </label>
-                    <input
-                      type="range"
-                      min="0"
-                      max="5"
-                      step="0.1"
-                      value={editParams.aiQualityWeight}
-                      onChange={(e) =>
-                        setEditParams({ ...editParams, aiQualityWeight: parseFloat(e.target.value) })
-                      }
-                      className="range-input"
-                    />
-                    <div className="range-display">
-                      <span>0.0</span>
-                      <span className="range-value">{editParams.aiQualityWeight.toFixed(1)}</span>
-                      <span>5.0</span>
+                  <div className="balance-preview-item">
+                    <div className="balance-preview-label">🤖 AI質的重み</div>
+                    <div className="balance-preview-value" style={{ color: '#ff7e33' }}>
+                      {editParams.aiQualityWeight.toFixed(1)}
                     </div>
                   </div>
-
-                  <div className="form-group">
-                    <label className="form-label">
-                      💬 メッセージ品質の重み
-                      <span className="form-help">(デフォルト: 1.0)</span>
-                    </label>
-                    <input
-                      type="range"
-                      min="0"
-                      max="5"
-                      step="0.1"
-                      value={editParams.messageQualityWeight}
-                      onChange={(e) =>
-                        setEditParams({ ...editParams, messageQualityWeight: parseFloat(e.target.value) })
-                      }
-                      className="range-input"
-                    />
-                    <div className="range-display">
-                      <span>0.0</span>
-                      <span className="range-value">{editParams.messageQualityWeight.toFixed(1)}</span>
-                      <span>5.0</span>
+                  <div className="balance-preview-item">
+                    <div className="balance-preview-label">💬 メッセージ重み</div>
+                    <div className="balance-preview-value" style={{ color: '#ff7e33' }}>
+                      {editParams.messageQualityWeight.toFixed(1)}
                     </div>
                   </div>
                 </div>
 
-                {/* プレビュー */}
+                {/* リアルタイムプレビュー */}
                 <div className="preview-section">
                   <div className="preview-title">
-                    📊 シミュレーション
+                    📊 リアルタイムプレビュー
                   </div>
                   <div className="preview-description">
-                    例: 10回NHT応援 + 5日連続 + メッセージ品質80 + AI質的スコア60
+                    10回NHT応援 + 5日連続 + メッセージ品質80 + AI質的スコア60の場合
                   </div>
                   <div style={{
                     marginTop: 16,
@@ -1250,7 +1381,7 @@ export const ScoreParametersPage: React.FC = () => {
                     textAlign: 'center',
                   }}>
                     <div style={{ fontSize: 14, color: '#718096', marginBottom: 12 }}>
-                      計算結果
+                      エンゲージメントスコア
                     </div>
                     <div style={{ fontSize: 36, fontWeight: 'bold', color: '#ff7e33', marginBottom: 8 }}>
                       {Math.round(
@@ -1259,9 +1390,6 @@ export const ScoreParametersPage: React.FC = () => {
                         80 * editParams.messageQualityWeight +
                         60 * editParams.aiQualityWeight
                       )}
-                    </div>
-                    <div style={{ fontSize: 12, color: '#999' }}>
-                      エンゲージメントスコア
                     </div>
                     <div style={{
                       marginTop: 16,
@@ -1278,23 +1406,176 @@ export const ScoreParametersPage: React.FC = () => {
                     </div>
                   </div>
                 </div>
-
-                {/* ボタン */}
-                <div className="button-group">
-                  <button className="button button-secondary" onClick={handleCancel}>
-                    キャンセル
-                  </button>
-                  <button
-                    className="button button-primary"
-                    onClick={handleSave}
-                    disabled={!hasChanges || isSaving}
-                  >
-                    {isSaving ? '保存中...' : '💾 保存して適用する'}
-                  </button>
-                </div>
-              </>
+              </div>
             )}
-          </div>
+
+            {/* カスタムモード */}
+            {gaugeMode === 'custom' && (
+              <div className="edit-form">
+                {/* NHT Weight */}
+                <div className="form-group">
+                  <label className="form-label">
+                    🎁 NHT応援回数の重み
+                    <span className="form-help">
+                      (応援回数の評価重み - デフォルト: 2.0)
+                    </span>
+                  </label>
+                  <input
+                    type="range"
+                    min="0"
+                    max="10"
+                    step="0.5"
+                    value={editParams.nhtWeight}
+                    onChange={(e) =>
+                      setEditParams({ ...editParams, nhtWeight: parseFloat(e.target.value) })
+                    }
+                    className="range-input"
+                  />
+                  <div className="range-display">
+                    <span>0.0</span>
+                    <span className="range-value">{editParams.nhtWeight.toFixed(1)}</span>
+                    <span>10.0</span>
+                  </div>
+                </div>
+
+                {/* Streak Weight */}
+                <div className="form-group">
+                  <label className="form-label">
+                    🔥 連続応援日数の重み
+                    <span className="form-help">
+                      (継続性の評価重み - デフォルト: 10.0)
+                    </span>
+                  </label>
+                  <input
+                    type="range"
+                    min="0"
+                    max="20"
+                    step="1"
+                    value={editParams.streakWeight}
+                    onChange={(e) =>
+                      setEditParams({ ...editParams, streakWeight: parseFloat(e.target.value) })
+                    }
+                    className="range-input"
+                  />
+                  <div className="range-display">
+                    <span>0.0</span>
+                    <span className="range-value">{editParams.streakWeight.toFixed(1)}</span>
+                    <span>20.0</span>
+                  </div>
+                </div>
+
+                {/* AI Quality Weight */}
+                <div className="form-group">
+                  <label className="form-label">
+                    🤖 AI質的スコアの重み
+                    <span className="form-help">
+                      (メッセージのAI評価の重み - デフォルト: 1.0)
+                    </span>
+                  </label>
+                  <input
+                    type="range"
+                    min="0"
+                    max="5"
+                    step="0.1"
+                    value={editParams.aiQualityWeight}
+                    onChange={(e) =>
+                      setEditParams({ ...editParams, aiQualityWeight: parseFloat(e.target.value) })
+                    }
+                    className="range-input"
+                  />
+                  <div className="range-display">
+                    <span>0.0</span>
+                    <span className="range-value">{editParams.aiQualityWeight.toFixed(1)}</span>
+                    <span>5.0</span>
+                  </div>
+                </div>
+
+                {/* Message Quality Weight */}
+                <div className="form-group">
+                  <label className="form-label">
+                    💬 メッセージ品質の重み
+                    <span className="form-help">
+                      (メッセージの量的評価の重み - デフォルト: 1.0)
+                    </span>
+                  </label>
+                  <input
+                    type="range"
+                    min="0"
+                    max="5"
+                    step="0.1"
+                    value={editParams.messageQualityWeight}
+                    onChange={(e) =>
+                      setEditParams({ ...editParams, messageQualityWeight: parseFloat(e.target.value) })
+                    }
+                    className="range-input"
+                  />
+                  <div className="range-display">
+                    <span>0.0</span>
+                    <span className="range-value">{editParams.messageQualityWeight.toFixed(1)}</span>
+                    <span>5.0</span>
+                  </div>
+                </div>
+
+                {/* リアルタイムプレビュー（カスタムモード） */}
+                <div className="preview-section">
+                  <div className="preview-title">
+                    📊 リアルタイムプレビュー
+                  </div>
+                  <div className="preview-description">
+                    10回NHT応援 + 5日連続 + メッセージ品質80 + AI質的スコア60の場合
+                  </div>
+                  <div style={{
+                    marginTop: 16,
+                    padding: 24,
+                    background: 'white',
+                    borderRadius: 12,
+                    textAlign: 'center',
+                  }}>
+                    <div style={{ fontSize: 14, color: '#718096', marginBottom: 12 }}>
+                      エンゲージメントスコア
+                    </div>
+                    <div style={{ fontSize: 36, fontWeight: 'bold', color: '#ff7e33', marginBottom: 8 }}>
+                      {Math.round(
+                        10 * editParams.nhtWeight +
+                        5 * editParams.streakWeight +
+                        80 * editParams.messageQualityWeight +
+                        60 * editParams.aiQualityWeight
+                      )}
+                    </div>
+                    <div style={{
+                      marginTop: 16,
+                      padding: 12,
+                      background: '#f7fafc',
+                      borderRadius: 8,
+                      fontSize: 11,
+                      color: '#4a5568',
+                      textAlign: 'left',
+                      fontFamily: 'monospace',
+                    }}>
+                      = 10 × {editParams.nhtWeight.toFixed(1)} + 5 × {editParams.streakWeight.toFixed(1)} + 80 × {editParams.messageQualityWeight.toFixed(1)} + 60 × {editParams.aiQualityWeight.toFixed(1)}<br />
+                      = {(10 * editParams.nhtWeight).toFixed(1)} + {(5 * editParams.streakWeight).toFixed(1)} + {(80 * editParams.messageQualityWeight).toFixed(1)} + {(60 * editParams.aiQualityWeight).toFixed(1)}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ボタン */}
+            <div className="button-group">
+              <button className="button button-secondary" onClick={handleCancel}>
+                キャンセル
+              </button>
+              <button
+                className="button button-primary"
+                onClick={handleSave}
+                disabled={!hasChanges || isSaving}
+              >
+                {isSaving ? '保存中...' : '💾 保存して適用する'}
+              </button>
+            </div>
+          </>
+        )}
+      </div>
         </>
       )}
 
