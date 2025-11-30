@@ -380,8 +380,34 @@ export default function AdminDashboard() {
   );
 
   // ページ状態管理
-  const [currentPage, setCurrentPage] = useState<PageType>("dashboard");
+  // URLパスに基づいて初期ページを設定
+  const getInitialPage = (): PageType => {
+    const path = window.location.pathname;
+    if (path.includes('/admin/tenant-profile') || path.includes('/admin/tenant-management')) {
+      return 'tenant-management';
+    }
+    if (path.includes('/admin/flag-nft')) {
+      return 'flag-nft-management';
+    }
+    if (path.includes('/admin/reward-ui')) {
+      return 'reward-ui-management';
+    }
+    if (path.includes('/admin/vending')) {
+      return 'vending-management';
+    }
+    return 'dashboard';
+  };
+
+  const [currentPage, setCurrentPage] = useState<PageType>(getInitialPage());
   const [adManagementData, setAdManagementData] = useState<AdData[]>([]);
+
+  // ページ切り替え時にURLも更新
+  const handlePageChange = (page: PageType) => {
+    setCurrentPage(page);
+    // URLを更新（ブラウザ履歴に追加）
+    const newPath = page === 'dashboard' ? '/admin' : `/admin/${page.replace('-management', '')}`;
+    window.history.pushState({}, '', newPath);
+  };
   
   
   
@@ -2563,7 +2589,7 @@ export default function AdminDashboard() {
   return (
     <AdminLayout
       currentPage={currentPage}
-      onPageChange={setCurrentPage}
+      onPageChange={handlePageChange}
       emergencyStop={emergencyStop}
       onEmergencyToggle={handleEmergencyToggle}
     >
