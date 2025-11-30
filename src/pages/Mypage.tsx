@@ -2467,7 +2467,7 @@ function SendForm({ isMobile, bulkSendRecipients, setBulkSendRecipients, handleA
       )}
 
       <div style={{ marginBottom: 16 }}>
-        <label style={{ display: 'block', fontSize: isMobile ? 13 : 14, color: '#1a1a1a', fontWeight: 700, marginBottom: 8 }}>
+        <label style={{ display: 'block', fontSize: isMobile ? 13 : 14, color: '#ffffff', fontWeight: 700, marginBottom: 8 }}>
           宛先アドレス {(sendMode === 'tenant' || sendMode === 'bookmark') && '（自動入力済み）'}
         </label>
         <div style={{ position: 'relative' }}>
@@ -2617,7 +2617,7 @@ function SendForm({ isMobile, bulkSendRecipients, setBulkSendRecipients, handleA
       </div>
 
       <div style={{ marginBottom: 16 }}>
-        <label style={{ display: 'block', fontSize: isMobile ? 13 : 14, color: '#1a1a1a', fontWeight: 700, marginBottom: 8 }}>
+        <label style={{ display: 'block', fontSize: isMobile ? 13 : 14, color: '#ffffff', fontWeight: 700, marginBottom: 8 }}>
           数量
         </label>
 
@@ -2827,7 +2827,7 @@ function SendForm({ isMobile, bulkSendRecipients, setBulkSendRecipients, handleA
               gap: 8,
               cursor: 'pointer',
               fontSize: isMobile ? 13 : 14,
-              color: '#666',
+              color: '#ffffff',
               userSelect: 'none',
             }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style={{ color: '#1DA1F2' }}>
@@ -2932,7 +2932,7 @@ function SendForm({ isMobile, bulkSendRecipients, setBulkSendRecipients, handleA
               gap: 8,
               cursor: 'pointer',
               fontSize: isMobile ? 13 : 14,
-              color: '#666',
+              color: '#ffffff',
               userSelect: 'none',
             }}
           >
