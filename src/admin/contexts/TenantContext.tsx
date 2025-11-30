@@ -71,7 +71,7 @@ export interface TenantConfig {
 // 環境に応じてトークンアドレスが自動的に切り替わる（testnet: tNHT, mainnet: NHT）
 const DEFAULT_TENANT: TenantConfig = {
   id: 'default',
-  name: 'METATRON Default',
+  name: 'GIFTERRA',
   contracts: {
     gifterra: CONTRACT_ADDRESS,
     rewardToken: getDefaultToken().currentAddress,
