@@ -15,8 +15,10 @@ export function UserProfilePage({ address: propsAddress, mockProfile, mockActivi
   mockActivities?: any[];
 } = {}) {
   const myAddress = useAddress(); // ログイン中のユーザーアドレス
-  const pathParts = window.location.pathname.split('/');
-  const addressFromUrl = pathParts[pathParts.indexOf('user') + 1];
+  const path = window.location.pathname;
+
+  // /user/:address または /profile/:address のパターンに対応
+  const addressFromUrl = path.split('/user/')[1] || path.split('/profile/')[1] || '';
   const targetAddress = propsAddress || addressFromUrl;
 
   // 他のユーザーのプロフィールを閲覧しているかチェック
