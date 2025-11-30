@@ -578,10 +578,6 @@ function Header({ viewMode, setViewMode, isMobile, tenantRank, showSettingsModal
     return flowImage;
   };
 
-  // 特定アドレスのみトグル表示（開発・テスト用）
-  const ALLOWED_TOGGLE_ADDRESS = '0x66f1274ad5d042b7571c2efa943370dbcd3459ab';
-  const showToggle = displayAddress?.toLowerCase() === ALLOWED_TOGGLE_ADDRESS.toLowerCase();
-
   const handleLogout = async () => {
     try {
       // Privy認証の場合はPrivyからもログアウト
@@ -630,75 +626,6 @@ function Header({ viewMode, setViewMode, isMobile, tenantRank, showSettingsModal
           e.currentTarget.style.opacity = '1';
         }}
       />
-
-      {/* 中央：FLOW/STUDIOトグル（スーパーアドミンのみ表示） */}
-      {showToggle && (
-        <div style={{
-          display: 'flex',
-          gap: 8,
-          background: 'linear-gradient(145deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.04) 100%)',
-          border: '1px solid rgba(255, 255, 255, 0.15)',
-          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
-          borderRadius: 999,
-          padding: 4,
-          border: '1px solid rgba(255,255,255,0.1)',
-        }}>
-          <button
-            onClick={() => setViewMode('flow')}
-            style={{
-              padding: isMobile ? '6px 16px' : '8px 20px',
-              background: viewMode === 'flow' ? 'linear-gradient(145deg, #6366f1 0%, #8b5cf6 100%)' : 'transparent',
-              boxShadow: viewMode === 'flow' ? '0 4px 16px rgba(99, 102, 241, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)' : 'none',
-              border: 'none',
-              borderRadius: 999,
-              color: '#EAF2FF',
-              fontSize: isMobile ? 12 : 14,
-              fontWeight: 700,
-              cursor: 'pointer',
-              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-            }}
-            onMouseEnter={(e) => {
-              if (viewMode === 'flow') {
-                e.currentTarget.style.transform = 'translateY(-2px) scale(1.02)';
-                e.currentTarget.style.boxShadow = '0 6px 24px rgba(99, 102, 241, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3)';
-              }
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = 'translateY(0) scale(1)';
-              e.currentTarget.style.boxShadow = viewMode === 'flow' ? '0 4px 16px rgba(99, 102, 241, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)' : 'none';
-            }}
-          >
-            FLOW
-          </button>
-          <button
-            onClick={() => setViewMode('tenant')}
-            style={{
-              padding: isMobile ? '6px 16px' : '8px 20px',
-              background: viewMode === 'tenant' ? 'linear-gradient(145deg, #a855f7 0%, #9333ea 100%)' : 'transparent',
-              boxShadow: viewMode === 'tenant' ? '0 4px 16px rgba(168, 85, 247, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)' : 'none',
-              border: 'none',
-              borderRadius: 999,
-              color: '#EAF2FF',
-              fontSize: isMobile ? 12 : 14,
-              fontWeight: 700,
-              cursor: 'pointer',
-              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-            }}
-            onMouseEnter={(e) => {
-              if (viewMode === 'tenant') {
-                e.currentTarget.style.transform = 'translateY(-2px) scale(1.02)';
-                e.currentTarget.style.boxShadow = '0 6px 24px rgba(168, 85, 247, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3)';
-              }
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = 'translateY(0) scale(1)';
-              e.currentTarget.style.boxShadow = viewMode === 'tenant' ? '0 4px 16px rgba(168, 85, 247, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)' : 'none';
-            }}
-          >
-            STUDIO
-          </button>
-        </div>
-      )}
 
       {/* 右:通知ベル + ハンバーガーメニュー（スマホ・デスクトップ共通） */}
       <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
