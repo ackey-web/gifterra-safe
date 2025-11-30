@@ -45,6 +45,9 @@ interface ParamsHistory {
 // ========================================
 
 export const ScoreParametersPage: React.FC = () => {
+  // タブ切り替え用state
+  const [activeTab, setActiveTab] = useState<'tank' | 'gauge'>('tank');
+
   const [params, setParams] = useState<ScoreParams>({
     weightEconomic: 100,
     weightResonance: 100,
@@ -775,12 +778,60 @@ export const ScoreParametersPage: React.FC = () => {
 
       {/* ヘッダー */}
       <div className="page-header">
-        <h1 className="page-title">⚖️ kodomi判定バランス管理</h1>
+        <h1 className="page-title">⚖️ スコアパラメータ管理</h1>
         <p className="page-description">
-          JPYCと応援熱量の評価バランスを調整します
+          KODOMIタンクとKODOMIゲージの設定を管理します
         </p>
       </div>
 
+      {/* タブナビゲーション */}
+      <div className="card">
+        <div style={{
+          display: 'flex',
+          gap: 8,
+          borderBottom: '2px solid #e2e8f0',
+          marginBottom: 24,
+        }}>
+          <button
+            onClick={() => setActiveTab('tank')}
+            style={{
+              padding: '12px 24px',
+              background: 'none',
+              border: 'none',
+              borderBottom: activeTab === 'tank' ? '3px solid #667eea' : '3px solid transparent',
+              fontSize: 15,
+              fontWeight: 600,
+              color: activeTab === 'tank' ? '#667eea' : '#718096',
+              cursor: 'pointer',
+              marginBottom: -2,
+              transition: 'all 0.2s ease',
+            }}
+          >
+            🏆 KODOMIタンク設定
+          </button>
+          <button
+            onClick={() => setActiveTab('gauge')}
+            style={{
+              padding: '12px 24px',
+              background: 'none',
+              border: 'none',
+              borderBottom: activeTab === 'gauge' ? '3px solid #ff7e33' : '3px solid transparent',
+              fontSize: 15,
+              fontWeight: 600,
+              color: activeTab === 'gauge' ? '#ff7e33' : '#718096',
+              cursor: 'pointer',
+              marginBottom: -2,
+              transition: 'all 0.2s ease',
+            }}
+          >
+            📊 KODOMIゲージ設定
+          </button>
+        </div>
+      </div>
+
+      {/* タンク設定タブ */}
+      {activeTab === 'tank' && (
+        <>
       {/* 現在の設定 */}
       <div className="card">
         <h2 className="card-title">
@@ -798,46 +849,6 @@ export const ScoreParametersPage: React.FC = () => {
             <div className="param-label">⚡ 応援熱量の重み</div>
             <div className="param-value">{params.weightResonance}</div>
             <div className="param-unit">{(params.weightResonance / 100).toFixed(1)}倍</div>
-          </div>
-        </div>
-
-        {/* Resonance計算パラメーター表示 */}
-        <div style={{
-          marginTop: 24,
-          padding: 20,
-          background: 'linear-gradient(135deg, rgba(255, 126, 51, 0.08), rgba(255, 87, 34, 0.03))',
-          borderRadius: 12,
-          border: '1px solid rgba(255, 126, 51, 0.15)'
-        }}>
-          <h3 style={{
-            fontSize: 16,
-            fontWeight: 'bold',
-            color: '#ff7e33',
-            marginBottom: 16
-          }}>
-            ⚙️ KODOMI ゲージ計算パラメーター
-          </h3>
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-            gap: 16
-          }}>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 12, color: '#999', marginBottom: 4 }}>🎁 NHT重み</div>
-              <div style={{ fontSize: 24, fontWeight: 'bold', color: '#ff7e33' }}>{params.nhtWeight.toFixed(1)}</div>
-            </div>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 12, color: '#999', marginBottom: 4 }}>🔥 ストリーク重み</div>
-              <div style={{ fontSize: 24, fontWeight: 'bold', color: '#ff7e33' }}>{params.streakWeight.toFixed(1)}</div>
-            </div>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 12, color: '#999', marginBottom: 4 }}>🤖 AI質的重み</div>
-              <div style={{ fontSize: 24, fontWeight: 'bold', color: '#ff7e33' }}>{params.aiQualityWeight.toFixed(1)}</div>
-            </div>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 12, color: '#999', marginBottom: 4 }}>💬 メッセージ重み</div>
-              <div style={{ fontSize: 24, fontWeight: 'bold', color: '#ff7e33' }}>{params.messageQualityWeight.toFixed(1)}</div>
-            </div>
           </div>
         </div>
 
@@ -1006,126 +1017,6 @@ export const ScoreParametersPage: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Resonance計算パラメーター */}
-                <div style={{
-                  marginTop: 32,
-                  padding: 24,
-                  background: 'linear-gradient(135deg, rgba(255, 126, 51, 0.1), rgba(255, 87, 34, 0.05))',
-                  borderRadius: 12,
-                  border: '2px solid rgba(255, 126, 51, 0.2)'
-                }}>
-                  <h3 style={{
-                    fontSize: 18,
-                    fontWeight: 'bold',
-                    color: '#ff7e33',
-                    marginBottom: 16,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 8
-                  }}>
-                    ⚙️ KODOMI ゲージ計算パラメーター
-                  </h3>
-                  <p style={{ fontSize: 14, color: '#666', marginBottom: 20 }}>
-                    engagementScore = NHT回数 × NHT重み + 連続日数 × ストリーク重み + メッセージ品質 × メッセージ重み + AI質的スコア × AI重み
-                  </p>
-
-                  {/* NHT Weight */}
-                  <div className="form-group">
-                    <label className="form-label">
-                      🎁 NHTチップ回数の重み
-                      <span className="form-help">(デフォルト: 2.0)</span>
-                    </label>
-                    <input
-                      type="range"
-                      min="0"
-                      max="10"
-                      step="0.5"
-                      value={editParams.nhtWeight}
-                      onChange={(e) =>
-                        setEditParams({ ...editParams, nhtWeight: parseFloat(e.target.value) })
-                      }
-                      className="range-input"
-                    />
-                    <div className="range-display">
-                      <span>0.0</span>
-                      <span className="range-value">{editParams.nhtWeight.toFixed(1)}</span>
-                      <span>10.0</span>
-                    </div>
-                  </div>
-
-                  {/* Streak Weight */}
-                  <div className="form-group">
-                    <label className="form-label">
-                      🔥 連続日数の重み
-                      <span className="form-help">(デフォルト: 10.0)</span>
-                    </label>
-                    <input
-                      type="range"
-                      min="0"
-                      max="20"
-                      step="1"
-                      value={editParams.streakWeight}
-                      onChange={(e) =>
-                        setEditParams({ ...editParams, streakWeight: parseFloat(e.target.value) })
-                      }
-                      className="range-input"
-                    />
-                    <div className="range-display">
-                      <span>0.0</span>
-                      <span className="range-value">{editParams.streakWeight.toFixed(1)}</span>
-                      <span>20.0</span>
-                    </div>
-                  </div>
-
-                  {/* AI Quality Weight */}
-                  <div className="form-group">
-                    <label className="form-label">
-                      🤖 AI質的スコアの重み
-                      <span className="form-help">(デフォルト: 1.0)</span>
-                    </label>
-                    <input
-                      type="range"
-                      min="0"
-                      max="5"
-                      step="0.1"
-                      value={editParams.aiQualityWeight}
-                      onChange={(e) =>
-                        setEditParams({ ...editParams, aiQualityWeight: parseFloat(e.target.value) })
-                      }
-                      className="range-input"
-                    />
-                    <div className="range-display">
-                      <span>0.0</span>
-                      <span className="range-value">{editParams.aiQualityWeight.toFixed(1)}</span>
-                      <span>5.0</span>
-                    </div>
-                  </div>
-
-                  {/* Message Quality Weight */}
-                  <div className="form-group">
-                    <label className="form-label">
-                      💬 メッセージ品質の重み
-                      <span className="form-help">(デフォルト: 1.0)</span>
-                    </label>
-                    <input
-                      type="range"
-                      min="0"
-                      max="5"
-                      step="0.1"
-                      value={editParams.messageQualityWeight}
-                      onChange={(e) =>
-                        setEditParams({ ...editParams, messageQualityWeight: parseFloat(e.target.value) })
-                      }
-                      className="range-input"
-                    />
-                    <div className="range-display">
-                      <span>0.0</span>
-                      <span className="range-value">{editParams.messageQualityWeight.toFixed(1)}</span>
-                      <span>5.0</span>
-                    </div>
-                  </div>
-                </div>
-
                 {/* リアルタイムプレビュー（カスタムモード） */}
                 <div className="preview-section">
                   <div className="preview-title">
@@ -1161,6 +1052,251 @@ export const ScoreParametersPage: React.FC = () => {
           </>
         )}
       </div>
+        </>
+      )}
+
+      {/* ゲージ設定タブ */}
+      {activeTab === 'gauge' && (
+        <>
+          {/* KODOMI ゲージ パラメーター設定 */}
+          <div className="card">
+            <h2 className="card-title">
+              ⚙️ KODOMIゲージ計算パラメーター
+            </h2>
+
+            {!isEditing ? (
+              <>
+                {/* 現在の設定表示 */}
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                  gap: 16,
+                  marginBottom: 24,
+                }}>
+                  <div style={{
+                    textAlign: 'center',
+                    padding: 20,
+                    background: 'linear-gradient(135deg, rgba(255, 126, 51, 0.08), rgba(255, 87, 34, 0.03))',
+                    borderRadius: 12,
+                    border: '1px solid rgba(255, 126, 51, 0.15)',
+                  }}>
+                    <div style={{ fontSize: 12, color: '#999', marginBottom: 4 }}>🎁 NHT重み</div>
+                    <div style={{ fontSize: 24, fontWeight: 'bold', color: '#ff7e33' }}>{params.nhtWeight.toFixed(1)}</div>
+                  </div>
+                  <div style={{
+                    textAlign: 'center',
+                    padding: 20,
+                    background: 'linear-gradient(135deg, rgba(255, 126, 51, 0.08), rgba(255, 87, 34, 0.03))',
+                    borderRadius: 12,
+                    border: '1px solid rgba(255, 126, 51, 0.15)',
+                  }}>
+                    <div style={{ fontSize: 12, color: '#999', marginBottom: 4 }}>🔥 ストリーク重み</div>
+                    <div style={{ fontSize: 24, fontWeight: 'bold', color: '#ff7e33' }}>{params.streakWeight.toFixed(1)}</div>
+                  </div>
+                  <div style={{
+                    textAlign: 'center',
+                    padding: 20,
+                    background: 'linear-gradient(135deg, rgba(255, 126, 51, 0.08), rgba(255, 87, 34, 0.03))',
+                    borderRadius: 12,
+                    border: '1px solid rgba(255, 126, 51, 0.15)',
+                  }}>
+                    <div style={{ fontSize: 12, color: '#999', marginBottom: 4 }}>🤖 AI質的重み</div>
+                    <div style={{ fontSize: 24, fontWeight: 'bold', color: '#ff7e33' }}>{params.aiQualityWeight.toFixed(1)}</div>
+                  </div>
+                  <div style={{
+                    textAlign: 'center',
+                    padding: 20,
+                    background: 'linear-gradient(135deg, rgba(255, 126, 51, 0.08), rgba(255, 87, 34, 0.03))',
+                    borderRadius: 12,
+                    border: '1px solid rgba(255, 126, 51, 0.15)',
+                  }}>
+                    <div style={{ fontSize: 12, color: '#999', marginBottom: 4 }}>💬 メッセージ重み</div>
+                    <div style={{ fontSize: 24, fontWeight: 'bold', color: '#ff7e33' }}>{params.messageQualityWeight.toFixed(1)}</div>
+                  </div>
+                </div>
+
+                <div style={{
+                  padding: 16,
+                  background: '#f7fafc',
+                  borderRadius: 12,
+                  marginBottom: 16,
+                }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: '#2d3748', marginBottom: 8 }}>
+                    📐 計算式
+                  </div>
+                  <div style={{ fontSize: 12, color: '#4a5568', fontFamily: 'monospace', lineHeight: 1.8 }}>
+                    エンゲージメントスコア =<br />
+                    &nbsp;&nbsp;NHT回数 × {params.nhtWeight.toFixed(1)} +<br />
+                    &nbsp;&nbsp;ストリーク日数 × {params.streakWeight.toFixed(1)} +<br />
+                    &nbsp;&nbsp;メッセージ品質 × {params.messageQualityWeight.toFixed(1)} +<br />
+                    &nbsp;&nbsp;AI質的スコア × {params.aiQualityWeight.toFixed(1)}
+                  </div>
+                </div>
+
+                <button className="button button-primary" onClick={() => setIsEditing(true)}>
+                  ✏️ 設定を変更する
+                </button>
+              </>
+            ) : (
+              <>
+                {/* 編集モード */}
+                <div style={{ marginBottom: 24 }}>
+                  <div className="form-group">
+                    <label className="form-label">
+                      🎁 NHT応援回数の重み
+                      <span className="form-help">(デフォルト: 2.0)</span>
+                    </label>
+                    <input
+                      type="range"
+                      min="0"
+                      max="10"
+                      step="0.5"
+                      value={editParams.nhtWeight}
+                      onChange={(e) =>
+                        setEditParams({ ...editParams, nhtWeight: parseFloat(e.target.value) })
+                      }
+                      className="range-input"
+                    />
+                    <div className="range-display">
+                      <span>0.0</span>
+                      <span className="range-value">{editParams.nhtWeight.toFixed(1)}</span>
+                      <span>10.0</span>
+                    </div>
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">
+                      🔥 連続応援日数の重み
+                      <span className="form-help">(デフォルト: 10.0)</span>
+                    </label>
+                    <input
+                      type="range"
+                      min="0"
+                      max="20"
+                      step="1"
+                      value={editParams.streakWeight}
+                      onChange={(e) =>
+                        setEditParams({ ...editParams, streakWeight: parseFloat(e.target.value) })
+                      }
+                      className="range-input"
+                    />
+                    <div className="range-display">
+                      <span>0.0</span>
+                      <span className="range-value">{editParams.streakWeight.toFixed(1)}</span>
+                      <span>20.0</span>
+                    </div>
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">
+                      🤖 AI質的スコアの重み
+                      <span className="form-help">(デフォルト: 1.0)</span>
+                    </label>
+                    <input
+                      type="range"
+                      min="0"
+                      max="5"
+                      step="0.1"
+                      value={editParams.aiQualityWeight}
+                      onChange={(e) =>
+                        setEditParams({ ...editParams, aiQualityWeight: parseFloat(e.target.value) })
+                      }
+                      className="range-input"
+                    />
+                    <div className="range-display">
+                      <span>0.0</span>
+                      <span className="range-value">{editParams.aiQualityWeight.toFixed(1)}</span>
+                      <span>5.0</span>
+                    </div>
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">
+                      💬 メッセージ品質の重み
+                      <span className="form-help">(デフォルト: 1.0)</span>
+                    </label>
+                    <input
+                      type="range"
+                      min="0"
+                      max="5"
+                      step="0.1"
+                      value={editParams.messageQualityWeight}
+                      onChange={(e) =>
+                        setEditParams({ ...editParams, messageQualityWeight: parseFloat(e.target.value) })
+                      }
+                      className="range-input"
+                    />
+                    <div className="range-display">
+                      <span>0.0</span>
+                      <span className="range-value">{editParams.messageQualityWeight.toFixed(1)}</span>
+                      <span>5.0</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* プレビュー */}
+                <div className="preview-section">
+                  <div className="preview-title">
+                    📊 シミュレーション
+                  </div>
+                  <div className="preview-description">
+                    例: 10回NHT応援 + 5日連続 + メッセージ品質80 + AI質的スコア60
+                  </div>
+                  <div style={{
+                    marginTop: 16,
+                    padding: 24,
+                    background: 'white',
+                    borderRadius: 12,
+                    textAlign: 'center',
+                  }}>
+                    <div style={{ fontSize: 14, color: '#718096', marginBottom: 12 }}>
+                      計算結果
+                    </div>
+                    <div style={{ fontSize: 36, fontWeight: 'bold', color: '#ff7e33', marginBottom: 8 }}>
+                      {Math.round(
+                        10 * editParams.nhtWeight +
+                        5 * editParams.streakWeight +
+                        80 * editParams.messageQualityWeight +
+                        60 * editParams.aiQualityWeight
+                      )}
+                    </div>
+                    <div style={{ fontSize: 12, color: '#999' }}>
+                      エンゲージメントスコア
+                    </div>
+                    <div style={{
+                      marginTop: 16,
+                      padding: 12,
+                      background: '#f7fafc',
+                      borderRadius: 8,
+                      fontSize: 11,
+                      color: '#4a5568',
+                      textAlign: 'left',
+                      fontFamily: 'monospace',
+                    }}>
+                      = 10 × {editParams.nhtWeight.toFixed(1)} + 5 × {editParams.streakWeight.toFixed(1)} + 80 × {editParams.messageQualityWeight.toFixed(1)} + 60 × {editParams.aiQualityWeight.toFixed(1)}<br />
+                      = {(10 * editParams.nhtWeight).toFixed(1)} + {(5 * editParams.streakWeight).toFixed(1)} + {(80 * editParams.messageQualityWeight).toFixed(1)} + {(60 * editParams.aiQualityWeight).toFixed(1)}
+                    </div>
+                  </div>
+                </div>
+
+                {/* ボタン */}
+                <div className="button-group">
+                  <button className="button button-secondary" onClick={handleCancel}>
+                    キャンセル
+                  </button>
+                  <button
+                    className="button button-primary"
+                    onClick={handleSave}
+                    disabled={!hasChanges || isSaving}
+                  >
+                    {isSaving ? '保存中...' : '💾 保存して適用する'}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </>
+      )}
 
       {/* 変更履歴 */}
       <div className="card">
