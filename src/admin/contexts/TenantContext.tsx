@@ -20,7 +20,7 @@ const DEV_MODE = import.meta.env.DEV || import.meta.env.MODE === 'development';
 const ADMIN_WHITELIST_ENABLED = DEV_MODE || import.meta.env.VITE_ENABLE_ADMIN_WHITELIST === 'true';
 
 // スーパーアドミンアドレス（ホワイトリスト）
-const METATRON_OWNER = '0x66f1274ad5d042b7571c2efa943370dbcd3459ab'; // METATRON管理者
+const METATRON_OWNER = '0xfcea8435dcbba7f3b1da01e8ea3f4af234a20bcb'; // METATRON管理者
 const DEV_SUPER_ADMIN_ADDRESSES = [
   METATRON_OWNER,
   // 開発チームのアドレスを追加可能
