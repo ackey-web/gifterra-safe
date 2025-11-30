@@ -235,11 +235,8 @@ export function TenantProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    if (isMETATRONOwner) {
-      // METATRON Owner → デフォルトテナント
-      console.log('✅ Setting DEFAULT_TENANT for METATRON Owner');
-      setTenant(DEFAULT_TENANT);
-    } else if (isApprovedTenant && application) {
+    // 承認済みテナントがある場合は常にそちらを優先
+    if (isApprovedTenant && application) {
       // 承認済みテナント → 申請データからテナント作成
       console.log('✅ Setting tenant from approved application:', application);
       setTenant({
@@ -254,6 +251,10 @@ export function TenantProvider({ children }: { children: ReactNode }) {
         },
         createdAt: application.created_at,
       });
+    } else if (isMETATRONOwner) {
+      // METATRON Owner かつ承認済みテナントなし → デフォルトテナント
+      console.log('✅ Setting DEFAULT_TENANT for METATRON Owner (no approved tenant)');
+      setTenant(DEFAULT_TENANT);
     } else {
       // アクセス権なし → null
       console.log('❌ No access - setting tenant to null');
