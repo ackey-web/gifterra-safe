@@ -280,11 +280,10 @@ export function ProfileEditModal({
         wallet_address: profileData.wallet_address?.substring(0, 10) + '...',
       });
 
+      // テーブルのUNIQUE制約に基づいて自動的にupsertを実行
       const { data, error: upsertError } = await supabase
         .from('user_profiles')
-        .upsert(profileData, {
-          ignoreDuplicates: false,
-        })
+        .upsert(profileData)
         .select();
 
       if (upsertError) {
