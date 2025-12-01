@@ -1,5 +1,5 @@
 -- ========================================
--- テナントUUID列の追加と既存データのマイグレーション
+-- テナントUUID列の追加と既存データのマイグレーション（安全版）
 -- ========================================
 --
 -- 目的:
@@ -7,22 +7,43 @@
 -- 2. products.tenant_uuid と hub_id を追加
 -- 3. tenant_id (TEXT) から tenant_uuid (UUID) への段階的移行
 --
--- 後方互換性:
--- - 既存の tenant_id カラムは保持（非推奨化）
--- - 新規データは tenant_uuid を優先使用
+-- 完全な冪等性:
+-- - 既存のカラム、インデックス、制約をチェック
+-- - 存在する場合はスキップ
 -- ========================================
 
 -- ========================================
 -- 1. vending_machines テーブルに tenant_uuid を追加
 -- ========================================
 
-ALTER TABLE vending_machines
-ADD COLUMN IF NOT EXISTS tenant_uuid UUID;
+DO $$
+BEGIN
+  -- tenant_uuid カラムを追加（存在しない場合のみ）
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'vending_machines'
+      AND column_name = 'tenant_uuid'
+  ) THEN
+    ALTER TABLE vending_machines ADD COLUMN tenant_uuid UUID;
+    RAISE NOTICE 'Added tenant_uuid column to vending_machines';
+  ELSE
+    RAISE NOTICE 'Column tenant_uuid already exists in vending_machines';
+  END IF;
 
--- インデックス作成
-CREATE INDEX IF NOT EXISTS idx_vending_machines_tenant_uuid ON vending_machines(tenant_uuid);
+  -- インデックス作成（存在しない場合のみ）
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_indexes
+    WHERE tablename = 'vending_machines'
+      AND indexname = 'idx_vending_machines_tenant_uuid'
+  ) THEN
+    CREATE INDEX idx_vending_machines_tenant_uuid ON vending_machines(tenant_uuid);
+    RAISE NOTICE 'Created index idx_vending_machines_tenant_uuid';
+  ELSE
+    RAISE NOTICE 'Index idx_vending_machines_tenant_uuid already exists';
+  END IF;
+END $$;
 
--- デフォルトテナント用のコメント
+-- コメント追加（既存の場合は上書き）
 COMMENT ON COLUMN vending_machines.tenant_id IS 'DEPRECATED: Use tenant_uuid instead. Legacy TEXT column for backward compatibility.';
 COMMENT ON COLUMN vending_machines.tenant_uuid IS 'Tenant UUID from tenant_applications.tenant_id. NULL for legacy data.';
 
@@ -30,17 +51,33 @@ COMMENT ON COLUMN vending_machines.tenant_uuid IS 'Tenant UUID from tenant_appli
 -- 2. products テーブルに tenant_uuid と hub_id を追加
 -- ========================================
 
--- tenant_uuid を追加
-ALTER TABLE products
-ADD COLUMN IF NOT EXISTS tenant_uuid UUID;
-
--- hub_id を追加（別々のステートメントで実行）
-ALTER TABLE products
-ADD COLUMN IF NOT EXISTS hub_id UUID;
-
--- 外部キー制約を追加（カラムが既に存在する場合はスキップ）
 DO $$
 BEGIN
+  -- tenant_uuid カラムを追加（存在しない場合のみ）
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'products'
+      AND column_name = 'tenant_uuid'
+  ) THEN
+    ALTER TABLE products ADD COLUMN tenant_uuid UUID;
+    RAISE NOTICE 'Added tenant_uuid column to products';
+  ELSE
+    RAISE NOTICE 'Column tenant_uuid already exists in products';
+  END IF;
+
+  -- hub_id カラムを追加（存在しない場合のみ）
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'products'
+      AND column_name = 'hub_id'
+  ) THEN
+    ALTER TABLE products ADD COLUMN hub_id UUID;
+    RAISE NOTICE 'Added hub_id column to products';
+  ELSE
+    RAISE NOTICE 'Column hub_id already exists in products';
+  END IF;
+
+  -- 外部キー制約を追加（存在しない場合のみ）
   IF NOT EXISTS (
     SELECT 1 FROM pg_constraint
     WHERE conname = 'products_hub_id_fkey'
@@ -48,14 +85,36 @@ BEGIN
     ALTER TABLE products
     ADD CONSTRAINT products_hub_id_fkey
     FOREIGN KEY (hub_id) REFERENCES vending_machines(id) ON DELETE SET NULL;
+    RAISE NOTICE 'Added foreign key constraint products_hub_id_fkey';
+  ELSE
+    RAISE NOTICE 'Foreign key constraint products_hub_id_fkey already exists';
+  END IF;
+
+  -- インデックス作成（存在しない場合のみ）
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_indexes
+    WHERE tablename = 'products'
+      AND indexname = 'idx_products_tenant_uuid'
+  ) THEN
+    CREATE INDEX idx_products_tenant_uuid ON products(tenant_uuid);
+    RAISE NOTICE 'Created index idx_products_tenant_uuid';
+  ELSE
+    RAISE NOTICE 'Index idx_products_tenant_uuid already exists';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_indexes
+    WHERE tablename = 'products'
+      AND indexname = 'idx_products_hub_id'
+  ) THEN
+    CREATE INDEX idx_products_hub_id ON products(hub_id);
+    RAISE NOTICE 'Created index idx_products_hub_id';
+  ELSE
+    RAISE NOTICE 'Index idx_products_hub_id already exists';
   END IF;
 END $$;
 
--- インデックス作成
-CREATE INDEX IF NOT EXISTS idx_products_tenant_uuid ON products(tenant_uuid);
-CREATE INDEX IF NOT EXISTS idx_products_hub_id ON products(hub_id);
-
--- コメント追加
+-- コメント追加（既存の場合は上書き）
 COMMENT ON COLUMN products.tenant_id IS 'DEPRECATED: Use tenant_uuid instead. Legacy TEXT column containing machine ID or tenant UUID as text.';
 COMMENT ON COLUMN products.tenant_uuid IS 'Tenant UUID from tenant_applications.tenant_id. Links products to tenants.';
 COMMENT ON COLUMN products.hub_id IS 'GIFT HUB UUID from vending_machines.id. Links products to specific hubs.';
