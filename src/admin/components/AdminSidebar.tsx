@@ -1,5 +1,6 @@
 // src/admin/components/AdminSidebar.tsx
 import React from 'react';
+import { useAddress } from '@thirdweb-dev/react';
 import type { RankPlan } from '../../types/tenantApplication';
 import flowImage from '../../assets/flow.png';
 import studioImage from '../../assets/studio.png';
@@ -89,6 +90,7 @@ export default function AdminSidebar({
   rankPlan
 }: AdminSidebarProps) {
   const planImage = getPlanHeaderImage(rankPlan);
+  const address = useAddress();
 
   return (
     <aside
@@ -154,6 +156,81 @@ export default function AdminSidebar({
 
       {/* メニューグループ */}
       <nav style={{ flex: 1, padding: "12px 0" }}>
+        {/* マイページナビゲーション */}
+        <div style={{ marginBottom: 24 }}>
+          {!isCollapsed && (
+            <div
+              style={{
+                padding: "8px 16px",
+                fontSize: 11,
+                fontWeight: 700,
+                color: "rgba(255,255,255,0.5)",
+                textTransform: "uppercase",
+                letterSpacing: "0.05em",
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+              }}
+            >
+              <span>👤</span>
+              <span>ユーザー</span>
+            </div>
+          )}
+
+          {isCollapsed && (
+            <div
+              style={{
+                textAlign: "center",
+                fontSize: 18,
+                padding: "8px 0",
+                opacity: 0.6,
+              }}
+              title="ユーザー"
+            >
+              👤
+            </div>
+          )}
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            <button
+              onClick={() => {
+                if (address) {
+                  window.location.href = `/profile/${address}`;
+                }
+              }}
+              disabled={!address}
+              style={{
+                background: "transparent",
+                borderLeft: "3px solid transparent",
+                color: address ? "rgba(255,255,255,0.7)" : "rgba(255,255,255,0.3)",
+                border: "none",
+                borderRadius: 0,
+                padding: isCollapsed ? "12px 8px" : "10px 16px",
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: address ? "pointer" : "not-allowed",
+                textAlign: "left",
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                transition: "all 0.2s ease",
+                justifyContent: isCollapsed ? "center" : "flex-start",
+              }}
+              onMouseEnter={(e) => {
+                if (address) {
+                  e.currentTarget.style.background = "rgba(255,255,255,0.05)";
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "transparent";
+              }}
+              title={isCollapsed ? "マイページ" : undefined}
+            >
+              <span style={{ fontSize: 16 }}>🏠</span>
+              {!isCollapsed && <span>マイページ</span>}
+            </button>
+          </div>
+        </div>
         {MENU_GROUPS.map((group, groupIndex) => (
           <div key={groupIndex} style={{ marginBottom: 24 }}>
             {/* グループタイトル */}
