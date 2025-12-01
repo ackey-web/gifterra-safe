@@ -104,15 +104,15 @@ export function ProfilePage() {
     pathAddress.length > 0 &&
     pathAddress.toLowerCase() !== currentUserWalletAddress.toLowerCase();
 
-  // 対象ユーザーへの自分のkodomi値を取得
-  const userKodomi = useUserKodomi(walletAddress);
-
   // テナント申請状況を取得（自分がテナントオーナーかどうか確認用）
   const { application: myApplication } = useMyTenantApplication();
   const isMyProfileAndTenantOwner = !isViewingOtherProfile && myApplication?.status === 'approved';
 
   // 表示中のプロフィールのテナント申請状況を取得（表示ユーザーがテナントオーナーかどうか）
   const [profileOwnerApplication, setProfileOwnerApplication] = useState<any>(null);
+
+  // 対象ユーザーへの自分のkodomi値を取得（テナントのカスタム閾値を使用）
+  const userKodomi = useUserKodomi(walletAddress, profileOwnerApplication?.wallet_address);
   const [loadingProfileOwnerTenant, setLoadingProfileOwnerTenant] = useState(true);
 
   useEffect(() => {

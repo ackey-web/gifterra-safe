@@ -4,6 +4,7 @@
 import { useState, useEffect } from 'react';
 import { useAddress } from '@thirdweb-dev/react';
 import { supabase } from '../lib/supabase';
+import { useRankThresholds, type RankThresholds } from './useRankThresholds';
 
 /**
  * 特定ユーザーへの自分のkodomi値
@@ -142,12 +143,13 @@ function calculateResonanceRank(engagementScore: number): {
 }
 
 /**
- * 総合KODOMI計算
+ * 総合KODOMI計算（テナントカスタム閾値対応版）
  * JPYC軸とResonance軸を正規化して合算
  */
 function calculateOverallScore(
   jpycAmount: number,
-  engagementScore: number
+  engagementScore: number,
+  tenantThresholds?: RankThresholds
 ): {
   totalScore: number;
   rank: string;
@@ -164,7 +166,12 @@ function calculateOverallScore(
   // 総合スコア = JPYC (50%) + Resonance (50%)
   const totalScore = Math.round(normalizedJPYC + normalizedResonance);
 
-  // ランク計算
+  // テナントのカスタム閾値が指定されている場合はそれを使用
+  if (tenantThresholds && Object.keys(tenantThresholds).length > 0) {
+    return calculateRankWithCustomThresholds(totalScore, tenantThresholds);
+  }
+
+  // デフォルトの閾値でランク計算
   const ranks = Object.values(OVERALL_RANKS);
 
   for (let i = 0; i < ranks.length; i++) {
@@ -191,6 +198,59 @@ function calculateOverallScore(
     color: OVERALL_RANKS.LEGENDARY.color,
     level: 100,
     displayLevel: Object.keys(OVERALL_RANKS).length,
+  };
+}
+
+/**
+ * カスタム閾値を使ったランク計算
+ */
+function calculateRankWithCustomThresholds(
+  totalScore: number,
+  thresholds: RankThresholds
+): {
+  totalScore: number;
+  rank: string;
+  color: string;
+  level: number;
+  displayLevel: number;
+} {
+  // 閾値を昇順にソート
+  const sortedThresholds = Object.entries(thresholds)
+    .map(([rank, threshold]) => ({ rank: Number(rank), threshold }))
+    .sort((a, b) => a.threshold - b.threshold);
+
+  // ランクカラーの定義（レベルごと）
+  const RANK_COLORS = ['#90ee90', '#32cd32', '#ff69b4', '#9370db', '#ffd700'];
+
+  // 現在のランクを特定
+  let currentRankIndex = 0;
+  let currentThreshold = 0;
+  let nextThreshold = sortedThresholds[0]?.threshold || 0;
+
+  for (let i = 0; i < sortedThresholds.length; i++) {
+    if (totalScore >= sortedThresholds[i].threshold) {
+      currentRankIndex = i;
+      currentThreshold = sortedThresholds[i].threshold;
+      nextThreshold = sortedThresholds[i + 1]?.threshold || Infinity;
+    } else {
+      break;
+    }
+  }
+
+  // 進捗率を計算
+  const progress = nextThreshold === Infinity
+    ? 100
+    : ((totalScore - currentThreshold) / (nextThreshold - currentThreshold)) * 100;
+
+  const rankLevel = sortedThresholds[currentRankIndex]?.rank || 1;
+  const displayLevel = rankLevel;
+
+  return {
+    totalScore,
+    rank: `Level ${rankLevel}`,
+    color: RANK_COLORS[Math.min(rankLevel - 1, RANK_COLORS.length - 1)] || '#90ee90',
+    level: Math.min(100, Math.max(0, progress)),
+    displayLevel,
   };
 }
 
@@ -239,9 +299,14 @@ function calculateMessageQuality(transactions: any[]): number {
 /**
  * 特定ユーザーへの自分のkodomi値を取得するフック
  * @param targetAddress 対象ユーザーのアドレス
+ * @param tenantAddress 対象ユーザーが所属するテナントのアドレス（カスタム閾値用）
  */
-export function useUserKodomi(targetAddress: string | undefined) {
+export function useUserKodomi(targetAddress: string | undefined, tenantAddress?: string) {
   const myAddress = useAddress(); // ログイン中のユーザー
+  const { thresholds: tenantThresholds } = useRankThresholds(tenantAddress);
+
+  // Supabaseからデフォルト閾値を取得
+  const [defaultThresholds, setDefaultThresholds] = useState<RankThresholds>({});
 
   const [data, setData] = useState<UserKodomiData>({
     jpyc: {
@@ -272,6 +337,36 @@ export function useUserKodomi(targetAddress: string | undefined) {
     loading: true,
     error: null,
   });
+
+  // デフォルト閾値を取得
+  useEffect(() => {
+    const fetchDefaultThresholds = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('default_rank_thresholds')
+          .select('*')
+          .order('rank_level', { ascending: true });
+
+        if (error) {
+          console.error('❌ Failed to fetch default thresholds:', error);
+          return;
+        }
+
+        if (data) {
+          // RankThresholds形式に変換
+          const thresholds: RankThresholds = {};
+          data.forEach(item => {
+            thresholds[item.rank_level] = item.threshold;
+          });
+          setDefaultThresholds(thresholds);
+        }
+      } catch (error) {
+        console.error('❌ Failed to fetch default thresholds:', error);
+      }
+    };
+
+    fetchDefaultThresholds();
+  }, []);
 
   useEffect(() => {
     console.log('🔍 useUserKodomi - myAddress:', myAddress, 'targetAddress:', targetAddress);
@@ -308,7 +403,7 @@ export function useUserKodomi(targetAddress: string | undefined) {
       console.log('🔕 useUserKodomi - リアルタイムサブスクリプション解除');
       supabase.removeChannel(channel);
     };
-  }, [myAddress, targetAddress]);
+  }, [myAddress, targetAddress, tenantThresholds, defaultThresholds]);
 
   async function fetchUserKodomiData() {
     if (!myAddress || !targetAddress) return;
@@ -395,10 +490,18 @@ export function useUserKodomi(targetAddress: string | undefined) {
         aiQualityScore * aiQualityWeight
       );
 
-      // ランク計算
+      // ランク計算（テナント閾値 > デフォルト閾値 > ハードコード閾値の優先順位）
       const jpycRank = calculateJPYCRank(jpycTotal);
       const resonanceRank = calculateResonanceRank(engagementScore);
-      const overallScore = calculateOverallScore(jpycTotal, engagementScore);
+
+      // 使用する閾値を決定
+      const thresholdsToUse = tenantThresholds && Object.keys(tenantThresholds).length > 0
+        ? tenantThresholds
+        : defaultThresholds && Object.keys(defaultThresholds).length > 0
+        ? defaultThresholds
+        : undefined; // ハードコードのOVERALL_RANKSを使用
+
+      const overallScore = calculateOverallScore(jpycTotal, engagementScore, thresholdsToUse);
 
       const result = {
         jpyc: {

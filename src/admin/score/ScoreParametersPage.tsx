@@ -45,6 +45,17 @@ interface ParamsHistory {
 // メインコンポーネント
 // ========================================
 
+// デフォルト閾値の型定義
+interface DefaultRankThreshold {
+  id: string;
+  rank_level: number;
+  threshold: number;
+  rank_name: string;
+  rank_color: string;
+  description?: string;
+  last_updated: string;
+}
+
 export const ScoreParametersPage: React.FC = () => {
   // タブ切り替え用state
   const [activeTab, setActiveTab] = useState<'tank' | 'gauge'>('tank');
@@ -66,6 +77,12 @@ export const ScoreParametersPage: React.FC = () => {
   const [history, setHistory] = useState<ParamsHistory[]>([]);
   const [showHistory, setShowHistory] = useState(false);
 
+  // デフォルト閾値管理用のstate
+  const [defaultThresholds, setDefaultThresholds] = useState<DefaultRankThreshold[]>([]);
+  const [editingThresholds, setEditingThresholds] = useState<DefaultRankThreshold[]>([]);
+  const [isEditingThresholds, setIsEditingThresholds] = useState(false);
+  const [isSavingThresholds, setIsSavingThresholds] = useState(false);
+
   // 新機能：バランスモード切り替え（タンク設定用）
   const [balanceMode, setBalanceMode] = useState<BalanceMode>('simple');
 
@@ -84,6 +101,7 @@ export const ScoreParametersPage: React.FC = () => {
   useEffect(() => {
     fetchParams();
     fetchHistory();
+    fetchDefaultThresholds();
   }, []);
 
   const fetchParams = async () => {
@@ -120,6 +138,30 @@ export const ScoreParametersPage: React.FC = () => {
       }
     } catch (error) {
       console.error('❌ Failed to fetch params:', error);
+    }
+  };
+
+  const fetchDefaultThresholds = async () => {
+    try {
+      console.log('🎯 Fetching default rank thresholds from Supabase...');
+
+      const { data, error } = await supabase
+        .from('default_rank_thresholds')
+        .select('*')
+        .order('rank_level', { ascending: true });
+
+      if (error) {
+        console.error('❌ Failed to fetch default thresholds:', error);
+        return;
+      }
+
+      if (data) {
+        console.log('✅ Default thresholds fetched:', data);
+        setDefaultThresholds(data);
+        setEditingThresholds(data);
+      }
+    } catch (error) {
+      console.error('❌ Failed to fetch default thresholds:', error);
     }
   };
 
@@ -244,6 +286,60 @@ export const ScoreParametersPage: React.FC = () => {
     } finally {
       setIsSaving(false);
     }
+  };
+
+  // デフォルト閾値の編集処理
+  const handleThresholdChange = (rankLevel: number, field: keyof DefaultRankThreshold, value: string | number) => {
+    setEditingThresholds(prev =>
+      prev.map(t =>
+        t.rank_level === rankLevel
+          ? { ...t, [field]: value }
+          : t
+      )
+    );
+  };
+
+  // デフォルト閾値の保存処理
+  const handleSaveThresholds = async () => {
+    setIsSavingThresholds(true);
+    try {
+      console.log('💾 Saving default thresholds...', editingThresholds);
+
+      // 各閾値を個別に更新
+      for (const threshold of editingThresholds) {
+        const { error } = await supabase
+          .from('default_rank_thresholds')
+          .update({
+            threshold: threshold.threshold,
+            rank_name: threshold.rank_name,
+            rank_color: threshold.rank_color,
+            description: threshold.description,
+          })
+          .eq('rank_level', threshold.rank_level);
+
+        if (error) {
+          throw error;
+        }
+      }
+
+      console.log('✅ Default thresholds saved successfully');
+
+      // 状態を更新
+      setDefaultThresholds(editingThresholds);
+      setIsEditingThresholds(false);
+
+      alert('✅ デフォルト閾値を更新しました\n\nFLOWプランユーザーのランク表示に反映されます。');
+    } catch (error) {
+      console.error('❌ Save thresholds error:', error);
+      alert('❌ 更新に失敗しました: ' + (error instanceof Error ? error.message : '不明なエラー'));
+    } finally {
+      setIsSavingThresholds(false);
+    }
+  };
+
+  const handleCancelThresholds = () => {
+    setEditingThresholds(defaultThresholds);
+    setIsEditingThresholds(false);
   };
 
   const handleCancel = () => {
@@ -1452,6 +1548,224 @@ export const ScoreParametersPage: React.FC = () => {
                 disabled={!hasChanges || isSaving}
               >
                 {isSaving ? '保存中...' : '💾 保存して適用する'}
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* デフォルトランク閾値設定 */}
+      <div className="card" style={{ marginTop: 24 }}>
+        <h2 className="card-title">
+          🎯 デフォルトランク閾値設定（FLOWプラン用）
+        </h2>
+        <div className="param-description" style={{ marginBottom: 16 }}>
+          テナント未承認ユーザー（FLOWプラン）のランク表示に使用される閾値です。<br />
+          テナントは独自の閾値を設定できますが、未設定の場合はこの値が使用されます。
+        </div>
+
+        {!isEditingThresholds ? (
+          <>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+              gap: 16,
+              marginBottom: 16,
+            }}>
+              {defaultThresholds.map((threshold) => (
+                <div
+                  key={threshold.rank_level}
+                  style={{
+                    padding: 16,
+                    background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(168, 85, 247, 0.1) 100%)',
+                    border: `2px solid ${threshold.rank_color}40`,
+                    borderRadius: 12,
+                  }}
+                >
+                  <div style={{
+                    fontSize: 14,
+                    color: '#a0aec0',
+                    marginBottom: 4,
+                  }}>
+                    Level {threshold.rank_level}
+                  </div>
+                  <div style={{
+                    fontSize: 18,
+                    fontWeight: 700,
+                    color: threshold.rank_color,
+                    marginBottom: 8,
+                  }}>
+                    {threshold.rank_name}
+                  </div>
+                  <div style={{
+                    fontSize: 24,
+                    fontWeight: 800,
+                    color: '#fff',
+                    marginBottom: 4,
+                  }}>
+                    {threshold.threshold} pt
+                  </div>
+                  {threshold.description && (
+                    <div style={{
+                      fontSize: 12,
+                      color: '#a0aec0',
+                      marginTop: 8,
+                    }}>
+                      {threshold.description}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+            <div className="button-group">
+              <button className="button button-primary" onClick={() => setIsEditingThresholds(true)}>
+                ✏️ 閾値を編集する
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="warning-box" style={{ marginBottom: 16 }}>
+              <div className="warning-title">⚠️ 重要な注意事項</div>
+              <div className="warning-text">
+                デフォルト閾値を変更すると、FLOWプランユーザーのランク表示が変更されます。<br />
+                テナント独自の閾値を設定しているユーザーには影響しません。
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+              {editingThresholds.map((threshold) => (
+                <div
+                  key={threshold.rank_level}
+                  style={{
+                    padding: 20,
+                    background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(168, 85, 247, 0.1) 100%)',
+                    border: '1px solid rgba(99, 102, 241, 0.3)',
+                    borderRadius: 12,
+                  }}
+                >
+                  <div style={{
+                    fontSize: 16,
+                    fontWeight: 700,
+                    color: '#fff',
+                    marginBottom: 16,
+                  }}>
+                    Level {threshold.rank_level}
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                    {/* 閾値 */}
+                    <div className="form-group">
+                      <label className="form-label">
+                        閾値（KODOMI ポイント）
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="50"
+                        value={threshold.threshold}
+                        onChange={(e) =>
+                          handleThresholdChange(threshold.rank_level, 'threshold', parseInt(e.target.value))
+                        }
+                        style={{
+                          width: '100%',
+                          padding: '10px 12px',
+                          background: 'rgba(0, 0, 0, 0.3)',
+                          border: '1px solid rgba(255, 255, 255, 0.1)',
+                          borderRadius: 8,
+                          color: '#fff',
+                          fontSize: 16,
+                        }}
+                      />
+                    </div>
+
+                    {/* ランク名 */}
+                    <div className="form-group">
+                      <label className="form-label">
+                        ランク名
+                      </label>
+                      <input
+                        type="text"
+                        value={threshold.rank_name}
+                        onChange={(e) =>
+                          handleThresholdChange(threshold.rank_level, 'rank_name', e.target.value)
+                        }
+                        style={{
+                          width: '100%',
+                          padding: '10px 12px',
+                          background: 'rgba(0, 0, 0, 0.3)',
+                          border: '1px solid rgba(255, 255, 255, 0.1)',
+                          borderRadius: 8,
+                          color: '#fff',
+                          fontSize: 16,
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 16, marginTop: 16 }}>
+                    {/* カラー */}
+                    <div className="form-group">
+                      <label className="form-label">
+                        カラー
+                      </label>
+                      <input
+                        type="color"
+                        value={threshold.rank_color}
+                        onChange={(e) =>
+                          handleThresholdChange(threshold.rank_level, 'rank_color', e.target.value)
+                        }
+                        style={{
+                          width: '100%',
+                          height: 42,
+                          padding: 4,
+                          background: 'rgba(0, 0, 0, 0.3)',
+                          border: '1px solid rgba(255, 255, 255, 0.1)',
+                          borderRadius: 8,
+                          cursor: 'pointer',
+                        }}
+                      />
+                    </div>
+
+                    {/* 説明 */}
+                    <div className="form-group">
+                      <label className="form-label">
+                        説明（オプション）
+                      </label>
+                      <input
+                        type="text"
+                        value={threshold.description || ''}
+                        onChange={(e) =>
+                          handleThresholdChange(threshold.rank_level, 'description', e.target.value)
+                        }
+                        placeholder="例: 新たな応援の種"
+                        style={{
+                          width: '100%',
+                          padding: '10px 12px',
+                          background: 'rgba(0, 0, 0, 0.3)',
+                          border: '1px solid rgba(255, 255, 255, 0.1)',
+                          borderRadius: 8,
+                          color: '#fff',
+                          fontSize: 16,
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* ボタン */}
+            <div className="button-group" style={{ marginTop: 24 }}>
+              <button className="button button-secondary" onClick={handleCancelThresholds}>
+                キャンセル
+              </button>
+              <button
+                className="button button-primary"
+                onClick={handleSaveThresholds}
+                disabled={isSavingThresholds}
+              >
+                {isSavingThresholds ? '保存中...' : '💾 保存して適用する'}
               </button>
             </div>
           </>
