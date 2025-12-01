@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import type { VendingMachine } from '../../../types/vending';
 import { supabase } from '../../../lib/supabase';
+import { useTenant } from '../../contexts/TenantContext';
+import { generateTenantSlug } from '../../../utils/slugGenerator';
 
 interface HubListNewProps {
   machines: VendingMachine[];
@@ -21,6 +23,7 @@ export function HubListNew({
   onDeleteMachine,
   refreshTrigger
 }: HubListNewProps) {
+  const { tenant } = useTenant();
   // 各GIFT HUBの商品数を管理
   const [productCounts, setProductCounts] = useState<Record<string, number>>({});
 
@@ -146,7 +149,10 @@ export function HubListNew({
                     <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
                       <input
                         type="text"
-                        value={`${window.location.origin}/content?machine=${machine.slug}`}
+                        value={(() => {
+                          const tenantSlug = tenant?.slug || generateTenantSlug(tenant?.name || 'default');
+                          return `${window.location.origin}/hub/${tenantSlug}/${machine.slug}`;
+                        })()}
                         readOnly
                         onClick={(e) => {
                           e.stopPropagation();
@@ -167,7 +173,9 @@ export function HubListNew({
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          const url = `${window.location.origin}/content?machine=${machine.slug}`;
+                          // テナントスラッグを生成（tenant.slug || tenant.name から）
+                          const tenantSlug = tenant?.slug || generateTenantSlug(tenant?.name || 'default');
+                          const url = `${window.location.origin}/hub/${tenantSlug}/${machine.slug}`;
                           navigator.clipboard.writeText(url).then(() => {
                             alert('✅ URLをコピーしました');
                           }).catch(() => {

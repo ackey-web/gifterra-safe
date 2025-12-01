@@ -87,7 +87,7 @@ const VendingDashboardNew: React.FC = () => {
     const machineName = '新しいGIFT HUB';
     const newMachine: VendingMachine = {
       id: `machine-${Date.now()}`,
-      slug: generateSlug(machineName),
+      slug: generateSlug(machineName, { addTimestamp: true }),
       name: machineName,
       location: '未設定',
       description: '',

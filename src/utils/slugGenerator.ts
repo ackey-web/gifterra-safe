@@ -27,7 +27,7 @@ const kanaToRomaji: Record<string, string> = {
   'わ': 'wa', 'を': 'wo', 'ん': 'n',
 };
 
-export const generateSlug = (name: string): string => {
+export const generateSlug = (name: string, options?: { addTimestamp?: boolean }): string => {
   let slug = name;
 
   // 日本語→英語変換を先に実行
@@ -40,5 +40,19 @@ export const generateSlug = (name: string): string => {
     slug = slug.replace(new RegExp(kana, 'g'), romaji);
   }
   slug = slug.replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-  return slug || 'machine';
+
+  const baseSlug = slug || 'machine';
+
+  // タイムスタンプを追加してユニーク性を確保（オプション）
+  if (options?.addTimestamp) {
+    const timestamp = Date.now().toString(36); // 36進数で短縮
+    return `${baseSlug}-${timestamp}`;
+  }
+
+  return baseSlug;
+};
+
+// テナントスラッグ生成（テナント名から）
+export const generateTenantSlug = (tenantName: string): string => {
+  return generateSlug(tenantName, { addTimestamp: false });
 };

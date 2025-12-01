@@ -66,6 +66,7 @@ export interface TenantContracts {
 export interface TenantConfig {
   id: string;
   name: string;
+  slug?: string; // URL用スラッグ (例: eleven-bass-lab)
   contracts: TenantContracts;
   createdAt?: string;
 }
