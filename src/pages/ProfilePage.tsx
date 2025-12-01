@@ -996,16 +996,54 @@ export function ProfilePage() {
 
                   {/* 表示名とロール */}
                   <div style={{ flex: 1, textAlign: isMobile ? 'center' : 'left' }}>
-                    <h2
+                    <div
                       style={{
-                        margin: '0 0 8px 0',
-                        fontSize: isMobile ? 20 : 24,
-                        fontWeight: 700,
-                        color: '#EAF2FF',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 12,
+                        justifyContent: isMobile ? 'center' : 'flex-start',
+                        marginBottom: 8,
                       }}
                     >
-                      {profile?.display_name || '未設定'}
-                    </h2>
+                      <h2
+                        style={{
+                          margin: 0,
+                          fontSize: isMobile ? 20 : 24,
+                          fontWeight: 700,
+                          color: '#EAF2FF',
+                        }}
+                      >
+                        {profile?.display_name || '未設定'}
+                      </h2>
+
+                      {/* プランロゴ */}
+                      {(() => {
+                        const plan = profileOwnerApplication?.rank_plan || 'FLOW';
+                        const logoMap: Record<string, string> = {
+                          'STUDIO_PRO_MAX': '/PROMAX.logo.png',
+                          'STUDIO_PRO': '/PRO.logo.png',
+                          'STUDIO': '/STUDIO.logo.png',
+                          'FLOW': '/FLOW.logo.png',
+                        };
+                        const logoSrc = logoMap[plan] || '/FLOW.logo.png';
+
+                        return (
+                          <img
+                            src={logoSrc}
+                            alt={`${plan} プラン`}
+                            style={{
+                              height: isMobile ? 20 : 24,
+                              width: 'auto',
+                              objectFit: 'contain',
+                              filter: 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3))',
+                            }}
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none';
+                            }}
+                          />
+                        );
+                      })()}
+                    </div>
 
                     {/* フォロワー数・フォロー中の数 */}
                     <div
