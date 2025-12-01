@@ -567,7 +567,26 @@ export function ProfilePage() {
                   {/* 左側: 貢献度ゲージ（テナント承認済みの場合のみ表示） */}
                   <div style={{ flex: '0 0 auto' }}>
                     {shouldShowTenantFeatures && !isContributionLoading && (
-                      <ContributionGauge kodomi={kodomi} tenantAddress={walletAddress} isMobile={isMobile} />
+                      <div style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: isMobile ? 8 : 10,
+                      }}>
+                        {/* JPYC KODOMI ゲージ */}
+                        <ContributionGaugeCustom
+                          kodomi={kodomi}
+                          label="JPYC"
+                          icon="💸"
+                          isMobile={isMobile}
+                        />
+                        {/* NHT KODOMI ゲージ */}
+                        <ContributionGaugeCustom
+                          kodomi={kodomi}
+                          label="NHT"
+                          icon="⚡"
+                          isMobile={isMobile}
+                        />
+                      </div>
                     )}
                   </div>
 

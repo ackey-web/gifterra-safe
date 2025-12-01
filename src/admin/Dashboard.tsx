@@ -35,6 +35,7 @@ import FlagNFTManagementPage from "./components/FlagNFTManagementPage";
 import TenantProfilePage from "./TenantProfilePage";
 import { useTenantRankPlan } from "../hooks/useTenantRankPlan";
 import { canUseSbtRank, canUseAdvancedAnalytics, getTenantPlanDetails, getUpgradeRecommendation } from "../utils/tenantLimits";
+import { useFlagNFTList } from "../hooks/useFlagNFTList";
 
 /* ---------- Types & Helpers ---------- */
 type Period = "day" | "week" | "month" | "all";
@@ -1700,12 +1701,18 @@ export default function AdminDashboard() {
     4: { label: "Mythic Patron", icon: "🌈" },
   };
 
-  type TipTabType = 'design' | 'ranks';
+  type TipTabType = 'design' | 'ranks' | 'rewards';
 
   const TipUIManagementPage = () => {
+    // テナント情報を取得
+    const { tenantId } = useTenant();
+
+    // フラグNFTリストを取得
+    const { flagNFTs, isLoading: isFlagNFTsLoading } = useFlagNFTList(tenantId);
+
     const [activeTab, setActiveTab] = useState<TipTabType>(() => {
       const saved = localStorage.getItem('tip-active-tab');
-      return (saved === 'design' || saved === 'ranks') ? saved as TipTabType : 'ranks';
+      return (saved === 'design' || saved === 'ranks' || saved === 'rewards') ? saved as TipTabType : 'ranks';
     });
     // テナント特定の背景画像キーを取得
     const getTenantBgImageKey = () => {
@@ -1744,6 +1751,45 @@ export default function AdminDashboard() {
         console.error('Failed to load rank labels:', error);
       }
       return DEFAULT_RANK_LABELS;
+    });
+
+    // ランク特典設定用のstate（KODOMI閾値 + フラグNFT自動配布）
+    const [kodomiThresholdInputs, setKodomiThresholdInputs] = useState<Record<number, string>>(() => {
+      try {
+        const storageKey = `tip-rank-thresholds-${address?.toLowerCase()}`;
+        const saved = localStorage.getItem(storageKey);
+        if (saved) {
+          const thresholds = JSON.parse(saved);
+          const inputs: Record<number, string> = {};
+          for (const [rank, value] of Object.entries(thresholds)) {
+            inputs[Number(rank)] = String(value);
+          }
+          return inputs;
+        }
+      } catch (error) {
+        console.error('Failed to load KODOMI thresholds:', error);
+      }
+      // デフォルト値（ContributionGaugeと同じ）
+      return {
+        1: '100',
+        2: '300',
+        3: '600',
+        4: '1000',
+        5: '1500',
+      };
+    });
+
+    const [flagNFTDistribution, setFlagNFTDistribution] = useState<Record<number, string>>(() => {
+      try {
+        const storageKey = `rank-flag-nft-${address?.toLowerCase()}`;
+        const saved = localStorage.getItem(storageKey);
+        if (saved) {
+          return JSON.parse(saved);
+        }
+      } catch (error) {
+        console.error('Failed to load Flag NFT distribution settings:', error);
+      }
+      return {}; // { 1: 'nft-id-1', 2: 'nft-id-2', ... }
     });
 
     // TIP背景画像アップロードハンドラー
@@ -1799,6 +1845,52 @@ export default function AdminDashboard() {
         alert('✅ ランク表示名を保存しました！TIP UIに反映されます。');
       } catch (error) {
         console.error('Failed to save rank labels:', error);
+        alert('❌ 保存に失敗しました');
+      }
+    };
+
+    // KODOMI閾値を保存（localStorageとスマートコントラクト両方）
+    const handleSaveKodomiThresholds = async () => {
+      try {
+        // localStorageに保存（useRankThresholdsフックで参照される）
+        const storageKey = `tip-rank-thresholds-${address?.toLowerCase()}`;
+        const thresholds: Record<number, number> = {};
+        for (const [rank, value] of Object.entries(kodomiThresholdInputs)) {
+          thresholds[Number(rank)] = Number(value) || 0;
+        }
+        localStorage.setItem(storageKey, JSON.stringify(thresholds));
+
+        // スマートコントラクトにも保存
+        if (contract) {
+          for (let rank = 1; rank <= maxRankLevel; rank++) {
+            const value = kodomiThresholdInputs[rank];
+            if (value && Number(value) > 0) {
+              try {
+                const amountWei = ethers.utils.parseUnits(value, defaultToken.decimals);
+                const tx = await contract.call("setRankThreshold", [rank, amountWei.toString()]);
+                await tx.wait?.();
+              } catch (error: any) {
+                console.error(`Failed to set rank threshold for rank ${rank}:`, error);
+              }
+            }
+          }
+        }
+
+        alert('✅ KODOMI閾値を保存しました！\nランクアップ条件とKODOMIゲージに反映されます。');
+      } catch (error) {
+        console.error('Failed to save KODOMI thresholds:', error);
+        alert('❌ 保存に失敗しました');
+      }
+    };
+
+    // フラグNFT自動配布設定を保存
+    const handleSaveFlagNFTDistribution = () => {
+      try {
+        const storageKey = `rank-flag-nft-${address?.toLowerCase()}`;
+        localStorage.setItem(storageKey, JSON.stringify(flagNFTDistribution));
+        alert('✅ フラグNFT自動配布設定を保存しました！\nランク到達時に指定したNFTが自動配布されます。');
+      } catch (error) {
+        console.error('Failed to save Flag NFT distribution:', error);
         alert('❌ 保存に失敗しました');
       }
     };
@@ -2056,6 +2148,27 @@ export default function AdminDashboard() {
             }}
           >
             🎨 Design Settings
+          </button>
+          <button
+            onClick={() => {
+              setActiveTab('rewards');
+              localStorage.setItem('tip-active-tab', 'rewards');
+            }}
+            role="tab"
+            aria-selected={activeTab === 'rewards'}
+            style={{
+              padding: '12px 24px',
+              background: activeTab === 'rewards' ? 'rgba(124, 58, 237, 0.2)' : 'transparent',
+              color: activeTab === 'rewards' ? '#7c3aed' : 'rgba(255,255,255,0.6)',
+              border: 'none',
+              borderBottom: activeTab === 'rewards' ? '2px solid #7c3aed' : '2px solid transparent',
+              fontSize: 14,
+              fontWeight: 700,
+              cursor: 'pointer',
+              transition: 'all 0.2s'
+            }}
+          >
+            🎁 ランク特典設定
           </button>
         </div>
 
@@ -2518,6 +2631,446 @@ export default function AdminDashboard() {
             </>
           )}
         </div>
+            </div>
+          )}
+
+          {/* ランク特典設定タブ */}
+          {activeTab === 'rewards' && (
+            <div>
+              {/* 説明セクション */}
+              <div style={{
+                marginTop: 16,
+                padding: 20,
+                background: "linear-gradient(135deg, rgba(124, 58, 237, 0.15) 0%, rgba(124, 58, 237, 0.05) 100%)",
+                border: "1px solid rgba(124, 58, 237, 0.3)",
+                borderRadius: 12
+              }}>
+                <h3 style={{ margin: "0 0 12px 0", fontSize: 20, fontWeight: 800, color: "#a78bfa" }}>
+                  🎁 ランク特典設定（STUDIO プラン以上）
+                </h3>
+                <p style={{ margin: "0 0 12px 0", fontSize: 14, opacity: 0.9, lineHeight: 1.6 }}>
+                  ファンの証明としてランクアップ式のSBT自動ミント、任意のフラグNFT自動配布を設定できます。
+                </p>
+                <ul style={{ margin: 0, paddingLeft: 20, fontSize: 13, opacity: 0.8, lineHeight: 1.8 }}>
+                  <li>KODOMI閾値: ユーザーがランクアップするための貢献度（kodomi値）の閾値</li>
+                  <li>SBT自動ミント: 閾値到達時に下位ランクSBTをバーンして上位ランクSBTを自動ミント</li>
+                  <li>フラグNFT配布: ランク到達時に指定したフラグNFTを自動配布</li>
+                </ul>
+              </div>
+
+              {/* KODOMI閾値設定セクション */}
+              <div style={{ marginTop: 24, padding: 20, background: "rgba(255,255,255,.04)", borderRadius: 8 }}>
+                <h4 style={{ margin: "0 0 16px 0", fontSize: 18, fontWeight: 700 }}>
+                  📊 KODOMI閾値設定
+                </h4>
+                <p style={{ margin: "0 0 16px 0", fontSize: 13, opacity: 0.8, lineHeight: 1.6 }}>
+                  各ランクに到達するために必要なKODOMI値（貢献度スコア）を設定します。<br />
+                  この閾値は、プロフィールページのKODOMIゲージとSBT自動ミントに反映されます。
+                </p>
+
+                <div style={{ display: "grid", gap: 12 }}>
+                  {Array.from({ length: maxRankLevel }, (_, i) => i + 1).map((rank) => (
+                    <div
+                      key={`kodomi-threshold-${rank}`}
+                      style={{
+                        padding: 14,
+                        background: "rgba(255,255,255,.02)",
+                        borderRadius: 6,
+                        border: "1px solid rgba(255,255,255,.08)",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 12
+                      }}
+                    >
+                      <div style={{
+                        fontSize: 18,
+                        width: 40,
+                        textAlign: "center",
+                        opacity: 0.8
+                      }}>
+                        {rankLabels[rank]?.icon || "⭐"}
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>
+                          ランク {rank}: {rankLabels[rank]?.label || `Rank ${rank}`}
+                        </div>
+                        <div style={{ fontSize: 12, opacity: 0.6 }}>
+                          必要KODOMI値
+                        </div>
+                      </div>
+                      <input
+                        type="number"
+                        value={kodomiThresholdInputs[rank] || ""}
+                        onChange={(e) => setKodomiThresholdInputs({
+                          ...kodomiThresholdInputs,
+                          [rank]: e.target.value
+                        })}
+                        placeholder="例: 100"
+                        style={{
+                          width: 120,
+                          padding: "8px 12px",
+                          background: "rgba(255,255,255,0.05)",
+                          border: "1px solid rgba(255,255,255,0.2)",
+                          borderRadius: 6,
+                          color: "#fff",
+                          fontSize: 14,
+                          textAlign: "right"
+                        }}
+                      />
+                      <span style={{ fontSize: 12, opacity: 0.6, minWidth: 40 }}>pt</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* 保存ボタン */}
+                <div style={{ marginTop: 16, display: "flex", justifyContent: "flex-end" }}>
+                  <button
+                    onClick={handleSaveKodomiThresholds}
+                    style={{
+                      padding: "10px 24px",
+                      background: "#7c3aed",
+                      color: "#fff",
+                      border: "none",
+                      borderRadius: 6,
+                      fontSize: 14,
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      transition: "all 0.2s"
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = "#6d28d9";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = "#7c3aed";
+                    }}
+                  >
+                    💾 KODOMI閾値を保存
+                  </button>
+                </div>
+              </div>
+
+              {/* フラグNFT自動配布設定セクション */}
+              <div style={{ marginTop: 24, padding: 20, background: "rgba(255,255,255,.04)", borderRadius: 8 }}>
+                <h4 style={{ margin: "0 0 16px 0", fontSize: 18, fontWeight: 700 }}>
+                  🚩 フラグNFT自動配布設定
+                </h4>
+                <p style={{ margin: "0 0 16px 0", fontSize: 13, opacity: 0.8, lineHeight: 1.6 }}>
+                  各ランクに到達したユーザーに自動配布するフラグNFTを設定します。<br />
+                  フラグNFTは「フラグNFT管理」画面で事前に作成してください。
+                </p>
+
+                {/* フラグNFTが0件の場合の案内 */}
+                {!isFlagNFTsLoading && flagNFTs.length === 0 && (
+                  <div style={{
+                    marginBottom: 16,
+                    padding: 16,
+                    background: "rgba(59, 130, 246, 0.1)",
+                    border: "1px solid rgba(59, 130, 246, 0.3)",
+                    borderRadius: 8,
+                    textAlign: "center"
+                  }}>
+                    <p style={{ margin: "0 0 12px 0", fontSize: 14, fontWeight: 600, color: "#3b82f6" }}>
+                      📝 フラグNFTがまだ作成されていません
+                    </p>
+                    <p style={{ margin: "0 0 12px 0", fontSize: 12, opacity: 0.8 }}>
+                      「フラグNFT管理」画面でNFTを作成してから、ここで配布設定を行ってください。
+                    </p>
+                    <button
+                      onClick={() => onPageChange('flag-nft-management')}
+                      style={{
+                        padding: "8px 16px",
+                        background: "#3b82f6",
+                        color: "#fff",
+                        border: "none",
+                        borderRadius: 6,
+                        fontSize: 13,
+                        fontWeight: 600,
+                        cursor: "pointer"
+                      }}
+                    >
+                      🚩 フラグNFT管理画面を開く
+                    </button>
+                  </div>
+                )}
+
+                <div style={{ display: "grid", gap: 12 }}>
+                  {Array.from({ length: maxRankLevel }, (_, i) => i + 1).map((rank) => {
+                    // 選択されたNFTを取得
+                    const selectedNFT = flagNFTDistribution[rank]
+                      ? flagNFTs.find(nft => nft.id === flagNFTDistribution[rank])
+                      : null;
+
+                    return (
+                      <div key={`flag-nft-${rank}`}>
+                        <div
+                          style={{
+                            padding: 14,
+                            background: "rgba(255,255,255,.02)",
+                            borderRadius: 6,
+                            border: "1px solid rgba(255,255,255,.08)",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 12
+                          }}
+                        >
+                          <div style={{
+                            fontSize: 18,
+                            width: 40,
+                            textAlign: "center",
+                            opacity: 0.8
+                          }}>
+                            {rankLabels[rank]?.icon || "⭐"}
+                          </div>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>
+                              ランク {rank}: {rankLabels[rank]?.label || `Rank ${rank}`}
+                            </div>
+                            <div style={{ fontSize: 12, opacity: 0.6 }}>
+                              配布するフラグNFT
+                            </div>
+                          </div>
+                          <select
+                            value={flagNFTDistribution[rank] || ""}
+                            onChange={(e) => setFlagNFTDistribution({
+                              ...flagNFTDistribution,
+                              [rank]: e.target.value
+                            })}
+                            disabled={isFlagNFTsLoading}
+                            style={{
+                              minWidth: 200,
+                              padding: "8px 12px",
+                              background: "rgba(255,255,255,0.05)",
+                              border: "1px solid rgba(255,255,255,0.2)",
+                              borderRadius: 6,
+                              color: "#fff",
+                              fontSize: 13,
+                              cursor: isFlagNFTsLoading ? "not-allowed" : "pointer",
+                              opacity: isFlagNFTsLoading ? 0.6 : 1
+                            }}
+                          >
+                            <option value="">配布しない</option>
+                            {isFlagNFTsLoading ? (
+                              <option disabled>読み込み中...</option>
+                            ) : flagNFTs.length === 0 ? (
+                              <option disabled>フラグNFTが登録されていません</option>
+                            ) : (
+                              flagNFTs.map((nft) => (
+                                <option key={nft.id} value={nft.id}>
+                                  {nft.category === 'BENEFIT' && '💳'}
+                                  {nft.category === 'MEMBERSHIP' && '👤'}
+                                  {nft.category === 'ACHIEVEMENT' && '🏆'}
+                                  {nft.category === 'CAMPAIGN' && '🎪'}
+                                  {nft.category === 'ACCESS_PASS' && '🗝️'}
+                                  {nft.category === 'COLLECTIBLE' && '🎴'}
+                                  {' '}{nft.name}
+                                </option>
+                              ))
+                            )}
+                          </select>
+                        </div>
+
+                        {/* NFTプレビュー */}
+                        {selectedNFT && (
+                          <div style={{
+                            marginTop: 8,
+                            marginLeft: 52,
+                            padding: 12,
+                            background: "rgba(124, 58, 237, 0.1)",
+                            border: "1px solid rgba(124, 58, 237, 0.3)",
+                            borderRadius: 6,
+                            display: "flex",
+                            gap: 12,
+                            alignItems: "center"
+                          }}>
+                            {/* NFT画像 */}
+                            <div style={{
+                              width: 60,
+                              height: 60,
+                              borderRadius: 6,
+                              overflow: "hidden",
+                              background: "rgba(0,0,0,0.3)",
+                              flexShrink: 0
+                            }}>
+                              <img
+                                src={selectedNFT.image}
+                                alt={selectedNFT.name}
+                                style={{
+                                  width: "100%",
+                                  height: "100%",
+                                  objectFit: "cover"
+                                }}
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).style.display = 'none';
+                                }}
+                              />
+                            </div>
+
+                            {/* NFT情報 */}
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4, color: "#a78bfa" }}>
+                                {selectedNFT.name}
+                              </div>
+                              <div style={{ fontSize: 11, opacity: 0.7, lineHeight: 1.4 }}>
+                                {selectedNFT.description || "説明なし"}
+                              </div>
+                              <div style={{ fontSize: 10, opacity: 0.5, marginTop: 4 }}>
+                                カテゴリ: {
+                                  selectedNFT.category === 'BENEFIT' ? '特典NFT' :
+                                  selectedNFT.category === 'MEMBERSHIP' ? '会員証NFT' :
+                                  selectedNFT.category === 'ACHIEVEMENT' ? '実績バッジNFT' :
+                                  selectedNFT.category === 'CAMPAIGN' ? 'キャンペーンNFT' :
+                                  selectedNFT.category === 'ACCESS_PASS' ? 'アクセス権NFT' :
+                                  selectedNFT.category === 'COLLECTIBLE' ? 'コレクティブルNFT' :
+                                  selectedNFT.category
+                                }
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* 保存ボタン */}
+                <div style={{ marginTop: 16, display: "flex", justifyContent: "flex-end" }}>
+                  <button
+                    onClick={handleSaveFlagNFTDistribution}
+                    style={{
+                      padding: "10px 24px",
+                      background: "#7c3aed",
+                      color: "#fff",
+                      border: "none",
+                      borderRadius: 6,
+                      fontSize: 14,
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      transition: "all 0.2s"
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = "#6d28d9";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = "#7c3aed";
+                    }}
+                  >
+                    💾 配布設定を保存
+                  </button>
+                </div>
+              </div>
+
+              {/* 配布履歴セクション */}
+              <div style={{ marginTop: 24, padding: 20, background: "rgba(255,255,255,.04)", borderRadius: 8 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                  <h4 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>
+                    📜 配布履歴
+                  </h4>
+                  <button
+                    onClick={() => {
+                      // TODO: 配布履歴をリロード
+                      alert('配布履歴の取得機能は実装中です');
+                    }}
+                    style={{
+                      padding: "6px 12px",
+                      background: "rgba(255,255,255,0.1)",
+                      color: "#fff",
+                      border: "1px solid rgba(255,255,255,0.2)",
+                      borderRadius: 6,
+                      fontSize: 12,
+                      fontWeight: 600,
+                      cursor: "pointer"
+                    }}
+                  >
+                    🔄 更新
+                  </button>
+                </div>
+                <p style={{ margin: "0 0 16px 0", fontSize: 13, opacity: 0.8, lineHeight: 1.6 }}>
+                  ランク到達時の自動配布履歴を表示します。SBTミント・フラグNFT配布の記録が確認できます。
+                </p>
+
+                {/* 配布履歴テーブル（プレースホルダー） */}
+                <div style={{
+                  background: "rgba(0,0,0,0.2)",
+                  borderRadius: 6,
+                  overflow: "hidden",
+                  border: "1px solid rgba(255,255,255,0.1)"
+                }}>
+                  <table style={{ width: "100%", fontSize: 12 }}>
+                    <thead>
+                      <tr style={{ background: "rgba(255,255,255,0.05)" }}>
+                        <th style={{ padding: "10px 12px", textAlign: "left", fontWeight: 600, opacity: 0.7 }}>日時</th>
+                        <th style={{ padding: "10px 12px", textAlign: "left", fontWeight: 600, opacity: 0.7 }}>ユーザー</th>
+                        <th style={{ padding: "10px 12px", textAlign: "center", fontWeight: 600, opacity: 0.7 }}>ランク</th>
+                        <th style={{ padding: "10px 12px", textAlign: "center", fontWeight: 600, opacity: 0.7 }}>KODOMI</th>
+                        <th style={{ padding: "10px 12px", textAlign: "center", fontWeight: 600, opacity: 0.7 }}>SBT</th>
+                        <th style={{ padding: "10px 12px", textAlign: "left", fontWeight: 600, opacity: 0.7 }}>フラグNFT</th>
+                        <th style={{ padding: "10px 12px", textAlign: "center", fontWeight: 600, opacity: 0.7 }}>ステータス</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td colSpan={7} style={{ padding: "40px", textAlign: "center", opacity: 0.5 }}>
+                          配布履歴はまだありません<br />
+                          <span style={{ fontSize: 11 }}>ユーザーがランクに到達すると自動的に記録されます</span>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* 統計情報 */}
+                <div style={{ marginTop: 16, display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
+                  <div style={{
+                    padding: 12,
+                    background: "rgba(59, 130, 246, 0.1)",
+                    border: "1px solid rgba(59, 130, 246, 0.3)",
+                    borderRadius: 6,
+                    textAlign: "center"
+                  }}>
+                    <div style={{ fontSize: 24, fontWeight: 700, color: "#3b82f6", marginBottom: 4 }}>0</div>
+                    <div style={{ fontSize: 11, opacity: 0.7 }}>総配布数</div>
+                  </div>
+                  <div style={{
+                    padding: 12,
+                    background: "rgba(34, 197, 94, 0.1)",
+                    border: "1px solid rgba(34, 197, 94, 0.3)",
+                    borderRadius: 6,
+                    textAlign: "center"
+                  }}>
+                    <div style={{ fontSize: 24, fontWeight: 700, color: "#22c55e", marginBottom: 4 }}>0</div>
+                    <div style={{ fontSize: 11, opacity: 0.7 }}>SBTミント数</div>
+                  </div>
+                  <div style={{
+                    padding: 12,
+                    background: "rgba(168, 85, 247, 0.1)",
+                    border: "1px solid rgba(168, 85, 247, 0.3)",
+                    borderRadius: 6,
+                    textAlign: "center"
+                  }}>
+                    <div style={{ fontSize: 24, fontWeight: 700, color: "#a855f7", marginBottom: 4 }}>0</div>
+                    <div style={{ fontSize: 11, opacity: 0.7 }}>NFT配布数</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 注意事項セクション */}
+              <div style={{
+                marginTop: 24,
+                padding: 16,
+                background: "rgba(234, 179, 8, 0.1)",
+                border: "1px solid rgba(234, 179, 8, 0.3)",
+                borderRadius: 8
+              }}>
+                <h4 style={{ margin: "0 0 8px 0", fontSize: 14, fontWeight: 700, color: "#eab308" }}>
+                  ⚠️ 重要事項
+                </h4>
+                <ul style={{ margin: 0, paddingLeft: 20, fontSize: 12, opacity: 0.9, lineHeight: 1.8 }}>
+                  <li>KODOMI閾値は、スマートコントラクトとlocalStorageの両方に保存されます</li>
+                  <li>SBT自動ミントは、ユーザーがTIPを送信した際に閾値判定が行われます</li>
+                  <li>フラグNFT配布は、ランク到達時にフロントエンドで自動実行されます</li>
+                  <li>設定変更後は、既存ユーザーにも即座に反映されます</li>
+                </ul>
+              </div>
             </div>
           )}
         </div>
