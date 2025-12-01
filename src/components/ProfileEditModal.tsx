@@ -266,9 +266,7 @@ export function ProfileEditModal({
 
       const { data, error: upsertError } = await supabase
         .from('user_profiles')
-        .upsert(profileData, {
-          onConflict: 'wallet_address',
-        })
+        .upsert(profileData)
         .select();
 
       if (upsertError) {
