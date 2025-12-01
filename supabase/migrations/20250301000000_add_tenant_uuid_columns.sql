@@ -30,9 +30,26 @@ COMMENT ON COLUMN vending_machines.tenant_uuid IS 'Tenant UUID from tenant_appli
 -- 2. products テーブルに tenant_uuid と hub_id を追加
 -- ========================================
 
+-- tenant_uuid を追加
 ALTER TABLE products
-ADD COLUMN IF NOT EXISTS tenant_uuid UUID,
-ADD COLUMN IF NOT EXISTS hub_id UUID REFERENCES vending_machines(id) ON DELETE SET NULL;
+ADD COLUMN IF NOT EXISTS tenant_uuid UUID;
+
+-- hub_id を追加（別々のステートメントで実行）
+ALTER TABLE products
+ADD COLUMN IF NOT EXISTS hub_id UUID;
+
+-- 外部キー制約を追加（カラムが既に存在する場合はスキップ）
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'products_hub_id_fkey'
+  ) THEN
+    ALTER TABLE products
+    ADD CONSTRAINT products_hub_id_fkey
+    FOREIGN KEY (hub_id) REFERENCES vending_machines(id) ON DELETE SET NULL;
+  END IF;
+END $$;
 
 -- インデックス作成
 CREATE INDEX IF NOT EXISTS idx_products_tenant_uuid ON products(tenant_uuid);
