@@ -1,7 +1,7 @@
 // src/admin/contexts/TenantContext.tsx
 // テナントオーナー認証とコントラクトアクセス管理
 
-import { createContext, useContext, useState, useEffect, useMemo } from 'react';
+import { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import { useAddress, useContract, ConnectWallet } from '@thirdweb-dev/react';
 import { usePrivy, useWallets } from '@privy-io/react-auth';
@@ -29,19 +29,11 @@ const DEV_SUPER_ADMIN_ADDRESSES = [
   // 開発チームのアドレスを追加可能
 ];
 
-// ローカルストレージから保存された管理者アドレスを取得
-function getConfiguredAdminAddresses(): string[] {
-  try {
-    const savedConfig = localStorage.getItem('gifterra_tenant_config');
-    if (savedConfig) {
-      const config = JSON.parse(savedConfig);
-      return (config.adminAddresses || []).map((addr: string) => addr.toLowerCase());
-    }
-  } catch (error) {
-    console.error('Failed to load admin addresses from config:', error);
-  }
-  return [];
-}
+// ⚠️ localStorage方式の管理者設定は完全に廃止
+// 管理者権限は以下のいずれかで判定される：
+// 1. DEV_SUPER_ADMIN_ADDRESSES（運営スーパーアドミン）
+// 2. Supabaseのtenant_applicationsテーブルで承認されたテナントオーナー
+// 3. コントラクトのowner()メソッドで確認されたオーナー
 
 /* =========================================
    テナントコントラクト設定
@@ -293,10 +285,8 @@ export function TenantProvider({ children }: { children: ReactNode }) {
       adminAddr => adminAddr.toLowerCase() === finalAddress.toLowerCase()
     ) : false;
 
-  // テナント管理者アドレスを取得（設定から）
-  const configuredTenantAdmins = useMemo(() => {
-    return getConfiguredAdminAddresses();
-  }, [finalAddress]); // finalAddressが変わったときに再計算（設定が更新された可能性）
+  // ⚠️ localStorage方式は廃止 - Supabaseのtenant_applicationsのみ信頼
+  // テナント管理者はisApprovedTenantで判定される
 
   // デバッグログ - アドレス変更を詳細に追跡
   useEffect(() => {
@@ -311,7 +301,8 @@ export function TenantProvider({ children }: { children: ReactNode }) {
       ADMIN_WHITELIST_ENABLED,
       DEV_MODE,
       isDevSuperAdmin,
-      configuredTenantAdmins,
+      isMETATRONOwner,
+      isApprovedTenant: application?.status === 'approved',
       addressLower: finalAddress?.toLowerCase(),
     });
 
@@ -319,7 +310,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
     if (finalAddress === undefined) {
       console.warn('⚠️ Wallet address became UNDEFINED!');
     }
-  }, [address, privyAddress, finalAddress, isDevSuperAdmin]);
+  }, [address, privyAddress, finalAddress, isDevSuperAdmin, application]);
 
   /* ================= オーナー権限チェック ================ */
   const checkOwnership = async () => {
@@ -355,23 +346,8 @@ export function TenantProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    // 設定されたテナント管理者も全権限を持つ
-    const isTenantAdmin = configuredTenantAdmins.some(
-      adminAddr => adminAddr.toLowerCase() === finalAddress.toLowerCase()
-    );
-    if (isTenantAdmin) {
-      console.log('✅ Configured Tenant Admin detected - granting all permissions');
-      setOwnerStatus({
-        gifterra: true,
-        rewardEngine: true,
-        flagNFT: true,
-        rewardToken: true,
-        tipManager: true,
-        paymentSplitter: true,
-      });
-      setIsCheckingOwner(false);
-      return;
-    }
+    // ⚠️ localStorage方式の管理者チェックは廃止
+    // テナント管理者はSupabaseのtenant_applicationsで管理される
 
     // 承認済みテナントオーナーも全権限を持つ（ファクトリー経由で作成されたテナント）
     if (isApprovedTenant && application?.gifterra_address) {
