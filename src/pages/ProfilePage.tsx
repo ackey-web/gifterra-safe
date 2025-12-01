@@ -1223,7 +1223,7 @@ export function ProfilePage() {
                                   textShadow: '0 0 8px rgba(139, 92, 246, 0.5)',
                                 }}
                               >
-                                {profileOwnerApplication?.rank_plan || 'STUDIO_PRO_MAX'}
+                                {profileOwnerApplication?.rank_plan || 'FLOW'}
                               </div>
                             </div>
 
