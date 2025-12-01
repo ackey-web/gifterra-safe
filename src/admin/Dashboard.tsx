@@ -2652,8 +2652,8 @@ export default function AdminDashboard() {
                   ファンの証明としてランクアップ式のSBT自動ミント、任意のフラグNFT自動配布を設定できます。
                 </p>
                 <ul style={{ margin: 0, paddingLeft: 20, fontSize: 13, opacity: 0.8, lineHeight: 1.8 }}>
-                  <li>KODOMI閾値: ユーザーがランクアップするための貢献度（kodomi値）の閾値</li>
-                  <li>SBT自動ミント: 閾値到達時に下位ランクSBTをバーンして上位ランクSBTを自動ミント</li>
+                  <li>総合KODOMI閾値: ユーザーがランクアップするための総合貢献度（JPYC + 応援熱量）の閾値</li>
+                  <li>SBT自動ミント: 総合KODOMI閾値到達時に下位ランクSBTをバーンして上位ランクSBTを自動ミント</li>
                   <li>フラグNFT配布: ランク到達時に指定したフラグNFTを自動配布</li>
                 </ul>
               </div>
@@ -2661,11 +2661,12 @@ export default function AdminDashboard() {
               {/* KODOMI閾値設定セクション */}
               <div style={{ marginTop: 24, padding: 20, background: "rgba(255,255,255,.04)", borderRadius: 8 }}>
                 <h4 style={{ margin: "0 0 16px 0", fontSize: 18, fontWeight: 700 }}>
-                  📊 KODOMI閾値設定
+                  📊 総合KODOMI閾値設定
                 </h4>
                 <p style={{ margin: "0 0 16px 0", fontSize: 13, opacity: 0.8, lineHeight: 1.6 }}>
-                  各ランクに到達するために必要なKODOMI値（貢献度スコア）を設定します。<br />
-                  この閾値は、プロフィールページのKODOMIゲージとSBT自動ミントに反映されます。
+                  各ランクに到達するために必要な<strong>総合KODOMI値</strong>（JPYC + 応援熱量の合算スコア）を設定します。<br />
+                  💸 JPYC軸（0-500pt）+ ⚡ 応援軸（0-500pt）= 🏆 総合KODOMI（0-1000pt）<br />
+                  この閾値は、プロフィールページの総合KODOMIゲージとSBT自動ミントに反映されます。
                 </p>
 
                 <div style={{ display: "grid", gap: 12 }}>

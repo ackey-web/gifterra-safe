@@ -1,5 +1,6 @@
 // src/utils/rankRewardDistribution.ts
 // ランク特典自動配布ロジック
+// 総合KODOMI値（JPYC + 応援熱量の合算）に基づいてランク判定・自動配布を行う
 
 import { adminSupabase } from '../lib/adminSupabase';
 import type { FlagNFT } from '../types/flagNFT';
@@ -10,7 +11,7 @@ import type { FlagNFT } from '../types/flagNFT';
  * @param userAddress ユーザーのウォレットアドレス
  * @param tenantAddress テナントのウォレットアドレス
  * @param newRank 到達したランクレベル
- * @param kodomiValue 到達時のKODOMI値
+ * @param kodomiValue 到達時の総合KODOMI値（JPYC軸 + 応援軸の合算スコア）
  * @param contract Gifterraコントラクトインスタンス
  * @returns 配布結果
  */
@@ -33,8 +34,9 @@ export async function distributeRankRewards(params: {
     userAddress,
     tenantAddress,
     newRank,
-    kodomiValue,
+    totalKodomiValue: kodomiValue,
   });
+  console.log('  📊 総合KODOMI値（JPYC + 応援熱量）:', kodomiValue, 'pt');
 
   try {
     // 1. テナントIDを取得（tenantAddressからtenantIdへの変換が必要な場合）
@@ -138,12 +140,12 @@ export async function distributeRankRewards(params: {
 }
 
 /**
- * ユーザーのKODOMI値を監視し、ランク到達時に自動配布をトリガー
+ * ユーザーの総合KODOMI値を監視し、ランク到達時に自動配布をトリガー
  *
  * @param userAddress ユーザーのウォレットアドレス
  * @param tenantAddress テナントのウォレットアドレス
- * @param kodomiValue 現在のKODOMI値
- * @param previousKodomiValue 前回のKODOMI値
+ * @param kodomiValue 現在の総合KODOMI値（JPYC軸 + 応援軸の合算）
+ * @param previousKodomiValue 前回の総合KODOMI値
  * @param contract Gifterraコントラクトインスタンス
  */
 export async function checkAndDistributeRankRewards(params: {

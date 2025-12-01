@@ -27,6 +27,13 @@ export interface UserKodomiData {
     level: number;               // レベル（0-100%）
     displayLevel: number;        // 表示用レベル数値
   };
+  overall: {
+    totalScore: number;          // 総合KODOMI値
+    rank: string;                // 総合ランク
+    color: string;               // ランクカラー
+    level: number;               // レベル（0-100%）
+    displayLevel: number;        // 表示用レベル数値
+  };
   loading: boolean;
   error: string | null;
 }
@@ -51,6 +58,17 @@ const RESONANCE_RANKS = {
   BLAZE: { name: 'Blaze', threshold: 250, color: '#ff4500', maxThreshold: 500 },    // 業火
   INFERNO: { name: 'Inferno', threshold: 500, color: '#dc143c', maxThreshold: 800 }, // 劫火
   PHOENIX: { name: 'Phoenix', threshold: 800, color: '#ff00ff', maxThreshold: Infinity }, // 不死鳥
+} as const;
+
+/**
+ * 総合KODOMIランク定義
+ */
+const OVERALL_RANKS = {
+  SEED: { name: 'Seed Supporter', threshold: 0, color: '#90ee90', maxThreshold: 100 },        // 🌱
+  GROW: { name: 'Grow Supporter', threshold: 100, color: '#32cd32', maxThreshold: 300 },      // 🌿
+  BLOOM: { name: 'Bloom Supporter', threshold: 300, color: '#ff69b4', maxThreshold: 600 },    // 🌸
+  MYTHIC: { name: 'Mythic Patron', threshold: 600, color: '#9370db', maxThreshold: 1000 },    // 🌈
+  LEGENDARY: { name: 'Legendary Supporter', threshold: 1000, color: '#ffd700', maxThreshold: Infinity }, // ⭐
 } as const;
 
 /**
@@ -124,6 +142,59 @@ function calculateResonanceRank(engagementScore: number): {
 }
 
 /**
+ * 総合KODOMI計算
+ * JPYC軸とResonance軸を正規化して合算
+ */
+function calculateOverallScore(
+  jpycAmount: number,
+  engagementScore: number
+): {
+  totalScore: number;
+  rank: string;
+  color: string;
+  level: number;
+  displayLevel: number;
+} {
+  // JPYC軸を0-500スケールに正規化（最大1500 JPYCを500ポイントとする）
+  const normalizedJPYC = Math.min(500, (jpycAmount / 1500) * 500);
+
+  // Resonance軸を0-500スケールに正規化（最大800を500ポイントとする）
+  const normalizedResonance = Math.min(500, (engagementScore / 800) * 500);
+
+  // 総合スコア = JPYC (50%) + Resonance (50%)
+  const totalScore = Math.round(normalizedJPYC + normalizedResonance);
+
+  // ランク計算
+  const ranks = Object.values(OVERALL_RANKS);
+
+  for (let i = 0; i < ranks.length; i++) {
+    const currentRank = ranks[i];
+    if (totalScore < currentRank.maxThreshold) {
+      const progress = totalScore >= currentRank.threshold
+        ? ((totalScore - currentRank.threshold) / (currentRank.maxThreshold - currentRank.threshold)) * 100
+        : 0;
+
+      return {
+        totalScore,
+        rank: currentRank.name,
+        color: currentRank.color,
+        level: Math.min(progress, 100),
+        displayLevel: i + 1,
+      };
+    }
+  }
+
+  // 最高ランク
+  return {
+    totalScore,
+    rank: OVERALL_RANKS.LEGENDARY.name,
+    color: OVERALL_RANKS.LEGENDARY.color,
+    level: 100,
+    displayLevel: Object.keys(OVERALL_RANKS).length,
+  };
+}
+
+/**
  * ストリーク計算（連続日数）
  */
 function calculateStreak(sortedDates: string[]): number {
@@ -188,6 +259,13 @@ export function useUserKodomi(targetAddress: string | undefined) {
       engagementScore: 0,
       rank: 'Spark',
       color: '#ffa500',
+      level: 0,
+      displayLevel: 1,
+    },
+    overall: {
+      totalScore: 0,
+      rank: 'Seed Supporter',
+      color: '#90ee90',
       level: 0,
       displayLevel: 1,
     },
@@ -320,6 +398,7 @@ export function useUserKodomi(targetAddress: string | undefined) {
       // ランク計算
       const jpycRank = calculateJPYCRank(jpycTotal);
       const resonanceRank = calculateResonanceRank(engagementScore);
+      const overallScore = calculateOverallScore(jpycTotal, engagementScore);
 
       const result = {
         jpyc: {
@@ -334,11 +413,17 @@ export function useUserKodomi(targetAddress: string | undefined) {
           engagementScore,
           ...resonanceRank,
         },
+        overall: {
+          ...overallScore,
+        },
         loading: false,
         error: null,
       };
 
       console.log('✅ useUserKodomi - データセット完了:', result);
+      console.log('  💸 JPYC:', jpycTotal, 'JPYC');
+      console.log('  ⚡ Resonance:', engagementScore, 'pts');
+      console.log('  🏆 総合KODOMI:', overallScore.totalScore, 'pts -', overallScore.rank);
       setData(result);
     } catch (err) {
       console.error('❌ ユーザーkodomi取得エラー:', err);

@@ -609,6 +609,77 @@ export function ProfilePage() {
                       }}>
                         このユーザーに対するあなたのKODOMI指数
                       </div>
+
+                      {/* 🏆 総合KODOMI ゲージ（全プランで表示） */}
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: isMobile ? 10 : 12,
+                        padding: '6px 8px',
+                        background: 'linear-gradient(135deg, rgba(147, 51, 234, 0.15) 0%, rgba(79, 70, 229, 0.15) 100%)',
+                        borderRadius: 8,
+                        border: '1px solid rgba(147, 51, 234, 0.3)',
+                      }}>
+                        <span style={{
+                          fontSize: isMobile ? 18 : 22,
+                          filter: 'drop-shadow(0 2px 4px rgba(147, 51, 234, 0.6))',
+                        }}>🏆</span>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{
+                            fontSize: isMobile ? 9 : 10,
+                            color: 'rgba(255, 255, 255, 0.5)',
+                            marginBottom: 2,
+                          }}>
+                            総合KODOMI
+                          </div>
+                          <div style={{
+                            height: isMobile ? 14 : 18,
+                            background: 'linear-gradient(180deg, rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0.7) 100%)',
+                            borderRadius: 10,
+                            overflow: 'hidden',
+                            position: 'relative',
+                            border: `2px solid ${userKodomi.overall.color}40`,
+                            boxShadow: 'inset 0 2px 8px rgba(0, 0, 0, 0.6), 0 4px 12px rgba(0, 0, 0, 0.3)',
+                          }}>
+                            <div style={{
+                              width: `${Math.min(100, userKodomi.overall.level)}%`,
+                              height: '100%',
+                              background: `linear-gradient(135deg, ${userKodomi.overall.color} 0%, ${userKodomi.overall.color}cc 50%, ${userKodomi.overall.color}99 100%)`,
+                              transition: 'width 0.5s ease',
+                              boxShadow: `0 0 20px ${userKodomi.overall.color}cc, inset 0 2px 4px rgba(255, 255, 255, 0.3)`,
+                              position: 'relative',
+                            }}>
+                              <div style={{
+                                position: 'absolute',
+                                top: 0,
+                                left: 0,
+                                right: 0,
+                                height: '40%',
+                                background: 'linear-gradient(180deg, rgba(255, 255, 255, 0.4) 0%, transparent 100%)',
+                                borderRadius: '10px 10px 0 0',
+                              }} />
+                            </div>
+                          </div>
+                          <div style={{
+                            fontSize: isMobile ? 10 : 11,
+                            color: userKodomi.overall.color,
+                            marginTop: 2,
+                            fontWeight: 600,
+                          }}>
+                            {userKodomi.overall.totalScore} pt - {userKodomi.overall.rank}
+                          </div>
+                        </div>
+                        <span style={{
+                          fontSize: isMobile ? 14 : 16,
+                          fontWeight: 800,
+                          color: userKodomi.overall.color,
+                          minWidth: isMobile ? 40 : 50,
+                          textAlign: 'right',
+                          textShadow: `0 2px 8px ${userKodomi.overall.color}cc, 0 0 20px ${userKodomi.overall.color}80`,
+                        }}>
+                          Lv.{userKodomi.overall.displayLevel}
+                        </span>
+                      </div>
                       {/* 💸 JPYC ゲージ */}
                       <div style={{
                         display: 'flex',
