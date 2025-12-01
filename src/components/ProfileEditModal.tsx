@@ -280,11 +280,36 @@ export function ProfileEditModal({
         wallet_address: profileData.wallet_address?.substring(0, 10) + '...',
       });
 
-      // テーブルのUNIQUE制約に基づいて自動的にupsertを実行
-      const { data, error: upsertError } = await supabase
+      // 既存レコードを検索
+      const { data: existing } = await supabase
         .from('user_profiles')
-        .upsert(profileData)
-        .select();
+        .select('id')
+        .eq('wallet_address', profileData.wallet_address)
+        .eq('tenant_id', profileData.tenant_id)
+        .maybeSingle();
+
+      let data, upsertError;
+
+      if (existing) {
+        // 既存レコードがあれば更新
+        console.log('📝 既存レコードを更新:', existing.id);
+        const result = await supabase
+          .from('user_profiles')
+          .update(profileData)
+          .eq('id', existing.id)
+          .select();
+        data = result.data;
+        upsertError = result.error;
+      } else {
+        // 新規作成
+        console.log('📝 新規レコードを作成');
+        const result = await supabase
+          .from('user_profiles')
+          .insert(profileData)
+          .select();
+        data = result.data;
+        upsertError = result.error;
+      }
 
       if (upsertError) {
         console.error('❌ ProfileEditModal - Upsert error:', {
