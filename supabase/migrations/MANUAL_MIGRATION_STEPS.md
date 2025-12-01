@@ -111,10 +111,26 @@ WHERE p.tenant_id = vm.id::text
 以下のSQLを実行:
 
 ```sql
-CREATE OR REPLACE VIEW v_hub_products_with_tenant AS
+-- 既存のビューを削除してから作成
+DROP VIEW IF EXISTS v_hub_products_with_tenant CASCADE;
+
+CREATE VIEW v_hub_products_with_tenant AS
 SELECT
-  p.*,
-  vm.tenant_uuid,
+  p.id,
+  p.name,
+  p.description,
+  p.price_token,
+  p.price_amount_wei,
+  p.image_url,
+  p.category,
+  p.stock,
+  p.is_active,
+  p.tenant_id,
+  p.tenant_uuid,
+  p.hub_id,
+  p.created_at,
+  p.updated_at,
+  vm.tenant_uuid as hub_tenant_uuid,
   vm.slug as hub_slug,
   vm.name as hub_name,
   CASE
