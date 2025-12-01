@@ -245,28 +245,46 @@ export function ProfileEditModal({
 
       // upsert: 存在すれば更新、存在しなければ作成
       // Supabaseの.upsert()を使用（onConflictでユニーク制約を指定）
-      const profileData = {
+      const profileData: any = {
         tenant_id: 'default',
         wallet_address: walletAddress.toLowerCase(),
         display_name: displayName.trim(),
         bio: bio.trim(),
         receive_message: receiveMessage.trim(),
         avatar_url: avatarUrl || null,
-        cover_image_url: coverImageUrl || null,
         website_url: websiteUrl.trim() || null,
-        custom_links: validCustomLinks.length > 0 ? validCustomLinks : [],
-        roles: roles.length > 0 ? roles : [],
         location: location.trim() || null,
         show_wallet_address: showWalletAddress,
         reject_anonymous_transfers: rejectAnonymousTransfers,
-        twitter_id: cleanTwitterId || null,
-        show_reward_button: showRewardButton,
         updated_at: new Date().toISOString(),
       };
 
+      // オプションカラム（テーブルに存在する場合のみ追加）
+      if (coverImageUrl) {
+        profileData.cover_image_url = coverImageUrl;
+      }
+      if (validCustomLinks.length > 0) {
+        profileData.custom_links = validCustomLinks;
+      }
+      if (roles.length > 0) {
+        profileData.roles = roles;
+      }
+      if (cleanTwitterId) {
+        profileData.twitter_id = cleanTwitterId;
+      }
+      // show_reward_buttonは一時的にコメントアウト（カラムが存在しない可能性）
+      // profileData.show_reward_button = showRewardButton;
+
+      console.log('📝 ProfileEditModal - Attempting upsert with data:', {
+        ...profileData,
+        wallet_address: profileData.wallet_address?.substring(0, 10) + '...',
+      });
+
       const { data, error: upsertError } = await supabase
         .from('user_profiles')
-        .upsert(profileData)
+        .upsert(profileData, {
+          onConflict: 'wallet_address,tenant_id',
+        })
         .select();
 
       if (upsertError) {
