@@ -3,6 +3,7 @@
 import { useState, useRef } from 'react';
 import type { VendingMachine } from '../../../types/vending';
 import { useSupabaseProducts } from '../../../hooks/useSupabaseProducts';
+import { useProductTokenCheck } from '../../../hooks/useProductTokenCheck';
 import { ProductForm, type ProductFormData } from '../../products/ProductForm';
 import { createProduct, updateProduct, deleteProduct, formDataToCreateParams, formDataToUpdateParams } from '../../../lib/supabase/products';
 import { uploadImage, deleteFileFromUrl } from '../../../lib/supabase';
@@ -62,6 +63,9 @@ export function HubDetailPanelNew({
 
   const { products, isLoading, error, refetch } = useSupabaseProducts({ tenantId, isActive: true });
 
+  // 商品のトークン重複チェックフック
+  const { checkProductAvailability, isChecking } = useProductTokenCheck();
+
   // 新規商品追加モーダルを開く
   const handleAddProduct = () => {
     setEditingProduct(null);
@@ -93,8 +97,34 @@ export function HubDetailPanelNew({
 
   // 商品保存（新規 or 更新）
   const handleSubmitProduct = async (formData: ProductFormData) => {
+    if (!machine?.id) {
+      alert('❌ GIFT HUB情報が取得できません');
+      return;
+    }
+
+    const currentHubToken = machine.settings?.acceptedToken || 'NHT';
+
     setIsSubmitting(true);
     try {
+      // トークン重複チェック（商品名と画像URLで判定）
+      const checkResult = await checkProductAvailability(
+        formData.name,
+        formData.imageUrl,
+        machine.id,
+        currentHubToken as TokenId,
+        formData.id // 編集時は自分自身を除外
+      );
+
+      if (!checkResult.available) {
+        alert(
+          `❌ 商品登録エラー\n\n${checkResult.message}\n\n` +
+          `【重要】異なるトークン種別のGIFT HUBで同一商品を設定することは禁止されています。\n` +
+          `各GIFT HUBは受け入れトークン専用の商品のみを設定してください。`
+        );
+        setIsSubmitting(false);
+        return;
+      }
+
       if (formData.id) {
         // 更新
         const params = formDataToUpdateParams(formData, tenantId);
@@ -676,6 +706,57 @@ export function HubDetailPanelNew({
               <p style={{ margin: '8px 0 0 0', fontSize: 12, color: 'rgba(255,255,255,0.5)' }}>
                 このGIFT HUBで受け入れる決済トークンを選択してください
               </p>
+
+              {/* トークン種別に応じた警告文 */}
+              {machine.settings.acceptedToken === 'JPYC' && (
+                <div style={{
+                  marginTop: 12,
+                  padding: '12px 16px',
+                  background: 'rgba(255, 193, 7, 0.1)',
+                  border: '1px solid rgba(255, 193, 7, 0.3)',
+                  borderRadius: 6
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                    <span style={{ fontSize: 16 }}>⚠️</span>
+                    <div style={{ flex: 1 }}>
+                      <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: '#FFC107' }}>
+                        電子決済手段（JPYC）に関する重要な注意事項
+                      </p>
+                      <ul style={{ margin: '8px 0 0 0', paddingLeft: 20, fontSize: 12, color: 'rgba(255, 193, 7, 0.9)', lineHeight: 1.6 }}>
+                        <li>JPYCは1 JPYC = 1 JPYの資産価値を持つ電子決済手段です</li>
+                        <li>このGIFT HUBでは<strong>JPYC専用の商品・コンテンツ</strong>のみを設定してください</li>
+                        <li><strong>NHTを使用する他のGIFT HUBと同一商品を設定することは厳禁です</strong></li>
+                        <li>利用規約に基づき、適切な運用をお願いします</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {machine.settings.acceptedToken === 'NHT' && (
+                <div style={{
+                  marginTop: 12,
+                  padding: '12px 16px',
+                  background: 'rgba(130, 71, 227, 0.1)',
+                  border: '1px solid rgba(130, 71, 227, 0.3)',
+                  borderRadius: 6
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                    <span style={{ fontSize: 16 }}>ℹ️</span>
+                    <div style={{ flex: 1 }}>
+                      <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: '#8247e3' }}>
+                        ユーティリティトークン（NHT）に関する注意事項
+                      </p>
+                      <ul style={{ margin: '8px 0 0 0', paddingLeft: 20, fontSize: 12, color: 'rgba(130, 71, 227, 0.9)', lineHeight: 1.6 }}>
+                        <li>NHTは資産価値を持たないプラットフォーム内ユーティリティトークンです</li>
+                        <li>このGIFT HUBでは<strong>NHT専用の商品・コンテンツ</strong>のみを設定してください</li>
+                        <li><strong>JPYCを使用する他のGIFT HUBと同一商品を設定することは厳禁です</strong></li>
+                        <li>NHTは譲渡・換金不可のプラットフォーム内ポイントです</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* PaymentSplitter設定セクション */}

@@ -65,7 +65,7 @@ export function getNetworkEnv(): NetworkEnv {
  */
 export const TOKEN_MASTER_DATA: Record<TokenId, TokenConfig> = {
   /**
-   * NHT (Nihonto Token)
+   * NHT (New Heaven Token)
    * - テストネット: tNHT
    * - メインネット: NHT
    * - ユーティリティトークン（Reward配布可能）
@@ -73,7 +73,7 @@ export const TOKEN_MASTER_DATA: Record<TokenId, TokenConfig> = {
   NHT: {
     id: 'NHT',
     symbol: 'tNHT', // デフォルトはtestnet、getTokenConfig()で動的に変更
-    name: 'Test Nihonto Token', // デフォルトはtestnet、getTokenConfig()で動的に変更
+    name: 'Test New Heaven Token', // デフォルトはtestnet、getTokenConfig()で動的に変更
     decimals: 18,
     category: 'utility', // ユーティリティトークン：Reward配布可能
     addresses: {
@@ -153,7 +153,7 @@ export function getTokenConfig(tokenId: TokenId): TokenConfig & { currentAddress
     return {
       ...config,
       symbol: network === 'mainnet' ? 'NHT' : 'tNHT',
-      name: network === 'mainnet' ? 'Nihonto Token' : 'Test Nihonto Token',
+      name: network === 'mainnet' ? 'New Heaven Token' : 'Test New Heaven Token',
       currentAddress,
     };
   }
@@ -195,10 +195,24 @@ export function getAvailableTokens(
   category?: TokenCategory
 ): (TokenConfig & { currentAddress: string })[] {
   const network = getNetworkEnv();
-  let tokens = Object.values(TOKEN_MASTER_DATA).map(config => ({
-    ...config,
-    currentAddress: config.addresses[network],
-  }));
+  let tokens = Object.values(TOKEN_MASTER_DATA).map(config => {
+    const currentAddress = config.addresses[network];
+
+    // NHTの場合、環境に応じてsymbolとnameを動的に設定
+    if (config.id === 'NHT') {
+      return {
+        ...config,
+        symbol: network === 'mainnet' ? 'NHT' : 'tNHT',
+        name: network === 'mainnet' ? 'New Heaven Token' : 'Test New Heaven Token',
+        currentAddress,
+      };
+    }
+
+    return {
+      ...config,
+      currentAddress,
+    };
+  });
 
   // カテゴリフィルタ
   if (category) {
