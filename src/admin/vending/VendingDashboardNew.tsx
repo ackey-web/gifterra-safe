@@ -8,18 +8,30 @@ import { HubDetailPanelNew } from './components/HubDetailPanelNew';
 import CommonCatalogManager from './components/CommonCatalogManager';
 import { useTenantRankPlan } from '../../hooks/useTenantRankPlan';
 import { canCreateHub } from '../../utils/tenantLimits';
+import { useTenant } from '../contexts/TenantContext';
 
 const STORAGE_KEY = 'vending_machines_data';
 
 type ViewMode = 'hub' | 'catalog';
 
 const VendingDashboardNew: React.FC = () => {
-  // TODO: マルチテナント対応完了後、実際のテナントIDに置き換える
-  // 現在はデモ用に固定のテナントID=1を使用
-  const DEMO_TENANT_ID = 1;
+  // テナント情報を取得
+  const { tenant } = useTenant();
 
-  // ランクプラン取得（デモ用）
-  const { plan, loading: planLoading } = useTenantRankPlan(DEMO_TENANT_ID);
+  // ランクプラン取得（テナントIDを使用）
+  const { plan, loading: planLoading } = useTenantRankPlan(tenant?.id);
+
+  // デバッグ: ランクプラン情報をログ出力
+  useEffect(() => {
+    console.log('🎯 [VendingDashboard] Rank Plan Check:', {
+      tenantId: tenant?.id,
+      tenantName: tenant?.name,
+      plan: plan,
+      rankPlan: plan?.rank_plan,
+      isActive: plan?.is_active,
+      maxHubs: plan ? (plan.rank_plan === 'STUDIO' ? 1 : plan.rank_plan === 'STUDIO_PRO' ? 3 : 10) : 'unknown',
+    });
+  }, [tenant?.id, plan]);
 
   // 表示モード切替
   const [viewMode, setViewMode] = useState<ViewMode>('hub');
