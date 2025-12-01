@@ -283,7 +283,7 @@ export function ProfileEditModal({
       const { data, error: upsertError } = await supabase
         .from('user_profiles')
         .upsert(profileData, {
-          onConflict: 'wallet_address,tenant_id',
+          ignoreDuplicates: false,
         })
         .select();
 
