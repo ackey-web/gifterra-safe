@@ -9,7 +9,7 @@ import { uploadImage, deleteFileFromUrl } from '../../../lib/supabase';
 import { generateSlug } from '../../../utils/slugGenerator';
 import { calculateFileHash } from '../../../utils/fileHash';
 import type { TokenId } from '../../../config/tokens';
-import { getAvailableTokens, formatTokenSymbol } from '../../../config/tokens';
+import { getAvailableTokens, formatTokenSymbol, getTokenConfig } from '../../../config/tokens';
 import { PurchaseHistoryTab } from './PurchaseHistoryTab';
 import { VendingStatsTab } from './VendingStatsTab';
 import { RevenueTab } from './RevenueTab';
@@ -638,14 +638,18 @@ export function HubDetailPanelNew({
               </label>
               <select
                 value={machine.settings.acceptedToken || 'NHT'}
-                onChange={(e) => onUpdateMachine?.({
-                  settings: {
-                    ...machine.settings,
-                    acceptedToken: e.target.value as TokenId,
-                    // 後方互換性のため tokenSymbol も更新
-                    tokenSymbol: e.target.value === 'NHT' ? 'tNHT' : (e.target.value as 'tNHT' | 'JPYC')
-                  }
-                })}
+                onChange={(e) => {
+                  const tokenId = e.target.value as TokenId;
+                  const tokenConfig = getTokenConfig(tokenId);
+                  onUpdateMachine?.({
+                    settings: {
+                      ...machine.settings,
+                      acceptedToken: tokenId,
+                      // 後方互換性のため tokenSymbol も更新（環境に応じた正しいシンボル）
+                      tokenSymbol: tokenConfig.symbol as 'tNHT' | 'JPYC'
+                    }
+                  });
+                }}
                 style={{
                   width: '100%',
                   padding: '10px 14px',
