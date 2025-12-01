@@ -22,6 +22,12 @@ import { useMyTenantApplication } from '../hooks/useTenantApplications';
 import { useUserContribution } from '../hooks/useUserContribution';
 import { useUserKodomi } from '../hooks/useUserKodomi';
 
+// プランロゴのインポート
+import flowLogo from '/FLOW.logo.png';
+import studioLogo from '/STUDIO.logo.png';
+import proLogo from '/PRO.logo.png';
+import proMaxLogo from '/PROMAX.logo.png';
+
 interface UserProfile {
   display_name: string;
   bio: string;
@@ -1020,12 +1026,12 @@ export function ProfilePage() {
                       {(() => {
                         const plan = profileOwnerApplication?.rank_plan || 'FLOW';
                         const logoMap: Record<string, string> = {
-                          'STUDIO_PRO_MAX': '/PROMAX.logo.png',
-                          'STUDIO_PRO': '/PRO.logo.png',
-                          'STUDIO': '/STUDIO.logo.png',
-                          'FLOW': '/FLOW.logo.png',
+                          'STUDIO_PRO_MAX': proMaxLogo,
+                          'STUDIO_PRO': proLogo,
+                          'STUDIO': studioLogo,
+                          'FLOW': flowLogo,
                         };
-                        const logoSrc = logoMap[plan] || '/FLOW.logo.png';
+                        const logoSrc = logoMap[plan] || flowLogo;
 
                         return (
                           <img
