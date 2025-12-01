@@ -98,6 +98,9 @@ const VendingDashboardNew: React.FC = () => {
       totalDistributions: 0,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
+      // Set tenant UUID for proper tenant isolation
+      tenantUuid: tenant?.id || null,
+      tenantId: tenant?.id || 'default', // Legacy field for backward compatibility
       settings: {
         theme: 'default',
         displayName: '新しいGIFT HUB',

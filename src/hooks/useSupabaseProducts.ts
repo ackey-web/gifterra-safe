@@ -4,7 +4,21 @@ import { supabase } from '../lib/supabase';
 
 export interface SupabaseProduct {
   id: string;
+  /**
+   * @deprecated Use tenant_uuid instead
+   * Legacy tenant_id (TEXT) for backward compatibility
+   */
   tenant_id: string;
+  /**
+   * Tenant UUID from tenant_applications.tenant_id
+   * Added in migration 20250301000000
+   */
+  tenant_uuid?: string | null;
+  /**
+   * GIFT HUB UUID from vending_machines.id
+   * Links product to specific hub
+   */
+  hub_id?: string | null;
   name: string;
   description: string | null;
   content_path: string;
@@ -14,6 +28,7 @@ export interface SupabaseProduct {
   stock: number;
   is_unlimited: boolean;
   is_active: boolean;
+  category?: 'hub_specific' | 'common_catalog';
   created_at: string;
   updated_at: string;
 }

@@ -48,6 +48,18 @@ export interface VendingMachine {
   createdAt: string;
   updatedAt: string;
   settings: VendingMachineSettings;
+
+  // Tenant UUID support (added in migration 20250301000000)
+  /**
+   * Tenant UUID from tenant_applications.tenant_id
+   * Used for proper tenant isolation and rank plan checks
+   */
+  tenantUuid?: string | null;
+  /**
+   * @deprecated Use tenantUuid instead
+   * Legacy tenant_id (TEXT) for backward compatibility
+   */
+  tenantId?: string;
 }
 
 export interface VendingMachineSettings {

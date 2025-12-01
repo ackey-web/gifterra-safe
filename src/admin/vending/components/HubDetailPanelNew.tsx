@@ -56,9 +56,9 @@ export function HubDetailPanelNew({
   const previousHeaderImageRef = useRef<string | null>(machine?.settings?.design?.headerImage || null);
   const previousBackgroundImageRef = useRef<string | null>(machine?.settings?.design?.backgroundImage || null);
 
-  // Supabase商品取得（実際のテナントUUIDを使用）
-  // propTenantIdがない場合は後方互換性のためmachine.idを使用（移行期間用）
-  const tenantId = propTenantId || machine?.id || 'default';
+  // Supabase商品取得（tenant_uuid優先、後方互換性も考慮）
+  // 優先順位: propTenantId > machine.tenantUuid > machine.tenantId > machine.id (legacy)
+  const tenantId = propTenantId || machine?.tenantUuid || machine?.tenantId || machine?.id || 'default';
 
   const { products, isLoading, error, refetch } = useSupabaseProducts({ tenantId, isActive: true });
 
