@@ -21,7 +21,8 @@ BEGIN
   -- tenant_uuid カラムを追加（存在しない場合のみ）
   IF NOT EXISTS (
     SELECT 1 FROM information_schema.columns
-    WHERE table_name = 'vending_machines'
+    WHERE table_schema = 'public'
+      AND table_name = 'vending_machines'
       AND column_name = 'tenant_uuid'
   ) THEN
     ALTER TABLE vending_machines ADD COLUMN tenant_uuid UUID;
@@ -33,7 +34,8 @@ BEGIN
   -- インデックス作成（存在しない場合のみ）
   IF NOT EXISTS (
     SELECT 1 FROM pg_indexes
-    WHERE tablename = 'vending_machines'
+    WHERE schemaname = 'public'
+      AND tablename = 'vending_machines'
       AND indexname = 'idx_vending_machines_tenant_uuid'
   ) THEN
     CREATE INDEX idx_vending_machines_tenant_uuid ON vending_machines(tenant_uuid);
@@ -56,7 +58,8 @@ BEGIN
   -- tenant_uuid カラムを追加（存在しない場合のみ）
   IF NOT EXISTS (
     SELECT 1 FROM information_schema.columns
-    WHERE table_name = 'products'
+    WHERE table_schema = 'public'
+      AND table_name = 'products'
       AND column_name = 'tenant_uuid'
   ) THEN
     ALTER TABLE products ADD COLUMN tenant_uuid UUID;
@@ -68,7 +71,8 @@ BEGIN
   -- hub_id カラムを追加（存在しない場合のみ）
   IF NOT EXISTS (
     SELECT 1 FROM information_schema.columns
-    WHERE table_name = 'products'
+    WHERE table_schema = 'public'
+      AND table_name = 'products'
       AND column_name = 'hub_id'
   ) THEN
     ALTER TABLE products ADD COLUMN hub_id UUID;
@@ -93,7 +97,8 @@ BEGIN
   -- インデックス作成（存在しない場合のみ）
   IF NOT EXISTS (
     SELECT 1 FROM pg_indexes
-    WHERE tablename = 'products'
+    WHERE schemaname = 'public'
+      AND tablename = 'products'
       AND indexname = 'idx_products_tenant_uuid'
   ) THEN
     CREATE INDEX idx_products_tenant_uuid ON products(tenant_uuid);
@@ -104,7 +109,8 @@ BEGIN
 
   IF NOT EXISTS (
     SELECT 1 FROM pg_indexes
-    WHERE tablename = 'products'
+    WHERE schemaname = 'public'
+      AND tablename = 'products'
       AND indexname = 'idx_products_hub_id'
   ) THEN
     CREATE INDEX idx_products_hub_id ON products(hub_id);
