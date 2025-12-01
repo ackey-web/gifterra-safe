@@ -333,6 +333,7 @@ const VendingDashboardNew: React.FC = () => {
           {/* 右カラム：詳細パネル */}
           <HubDetailPanelNew
             machine={selectedMachine}
+            tenantId={tenant?.id}
             onSave={handleSave}
             onToggleActive={handleToggleActive}
             onUpdateMachine={handleUpdateMachine}

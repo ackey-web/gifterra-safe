@@ -26,7 +26,9 @@ export default function VendingApp() {
   // 管理データ（vendingMachine設定のみ使用、contentSetは使わずSupabase特典を使用）
   const { contentSet: _contentSet, vendingMachine, error } = useMetaverseContent(spaceId, machineId);
 
-  // Supabase特典データを取得（vendingMachine.idをtenantIdとして使用）
+  // Supabase特典データを取得
+  // TODO: データベース設計変更後、vending_machines.tenant_idを使用
+  // 現在は後方互換性のためvendingMachine.idをtenantIdとして使用
   const tenantId = vendingMachine?.id || "";
 
   const { products: supabaseProducts, isLoading: productsLoading } = useSupabaseProducts({

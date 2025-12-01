@@ -16,6 +16,7 @@ import { RevenueTab } from './RevenueTab';
 
 interface HubDetailPanelNewProps {
   machine: VendingMachine | null;
+  tenantId?: string | null; // 実際のテナントUUID
   onSave?: () => void;
   onToggleActive?: () => void;
   onUpdateMachine?: (updates: Partial<VendingMachine>) => void;
@@ -28,6 +29,7 @@ const REDIRECT_TAB_KEY = 'vending_redirect_tab';
 
 export function HubDetailPanelNew({
   machine,
+  tenantId: propTenantId,
   onSave,
   onToggleActive,
   onUpdateMachine,
@@ -54,8 +56,9 @@ export function HubDetailPanelNew({
   const previousHeaderImageRef = useRef<string | null>(machine?.settings?.design?.headerImage || null);
   const previousBackgroundImageRef = useRef<string | null>(machine?.settings?.design?.backgroundImage || null);
 
-  // Supabase商品取得（HUBのIDをtenantIdとして使用）
-  const tenantId = machine?.id || 'default';
+  // Supabase商品取得（実際のテナントUUIDを使用）
+  // propTenantIdがない場合は後方互換性のためmachine.idを使用（移行期間用）
+  const tenantId = propTenantId || machine?.id || 'default';
 
   const { products, isLoading, error, refetch } = useSupabaseProducts({ tenantId, isActive: true });
 
