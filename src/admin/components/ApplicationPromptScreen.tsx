@@ -102,7 +102,7 @@ export function ApplicationPromptScreen() {
                 <div style={{ fontSize: 13, opacity: 0.9 }}>
                   <div>🎁 最大 <strong>{plan.maxHubs} 個</strong> の GIFT HUB</div>
                   <div>⬆️ <strong>{plan.sbtRanks} 段階</strong> の SBT ランク</div>
-                  {plan.hasCustomToken && <div>💎 カスタムトークン対応</div>}
+                  {plan.hasCustomToken && <div>💎 カスタムトークン対応（拡張予定）</div>}
                   {plan.hasAdvancedAnalytics && <div>📊 高度な分析機能</div>}
                   {plan.hasApiIntegration && <div>🔌 API連携</div>}
                   {plan.hasPrioritySupport && <div>🎯 優先サポート</div>}

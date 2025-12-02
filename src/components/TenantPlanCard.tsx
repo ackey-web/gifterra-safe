@@ -167,7 +167,7 @@ export function TenantPlanCard({ isMobile, currentPlan, tenantId }: TenantPlanCa
           )}
           {planDetails.hasCustomToken && (
             <div style={{ fontSize: isMobile ? 13 : 14, opacity: 0.9 }}>
-              • カスタムトークン対応
+              • カスタムトークン対応（拡張予定）
             </div>
           )}
           {planDetails.hasApiIntegration && (
@@ -242,7 +242,7 @@ export function TenantPlanCard({ isMobile, currentPlan, tenantId }: TenantPlanCa
                   <div style={{ marginBottom: 6 }}>+ 高度な分析機能</div>
                 )}
                 {nextPlanDetails.hasCustomToken && !planDetails.hasCustomToken && (
-                  <div style={{ marginBottom: 6 }}>+ カスタムトークン対応</div>
+                  <div style={{ marginBottom: 6 }}>+ カスタムトークン対応（拡張予定）</div>
                 )}
                 {nextPlanDetails.hasApiIntegration && !planDetails.hasApiIntegration && (
                   <div style={{ marginBottom: 6 }}>+ API連携</div>

@@ -108,7 +108,7 @@ export function PendingApprovalScreen({ application }: PendingApprovalScreenProp
             }}>
               <li>最大 {planDetails.maxHubs} 個の GIFT HUB</li>
               <li>{planDetails.sbtRanks} 段階の SBT ランク</li>
-              {planDetails.hasCustomToken && <li>カスタムトークン対応</li>}
+              {planDetails.hasCustomToken && <li>カスタムトークン対応（拡張予定）</li>}
               {planDetails.hasAdvancedAnalytics && <li>高度な分析機能</li>}
               {planDetails.hasApiIntegration && <li>API連携</li>}
               {planDetails.hasPrioritySupport && <li>優先サポート</li>}
