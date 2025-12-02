@@ -379,7 +379,7 @@ export default function AdminDashboard() {
   const networkEnv = getNetworkEnv();
 
   const address = useAddress();
-  const gifterraAddress = useMemo(() => getGifterraAddress(), []);
+  const gifterraAddress = useMemo(() => tenant?.contracts.gifterra || getGifterraAddress(), [tenant]);
   const { contract } = useContract(gifterraAddress, CONTRACT_ABI);
   const { contract: rankPlanRegistryContract } = useContract(
     RANK_PLAN_REGISTRY_CONTRACT.ADDRESS,
