@@ -163,7 +163,9 @@ const wantsReward = path.includes("/reward") || uiParam === "reward";
 const wantsTip = path.includes("/tip") || uiParam === "tip";
 const wantsVending = path.includes("/vending") || path.includes("/content") || uiParam === "vending" || uiParam === "content";
 const wantsSuperAdmin = path.includes("/super-admin") || path.includes("/superadmin") || uiParam === "super-admin" || uiParam === "superadmin";
-const wantsAdmin = (path.includes("/admin") && !path.includes("/super-admin") && !path.includes("/superadmin")) || uiParam === "admin";
+// /admin/:tenantAddress のパターンをチェック（例: /admin/0x1234...abcd）
+const adminMatch = path.match(/^\/admin(?:\/0x[a-fA-F0-9]{40})?$/);
+const wantsAdmin = adminMatch || (path.includes("/admin") && !path.includes("/super-admin") && !path.includes("/superadmin")) || uiParam === "admin";
 const wantsTerminal = path.includes("/terminal") || uiParam === "terminal";
 const wantsLegacy = path.includes("/legacy");
 const wantsLogin = path.includes("/login") || uiParam === "login";

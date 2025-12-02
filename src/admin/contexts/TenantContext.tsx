@@ -87,6 +87,7 @@ export interface TenantContextType {
 
   // 認証アドレス
   finalAddress: string;  // Thirdweb または Privy の統合アドレス
+  urlTenantAddress: string | null;  // URLから取得したテナントアドレス
 
   // アクセス制御
   hasAccess: boolean;  // デフォルトテナントまたは承認済みテナントへのアクセス権
@@ -140,6 +141,13 @@ export function TenantProvider({ children }: { children: ReactNode }) {
   // Privy wallet address state
   const [privyAddress, setPrivyAddress] = useState<string>('');
 
+  // URLからテナントアドレスを取得
+  const urlTenantAddress = useMemo(() => {
+    const path = window.location.pathname;
+    const match = path.match(/^\/admin\/(0x[a-fA-F0-9]{40})/);
+    return match ? match[1] : null;
+  }, []);
+
   // Get address from Privy wallet
   useEffect(() => {
     async function getPrivyAddress() {
@@ -190,8 +198,11 @@ export function TenantProvider({ children }: { children: ReactNode }) {
   // Combined address: prefer Thirdweb, fallback to Privy
   const finalAddress = address || privyAddress;
 
-  // ✅ テナント申請情報を取得
-  const { application, loading: loadingApplication } = useMyTenantApplication();
+  // URLで指定されたテナントアドレスを優先、なければ接続中のウォレットアドレス
+  const targetTenantAddress = urlTenantAddress || finalAddress;
+
+  // ✅ テナント申請情報を取得（targetTenantAddressを使用）
+  const { application, loading: loadingApplication } = useMyTenantApplication(targetTenantAddress);
 
   // ✅ METATRON Ownerチェック
   const isMETATRONOwner = finalAddress ? finalAddress.toLowerCase() === METATRON_OWNER.toLowerCase() : false;
@@ -458,6 +469,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
     tenant,
     setTenant,
     finalAddress,
+    urlTenantAddress,
     hasAccess,
     isMETATRONOwner,
     isApprovedTenant,

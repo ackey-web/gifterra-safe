@@ -1,5 +1,4 @@
 // src/admin/components/AdminSidebar.tsx
-import React from 'react';
 import { useAddress } from '@thirdweb-dev/react';
 import type { RankPlan } from '../../types/tenantApplication';
 import flowImage from '../../assets/flow.png';

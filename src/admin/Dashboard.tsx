@@ -351,10 +351,22 @@ function LoadingOverlay({ period, progress }: { period?: Period; progress?: numb
 /* ---------- Component ---------- */
 export default function AdminDashboard() {
   // テナントコンテキスト（オーナー権限確認）
-  const { tenant, isOwner, ownerStatus, isDevSuperAdmin, devMode } = useTenant();
+  const { tenant, isOwner, ownerStatus, isDevSuperAdmin, devMode, urlTenantAddress, finalAddress } = useTenant();
 
   // テナントランクプラン取得（機能制限チェック用）
   const { plan: tenantRankPlan } = useTenantRankPlan(tenant?.id);
+
+  // URLのテナントアドレスと接続中のウォレットアドレスの一致確認
+  useEffect(() => {
+    if (urlTenantAddress && finalAddress) {
+      const urlAddr = urlTenantAddress.toLowerCase();
+      const walletAddr = finalAddress.toLowerCase();
+
+      if (urlAddr !== walletAddr && !isDevSuperAdmin) {
+        console.warn(`⚠️ URL tenant address (${urlAddr}) does not match wallet address (${walletAddr})`);
+      }
+    }
+  }, [urlTenantAddress, finalAddress, isDevSuperAdmin]);
 
   // デバッグ: ランクプラン情報をログ出力
   useEffect(() => {

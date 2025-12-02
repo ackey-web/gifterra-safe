@@ -44,45 +44,55 @@ export function useTenantList() {
     try {
       setIsLoading(true);
 
-      // TODO: 将来的にSupabaseのtenantsテーブルから取得
-      // 現在はデフォルトテナントのみ
-      const defaultTenant: TenantInfo = {
-        id: 'default',
-        name: 'METATRON Default',
-        contracts: {
-          gifterra: CONTRACT_ADDRESS,
-          rewardToken: TOKEN.ADDRESS,
-          paymentSplitter: '0x0000000000000000000000000000000000000000',
-        },
-        owner: '0x66f1274ad5d042b7571c2efa943370dbcd3459ab',
-        createdAt: new Date().toISOString(),
-        health: {
-          status: 'healthy',
-          lastChecked: new Date(),
-          issues: [],
-        },
-      };
+      // tenant_applicationsから承認済みテナントを取得
+      const { data: applications, error: fetchError } = await supabase
+        .from('tenant_applications')
+        .select('*')
+        .eq('status', 'approved')
+        .order('created_at', { ascending: false });
 
-      // デフォルトテナントの統計情報を取得
-      const { data: hubs } = await supabase
-        .from('vending_machines')
-        .select('id, is_active, total_distributions');
+      if (fetchError) throw fetchError;
 
-      const { data: purchases } = await supabase
-        .from('purchase_history')
-        .select('amount');
+      const tenantList: TenantInfo[] = [];
 
-      defaultTenant.stats = {
-        totalHubs: hubs?.length || 0,
-        activeHubs: hubs?.filter(h => h.is_active).length || 0,
-        totalRevenue: purchases?.reduce((sum, p) => sum + BigInt(p.amount || 0), BigInt(0)).toString() || '0',
-        totalDistributions: hubs?.reduce((sum, h) => sum + (h.total_distributions || 0), 0) || 0,
-        userCount: 0, // TODO: コントラクトから取得
-      };
+      if (applications && applications.length > 0) {
+        for (const app of applications) {
+          const tenant: TenantInfo = {
+            id: app.id, // UUIDをテナントIDとして使用
+            name: app.tenant_name,
+            contracts: {
+              gifterra: app.gifterra_address || CONTRACT_ADDRESS,
+              rewardToken: TOKEN.ADDRESS,
+              paymentSplitter: app.pay_splitter_address || '0x0000000000000000000000000000000000000000',
+              rewardNFT: app.reward_nft_address,
+              flagNFT: app.flag_nft_address,
+              randomRewardEngine: app.random_reward_engine_address,
+            },
+            owner: app.applicant_address,
+            createdAt: app.created_at,
+            updatedAt: app.approved_at,
+            health: {
+              status: 'healthy', // TODO: 実際のヘルスチェック実装
+              lastChecked: new Date(),
+              issues: [],
+            },
+            stats: {
+              totalHubs: 0, // TODO: コントラクトまたはDBから取得
+              activeHubs: 0,
+              totalRevenue: '0',
+              totalDistributions: 0,
+              userCount: 0,
+            },
+          };
 
-      setTenants([defaultTenant]);
+          tenantList.push(tenant);
+        }
+      }
+
+      setTenants(tenantList);
       setError(null);
     } catch (err) {
+      console.error('❌ テナント一覧の取得に失敗:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch tenants');
     } finally {
       setIsLoading(false);
