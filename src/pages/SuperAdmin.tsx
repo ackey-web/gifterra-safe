@@ -30,7 +30,8 @@ import { ScoreParametersPage, TokenAxisPage, SystemMonitoringPage } from '../adm
 import CreateTenantForm from './CreateTenantForm';
 import { SecurityManagement } from '../admin/components/SecurityManagement';
 
-type TabType = 'dashboard' | 'user-preview' | 'users' | 'tenants' | 'applications' | 'revenue' | 'rank-plans' | 'score-parameters' | 'token-axis' | 'system-monitoring' | 'security' | 'announcements' | 'ads';
+type TabType = 'dashboard' | 'user-preview' | 'users' | 'tenant-management' | 'revenue' | 'rank-plans' | 'score-parameters' | 'token-axis' | 'system-monitoring' | 'security' | 'announcements' | 'ads';
+type TenantSubTab = 'active' | 'applications' | 'create';
 
 export function SuperAdminPage() {
   const connectedAddress = useAddress();
@@ -222,16 +223,10 @@ export function SuperAdminPage() {
             label="ユーザー一覧"
           />
           <TabButton
-            active={activeTab === 'tenants'}
-            onClick={() => setActiveTab('tenants')}
+            active={activeTab === 'tenant-management'}
+            onClick={() => setActiveTab('tenant-management')}
             icon="🏢"
             label="テナント管理"
-          />
-          <TabButton
-            active={activeTab === 'applications'}
-            onClick={() => setActiveTab('applications')}
-            icon="📝"
-            label="テナント申請"
           />
           <TabButton
             active={activeTab === 'revenue'}
@@ -288,8 +283,7 @@ export function SuperAdminPage() {
         {activeTab === 'dashboard' && <DashboardTab />}
         {activeTab === 'user-preview' && <UserPreviewTabSimple />}
         {activeTab === 'users' && <UsersTab />}
-        {activeTab === 'tenants' && <TenantsTab />}
-        {activeTab === 'applications' && <ApplicationsTab />}
+        {activeTab === 'tenant-management' && <TenantManagementTab />}
         {activeTab === 'revenue' && <RevenueTab />}
         {/* Rank Plans tab - now integrated into Tenants tab */}
         {/* {activeTab === 'rank-plans' && <RankPlansTab />} */}
@@ -332,6 +326,55 @@ function TabButton({ active, onClick, icon, label, disabled }: {
       }}
     >
       {icon} {label}
+    </button>
+  );
+}
+
+/**
+ * SubTabButton - テナント管理タブ内のサブタブ用ボタン
+ */
+function SubTabButton({ active, onClick, icon, label, badge }: {
+  active: boolean;
+  onClick: () => void;
+  icon: string;
+  label: string;
+  badge?: number;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        position: 'relative',
+        padding: '12px 20px',
+        background: active ? 'rgba(102, 126, 234, 0.2)' : 'transparent',
+        border: 'none',
+        borderBottom: active ? '3px solid #667eea' : '3px solid transparent',
+        color: active ? '#fff' : 'rgba(255,255,255,0.6)',
+        fontSize: 15,
+        fontWeight: active ? 600 : 500,
+        cursor: 'pointer',
+        transition: 'all 0.2s',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8,
+      }}
+    >
+      <span>{icon}</span>
+      <span>{label}</span>
+      {badge !== undefined && badge > 0 && (
+        <span style={{
+          background: '#ef4444',
+          color: '#fff',
+          fontSize: 11,
+          fontWeight: 700,
+          padding: '2px 6px',
+          borderRadius: 10,
+          minWidth: 20,
+          textAlign: 'center',
+        }}>
+          {badge}
+        </span>
+      )}
     </button>
   );
 }
@@ -1635,7 +1678,1132 @@ function UsersTab() {
 }
 
 /**
- * テナント管理タブ
+ * テナント管理統合タブ (アクティブテナント + 申請管理 + 新規作成)
+ */
+function TenantManagementTab() {
+  const [subTab, setSubTab] = useState<TenantSubTab>('active');
+  const { applications } = useTenantApplications('pending');
+  const pendingCount = applications.filter(a => a.status === 'pending').length;
+
+  return (
+    <div>
+      {/* サブタブナビゲーション */}
+      <div style={{
+        display: 'flex',
+        gap: 8,
+        marginBottom: 24,
+        borderBottom: '2px solid rgba(255,255,255,0.1)',
+        paddingBottom: 12
+      }}>
+        <SubTabButton
+          active={subTab === 'active'}
+          onClick={() => setSubTab('active')}
+          icon="📊"
+          label="アクティブテナント"
+        />
+        <SubTabButton
+          active={subTab === 'applications'}
+          onClick={() => setSubTab('applications')}
+          icon="📝"
+          label="申請管理"
+          badge={pendingCount}
+        />
+        <SubTabButton
+          active={subTab === 'create'}
+          onClick={() => setSubTab('create')}
+          icon="➕"
+          label="新規作成"
+        />
+      </div>
+
+      {/* サブタブコンテンツ */}
+      {subTab === 'active' && <ActiveTenantsPanel />}
+      {subTab === 'applications' && <ApplicationsPanel />}
+      {subTab === 'create' && <CreateTenantPanel />}
+    </div>
+  );
+}
+
+/**
+ * アクティブテナントパネル (旧TenantsTabの内容)
+ */
+function ActiveTenantsPanel() {
+  const { tenants, isLoading } = useTenantList();
+  const { plans } = useAllTenantRankPlans();
+  const { setPlan, setting } = useSetTenantRankPlan();
+
+  // 編集中のテナントプラン
+  const [editingTenantId, setEditingTenantId] = useState<number | null>(null);
+  const [formData, setFormData] = useState<TenantRankPlanForm>({
+    tenant_id: 0,
+    rank_plan: 'STUDIO',
+    is_active: true,
+    subscription_end_date: null,
+    notes: '',
+  });
+
+  // テナントIDからプランバッジ情報を取得
+  function getPlanBadge(tenantId: number) {
+    const planData = plans?.find(p => p.tenant_id === tenantId);
+    if (!planData || !planData.is_active) {
+      return { name: 'STUDIO', color: '#6B7280' }; // デフォルト/無料プラン
+    }
+    switch (planData.rank_plan) {
+      case 'STUDIO':
+        return { name: 'STUDIO', color: '#6B7280' };
+      case 'STUDIO_PRO':
+        return { name: 'PRO', color: '#3B82F6' };
+      case 'STUDIO_PRO_MAX':
+        return { name: 'PRO MAX', color: '#8B5CF6' };
+      default:
+        return { name: 'STUDIO', color: '#6B7280' };
+    }
+  }
+
+  // テナントのランクプランを取得
+  const getTenantPlan = (tenantId: number) => {
+    return plans?.find(p => p.tenant_id === tenantId);
+  };
+
+  // 編集開始
+  const handleEditPlan = (tenantId: number) => {
+    const existingPlan = getTenantPlan(tenantId);
+    setEditingTenantId(tenantId);
+    setFormData({
+      tenant_id: tenantId,
+      rank_plan: existingPlan?.rank_plan || 'STUDIO',
+      is_active: existingPlan?.is_active ?? true,
+      subscription_end_date: existingPlan?.subscription_end_date || null,
+      notes: existingPlan?.notes || '',
+    });
+  };
+
+  // 保存
+  const handleSavePlan = async () => {
+    if (!editingTenantId) return;
+
+    const success = await setPlan(formData);
+    if (success) {
+      alert('ランクプランを保存しました');
+      setEditingTenantId(null);
+    } else {
+      alert('保存に失敗しました');
+    }
+  };
+
+  // キャンセル
+  const handleCancelPlan = () => {
+    setEditingTenantId(null);
+  };
+
+  if (isLoading) {
+    return (
+      <div style={{
+        padding: 60,
+        textAlign: 'center',
+        color: '#fff',
+      }}>
+        <div style={{ fontSize: 48, marginBottom: 16 }}>⏳</div>
+        <div style={{ fontSize: 18 }}>テナント情報を読み込み中...</div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+      <div style={{
+        background: 'rgba(255,255,255,0.05)',
+        border: '1px solid rgba(255,255,255,0.1)',
+        borderRadius: 12,
+        padding: 20,
+        color: '#fff',
+      }}>
+        <h2 style={{ margin: '0 0 16px 0', fontSize: 18, fontWeight: 700 }}>
+          🏢 テナント一覧
+        </h2>
+        <p style={{ fontSize: 14, opacity: 0.7, marginBottom: 20 }}>
+          プラットフォーム上で動作している全テナントの管理と監視
+        </p>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {tenants.map(tenant => {
+            const statusInfo = getHealthStatusInfo(tenant.health.status);
+            return (
+              <div
+                key={tenant.id}
+                style={{
+                  padding: 20,
+                  background: 'rgba(255,255,255,0.05)',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  borderRadius: 12,
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                  <div>
+                    <h3 style={{ margin: '0 0 4px 0', fontSize: 20, fontWeight: 700 }}>{tenant.name}</h3>
+                    <div style={{ fontSize: 12, opacity: 0.7, fontFamily: 'monospace' }}>{tenant.id}</div>
+                    {(() => {
+                      const badge = getPlanBadge(tenant.id);
+                      return (
+                        <div style={{
+                          display: 'inline-block',
+                          marginTop: 8,
+                          padding: '4px 10px',
+                          background: badge.color + '20',
+                          border: `1px solid ${badge.color}`,
+                          borderRadius: 6,
+                          fontSize: 11,
+                          fontWeight: 600,
+                          color: badge.color,
+                        }}>
+                          {badge.name}
+                        </div>
+                      );
+                    })()}
+                  </div>
+                  <div style={{
+                    padding: '8px 16px',
+                    background: statusInfo.color + '20',
+                    border: `1px solid ${statusInfo.color}`,
+                    borderRadius: 8,
+                    fontSize: 14,
+                    fontWeight: 600,
+                    color: statusInfo.color,
+                  }}>
+                    {statusInfo.icon} {statusInfo.label}
+                  </div>
+                </div>
+
+                {tenant.stats && (
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+                    gap: 12,
+                    marginTop: 16,
+                  }}>
+                    <div style={{ padding: 12, background: 'rgba(255,255,255,0.05)', borderRadius: 8 }}>
+                      <div style={{ fontSize: 11, opacity: 0.7, marginBottom: 4 }}>GIFT HUB</div>
+                      <div style={{ fontSize: 18, fontWeight: 700 }}>{tenant.stats.totalHubs}個</div>
+                      <div style={{ fontSize: 11, opacity: 0.6 }}>稼働中: {tenant.stats.activeHubs}個</div>
+                    </div>
+                    <div style={{ padding: 12, background: 'rgba(255,255,255,0.05)', borderRadius: 8 }}>
+                      <div style={{ fontSize: 11, opacity: 0.7, marginBottom: 4 }}>総配布数</div>
+                      <div style={{ fontSize: 18, fontWeight: 700 }}>{tenant.stats.totalDistributions.toLocaleString()}回</div>
+                    </div>
+                    <div style={{ padding: 12, background: 'rgba(255,255,255,0.05)', borderRadius: 8 }}>
+                      <div style={{ fontSize: 11, opacity: 0.7, marginBottom: 8 }}>💰 TOTAL TIPS</div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6, fontSize: 14 }}>
+                        <div>
+                          <div style={{ fontSize: 9, opacity: 0.5, marginBottom: 2 }}>JPYC</div>
+                          <div style={{ fontWeight: 700 }}>{formatTokenAmount(BigInt(tenant.stats.totalRevenue || 0), 18, 0)}</div>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: 9, opacity: 0.5, marginBottom: 2 }}>NHT</div>
+                          <div style={{ fontWeight: 700 }}>{formatTokenAmount(BigInt(tenant.stats.totalRevenueNHT || 0), 18, 0)}</div>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: 9, opacity: 0.5, marginBottom: 2 }}>Custom</div>
+                          <div style={{ fontWeight: 700 }}>{formatTokenAmount(BigInt(tenant.stats.totalRevenueCustom || 0), 18, 0)}</div>
+                        </div>
+                      </div>
+                    </div>
+                    <div style={{ padding: 12, background: 'rgba(255,255,255,0.05)', borderRadius: 8 }}>
+                      <div style={{ fontSize: 11, opacity: 0.7, marginBottom: 4 }}>ユーザー数</div>
+                      <div style={{ fontSize: 18, fontWeight: 700 }}>{tenant.stats.userCount.toLocaleString()}人</div>
+                    </div>
+                  </div>
+                )}
+
+                {tenant.health.issues.length > 0 && (
+                  <div style={{
+                    marginTop: 12,
+                    padding: 12,
+                    background: 'rgba(239, 68, 68, 0.1)',
+                    border: '1px solid rgba(239, 68, 68, 0.3)',
+                    borderRadius: 8,
+                  }}>
+                    <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 4 }}>⚠️ 問題が検出されました</div>
+                    <ul style={{ margin: 0, paddingLeft: 20, fontSize: 11, opacity: 0.9 }}>
+                      {tenant.health.issues.map((issue, i) => (
+                        <li key={i}>{issue}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* ランクプラン管理セクション */}
+                {(() => {
+                  const tenantId = parseInt(tenant.id) || 0;
+                  const isEditing = editingTenantId === tenantId;
+                  const plan = getTenantPlan(tenantId);
+                  const planDetails = plan ? RANK_PLANS[plan.rank_plan] : null;
+
+                  return (
+                    <div style={{
+                      marginTop: 16,
+                      padding: 16,
+                      background: isEditing ? 'rgba(102, 126, 234, 0.1)' : 'rgba(255,255,255,0.05)',
+                      border: isEditing ? '1px solid rgba(102, 126, 234, 0.3)' : '1px solid rgba(255,255,255,0.1)',
+                      borderRadius: 12,
+                    }}>
+                      <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 12, opacity: 0.9 }}>
+                        🎖️ ランクプラン設定
+                      </div>
+
+                      {isEditing ? (
+                        // 編集モード
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+                            {/* プラン選択 */}
+                            <div>
+                              <label style={{ display: 'block', fontSize: 12, marginBottom: 6, opacity: 0.8 }}>
+                                プラン
+                              </label>
+                              <select
+                                value={formData.rank_plan}
+                                onChange={(e) => setFormData({ ...formData, rank_plan: e.target.value as any })}
+                                style={{
+                                  width: '100%',
+                                  padding: '8px 12px',
+                                  background: 'rgba(0,0,0,0.3)',
+                                  border: '1px solid rgba(255,255,255,0.2)',
+                                  borderRadius: 6,
+                                  color: '#fff',
+                                  fontSize: 13,
+                                }}
+                              >
+                                <option value="STUDIO">STUDIO</option>
+                                <option value="STUDIO_PRO">STUDIO PRO</option>
+                                <option value="STUDIO_PRO_MAX">STUDIO PRO MAX</option>
+                              </select>
+                            </div>
+
+                            {/* アクティブステータス */}
+                            <div>
+                              <label style={{ display: 'block', fontSize: 12, marginBottom: 6, opacity: 0.8 }}>
+                                ステータス
+                              </label>
+                              <label style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 8,
+                                padding: '8px 12px',
+                                background: 'rgba(0,0,0,0.3)',
+                                border: '1px solid rgba(255,255,255,0.2)',
+                                borderRadius: 6,
+                                cursor: 'pointer',
+                              }}>
+                                <input
+                                  type="checkbox"
+                                  checked={formData.is_active}
+                                  onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
+                                  style={{ width: 16, height: 16 }}
+                                />
+                                <span style={{ fontSize: 13 }}>アクティブ</span>
+                              </label>
+                            </div>
+
+                            {/* 終了日 */}
+                            <div>
+                              <label style={{ display: 'block', fontSize: 12, marginBottom: 6, opacity: 0.8 }}>
+                                サブスク終了日
+                              </label>
+                              <input
+                                type="date"
+                                value={formData.subscription_end_date || ''}
+                                onChange={(e) => setFormData({ ...formData, subscription_end_date: e.target.value || null })}
+                                style={{
+                                  width: '100%',
+                                  padding: '8px 12px',
+                                  background: 'rgba(0,0,0,0.3)',
+                                  border: '1px solid rgba(255,255,255,0.2)',
+                                  borderRadius: 6,
+                                  color: '#fff',
+                                  fontSize: 13,
+                                }}
+                              />
+                            </div>
+                          </div>
+
+                          {/* メモ欄 */}
+                          <div>
+                            <label style={{ display: 'block', fontSize: 12, marginBottom: 6, opacity: 0.8 }}>
+                              メモ
+                            </label>
+                            <textarea
+                              value={formData.notes || ''}
+                              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                              placeholder="プラン変更の理由や備考を入力..."
+                              style={{
+                                width: '100%',
+                                minHeight: 60,
+                                padding: 12,
+                                background: 'rgba(0,0,0,0.3)',
+                                border: '1px solid rgba(255,255,255,0.2)',
+                                borderRadius: 6,
+                                color: '#fff',
+                                fontSize: 13,
+                                fontFamily: 'inherit',
+                                resize: 'vertical',
+                              }}
+                            />
+                          </div>
+
+                          {/* 保存/キャンセルボタン */}
+                          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                            <button
+                              onClick={handleSavePlan}
+                              disabled={setting}
+                              style={{
+                                padding: '8px 20px',
+                                background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
+                                border: 'none',
+                                borderRadius: 6,
+                                color: '#fff',
+                                fontSize: 13,
+                                fontWeight: 600,
+                                cursor: setting ? 'not-allowed' : 'pointer',
+                                opacity: setting ? 0.6 : 1,
+                              }}
+                            >
+                              {setting ? '保存中...' : '💾 保存'}
+                            </button>
+                            <button
+                              onClick={handleCancelPlan}
+                              disabled={setting}
+                              style={{
+                                padding: '8px 20px',
+                                background: 'rgba(255,255,255,0.1)',
+                                border: '1px solid rgba(255,255,255,0.2)',
+                                borderRadius: 6,
+                                color: '#fff',
+                                fontSize: 13,
+                                fontWeight: 600,
+                                cursor: setting ? 'not-allowed' : 'pointer',
+                                opacity: setting ? 0.6 : 1,
+                              }}
+                            >
+                              キャンセル
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        // 表示モード
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
+                            {/* 現在のプラン */}
+                            <div>
+                              <span style={{ fontSize: 12, opacity: 0.7, marginRight: 8 }}>プラン:</span>
+                              {planDetails ? (
+                                <span style={{
+                                  padding: '4px 12px',
+                                  background: 'rgba(139, 92, 246, 0.2)',
+                                  border: '1px solid rgba(139, 92, 246, 0.4)',
+                                  borderRadius: 6,
+                                  fontSize: 13,
+                                  fontWeight: 600,
+                                }}>
+                                  {planDetails.name}
+                                </span>
+                              ) : (
+                                <span style={{ opacity: 0.5, fontSize: 13 }}>未設定</span>
+                              )}
+                            </div>
+
+                            {/* ステータス */}
+                            <div>
+                              <span style={{ fontSize: 12, opacity: 0.7, marginRight: 8 }}>ステータス:</span>
+                              {plan?.is_active ? (
+                                <span style={{
+                                  padding: '4px 12px',
+                                  background: 'rgba(34, 197, 94, 0.2)',
+                                  border: '1px solid rgba(34, 197, 94, 0.4)',
+                                  borderRadius: 6,
+                                  fontSize: 12,
+                                  fontWeight: 600,
+                                  color: '#86efac',
+                                }}>
+                                  ✅ アクティブ
+                                </span>
+                              ) : plan ? (
+                                <span style={{
+                                  padding: '4px 12px',
+                                  background: 'rgba(239, 68, 68, 0.2)',
+                                  border: '1px solid rgba(239, 68, 68, 0.4)',
+                                  borderRadius: 6,
+                                  fontSize: 12,
+                                  fontWeight: 600,
+                                  color: '#fca5a5',
+                                }}>
+                                  ❌ 非アクティブ
+                                </span>
+                              ) : (
+                                <span style={{ opacity: 0.5, fontSize: 13 }}>-</span>
+                              )}
+                            </div>
+
+                            {/* 終了日 */}
+                            {plan?.subscription_end_date && (
+                              <div>
+                                <span style={{ fontSize: 12, opacity: 0.7, marginRight: 8 }}>終了日:</span>
+                                <span style={{ fontSize: 13, opacity: 0.8 }}>
+                                  {new Date(plan.subscription_end_date).toLocaleDateString('ja-JP')}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* 編集ボタン */}
+                          <button
+                            onClick={() => handleEditPlan(tenantId)}
+                            style={{
+                              padding: '6px 16px',
+                              background: 'rgba(102, 126, 234, 0.2)',
+                              border: '1px solid rgba(102, 126, 234, 0.5)',
+                              borderRadius: 6,
+                              color: '#fff',
+                              fontSize: 13,
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                            }}
+                          >
+                            ✏️ 編集
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * 申請管理パネル (旧ApplicationsTabの内容)
+ */
+function ApplicationsPanel() {
+  const [statusFilter, setStatusFilter] = useState<ApplicationStatus>('pending');
+  const { applications, loading, error, refetch } = useTenantApplications(statusFilter);
+  const { reject, rejecting } = useRejectTenantApplication();
+
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [rejectingApplication, setRejectingApplication] = useState<TenantApplication | null>(null);
+  const [rejectReason, setRejectReason] = useState('');
+
+  const [showDeployModal, setShowDeployModal] = useState(false);
+  const [deployingApplication, setDeployingApplication] = useState<TenantApplication | null>(null);
+
+  // デプロイモーダルを開く
+  const handleDeploy = (application: TenantApplication) => {
+    setDeployingApplication(application);
+    setShowDeployModal(true);
+  };
+
+  // 拒否処理
+  const handleReject = (application: TenantApplication) => {
+    setRejectingApplication(application);
+    setRejectReason('');
+    setShowRejectModal(true);
+  };
+
+  const confirmReject = async () => {
+    if (!rejectingApplication || !rejectReason.trim()) {
+      alert('拒否理由を入力してください');
+      return;
+    }
+
+    const success = await reject(rejectingApplication.id, rejectReason);
+    if (success) {
+      alert('テナント申請を拒否しました');
+      refetch();
+    }
+    setShowRejectModal(false);
+    setRejectingApplication(null);
+    setRejectReason('');
+  };
+
+  if (loading) {
+    return (
+      <div style={{
+        padding: 60,
+        textAlign: 'center',
+        color: '#fff',
+      }}>
+        <div style={{ fontSize: 48, marginBottom: 16 }}>⏳</div>
+        <div style={{ fontSize: 18 }}>申請データを読み込み中...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div style={{
+        padding: 60,
+        textAlign: 'center',
+        color: '#fff',
+      }}>
+        <div style={{ fontSize: 48, marginBottom: 16 }}>❌</div>
+        <div style={{ fontSize: 18, marginBottom: 8 }}>エラーが発生しました</div>
+        <div style={{ fontSize: 14, opacity: 0.7 }}>{error}</div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+      {/* ステータスフィルタータブ */}
+      <div style={{
+        background: 'rgba(255,255,255,0.05)',
+        border: '1px solid rgba(255,255,255,0.1)',
+        borderRadius: 12,
+        padding: 20,
+        color: '#fff',
+      }}>
+        <h2 style={{ margin: '0 0 16px 0', fontSize: 18, fontWeight: 700 }}>
+          📝 テナント申請管理
+        </h2>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+          <button
+            onClick={() => setStatusFilter('pending')}
+            style={{
+              padding: '10px 20px',
+              background: statusFilter === 'pending' ? 'rgba(251, 191, 36, 0.2)' : 'rgba(255,255,255,0.05)',
+              border: `1px solid ${statusFilter === 'pending' ? '#fbbf24' : 'rgba(255,255,255,0.1)'}`,
+              borderRadius: 8,
+              color: '#fff',
+              fontSize: 14,
+              fontWeight: 600,
+              cursor: 'pointer',
+            }}
+          >
+            ⏳ 承認待ち
+          </button>
+          <button
+            onClick={() => setStatusFilter('approved')}
+            style={{
+              padding: '10px 20px',
+              background: statusFilter === 'approved' ? 'rgba(34, 197, 94, 0.2)' : 'rgba(255,255,255,0.05)',
+              border: `1px solid ${statusFilter === 'approved' ? '#22c55e' : 'rgba(255,255,255,0.1)'}`,
+              borderRadius: 8,
+              color: '#fff',
+              fontSize: 14,
+              fontWeight: 600,
+              cursor: 'pointer',
+            }}
+          >
+            ✅ 承認済み
+          </button>
+          <button
+            onClick={() => setStatusFilter('rejected')}
+            style={{
+              padding: '10px 20px',
+              background: statusFilter === 'rejected' ? 'rgba(239, 68, 68, 0.2)' : 'rgba(255,255,255,0.05)',
+              border: `1px solid ${statusFilter === 'rejected' ? '#ef4444' : 'rgba(255,255,255,0.1)'}`,
+              borderRadius: 8,
+              color: '#fff',
+              fontSize: 14,
+              fontWeight: 600,
+              cursor: 'pointer',
+            }}
+          >
+            ❌ 拒否済み
+          </button>
+        </div>
+
+        {/* 申請リスト */}
+        {applications.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: 40, opacity: 0.7 }}>
+            該当する申請はありません
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {applications.map((application) => {
+              const planDetails = RANK_PLANS[application.rank_plan];
+              return (
+                <div
+                  key={application.id}
+                  style={{
+                    padding: 20,
+                    background: 'rgba(255,255,255,0.05)',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    borderRadius: 12,
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: 16 }}>
+                    <div>
+                      <h3 style={{ margin: '0 0 8px 0', fontSize: 20, fontWeight: 700 }}>
+                        {application.tenant_name}
+                      </h3>
+                      <div style={{ fontSize: 12, opacity: 0.7, fontFamily: 'monospace', marginBottom: 4 }}>
+                        申請者: {application.applicant_address}
+                      </div>
+                      <div style={{ fontSize: 12, opacity: 0.7 }}>
+                        申請日時: {new Date(application.created_at).toLocaleString('ja-JP')}
+                      </div>
+                    </div>
+                    <div style={{
+                      padding: '8px 16px',
+                      background: application.status === 'approved'
+                        ? 'rgba(34, 197, 94, 0.2)'
+                        : application.status === 'rejected'
+                        ? 'rgba(239, 68, 68, 0.2)'
+                        : 'rgba(251, 191, 36, 0.2)',
+                      border: `1px solid ${
+                        application.status === 'approved'
+                          ? '#22c55e'
+                          : application.status === 'rejected'
+                          ? '#ef4444'
+                          : '#fbbf24'
+                      }`,
+                      borderRadius: 8,
+                      fontSize: 14,
+                      fontWeight: 600,
+                    }}>
+                      {application.status === 'approved' && '✅ 承認済み'}
+                      {application.status === 'rejected' && '❌ 拒否済み'}
+                      {application.status === 'pending' && '⏳ 承認待ち'}
+                    </div>
+                  </div>
+
+                  {application.description && (
+                    <div style={{ marginBottom: 16 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4, opacity: 0.9 }}>説明:</div>
+                      <div style={{ fontSize: 14, opacity: 0.8 }}>{application.description}</div>
+                    </div>
+                  )}
+
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+                    gap: 12,
+                    marginBottom: 16,
+                  }}>
+                    <div style={{ padding: 12, background: 'rgba(255,255,255,0.05)', borderRadius: 8 }}>
+                      <div style={{ fontSize: 11, opacity: 0.7, marginBottom: 4 }}>プラン</div>
+                      <div style={{ fontSize: 16, fontWeight: 700 }}>{planDetails.name}</div>
+                    </div>
+                    <div style={{ padding: 12, background: 'rgba(255,255,255,0.05)', borderRadius: 8 }}>
+                      <div style={{ fontSize: 11, opacity: 0.7, marginBottom: 4 }}>最大HUB数</div>
+                      <div style={{ fontSize: 16, fontWeight: 700 }}>{planDetails.maxHubs}個</div>
+                    </div>
+                    <div style={{ padding: 12, background: 'rgba(255,255,255,0.05)', borderRadius: 8 }}>
+                      <div style={{ fontSize: 11, opacity: 0.7, marginBottom: 4 }}>SBTランク数</div>
+                      <div style={{ fontSize: 16, fontWeight: 700 }}>{planDetails.sbtRanks}段階</div>
+                    </div>
+                    <div style={{ padding: 12, background: 'rgba(255,255,255,0.05)', borderRadius: 8 }}>
+                      <div style={{ fontSize: 11, opacity: 0.7, marginBottom: 4 }}>月額料金</div>
+                      <div style={{ fontSize: 16, fontWeight: 700 }}>{planDetails.monthlyFee.toLocaleString()}円</div>
+                    </div>
+                  </div>
+
+                  {(application.custom_token_address || application.custom_token_reason) && (
+                    <div style={{
+                      padding: 12,
+                      background: 'rgba(251, 191, 36, 0.1)',
+                      border: '1px solid rgba(251, 191, 36, 0.3)',
+                      borderRadius: 8,
+                      marginBottom: 16,
+                    }}>
+                      <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 4 }}>⚠️ カスタムトークン指定あり</div>
+                      {application.custom_token_address && (
+                        <div style={{ fontSize: 11, opacity: 0.9, fontFamily: 'monospace', marginBottom: 4 }}>
+                          アドレス: {application.custom_token_address}
+                        </div>
+                      )}
+                      {application.custom_token_reason && (
+                        <div style={{ fontSize: 11, opacity: 0.9 }}>
+                          理由: {application.custom_token_reason}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {application.status === 'approved' && application.tenant_id && (
+                    <>
+                      <div style={{
+                        padding: 12,
+                        background: 'rgba(34, 197, 94, 0.1)',
+                        border: '1px solid rgba(34, 197, 94, 0.3)',
+                        borderRadius: 8,
+                        marginBottom: 16,
+                      }}>
+                        <div style={{ fontSize: 12, opacity: 0.9 }}>
+                          テナントID: {application.tenant_id}
+                        </div>
+                        {application.approved_by && (
+                          <div style={{ fontSize: 11, opacity: 0.8, fontFamily: 'monospace' }}>
+                            承認者: {application.approved_by}
+                          </div>
+                        )}
+                        {application.approved_at && (
+                          <div style={{ fontSize: 11, opacity: 0.8 }}>
+                            承認日時: {new Date(application.approved_at).toLocaleString('ja-JP')}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* オプショナルコントラクトデプロイボタン */}
+                      {(!application.reward_nft_address || !application.flag_nft_address || !application.pay_splitter_address) && (
+                        <button
+                          onClick={() => handleDeploy(application)}
+                          style={{
+                            width: '100%',
+                            padding: '10px 20px',
+                            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                            border: 'none',
+                            borderRadius: 8,
+                            color: '#fff',
+                            fontSize: 13,
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            marginBottom: 16,
+                          }}
+                        >
+                          ➕ オプションコントラクトを追加デプロイ
+                        </button>
+                      )}
+                    </>
+                  )}
+
+                  {application.status === 'rejected' && application.rejection_reason && (
+                    <div style={{
+                      padding: 12,
+                      background: 'rgba(239, 68, 68, 0.1)',
+                      border: '1px solid rgba(239, 68, 68, 0.3)',
+                      borderRadius: 8,
+                      marginBottom: 16,
+                    }}>
+                      <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 4 }}>拒否理由:</div>
+                      <div style={{ fontSize: 11, opacity: 0.9 }}>{application.rejection_reason}</div>
+                      {application.approved_by && (
+                        <div style={{ fontSize: 11, opacity: 0.8, fontFamily: 'monospace', marginTop: 4 }}>
+                          拒否者: {application.approved_by}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {application.status === 'pending' && (
+                    <div style={{ display: 'flex', gap: 12 }}>
+                      <button
+                        onClick={() => handleDeploy(application)}
+                        style={{
+                          flex: 1,
+                          padding: '12px 24px',
+                          background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)',
+                          border: 'none',
+                          borderRadius: 8,
+                          color: '#fff',
+                          fontSize: 14,
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        🚀 デプロイする
+                      </button>
+                      <button
+                        onClick={() => handleReject(application)}
+                        disabled={rejecting}
+                        style={{
+                          flex: 1,
+                          padding: '12px 24px',
+                          background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+                          border: 'none',
+                          borderRadius: 8,
+                          color: '#fff',
+                          fontSize: 14,
+                          fontWeight: 600,
+                          cursor: rejecting ? 'not-allowed' : 'pointer',
+                          opacity: rejecting ? 0.6 : 1,
+                        }}
+                      >
+                        {rejecting ? '拒否中...' : '❌ 拒否する'}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* デプロイモーダル */}
+      {showDeployModal && deployingApplication && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0,0,0,0.7)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          padding: 20
+        }}>
+          <div style={{
+            background: '#2d2d44',
+            borderRadius: 16,
+            padding: 32,
+            maxWidth: 800,
+            width: '90%',
+            maxHeight: '90vh',
+            overflow: 'auto',
+            color: '#fff',
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: 24 }}>
+              <div>
+                <h3 style={{ margin: '0 0 8px 0', fontSize: 24, fontWeight: 700 }}>
+                  {deployingApplication.tenant_name}
+                </h3>
+                <div style={{ fontSize: 12, opacity: 0.7, fontFamily: 'monospace' }}>
+                  {deployingApplication.applicant_address}
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setShowDeployModal(false);
+                  setDeployingApplication(null);
+                }}
+                style={{
+                  background: 'rgba(255,255,255,0.1)',
+                  border: 'none',
+                  borderRadius: 8,
+                  width: 40,
+                  height: 40,
+                  fontSize: 20,
+                  cursor: 'pointer',
+                  color: '#fff'
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            {/* デプロイパネル */}
+            <TenantDeploymentPanel
+              application={deployingApplication}
+              onUpdate={() => {
+                refetch();
+                setShowDeployModal(false);
+                setDeployingApplication(null);
+              }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* 拒否理由入力モーダル */}
+      {showRejectModal && rejectingApplication && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0,0,0,0.7)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+        }}>
+          <div style={{
+            background: '#2d2d44',
+            borderRadius: 16,
+            padding: 32,
+            maxWidth: 500,
+            width: '90%',
+            color: '#fff',
+          }}>
+            <h3 style={{ margin: '0 0 16px 0', fontSize: 20, fontWeight: 700 }}>
+              拒否理由入力
+            </h3>
+            <p style={{ margin: '0 0 16px 0', fontSize: 14, opacity: 0.9 }}>
+              以下のテナント申請を拒否します。理由を入力してください。
+            </p>
+            <div style={{
+              padding: 16,
+              background: 'rgba(255,255,255,0.05)',
+              borderRadius: 8,
+              marginBottom: 16,
+            }}>
+              <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>
+                {rejectingApplication.tenant_name}
+              </div>
+              <div style={{ fontSize: 12, opacity: 0.7, fontFamily: 'monospace' }}>
+                {rejectingApplication.applicant_address}
+              </div>
+            </div>
+            <textarea
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+              placeholder="拒否理由を入力してください（必須）"
+              style={{
+                width: '100%',
+                minHeight: 120,
+                padding: 12,
+                background: 'rgba(255,255,255,0.1)',
+                border: '1px solid rgba(255,255,255,0.2)',
+                borderRadius: 8,
+                color: '#fff',
+                fontSize: 14,
+                fontFamily: 'inherit',
+                resize: 'vertical',
+                marginBottom: 24,
+              }}
+            />
+            <div style={{ display: 'flex', gap: 12 }}>
+              <button
+                onClick={() => {
+                  setShowRejectModal(false);
+                  setRejectingApplication(null);
+                  setRejectReason('');
+                }}
+                style={{
+                  flex: 1,
+                  padding: '12px 24px',
+                  background: 'rgba(255,255,255,0.1)',
+                  border: '1px solid rgba(255,255,255,0.2)',
+                  borderRadius: 8,
+                  color: '#fff',
+                  fontSize: 14,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                キャンセル
+              </button>
+              <button
+                onClick={confirmReject}
+                disabled={!rejectReason.trim()}
+                style={{
+                  flex: 1,
+                  padding: '12px 24px',
+                  background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+                  border: 'none',
+                  borderRadius: 8,
+                  color: '#fff',
+                  fontSize: 14,
+                  fontWeight: 600,
+                  cursor: rejectReason.trim() ? 'pointer' : 'not-allowed',
+                  opacity: rejectReason.trim() ? 1 : 0.6,
+                }}
+              >
+                拒否する
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * 新規テナント作成パネル
+ */
+function CreateTenantPanel() {
+  const [showDirectCreate, setShowDirectCreate] = useState(false);
+  const factoryAddress = import.meta.env.VITE_FACTORY_ADDRESS;
+
+  return (
+    <div>
+      {!showDirectCreate ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div style={{
+            padding: 20,
+            background: 'rgba(34, 197, 94, 0.1)',
+            border: '1px solid rgba(34, 197, 94, 0.3)',
+            borderRadius: 12
+          }}>
+            <h3 style={{ margin: '0 0 12px 0', fontSize: 18, fontWeight: 700, color: '#86efac' }}>
+              📝 申請経由（推奨）
+            </h3>
+            <ul style={{ margin: '0 0 16px 0', paddingLeft: 24, fontSize: 14, lineHeight: 1.6 }}>
+              <li>申請履歴が残る</li>
+              <li>審査プロセスを経由</li>
+              <li>統計データ収集可能</li>
+            </ul>
+            <p style={{ margin: 0, fontSize: 14, opacity: 0.8 }}>
+              テナント申請は「申請管理」サブタブから行ってください。
+            </p>
+          </div>
+
+          <div style={{
+            padding: 20,
+            background: 'rgba(234, 179, 8, 0.1)',
+            border: '1px solid rgba(234, 179, 8, 0.3)',
+            borderRadius: 12
+          }}>
+            <h3 style={{ margin: '0 0 12px 0', fontSize: 18, fontWeight: 700, color: '#fbbf24' }}>
+              🏭 直接作成（スーパーアドミン限定）
+            </h3>
+            <div style={{ marginBottom: 16 }}>
+              <p style={{ margin: '0 0 8px 0', fontSize: 14, opacity: 0.9 }}>
+                ⚠️ 緊急時や開発用途に使用
+              </p>
+              <p style={{ margin: 0, fontSize: 14, opacity: 0.9 }}>
+                ⚠️ 申請履歴は作成されません
+              </p>
+            </div>
+            <button
+              onClick={() => setShowDirectCreate(true)}
+              style={{
+                padding: '12px 24px',
+                background: 'linear-gradient(135deg, #eab308 0%, #ca8a04 100%)',
+                border: 'none',
+                borderRadius: 8,
+                color: '#fff',
+                fontSize: 14,
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              直接作成フォームを開く
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div>
+          <button
+            onClick={() => setShowDirectCreate(false)}
+            style={{
+              marginBottom: 16,
+              padding: '8px 16px',
+              background: 'rgba(255,255,255,0.1)',
+              border: '1px solid rgba(255,255,255,0.2)',
+              borderRadius: 8,
+              color: '#fff',
+              fontSize: 14,
+              fontWeight: 600,
+              cursor: 'pointer',
+            }}
+          >
+            ← 戻る
+          </button>
+          <CreateTenantForm
+            factoryAddress={factoryAddress}
+            onSuccess={(tenantId, contracts) => {
+              setShowDirectCreate(false);
+              // テナント一覧を再読み込み（将来的にrefetch機能を実装）
+            }}
+            onCancel={() => setShowDirectCreate(false)}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * テナント管理タブ (旧実装 - 後方互換性のため保持)
  */
 function TenantsTab() {
   const { tenants, isLoading } = useTenantList();
