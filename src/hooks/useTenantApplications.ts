@@ -71,15 +71,35 @@ export function useMyTenantApplication() {
 
     try {
       setLoading(true);
-      const { data, error } = await supabase
+
+      // まず承認済み申請を探す
+      const { data: approvedData, error: approvedError } = await supabase
         .from('tenant_applications')
         .select('*')
         .eq('applicant_address', address.toLowerCase())
+        .eq('status', 'approved')
         .order('created_at', { ascending: false })
         .limit(1);
 
-      if (error) throw error;
-      setApplication(data && data.length > 0 ? data[0] : null);
+      if (approvedError) throw approvedError;
+
+      // 承認済みがあればそれを返す
+      if (approvedData && approvedData.length > 0) {
+        setApplication(approvedData[0]);
+        return;
+      }
+
+      // 承認済みがなければ、pending申請を探す
+      const { data: pendingData, error: pendingError } = await supabase
+        .from('tenant_applications')
+        .select('*')
+        .eq('applicant_address', address.toLowerCase())
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      if (pendingError) throw pendingError;
+      setApplication(pendingData && pendingData.length > 0 ? pendingData[0] : null);
     } catch (err) {
       console.error('❌ 自分の申請の取得に失敗:', err);
       setError(err instanceof Error ? err.message : 'Unknown error');
