@@ -255,12 +255,13 @@ export function SuperAdminPage() {
             icon="🪙"
             label="トークン軸設定"
           />
-          <TabButton
+          {/* Rank Plans tab - now integrated into Tenants tab */}
+          {/* <TabButton
             active={activeTab === 'rank-plans'}
             onClick={() => setActiveTab('rank-plans')}
             icon="🎖️"
             label="ランクプラン管理"
-          />
+          /> */}
           <TabButton
             active={activeTab === 'system-monitoring'}
             onClick={() => setActiveTab('system-monitoring')}
@@ -294,7 +295,8 @@ export function SuperAdminPage() {
         {activeTab === 'tenants' && <TenantsTab />}
         {activeTab === 'applications' && <ApplicationsTab />}
         {activeTab === 'revenue' && <RevenueTab />}
-        {activeTab === 'rank-plans' && <RankPlansTab />}
+        {/* Rank Plans tab - now integrated into Tenants tab */}
+        {/* {activeTab === 'rank-plans' && <RankPlansTab />} */}
         {activeTab === 'score-parameters' && <ScoreParametersPage />}
         {activeTab === 'token-axis' && <TokenAxisPage />}
         {activeTab === 'system-monitoring' && <SystemMonitoringPage />}
@@ -1670,10 +1672,21 @@ function UsersTab() {
 function TenantsTab() {
   const { tenants, isLoading } = useTenantList();
   const { plans } = useAllTenantRankPlans();
+  const { setPlan, setting } = useSetTenantRankPlan();
   const [showCreateForm, setShowCreateForm] = useState(false);
 
   // 環境変数からFactoryアドレスを取得
   const factoryAddress = import.meta.env.VITE_FACTORY_ADDRESS;
+
+  // 編集中のテナントプラン
+  const [editingTenantId, setEditingTenantId] = useState<number | null>(null);
+  const [formData, setFormData] = useState<TenantRankPlanForm>({
+    tenant_id: 0,
+    rank_plan: 'STUDIO',
+    is_active: true,
+    subscription_end_date: null,
+    notes: '',
+  });
 
   // テナントIDからプランバッジ情報を取得
   function getPlanBadge(tenantId: number) {
@@ -1692,6 +1705,42 @@ function TenantsTab() {
         return { name: 'STUDIO', color: '#6B7280' };
     }
   }
+
+  // テナントのランクプランを取得
+  const getTenantPlan = (tenantId: number) => {
+    return plans?.find(p => p.tenant_id === tenantId);
+  };
+
+  // 編集開始
+  const handleEditPlan = (tenantId: number) => {
+    const existingPlan = getTenantPlan(tenantId);
+    setEditingTenantId(tenantId);
+    setFormData({
+      tenant_id: tenantId,
+      rank_plan: existingPlan?.rank_plan || 'STUDIO',
+      is_active: existingPlan?.is_active ?? true,
+      subscription_end_date: existingPlan?.subscription_end_date || null,
+      notes: existingPlan?.notes || '',
+    });
+  };
+
+  // 保存
+  const handleSavePlan = async () => {
+    if (!editingTenantId) return;
+
+    const success = await setPlan(formData);
+    if (success) {
+      alert('ランクプランを保存しました');
+      setEditingTenantId(null);
+    } else {
+      alert('保存に失敗しました');
+    }
+  };
+
+  // キャンセル
+  const handleCancelPlan = () => {
+    setEditingTenantId(null);
+  };
 
   if (isLoading) {
     return (
@@ -1827,6 +1876,250 @@ function TenantsTab() {
                     </ul>
                   </div>
                 )}
+
+                {/* ランクプラン管理セクション */}
+                {(() => {
+                  const tenantId = parseInt(tenant.id) || 0;
+                  const isEditing = editingTenantId === tenantId;
+                  const plan = getTenantPlan(tenantId);
+                  const planDetails = plan ? RANK_PLANS[plan.rank_plan] : null;
+
+                  return (
+                    <div style={{
+                      marginTop: 16,
+                      padding: 16,
+                      background: isEditing ? 'rgba(102, 126, 234, 0.1)' : 'rgba(255,255,255,0.05)',
+                      border: isEditing ? '1px solid rgba(102, 126, 234, 0.3)' : '1px solid rgba(255,255,255,0.1)',
+                      borderRadius: 12,
+                    }}>
+                      <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 12, opacity: 0.9 }}>
+                        🎖️ ランクプラン設定
+                      </div>
+
+                      {isEditing ? (
+                        // 編集モード
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+                            {/* プラン選択 */}
+                            <div>
+                              <label style={{ display: 'block', fontSize: 12, marginBottom: 6, opacity: 0.8 }}>
+                                プラン
+                              </label>
+                              <select
+                                value={formData.rank_plan}
+                                onChange={(e) => setFormData({ ...formData, rank_plan: e.target.value as any })}
+                                style={{
+                                  width: '100%',
+                                  padding: '8px 12px',
+                                  background: 'rgba(0,0,0,0.3)',
+                                  border: '1px solid rgba(255,255,255,0.2)',
+                                  borderRadius: 6,
+                                  color: '#fff',
+                                  fontSize: 13,
+                                }}
+                              >
+                                <option value="STUDIO">STUDIO</option>
+                                <option value="STUDIO_PRO">STUDIO PRO</option>
+                                <option value="STUDIO_PRO_MAX">STUDIO PRO MAX</option>
+                              </select>
+                            </div>
+
+                            {/* アクティブステータス */}
+                            <div>
+                              <label style={{ display: 'block', fontSize: 12, marginBottom: 6, opacity: 0.8 }}>
+                                ステータス
+                              </label>
+                              <label style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 8,
+                                padding: '8px 12px',
+                                background: 'rgba(0,0,0,0.3)',
+                                border: '1px solid rgba(255,255,255,0.2)',
+                                borderRadius: 6,
+                                cursor: 'pointer',
+                              }}>
+                                <input
+                                  type="checkbox"
+                                  checked={formData.is_active}
+                                  onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
+                                  style={{ width: 16, height: 16 }}
+                                />
+                                <span style={{ fontSize: 13 }}>アクティブ</span>
+                              </label>
+                            </div>
+
+                            {/* 終了日 */}
+                            <div>
+                              <label style={{ display: 'block', fontSize: 12, marginBottom: 6, opacity: 0.8 }}>
+                                サブスク終了日
+                              </label>
+                              <input
+                                type="date"
+                                value={formData.subscription_end_date || ''}
+                                onChange={(e) => setFormData({ ...formData, subscription_end_date: e.target.value || null })}
+                                style={{
+                                  width: '100%',
+                                  padding: '8px 12px',
+                                  background: 'rgba(0,0,0,0.3)',
+                                  border: '1px solid rgba(255,255,255,0.2)',
+                                  borderRadius: 6,
+                                  color: '#fff',
+                                  fontSize: 13,
+                                }}
+                              />
+                            </div>
+                          </div>
+
+                          {/* メモ欄 */}
+                          <div>
+                            <label style={{ display: 'block', fontSize: 12, marginBottom: 6, opacity: 0.8 }}>
+                              メモ
+                            </label>
+                            <textarea
+                              value={formData.notes || ''}
+                              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                              placeholder="プラン変更の理由や備考を入力..."
+                              style={{
+                                width: '100%',
+                                minHeight: 60,
+                                padding: 12,
+                                background: 'rgba(0,0,0,0.3)',
+                                border: '1px solid rgba(255,255,255,0.2)',
+                                borderRadius: 6,
+                                color: '#fff',
+                                fontSize: 13,
+                                fontFamily: 'inherit',
+                                resize: 'vertical',
+                              }}
+                            />
+                          </div>
+
+                          {/* 保存/キャンセルボタン */}
+                          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                            <button
+                              onClick={handleSavePlan}
+                              disabled={setting}
+                              style={{
+                                padding: '8px 20px',
+                                background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
+                                border: 'none',
+                                borderRadius: 6,
+                                color: '#fff',
+                                fontSize: 13,
+                                fontWeight: 600,
+                                cursor: setting ? 'not-allowed' : 'pointer',
+                                opacity: setting ? 0.6 : 1,
+                              }}
+                            >
+                              {setting ? '保存中...' : '💾 保存'}
+                            </button>
+                            <button
+                              onClick={handleCancelPlan}
+                              disabled={setting}
+                              style={{
+                                padding: '8px 20px',
+                                background: 'rgba(255,255,255,0.1)',
+                                border: '1px solid rgba(255,255,255,0.2)',
+                                borderRadius: 6,
+                                color: '#fff',
+                                fontSize: 13,
+                                fontWeight: 600,
+                                cursor: setting ? 'not-allowed' : 'pointer',
+                                opacity: setting ? 0.6 : 1,
+                              }}
+                            >
+                              キャンセル
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        // 表示モード
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
+                            {/* 現在のプラン */}
+                            <div>
+                              <span style={{ fontSize: 12, opacity: 0.7, marginRight: 8 }}>プラン:</span>
+                              {planDetails ? (
+                                <span style={{
+                                  padding: '4px 12px',
+                                  background: 'rgba(139, 92, 246, 0.2)',
+                                  border: '1px solid rgba(139, 92, 246, 0.4)',
+                                  borderRadius: 6,
+                                  fontSize: 13,
+                                  fontWeight: 600,
+                                }}>
+                                  {planDetails.name}
+                                </span>
+                              ) : (
+                                <span style={{ opacity: 0.5, fontSize: 13 }}>未設定</span>
+                              )}
+                            </div>
+
+                            {/* ステータス */}
+                            <div>
+                              <span style={{ fontSize: 12, opacity: 0.7, marginRight: 8 }}>ステータス:</span>
+                              {plan?.is_active ? (
+                                <span style={{
+                                  padding: '4px 12px',
+                                  background: 'rgba(34, 197, 94, 0.2)',
+                                  border: '1px solid rgba(34, 197, 94, 0.4)',
+                                  borderRadius: 6,
+                                  fontSize: 12,
+                                  fontWeight: 600,
+                                  color: '#86efac',
+                                }}>
+                                  ✅ アクティブ
+                                </span>
+                              ) : plan ? (
+                                <span style={{
+                                  padding: '4px 12px',
+                                  background: 'rgba(239, 68, 68, 0.2)',
+                                  border: '1px solid rgba(239, 68, 68, 0.4)',
+                                  borderRadius: 6,
+                                  fontSize: 12,
+                                  fontWeight: 600,
+                                  color: '#fca5a5',
+                                }}>
+                                  ❌ 非アクティブ
+                                </span>
+                              ) : (
+                                <span style={{ opacity: 0.5, fontSize: 13 }}>-</span>
+                              )}
+                            </div>
+
+                            {/* 終了日 */}
+                            {plan?.subscription_end_date && (
+                              <div>
+                                <span style={{ fontSize: 12, opacity: 0.7, marginRight: 8 }}>終了日:</span>
+                                <span style={{ fontSize: 13, opacity: 0.8 }}>
+                                  {new Date(plan.subscription_end_date).toLocaleDateString('ja-JP')}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* 編集ボタン */}
+                          <button
+                            onClick={() => handleEditPlan(tenantId)}
+                            style={{
+                              padding: '6px 16px',
+                              background: 'rgba(102, 126, 234, 0.2)',
+                              border: '1px solid rgba(102, 126, 234, 0.5)',
+                              borderRadius: 6,
+                              color: '#fff',
+                              fontSize: 13,
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                            }}
+                          >
+                            ✏️ 編集
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
             );
           })}

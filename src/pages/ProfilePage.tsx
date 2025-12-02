@@ -213,13 +213,7 @@ export function ProfilePage() {
         console.error('❌ プロフィール読み込みエラー:', error);
         setProfile(null);
       } else {
-        console.log('✅ プロフィール読み込み成功:', {
-          twitter_id: data?.twitter_id,
-          reject_anonymous_transfers: data?.reject_anonymous_transfers,
-          location: data?.location,
-          roles: data?.roles,
-          full_data: data,
-        });
+        console.log('✅ プロフィール読み込み成功:', data);
         setProfile(data || null);
       }
     } catch (err) {
@@ -1552,6 +1546,7 @@ export function ProfilePage() {
             show_wallet_address: profile?.show_wallet_address,
             reject_anonymous_transfers: profile?.reject_anonymous_transfers,
             twitter_id: profile?.twitter_id || '',
+            show_reward_button: profile?.show_reward_button,
           }}
           walletAddress={currentUserWalletAddress}
         />
