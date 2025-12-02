@@ -1710,6 +1710,66 @@ export default function AdminDashboard() {
     // フラグNFTリストを取得
     const { flagNFTs, isLoading: isFlagNFTsLoading } = useFlagNFTList(tenantId);
 
+    // 自動配布設定の状態管理
+    const [autoDistributionEnabled, setAutoDistributionEnabled] = useState<boolean>(false);
+    const [isLoadingAutoDistribution, setIsLoadingAutoDistribution] = useState(true);
+    const [tenantApplicationId, setTenantApplicationId] = useState<string>('');
+
+    // テナントアプリケーション情報と自動配布設定を取得
+    useEffect(() => {
+      async function fetchTenantAutoDistribution() {
+        if (!address) {
+          setIsLoadingAutoDistribution(false);
+          return;
+        }
+
+        try {
+          const { data, error } = await supabase
+            .from('tenant_applications')
+            .select('id, auto_distribution_enabled')
+            .eq('applicant_address', address.toLowerCase())
+            .eq('status', 'approved')
+            .maybeSingle();
+
+          if (error) throw error;
+
+          if (data) {
+            setTenantApplicationId(data.id);
+            setAutoDistributionEnabled(data.auto_distribution_enabled ?? false);
+          }
+        } catch (error) {
+          console.error('❌ 自動配布設定の取得に失敗:', error);
+        } finally {
+          setIsLoadingAutoDistribution(false);
+        }
+      }
+
+      fetchTenantAutoDistribution();
+    }, [address]);
+
+    // 自動配布設定を更新
+    const handleToggleAutoDistribution = async (enabled: boolean) => {
+      if (!tenantApplicationId) {
+        alert('❌ テナント情報が見つかりません');
+        return;
+      }
+
+      try {
+        const { error } = await supabase
+          .from('tenant_applications')
+          .update({ auto_distribution_enabled: enabled })
+          .eq('id', tenantApplicationId);
+
+        if (error) throw error;
+
+        setAutoDistributionEnabled(enabled);
+        alert(`✅ 自動配布を${enabled ? '有効' : '無効'}にしました`);
+      } catch (error) {
+        console.error('❌ 自動配布設定の更新に失敗:', error);
+        alert('❌ 自動配布設定の更新に失敗しました');
+      }
+    };
+
     const [activeTab, setActiveTab] = useState<TipTabType>(() => {
       const saved = localStorage.getItem('tip-active-tab');
       return (saved === 'design' || saved === 'ranks' || saved === 'rewards') ? saved as TipTabType : 'ranks';
@@ -2095,6 +2155,105 @@ export default function AdminDashboard() {
             >
               📋 コピー
             </button>
+          </div>
+        </div>
+
+        {/* 自動配布設定トグル */}
+        <div style={{
+          padding: '20px 24px',
+          borderBottom: '1px solid rgba(255,255,255,0.1)',
+          background: 'rgba(139, 92, 246, 0.05)',
+        }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 16,
+            flexWrap: 'wrap',
+          }}>
+            <div style={{ flex: 1, minWidth: 250 }}>
+              <div style={{
+                fontSize: 16,
+                fontWeight: 700,
+                color: '#fff',
+                marginBottom: 6,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+              }}>
+                <span>🎁</span>
+                <span>特典の自動配布</span>
+              </div>
+              <div style={{
+                fontSize: 13,
+                color: 'rgba(255,255,255,0.7)',
+                lineHeight: 1.6,
+              }}>
+                有効にすると、あなたへの送金時にGifterraコントラクトを使用してSBT/NFTが自動配布されます。無効の場合は通常のERC20送金となります。
+              </div>
+            </div>
+
+            {isLoadingAutoDistribution ? (
+              <div style={{
+                padding: '12px 24px',
+                background: 'rgba(156, 163, 175, 0.2)',
+                borderRadius: 24,
+                fontSize: 14,
+                color: 'rgba(255,255,255,0.6)',
+              }}>
+                読み込み中...
+              </div>
+            ) : (
+              <button
+                onClick={() => handleToggleAutoDistribution(!autoDistributionEnabled)}
+                style={{
+                  position: 'relative',
+                  width: 80,
+                  height: 40,
+                  borderRadius: 20,
+                  border: 'none',
+                  background: autoDistributionEnabled
+                    ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
+                    : 'rgba(156, 163, 175, 0.3)',
+                  cursor: 'pointer',
+                  transition: 'all 0.3s ease',
+                  boxShadow: autoDistributionEnabled
+                    ? '0 4px 12px rgba(16, 185, 129, 0.4)'
+                    : '0 2px 6px rgba(0,0,0,0.2)',
+                }}
+              >
+                <div style={{
+                  position: 'absolute',
+                  top: 4,
+                  left: autoDistributionEnabled ? 44 : 4,
+                  width: 32,
+                  height: 32,
+                  borderRadius: '50%',
+                  background: '#fff',
+                  transition: 'all 0.3s ease',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: 16,
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+                }}>
+                  {autoDistributionEnabled ? '✓' : ''}
+                </div>
+                <span style={{
+                  position: 'absolute',
+                  top: '50%',
+                  left: autoDistributionEnabled ? 8 : 'auto',
+                  right: autoDistributionEnabled ? 'auto' : 8,
+                  transform: 'translateY(-50%)',
+                  fontSize: 11,
+                  fontWeight: 700,
+                  color: '#fff',
+                  textShadow: '0 1px 2px rgba(0,0,0,0.2)',
+                }}>
+                  {autoDistributionEnabled ? 'ON' : 'OFF'}
+                </span>
+              </button>
+            )}
           </div>
         </div>
 

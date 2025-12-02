@@ -13,7 +13,6 @@ import { useFollow } from '../hooks/useFollow';
 import { useFollowLists } from '../hooks/useFollowLists';
 import { FollowListModal } from '../components/FollowListModal';
 import { TipModal } from '../components/TipModal';
-import { TenantTipModal } from '../components/TenantTipModal';
 import { ContributionGauge } from '../components/ContributionGauge';
 import { useRoleUsers } from '../hooks/useRoleUsers';
 import { RoleUsersModal } from '../components/RoleUsersModal';
@@ -49,7 +48,6 @@ export function ProfilePage() {
   const [showFollowListModal, setShowFollowListModal] = useState(false);
   const [followListTab, setFollowListTab] = useState<'followers' | 'following'>('followers');
   const [showTipModal, setShowTipModal] = useState(false);
-  const [showTenantTipModal, setShowTenantTipModal] = useState(false);
   const [showRoleUsersModal, setShowRoleUsersModal] = useState(false);
   const [profileTab, setProfileTab] = useState<'tenant' | 'bio'>('tenant');
   const [selectedRole, setSelectedRole] = useState<UserRole | null>(null);
@@ -820,14 +818,7 @@ export function ProfilePage() {
                   {/* チップボタン（ウォレットアドレスが公開されている場合のみ表示） */}
                   {profile?.show_wallet_address !== false && (
                     <button
-                      onClick={() => {
-                        // テナント承認済みユーザーにはTenantTipModal、それ以外は通常のTipModalを表示
-                        if (shouldShowTenantFeatures) {
-                          setShowTenantTipModal(true);
-                        } else {
-                          setShowTipModal(true);
-                        }
-                      }}
+                      onClick={() => setShowTipModal(true)}
                       style={{
                         padding: isMobile ? '10px 16px' : '12px 20px',
                         background: shouldShowTenantFeatures
@@ -863,37 +854,6 @@ export function ProfilePage() {
                       }}
                     >
                       💰 チップを贈る
-                    </button>
-                  )}
-
-                  {/* Reward UIボタン（テナント所有者・STUDIOプラン以上のみ） */}
-                  {shouldShowTenantFeatures && profile?.show_reward_button !== false && (
-                    <button
-                      onClick={() => {
-                        window.location.href = `/reward?tenant=${walletAddress}`;
-                      }}
-                      style={{
-                        padding: isMobile ? '10px 16px' : '12px 20px',
-                        background: 'linear-gradient(145deg, #a855f7 0%, #9333ea 100%)',
-                        border: '1px solid rgba(168, 85, 247, 0.4)',
-                        borderRadius: 12,
-                        color: '#fff',
-                        fontSize: isMobile ? 14 : 15,
-                        fontWeight: 600,
-                        cursor: 'pointer',
-                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                        boxShadow: '0 4px 16px rgba(168, 85, 247, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)',
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.transform = 'translateY(-2px) scale(1.02)';
-                        e.currentTarget.style.boxShadow = '0 6px 24px rgba(168, 85, 247, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.transform = 'translateY(0) scale(1)';
-                        e.currentTarget.style.boxShadow = '0 4px 16px rgba(168, 85, 247, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)';
-                      }}
-                    >
-                      💎 Daily Reward
                     </button>
                   )}
 
@@ -1168,6 +1128,39 @@ export function ProfilePage() {
                       </div>
                     )}
                   </div>
+
+                  {/* Daily Reward ボタン（自分のプロフィールのみ・テナント所有者・STUDIOプラン以上のみ） */}
+                  {!isViewingOtherProfile && shouldShowTenantFeatures && profile?.show_reward_button !== false && (
+                    <button
+                      onClick={() => {
+                        window.location.href = `/reward?tenant=${walletAddress}`;
+                      }}
+                      style={{
+                        padding: isMobile ? '10px 16px' : '12px 20px',
+                        background: 'linear-gradient(145deg, #a855f7 0%, #9333ea 100%)',
+                        border: '1px solid rgba(168, 85, 247, 0.4)',
+                        borderRadius: 12,
+                        color: '#fff',
+                        fontSize: isMobile ? 14 : 15,
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                        boxShadow: '0 4px 16px rgba(168, 85, 247, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)',
+                        alignSelf: isMobile ? 'center' : 'flex-start',
+                        marginLeft: isMobile ? 0 : 'auto',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.transform = 'translateY(-2px) scale(1.02)';
+                        e.currentTarget.style.boxShadow = '0 6px 24px rgba(168, 85, 247, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = 'translateY(0) scale(1)';
+                        e.currentTarget.style.boxShadow = '0 4px 16px rgba(168, 85, 247, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)';
+                      }}
+                    >
+                      💎 Daily Reward
+                    </button>
+                  )}
                 </div>
 
                 {/* 自己紹介 / テナント情報タブ */}
@@ -1573,17 +1566,6 @@ export function ProfilePage() {
         onSendTip={handleSendTip}
         isMobile={isMobile}
       />
-
-      {/* テナント専用チップモーダル（kodomi解析 & SBT連動） */}
-      {shouldShowTenantFeatures && (
-        <TenantTipModal
-          isOpen={showTenantTipModal}
-          onClose={() => setShowTenantTipModal(false)}
-          recipientAddress={walletAddress}
-          recipientName={profile?.display_name || `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`}
-          isMobile={isMobile}
-        />
-      )}
 
       {/* ロール別ユーザーリストモーダル */}
       <RoleUsersModal

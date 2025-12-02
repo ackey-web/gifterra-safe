@@ -17,6 +17,7 @@ import { useRankPlanPricing, getPlanPrice } from '../hooks/useRankPlanPricing';
 import { useTenantRankPlan } from '../hooks/useTenantRankPlan';
 import { saveTransferMessage, useReceivedTransferMessages } from '../hooks/useTransferMessages';
 import { useRecipientProfile, type RecipientProfile } from '../hooks/useRecipientProfile';
+import { useRecipientTenantInfo } from '../hooks/useRecipientTenantInfo';
 import { TenantPlanCard } from '../components/TenantPlanCard';
 import { supabase } from '../lib/supabase';
 import { isSuperAdminWithDebug } from '../config/superAdmin';
@@ -1371,7 +1372,7 @@ function FlowModeContent({
 }
 
 // 送金モード定義
-type SendMode = 'simple' | 'tenant' | 'bulk' | 'bookmark' | 'anonymous';
+type SendMode = 'simple' | 'bulk' | 'bookmark' | 'anonymous';
 
 // 1. 送金フォーム
 function SendForm({ isMobile, bulkSendRecipients, setBulkSendRecipients, handleAddToBulkSend, sendMode, setSendMode }: {
@@ -1422,6 +1423,12 @@ function SendForm({ isMobile, bulkSendRecipients, setBulkSendRecipients, handleA
   // 受取人プロフィールを取得（デバウンス500ms）
   // sendMode に関わらず常にアドレスが入力されたらプロフィールを取得
   const { profile: recipientProfile, isLoading: isLoadingProfile } = useRecipientProfile(
+    address,
+    500
+  );
+
+  // 受取人がテナントオーナーで自動配布設定を確認（デバウンス500ms）
+  const { tenantInfo: recipientTenantInfo, isLoading: isLoadingTenantInfo } = useRecipientTenantInfo(
     address,
     500
   );
@@ -1838,8 +1845,13 @@ function SendForm({ isMobile, bulkSendRecipients, setBulkSendRecipients, handleA
         // JPYC/NHT送信の場合
         const tokenAddress = JPYC_TOKEN.ADDRESS;
 
-      // テナントチップモードの場合は従来のコントラクトを使用
-      if (sendMode === 'tenant') {
+      // スマート自動配布検知：受信者がテナントオーナーで自動配布が有効な場合はコントラクト経由
+      if (recipientTenantInfo.isTenant &&
+          recipientTenantInfo.autoDistributionEnabled &&
+          recipientTenantInfo.gifterraAddress) {
+
+        console.log('🎁 自動配布モード: テナントオーナーへの送金を検知、Gifterraコントラクト経由で送金します');
+
         // 1. トークンコントラクトを準備
         const tokenContract = new ethers.Contract(
           tokenAddress,
@@ -1847,31 +1859,29 @@ function SendForm({ isMobile, bulkSendRecipients, setBulkSendRecipients, handleA
           signer
         );
 
-        // 2. SBTコントラクトにapprove
-        const gifterraAddress = getGifterraAddress();
+        // 2. Gifterraコントラクトにapprove
         const approveTx = await tokenContract.approve(
-          gifterraAddress,
+          recipientTenantInfo.gifterraAddress,
           amountWei
         );
         await approveTx.wait();
 
-        // 3. SBTコントラクトのtip関数を呼び出し（kodomiポイント加算 + SBT自動ミント）
-        const sbtContract = new ethers.Contract(
-          gifterraAddress,
+        // 3. Gifterraコントラクトのtip関数を呼び出し（kodomiポイント加算 + SBT自動ミント）
+        const gifterraContract = new ethers.Contract(
+          recipientTenantInfo.gifterraAddress,
           CONTRACT_ABI,
           signer
         );
 
-        const tipTx = await sbtContract.tip(amountWei);
+        const tipTx = await gifterraContract.tip(amountWei);
         const receipt = await tipTx.wait();
 
         alert(
-          `✅ テナントチップ送金が完了しました！\n\n` +
-          `送金先: ${selectedTenant?.name || 'テナント'}\n` +
-          `アドレス: ${trimmedAddress.slice(0, 6)}...${trimmedAddress.slice(-4)}\n` +
+          `✅ 送金が完了しました（特典自動配布）\n\n` +
+          `送金先: ${recipientProfile?.display_name || trimmedAddress.slice(0, 6) + '...' + trimmedAddress.slice(-4)}\n` +
           `数量: ${amount} ${selectedToken}\n\n` +
           `🎁 kodomiポイントが加算されました！\n` +
-          `累積ポイントに応じてSBTが自動ミントされます。`
+          `累積ポイントに応じて特典が自動配布されます。`
         );
       } else {
         // シンプル送金モード - 通常送金（MATICガス必要）
@@ -2233,23 +2243,17 @@ function SendForm({ isMobile, bulkSendRecipients, setBulkSendRecipients, handleA
         <div style={{
           marginBottom: 20,
           padding: isMobile ? '14px 16px' : '16px 20px',
-          background: sendMode === 'tenant'
-            ? 'linear-gradient(145deg, #8b5cf6 0%, #7c3aed 100%)'
-            : sendMode === 'simple'
+          background: sendMode === 'simple'
             ? 'linear-gradient(145deg, #06b6d4 0%, #0891b2 100%)'
             : 'linear-gradient(145deg, #6366f1 0%, #4f46e5 100%)',
-          border: sendMode === 'tenant'
-            ? '1px solid rgba(139, 92, 246, 0.4)'
-            : sendMode === 'simple'
+          border: sendMode === 'simple'
             ? '1px solid rgba(6, 182, 212, 0.4)'
             : '1px solid rgba(99, 102, 241, 0.4)',
           borderRadius: 12,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          boxShadow: sendMode === 'tenant'
-            ? '0 6px 20px rgba(139, 92, 246, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
-            : sendMode === 'simple'
+          boxShadow: sendMode === 'simple'
             ? '0 6px 20px rgba(6, 182, 212, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
             : '0 6px 20px rgba(99, 102, 241, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2)',
         }}>
@@ -2263,15 +2267,9 @@ function SendForm({ isMobile, bulkSendRecipients, setBulkSendRecipients, handleA
             }}>
               {sendMode === 'simple' && '💸 シンプル送金'}
               {sendMode === 'anonymous' && '🕶️ 匿名送金'}
-              {sendMode === 'tenant' && '🎁 テナントへチップ'}
               {sendMode === 'bulk' && '📤 一括送金'}
               {sendMode === 'bookmark' && '⭐ ブックマークユーザーへ送金'}
             </div>
-            {sendMode === 'tenant' && selectedTenant && (
-              <div style={{ fontSize: isMobile ? 12 : 13, color: '#ffffff', fontWeight: 600, opacity: 0.95 }}>
-                {selectedTenant.icon} {selectedTenant.name}
-              </div>
-            )}
             {sendMode === 'bookmark' && selectedBookmarkUser && (
               <div style={{ fontSize: isMobile ? 12 : 13, color: '#ffffff', fontWeight: 600, opacity: 0.95 }}>
                 👤 {selectedBookmarkUser.name || 'User'}
@@ -2290,7 +2288,7 @@ function SendForm({ isMobile, bulkSendRecipients, setBulkSendRecipients, handleA
               background: 'linear-gradient(145deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.85) 100%)',
               border: '1px solid rgba(255, 255, 255, 0.6)',
               borderRadius: 8,
-              color: sendMode === 'tenant' ? '#8b5cf6' : sendMode === 'simple' ? '#06b6d4' : '#6366f1',
+              color: sendMode === 'simple' ? '#06b6d4' : '#6366f1',
               fontSize: isMobile ? 13 : 14,
               fontWeight: 700,
               cursor: 'pointer',
@@ -2311,22 +2309,6 @@ function SendForm({ isMobile, bulkSendRecipients, setBulkSendRecipients, handleA
         </div>
       )}
 
-      {/* テナントチップ時の説明 */}
-      {sendMode === 'tenant' && (
-        <div style={{
-          marginBottom: 16,
-          padding: isMobile ? '10px 12px' : '12px 14px',
-          background: 'linear-gradient(145deg, rgba(251, 191, 36, 0.15) 0%, rgba(245, 158, 11, 0.1) 100%)',
-          border: '1px solid rgba(251, 191, 36, 0.3)',
-          borderRadius: 8,
-          fontSize: isMobile ? 11 : 12,
-          lineHeight: 1.5,
-          color: '#fbbf24',
-          boxShadow: '0 2px 6px rgba(251, 191, 36, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
-        }}>
-          💡 メッセージを書くとkodomi算出に有利になります
-        </div>
-      )}
 
       {/* 匿名送金時の警告メッセージ */}
       {isAnonymous && (
@@ -2395,30 +2377,29 @@ function SendForm({ isMobile, bulkSendRecipients, setBulkSendRecipients, handleA
 
       <div style={{ marginBottom: 16 }}>
         <label style={{ display: 'block', fontSize: isMobile ? 13 : 14, color: '#ffffff', fontWeight: 700, marginBottom: 8 }}>
-          宛先アドレス {(sendMode === 'tenant' || sendMode === 'bookmark') && '（自動入力済み）'}
+          宛先アドレス {sendMode === 'bookmark' && '（自動入力済み）'}
         </label>
         <div style={{ position: 'relative' }}>
           <input
             type="text"
             placeholder={
-              sendMode === 'tenant' ? 'テナントを選択してください' :
               sendMode === 'bookmark' ? 'ブックマークユーザーを選択してください' :
               '0x...'
             }
             value={address}
             onChange={(e) => setAddress(e.target.value)}
-            disabled={sendMode === 'tenant' || sendMode === 'bookmark'}
+            disabled={sendMode === 'bookmark'}
             style={{
               width: '100%',
               padding: isMobile ? '10px 12px' : '12px 14px',
-              paddingRight: (sendMode !== 'tenant' && sendMode !== 'bookmark') ? (isMobile ? '50px' : '60px') : (isMobile ? '10px 12px' : '12px 14px'),
-              background: (sendMode === 'tenant' || sendMode === 'bookmark') ? '#f5f5f5' : '#ffffff',
+              paddingRight: sendMode !== 'bookmark' ? (isMobile ? '50px' : '60px') : (isMobile ? '10px 12px' : '12px 14px'),
+              background: sendMode === 'bookmark' ? '#f5f5f5' : '#ffffff',
               border: '2px solid #3b82f6',
               borderRadius: 8,
               color: '#1a1a1a',
               fontSize: isMobile ? 14 : 15,
-              opacity: (sendMode === 'tenant' || sendMode === 'bookmark') ? 0.6 : 1,
-              cursor: (sendMode === 'tenant' || sendMode === 'bookmark') ? 'not-allowed' : 'text',
+              opacity: sendMode === 'bookmark' ? 0.6 : 1,
+              cursor: sendMode === 'bookmark' ? 'not-allowed' : 'text',
               boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)',
             }}
           />
@@ -2548,40 +2529,6 @@ function SendForm({ isMobile, bulkSendRecipients, setBulkSendRecipients, handleA
           数量
         </label>
 
-        {/* テナントチップ時は固定金額ボタン表示 */}
-        {sendMode === 'tenant' && selectedToken === 'JPYC' && (
-          <div style={{
-            display: 'flex',
-            gap: isMobile ? 6 : 8,
-            marginBottom: 12,
-          }}>
-            {[100, 500, 1000].map((presetAmount) => (
-              <button
-                key={presetAmount}
-                onClick={() => setAmount(presetAmount.toString())}
-                style={{
-                  flex: 1,
-                  padding: isMobile ? '8px 10px' : '10px 12px',
-                  background: amount === presetAmount.toString()
-                    ? `${currentToken.color}33`
-                    : '#ffffff',
-                  border: amount === presetAmount.toString()
-                    ? `2px solid ${currentToken.color}`
-                    : '2px solid #3b82f6',
-                  borderRadius: 8,
-                  color: amount === presetAmount.toString() ? currentToken.color : '#1a1a1a',
-                  fontSize: isMobile ? 12 : 13,
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                }}
-              >
-                {presetAmount} {currentToken.symbol}
-              </button>
-            ))}
-          </div>
-        )}
 
         <div style={{ position: 'relative' }}>
           <input
@@ -2842,7 +2789,7 @@ function SendForm({ isMobile, bulkSendRecipients, setBulkSendRecipients, handleA
       )}
 
       {/* 匿名送金トグル */}
-      {sendMode !== 'bulk' && sendMode !== 'tenant' && (
+      {sendMode !== 'bulk' && (
         <div
           style={{
             marginTop: 12,
@@ -2906,9 +2853,7 @@ function SendForm({ isMobile, bulkSendRecipients, setBulkSendRecipients, handleA
           onSelectMode={(mode) => {
             setSendMode(mode);
             setShowModeModal(false);
-            if (mode === 'tenant') {
-              setShowTenantModal(true);
-            } else if (mode === 'bookmark') {
+            if (mode === 'bookmark') {
               setShowBookmarkSelectModal(true);
             }
           }}

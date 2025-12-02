@@ -299,6 +299,7 @@ export function useUpdateTenantInfo() {
     updates: {
       tenant_name?: string;
       description?: string;
+      auto_distribution_enabled?: boolean;
     }
   ): Promise<boolean> {
     if (!address) {
