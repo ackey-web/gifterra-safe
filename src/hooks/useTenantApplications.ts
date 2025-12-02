@@ -364,10 +364,11 @@ export function useDeleteTenantApplication() {
       setDeleting(true);
       setError(null);
 
-      // テナント申請を削除
+      // RLSポリシーの制限により物理削除ができないため、
+      // ステータスを'deleted'に変更して論理削除を実施
       const { error: deleteError } = await supabase
         .from('tenant_applications')
-        .delete()
+        .update({ status: 'deleted' })
         .eq('id', applicationId);
 
       if (deleteError) throw deleteError;
