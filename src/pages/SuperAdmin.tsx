@@ -13,7 +13,7 @@ import { useSystemHealth, getHealthStatusInfo } from '../hooks/useSystemHealth';
 import { formatTokenAmount } from '../utils/userProfile';
 import { TOKEN, TNHT_TOKEN, GIFTERRA_FACTORY_ABI, RANK_PLAN_REGISTRY_CONTRACT } from '../contract';
 import RANK_PLAN_REGISTRY_ABI from '../abis/RankPlanRegistry.json';
-import { useTenantApplications, useRejectTenantApplication } from '../hooks/useTenantApplications';
+import { useTenantApplications, useRejectTenantApplication, useDeleteTenantApplication } from '../hooks/useTenantApplications';
 import { RANK_PLANS } from '../types/tenantApplication';
 import type { TenantApplication, ApplicationStatus } from '../types/tenantApplication';
 import { TenantDeploymentPanel } from '../components/TenantDeploymentPanel';
@@ -1728,9 +1728,15 @@ function TenantManagementTab() {
  * アクティブテナントパネル (旧TenantsTabの内容)
  */
 function ActiveTenantsPanel() {
-  const { tenants, isLoading } = useTenantList();
+  const { tenants, isLoading, refetch } = useTenantList();
   const { plans } = useAllTenantRankPlans();
   const { setPlan, setting } = useSetTenantRankPlan();
+  const { deleteTenant, deleting } = useDeleteTenantApplication();
+
+  // 削除確認モーダル用の状態
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deletingTenantId, setDeletingTenantId] = useState<string | null>(null);
+  const [deletingTenantName, setDeletingTenantName] = useState<string>('');
 
   // 編集中のテナントプラン
   const [editingTenantId, setEditingTenantId] = useState<number | null>(null);
@@ -1795,6 +1801,30 @@ function ActiveTenantsPanel() {
   const handleCancelPlan = () => {
     setEditingTenantId(null);
   };
+
+  // 削除確認モーダルを開く
+  function handleDeleteClick(tenant: any) {
+    setDeletingTenantId(tenant.id);
+    setDeletingTenantName(tenant.name);
+    setShowDeleteModal(true);
+  }
+
+  // 削除実行
+  async function handleConfirmDelete() {
+    if (!deletingTenantId) return;
+
+    const success = await deleteTenant(deletingTenantId);
+
+    if (success) {
+      alert(`テナント「${deletingTenantName}」を削除しました`);
+      setShowDeleteModal(false);
+      setDeletingTenantId(null);
+      setDeletingTenantName('');
+      refetch(); // テナントリストを再取得
+    } else {
+      alert('テナントの削除に失敗しました');
+    }
+  }
 
   if (isLoading) {
     return (
@@ -2154,21 +2184,50 @@ function ActiveTenantsPanel() {
                           </div>
 
                           {/* 編集ボタン */}
-                          <button
-                            onClick={() => handleEditPlan(tenantId)}
-                            style={{
-                              padding: '6px 16px',
-                              background: 'rgba(102, 126, 234, 0.2)',
-                              border: '1px solid rgba(102, 126, 234, 0.5)',
-                              borderRadius: 6,
-                              color: '#fff',
-                              fontSize: 13,
-                              fontWeight: 600,
-                              cursor: 'pointer',
-                            }}
-                          >
-                            ✏️ 編集
-                          </button>
+                          <div style={{ display: 'flex', gap: 8 }}>
+                            <button
+                              onClick={() => handleEditPlan(tenantId)}
+                              style={{
+                                padding: '6px 16px',
+                                background: 'rgba(102, 126, 234, 0.2)',
+                                border: '1px solid rgba(102, 126, 234, 0.5)',
+                                borderRadius: 6,
+                                color: '#fff',
+                                fontSize: 13,
+                                fontWeight: 600,
+                                cursor: 'pointer',
+                              }}
+                            >
+                              ✏️ 編集
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteClick(tenant);
+                              }}
+                              style={{
+                                padding: '8px 16px',
+                                background: 'rgba(239, 68, 68, 0.1)',
+                                border: '1px solid rgba(239, 68, 68, 0.3)',
+                                borderRadius: 8,
+                                color: '#ef4444',
+                                fontSize: 13,
+                                fontWeight: 600,
+                                cursor: 'pointer',
+                                transition: 'all 0.2s',
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.background = 'rgba(239, 68, 68, 0.2)';
+                                e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.5)';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)';
+                                e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.3)';
+                              }}
+                            >
+                              削除
+                            </button>
+                          </div>
                         </div>
                       )}
                     </div>
@@ -2179,6 +2238,83 @@ function ActiveTenantsPanel() {
           })}
         </div>
       </div>
+
+      {/* 削除確認モーダル */}
+      {showDeleteModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.8)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 10000,
+        }}>
+          <div style={{
+            background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)',
+            borderRadius: 16,
+            padding: 32,
+            maxWidth: 480,
+            width: '90%',
+            border: '1px solid rgba(239, 68, 68, 0.3)',
+          }}>
+            <h3 style={{ margin: '0 0 16px 0', fontSize: 20, fontWeight: 700, color: '#ef4444' }}>
+              テナントを削除
+            </h3>
+            <p style={{ margin: '0 0 24px 0', fontSize: 15, color: 'rgba(255,255,255,0.8)', lineHeight: 1.6 }}>
+              テナント「<strong>{deletingTenantName}</strong>」を削除しますか？
+              <br />
+              <br />
+              この操作は取り消せません。
+              <br />
+              テナントに関連するすべてのデータが削除されます。
+            </p>
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => {
+                  setShowDeleteModal(false);
+                  setDeletingTenantId(null);
+                  setDeletingTenantName('');
+                }}
+                disabled={deleting}
+                style={{
+                  padding: '12px 24px',
+                  background: 'rgba(255,255,255,0.1)',
+                  border: '1px solid rgba(255,255,255,0.2)',
+                  borderRadius: 8,
+                  color: '#fff',
+                  fontSize: 14,
+                  fontWeight: 600,
+                  cursor: deleting ? 'not-allowed' : 'pointer',
+                  opacity: deleting ? 0.5 : 1,
+                }}
+              >
+                キャンセル
+              </button>
+              <button
+                onClick={handleConfirmDelete}
+                disabled={deleting}
+                style={{
+                  padding: '12px 24px',
+                  background: deleting ? 'rgba(239, 68, 68, 0.5)' : '#ef4444',
+                  border: 'none',
+                  borderRadius: 8,
+                  color: '#fff',
+                  fontSize: 14,
+                  fontWeight: 600,
+                  cursor: deleting ? 'not-allowed' : 'pointer',
+                  opacity: deleting ? 0.7 : 1,
+                }}
+              >
+                {deleting ? '削除中...' : '削除する'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

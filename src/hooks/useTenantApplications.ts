@@ -345,3 +345,42 @@ export function useUpdateTenantInfo() {
 
   return { updateTenantInfo, updating, error };
 }
+
+/**
+ * テナント削除Hook（スーパーアドミン専用）
+ */
+export function useDeleteTenantApplication() {
+  const adminAddress = useAddress();
+  const [deleting, setDeleting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function deleteTenant(applicationId: string): Promise<boolean> {
+    if (!adminAddress) {
+      setError('ウォレットが接続されていません');
+      return false;
+    }
+
+    try {
+      setDeleting(true);
+      setError(null);
+
+      // テナント申請を削除
+      const { error: deleteError } = await supabase
+        .from('tenant_applications')
+        .delete()
+        .eq('id', applicationId);
+
+      if (deleteError) throw deleteError;
+
+      return true;
+    } catch (err) {
+      console.error('❌ テナント申請の削除に失敗:', err);
+      setError(err instanceof Error ? err.message : 'Unknown error');
+      return false;
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  return { deleteTenant, deleting, error };
+}

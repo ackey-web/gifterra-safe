@@ -40,56 +40,56 @@ export function useTenantList() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const fetchTenants = async () => {
+    try {
+      setIsLoading(true);
+
+      // TODO: 将来的にSupabaseのtenantsテーブルから取得
+      // 現在はデフォルトテナントのみ
+      const defaultTenant: TenantInfo = {
+        id: 'default',
+        name: 'METATRON Default',
+        contracts: {
+          gifterra: CONTRACT_ADDRESS,
+          rewardToken: TOKEN.ADDRESS,
+          paymentSplitter: '0x0000000000000000000000000000000000000000',
+        },
+        owner: '0x66f1274ad5d042b7571c2efa943370dbcd3459ab',
+        createdAt: new Date().toISOString(),
+        health: {
+          status: 'healthy',
+          lastChecked: new Date(),
+          issues: [],
+        },
+      };
+
+      // デフォルトテナントの統計情報を取得
+      const { data: hubs } = await supabase
+        .from('vending_machines')
+        .select('id, is_active, total_distributions');
+
+      const { data: purchases } = await supabase
+        .from('purchase_history')
+        .select('amount');
+
+      defaultTenant.stats = {
+        totalHubs: hubs?.length || 0,
+        activeHubs: hubs?.filter(h => h.is_active).length || 0,
+        totalRevenue: purchases?.reduce((sum, p) => sum + BigInt(p.amount || 0), BigInt(0)).toString() || '0',
+        totalDistributions: hubs?.reduce((sum, h) => sum + (h.total_distributions || 0), 0) || 0,
+        userCount: 0, // TODO: コントラクトから取得
+      };
+
+      setTenants([defaultTenant]);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch tenants');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchTenants = async () => {
-      try {
-        setIsLoading(true);
-
-        // TODO: 将来的にSupabaseのtenantsテーブルから取得
-        // 現在はデフォルトテナントのみ
-        const defaultTenant: TenantInfo = {
-          id: 'default',
-          name: 'METATRON Default',
-          contracts: {
-            gifterra: CONTRACT_ADDRESS,
-            rewardToken: TOKEN.ADDRESS,
-            paymentSplitter: '0x0000000000000000000000000000000000000000',
-          },
-          owner: '0x66f1274ad5d042b7571c2efa943370dbcd3459ab',
-          createdAt: new Date().toISOString(),
-          health: {
-            status: 'healthy',
-            lastChecked: new Date(),
-            issues: [],
-          },
-        };
-
-        // デフォルトテナントの統計情報を取得
-        const { data: hubs } = await supabase
-          .from('vending_machines')
-          .select('id, is_active, total_distributions');
-
-        const { data: purchases } = await supabase
-          .from('purchase_history')
-          .select('amount');
-
-        defaultTenant.stats = {
-          totalHubs: hubs?.length || 0,
-          activeHubs: hubs?.filter(h => h.is_active).length || 0,
-          totalRevenue: purchases?.reduce((sum, p) => sum + BigInt(p.amount || 0), BigInt(0)).toString() || '0',
-          totalDistributions: hubs?.reduce((sum, h) => sum + (h.total_distributions || 0), 0) || 0,
-          userCount: 0, // TODO: コントラクトから取得
-        };
-
-        setTenants([defaultTenant]);
-        setError(null);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to fetch tenants');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
     fetchTenants();
 
     // 1分ごとに更新
@@ -101,7 +101,7 @@ export function useTenantList() {
     tenants,
     isLoading,
     error,
-    refetch: () => setIsLoading(true),
+    refetch: fetchTenants,
   };
 }
 
