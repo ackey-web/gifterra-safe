@@ -319,16 +319,9 @@ export function debugTokenConfig() {
   // 必要に応じて以下のコードを有効化してください
   /*
   const network = getNetworkEnv();
-  console.log('🪙 Token Configuration');
-  console.log('Network:', network);
-  console.log('Available Tokens:');
 
   Object.entries(TOKEN_MASTER_DATA).forEach(([id, config]) => {
-    console.log(`  ${id}:`, {
-      symbol: config.symbol,
-      address: config.addresses[network],
-      decimals: config.decimals,
-    });
+
   });
   */
 }

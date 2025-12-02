@@ -25,50 +25,46 @@ export function QRScannerCamera({ onScan, onClose, placeholder = 'QRコードを
 
   // X402形式、ウォレットQR、または通常のアドレスかを判定してバリデーション
   const validateAndProcessScan = (data: string): { isValid: boolean; error?: string } => {
-    console.log('🔎 QRScannerCamera - バリデーション開始:', data);
 
     // まずJSON形式かどうかを確認
     try {
       const parsed = JSON.parse(data);
-      console.log('📋 JSONパース成功:', parsed);
 
       // ウォレットQR形式（type: 'wallet'）をチェック
       if (parsed.type === 'wallet' && parsed.address && parsed.chainId) {
-        console.log('✅ ウォレットQR形式として認識');
+
         return { isValid: true };
       }
 
       // ガスレスQR形式（type: 'gasless'）をチェック
       if (parsed.type === 'gasless' && parsed.tenant && parsed.amount) {
-        console.log('✅ ガスレスQR形式として認識');
+
         return { isValid: true };
       }
 
       // X402形式（請求書QR）の必須フィールドをチェック
       if (parsed.to && parsed.token && parsed.amount) {
-        console.log('✅ X402形式として認識');
+
         return { isValid: true };
       }
 
-      console.log('⚠️ 認識できるJSON形式ではない:', parsed);
     } catch (e) {
-      console.log('⚠️ JSONパースエラー - ウォレットアドレスかチェック');
+
       // JSONパースエラー - 通常のウォレットアドレスかもしれない
     }
 
     // 通常のウォレットアドレス形式をチェック (0xで始まる42文字の16進数)
     if (/^0x[a-fA-F0-9]{40}$/.test(data)) {
-      console.log('✅ ウォレットアドレスとして認識');
+
       return { isValid: true };
     }
 
     // ethereum: プレフィックス形式もサポート
     if (data.startsWith('ethereum:')) {
-      console.log('✅ Ethereum URI形式として認識');
+
       return { isValid: true };
     }
 
-    console.log('❌ バリデーション失敗');
     return { isValid: false, error: '無効なQRコードです。ウォレットQR、X402決済コード、またはウォレットアドレスを使用してください。' };
   };
 
@@ -185,9 +181,9 @@ export function QRScannerCamera({ onScan, onClose, placeholder = 'QRコードを
         try {
           // ZXingのBrowserQRCodeReaderはreset()メソッドを持たない
           readerRef.current = null;
-          console.log('クリーンアップ: ZXing スキャナー停止');
+
         } catch (e) {
-          console.log('クリーンアップエラー（無視）');
+
         }
       }
     };

@@ -92,7 +92,6 @@ const EMOTION_LABELS = {
   negative: "💙 静かな応援",
 };
 
-
 export default function TipApp() {
   const address = useAddress();
   const chain = useChain();
@@ -231,7 +230,6 @@ export default function TipApp() {
   // 承認ポリシー関連の状態管理
   const [approvalPolicy, setApprovalPolicy] = useState<"exact" | "toNextRank" | "fixedCap">("toNextRank");
   const [rankThresholds, setRankThresholds] = useState<bigint[]>([]);
-
 
   // オーナー確認
   useEffect(() => {

@@ -66,10 +66,8 @@ export async function executeSaveFlagNFTWorkflow(
   } = params;
 
   try {
-    console.log('🚀 FlagNFT作成ワークフロー開始:', { category, name });
 
     // Step 1: Supabaseに仮データを保存してIDを取得
-    console.log('📝 Step 1: Supabaseに仮データ保存中...');
 
     const flagNFTData = {
       tenant_id: tenantId,
@@ -112,14 +110,11 @@ export async function executeSaveFlagNFTWorkflow(
     }
 
     const flagNFTId = savedData.id;
-    console.log('✅ Supabaseに保存完了:', flagNFTId);
 
     // Step 2: メタデータURIを生成
     const metadataURI = generateMetadataURI(tenantId, flagNFTId, category);
-    console.log('📋 メタデータURI:', metadataURI);
 
     // Step 3: カテゴリ設定をコントラクトに登録
-    console.log('⛓️  Step 2: コントラクトにカテゴリ設定を登録中...');
 
     const contractConfig = convertToCategoryConfig(category, categoryConfig, metadataURI);
 
@@ -132,10 +127,7 @@ export async function executeSaveFlagNFTWorkflow(
       contractConfig.metadataURI
     );
 
-    console.log('✅ コントラクト設定完了:', tx);
-
     // Step 4: Supabaseのis_activeをtrueに更新（ミント可能状態）
-    console.log('🔄 Step 3: is_activeをtrueに更新中...');
 
     const { error: updateError } = await supabaseClient
       .from('flag_nfts')
@@ -145,7 +137,7 @@ export async function executeSaveFlagNFTWorkflow(
     if (updateError) {
       console.warn('⚠️ is_active更新に失敗:', updateError);
     } else {
-      console.log('✅ ミント可能状態に更新完了');
+
     }
 
     return {

@@ -128,13 +128,6 @@ export function GaslessScannerTest() {
     setMessage({ type: 'info', text: 'Permit署名を準備中...' });
 
     try {
-      console.log('📦 ガスレス決済開始:', {
-        paymentGateway: PAYMENT_GATEWAY_ADDRESS,
-        jpyc: jpycConfig.currentAddress,
-        merchant: paymentData.to,
-        amount: paymentData.amount,
-        requestId: paymentData.requestId,
-      });
 
       // 1. Permitシグネチャを生成
       setMessage({ type: 'info', text: 'ウォレットで署名してください...' });
@@ -148,8 +141,6 @@ export function GaslessScannerTest() {
         paymentData.requestId || `gasless_${Date.now()}`,
         30 // 30分の有効期限
       );
-
-      console.log('✅ Permit署名完了:', permitParams);
 
       // 2. PaymentGatewayコントラクトを呼び出し
       setMessage({ type: 'info', text: 'トランザクションを送信中...' });
@@ -173,11 +164,8 @@ export function GaslessScannerTest() {
       );
 
       setMessage({ type: 'info', text: 'トランザクション処理中...' });
-      console.log('📤 Transaction sent:', tx.hash);
 
       await tx.wait();
-
-      console.log('✅ トランザクション完了:', tx.hash);
 
       setMessage({
         type: 'success',

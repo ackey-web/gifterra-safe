@@ -42,12 +42,6 @@ export async function saveWalletQRPayment(params: {
       return { success: false, error: error.message };
     }
 
-    console.log('✅ ウォレットQR決済を記録:', {
-      transactionHash,
-      amount,
-      merchantAddress: walletData.address,
-    });
-
     return { success: true };
   } catch (error: any) {
     console.error('❌ ウォレットQR決済の記録エラー:', error);

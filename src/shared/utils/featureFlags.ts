@@ -51,5 +51,5 @@ export function canWriteToDB(source: 'mvp' | 'legacy'): boolean {
 
 // デバッグログ出力
 if (FEATURE_FLAGS.DEBUG_MODE) {
-  console.log('[GIFTERRA] Feature Flags:', FEATURE_FLAGS);
+
 }

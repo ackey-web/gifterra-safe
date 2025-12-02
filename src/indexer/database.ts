@@ -55,7 +55,6 @@ export class ScoreDatabase {
   // ========================================
 
   async initialize(): Promise<void> {
-    console.log('🔧 Initializing ScoreDatabase...');
 
     // パラメータをロード
     await this.loadParams();
@@ -63,7 +62,6 @@ export class ScoreDatabase {
     // トークン軸をロード
     await this.loadTokenAxes();
 
-    console.log('✅ ScoreDatabase initialized');
   }
 
   private async loadParams(): Promise<void> {
@@ -103,7 +101,7 @@ export class ScoreDatabase {
       for (const row of data) {
         this.tokenAxes.set(row.token.toLowerCase(), row.is_economic);
       }
-      console.log(`✅ Loaded ${this.tokenAxes.size} token axes`);
+
     }
   }
 
@@ -169,11 +167,9 @@ export class ScoreDatabase {
       .maybeSingle();
 
     if (!recipientProfile) {
-      console.log(`⏭️ Skipping KODOMI: Recipient ${recipientLower} is not a registered Gifterra user`);
+
       return; // 受取人が未登録の場合はKODOMI加算をスキップ
     }
-
-    console.log(`✅ Recipient ${recipientLower} is a Gifterra user. Recording KODOMI...`);
 
     // ユーザースコアを取得または作成
     let userScore = await this.getUserScore(userLower);
@@ -365,13 +361,6 @@ export class ScoreDatabase {
 
       const analysis = await response.json();
       const totalScore = analysis.totalScore || 0;
-
-      console.log(`🤖 AI質的スコア (${userAddress}):`, {
-        contextScore: analysis.contextScore,
-        sentimentScore: analysis.sentimentScore,
-        totalScore: totalScore,
-        sentimentLabel: analysis.sentimentLabel
-      });
 
       // スコアをDBに保存
       await this.saveAIQualityScore(userAddress, totalScore, analysis);
@@ -688,7 +677,6 @@ export class ScoreDatabase {
   }
 
   private async recalculateAllCompositeScores(): Promise<void> {
-    console.log('🔄 Recalculating all composite scores...');
 
     const { data, error } = await this.supabase
       .from('user_scores')
@@ -709,7 +697,6 @@ export class ScoreDatabase {
       await this.saveUserScore(userScore);
     }
 
-    console.log(`✅ Recalculated ${data.length} users`);
   }
 
   // ========================================

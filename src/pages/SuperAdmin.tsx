@@ -41,11 +41,7 @@ export function SuperAdminPage() {
 
   // デバッグ情報
   useEffect(() => {
-    console.log('🔐 SuperAdmin Auth Debug:', {
-      connectedAddress,
-      isAdmin,
-      superAdminAddresses: SUPER_ADMIN_ADDRESSES,
-    });
+
   }, [connectedAddress, isAdmin]);
 
   // アクセス制御
@@ -806,8 +802,6 @@ function DeleteUserDialog({ user, onClose, onDeleted, adminAddress }: DeleteUser
         throw new Error('ユーザーIDが取得できません');
       }
 
-      console.log('🔍 [Frontend] Sending delete request:', requestBody);
-
       const response = await fetch('/api/delete', {
         method: 'POST',
         headers: {
@@ -816,10 +810,7 @@ function DeleteUserDialog({ user, onClose, onDeleted, adminAddress }: DeleteUser
         body: JSON.stringify(requestBody),
       });
 
-      console.log('📡 [Frontend] Response status:', response.status);
-
       const data = await response.json();
-      console.log('📦 [Frontend] Response data:', data);
 
       if (!response.ok) {
         console.error('❌ [Frontend] Delete failed:', {
@@ -831,7 +822,6 @@ function DeleteUserDialog({ user, onClose, onDeleted, adminAddress }: DeleteUser
         throw new Error(`${errorMessage}${details ? ` (受信データ: ${details})` : ''}`);
       }
 
-      console.log('✅ ユーザー削除成功:', data);
       alert(`✅ ${user.display_name || user.wallet_address} を完全に削除しました`);
       onDeleted();
       onClose();
@@ -1106,13 +1096,6 @@ function UsersTab() {
   const fetchUsers = async () => {
     setIsLoading(true);
     try {
-      console.log('🔍 Fetching users from Supabase...');
-      console.log('📋 Query params:', {
-        tenant_id: 'default',
-        currentPage,
-        debouncedUsernameQuery,
-        debouncedAddressQuery
-      });
 
       // ステップ1: プロフィール登録済みユーザーを取得（基本データ）
       let profileQuery = supabase
@@ -1152,8 +1135,6 @@ function UsersTab() {
         console.error('❌ Profile query error:', profileError);
         throw profileError;
       }
-
-      console.log(`📊 Found ${profiles?.length || 0} users with profiles`);
 
       // ステップ2: プロフィールのウォレットアドレスをマップ化
       const profileMap = new Map();
@@ -1202,7 +1183,7 @@ function UsersTab() {
             }
           });
         }
-        console.log(`📊 Added ${addedWallets.size} users without profiles from login history`);
+
       } catch (loginError) {
         console.warn('⚠️ Could not fetch login history:', loginError);
         // ログイン履歴が取得できなくてもプロフィールユーザーは表示
@@ -1230,22 +1211,9 @@ function UsersTab() {
       const to = from + ITEMS_PER_PAGE;
       const paginatedUsers = filteredUsers.slice(from, to);
 
-      console.log('📊 Final user list:', {
-        totalUsers: allUsers.length,
-        withProfiles: profiles?.length || 0,
-        withoutProfiles: allUsers.length - (profiles?.length || 0),
-        afterFilter: filteredUsers.length,
-        currentPage: paginatedUsers.length
-      });
-
       setUsers(paginatedUsers);
       setTotalCount(totalCount);
-      console.log('✅ Users fetched successfully:', {
-        users: paginatedUsers.length,
-        total: totalCount,
-        profileRegistered: paginatedUsers.filter((u: any) => u.is_profile_registered !== false).length,
-        profileNotRegistered: paginatedUsers.filter((u: any) => u.is_profile_registered === false).length
-      });
+
     } catch (error) {
       console.error('❌ fetchUsers error:', error);
       setUsers([]);
@@ -3361,15 +3329,6 @@ function RankPlansTab() {
         uriTemplates.push(`https://api.gifterra.com/nft/rank/${i + 1}`);
       }
 
-      console.log('🔄 プラン段階数更新開始:', {
-        planType,
-        planName: rankPlan,
-        stages: newStages,
-        thresholds,
-        rankNames,
-        uriTemplates,
-      });
-
       // RankPlanRegistry.updatePlan() を呼び出し
       const tx = await rankPlanRegistryContract.call("updatePlan", [
         planType,
@@ -3381,8 +3340,6 @@ function RankPlansTab() {
       ]);
 
       await tx.wait?.();
-
-      console.log('✅ プラン段階数更新成功:', tx);
 
       alert(`✅ ${rankPlan}プランの段階数を${newStages}に変更しました\n\n変更は全テナントに反映されます。`);
       setEditingStagesFor(null);
@@ -3959,8 +3916,6 @@ function AnnouncementsTab() {
       setProgress(0);
       setResult(null);
 
-      console.log('📢 システムアナウンス送信開始:', { title, message });
-
       // 1. 全ユーザーアドレス取得
       const { data: users, error: fetchError } = await supabase
         .from('user_profiles')
@@ -3975,8 +3930,6 @@ function AnnouncementsTab() {
       if (!users || users.length === 0) {
         throw new Error('送信対象のユーザーが見つかりませんでした');
       }
-
-      console.log(`✅ ${users.length}人のユーザーに送信します`);
 
       // 2. 通知レコード作成
       const notifications = users.map(user => ({
@@ -4008,10 +3961,7 @@ function AnnouncementsTab() {
         const currentProgress = Math.min(100, Math.floor((sentCount / notifications.length) * 100));
         setProgress(currentProgress);
 
-        console.log(`📤 送信進捗: ${sentCount}/${notifications.length} (${currentProgress}%)`);
       }
-
-      console.log('✅ システムアナウンス送信完了:', { count: notifications.length });
 
       setResult({
         success: true,

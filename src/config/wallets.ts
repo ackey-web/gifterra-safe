@@ -192,11 +192,6 @@ export function debugWalletConfig() {
   // デバッグ出力は削除されました
   // 必要に応じて以下のコードを有効化してください
   /*
-  console.log("🔧 Wallet Configuration");
-  console.log("Smart Wallet Factory:", import.meta.env.VITE_SMART_WALLET_FACTORY || "Not Set");
-  console.log("Paymaster URL:", import.meta.env.VITE_PAYMASTER_URL || "Not Set");
-  console.log("WalletConnect Project ID:", import.meta.env.VITE_WALLETCONNECT_PROJECT_ID ? "Set" : "Not Set");
-  console.log("Network:", getNetworkEnv());
-  console.log("Active Chain:", getActiveChain().name);
+
   */
 }

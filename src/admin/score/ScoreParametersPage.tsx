@@ -106,7 +106,6 @@ export const ScoreParametersPage: React.FC = () => {
 
   const fetchParams = async () => {
     try {
-      console.log('📊 Fetching current params from Supabase...');
 
       // 最新のパラメータを取得（last_updated順で最新のもの）
       const { data, error } = await supabase
@@ -122,7 +121,7 @@ export const ScoreParametersPage: React.FC = () => {
       }
 
       if (data) {
-        console.log('✅ Params fetched:', data);
+
         const fetchedParams: ScoreParams = {
           weightEconomic: data.weight_economic,
           weightResonance: data.weight_resonance,
@@ -143,7 +142,6 @@ export const ScoreParametersPage: React.FC = () => {
 
   const fetchDefaultThresholds = async () => {
     try {
-      console.log('🎯 Fetching default rank thresholds from Supabase...');
 
       const { data, error } = await supabase
         .from('default_rank_thresholds')
@@ -156,7 +154,7 @@ export const ScoreParametersPage: React.FC = () => {
       }
 
       if (data) {
-        console.log('✅ Default thresholds fetched:', data);
+
         setDefaultThresholds(data);
         setEditingThresholds(data);
       }
@@ -167,7 +165,6 @@ export const ScoreParametersPage: React.FC = () => {
 
   const fetchHistory = async () => {
     try {
-      console.log('📜 Fetching params history from Supabase...');
 
       // 過去10件のパラメータ変更履歴を取得
       const { data, error } = await supabase
@@ -195,7 +192,7 @@ export const ScoreParametersPage: React.FC = () => {
           updatedBy: 'Admin', // TODO: 実際のユーザー情報を保存する場合はDBスキーマを変更
         }));
         setHistory(historyData);
-        console.log('✅ History fetched:', historyData.length, 'records');
+
       }
     } catch (error) {
       console.error('❌ Failed to fetch history:', error);
@@ -243,7 +240,6 @@ export const ScoreParametersPage: React.FC = () => {
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      console.log('💾 Saving params via API...', editParams);
 
       // API経由で保存（Service Role使用）
       const paramsData: ScoreParamsData = {
@@ -257,8 +253,6 @@ export const ScoreParametersPage: React.FC = () => {
       };
 
       const savedParams = await saveScoreParams(paramsData);
-
-      console.log('✅ Params saved successfully:', savedParams);
 
       // 状態を更新
       const updatedParams: ScoreParams = {
@@ -303,7 +297,6 @@ export const ScoreParametersPage: React.FC = () => {
   const handleSaveThresholds = async () => {
     setIsSavingThresholds(true);
     try {
-      console.log('💾 Saving default thresholds...', editingThresholds);
 
       // 各閾値を個別に更新
       for (const threshold of editingThresholds) {
@@ -321,8 +314,6 @@ export const ScoreParametersPage: React.FC = () => {
           throw error;
         }
       }
-
-      console.log('✅ Default thresholds saved successfully');
 
       // 状態を更新
       setDefaultThresholds(editingThresholds);

@@ -369,10 +369,9 @@ export function useUserKodomi(targetAddress: string | undefined, tenantAddress?:
   }, []);
 
   useEffect(() => {
-    console.log('🔍 useUserKodomi - myAddress:', myAddress, 'targetAddress:', targetAddress);
 
     if (!myAddress || !targetAddress) {
-      console.log('⚠️ useUserKodomi - アドレスが不足しています');
+
       setData(prev => ({ ...prev, loading: false }));
       return;
     }
@@ -380,7 +379,7 @@ export function useUserKodomi(targetAddress: string | undefined, tenantAddress?:
     fetchUserKodomiData();
 
     // Supabaseリアルタイムサブスクリプション設定
-    console.log('🔔 useUserKodomi - リアルタイムサブスクリプション開始');
+
     const channel = supabase
       .channel(`user-kodomi-${myAddress}-${targetAddress}`)
       .on(
@@ -392,7 +391,7 @@ export function useUserKodomi(targetAddress: string | undefined, tenantAddress?:
           filter: `from_address=eq.${myAddress.toLowerCase()},to_address=eq.${targetAddress.toLowerCase()}`,
         },
         (payload) => {
-          console.log('🔔 useUserKodomi - リアルタイム更新検知:', payload);
+
           fetchUserKodomiData(); // データ再取得
         }
       )
@@ -400,7 +399,7 @@ export function useUserKodomi(targetAddress: string | undefined, tenantAddress?:
 
     // クリーンアップ
     return () => {
-      console.log('🔕 useUserKodomi - リアルタイムサブスクリプション解除');
+
       supabase.removeChannel(channel);
     };
   }, [myAddress, targetAddress, tenantThresholds, defaultThresholds]);
@@ -409,7 +408,7 @@ export function useUserKodomi(targetAddress: string | undefined, tenantAddress?:
     if (!myAddress || !targetAddress) return;
 
     try {
-      console.log('📊 fetchUserKodomiData - 開始');
+
       setData(prev => ({ ...prev, loading: true, error: null }));
 
       // スコアパラメーターを取得
@@ -426,21 +425,12 @@ export function useUserKodomi(targetAddress: string | undefined, tenantAddress?:
       const aiQualityWeight = scoreParams?.ai_quality_weight ?? 1.0;
       const messageQualityWeight = scoreParams?.message_quality_weight ?? 1.0;
 
-      console.log('⚙️ 使用するスコアパラメーター:', {
-        nhtWeight,
-        streakWeight,
-        aiQualityWeight,
-        messageQualityWeight
-      });
-
       // Supabaseから自分→対象ユーザーへの送信履歴を取得
       const { data: transactions, error: txError } = await supabase
         .from('transfer_messages')
         .select('*')
         .eq('from_address', myAddress.toLowerCase())
         .eq('to_address', targetAddress.toLowerCase());
-
-      console.log('📊 取得したトランザクション数:', transactions?.length || 0);
 
       if (txError) throw txError;
 
@@ -523,10 +513,6 @@ export function useUserKodomi(targetAddress: string | undefined, tenantAddress?:
         error: null,
       };
 
-      console.log('✅ useUserKodomi - データセット完了:', result);
-      console.log('  💸 JPYC:', jpycTotal, 'JPYC');
-      console.log('  ⚡ Resonance:', engagementScore, 'pts');
-      console.log('  🏆 総合KODOMI:', overallScore.totalScore, 'pts -', overallScore.rank);
       setData(result);
     } catch (err) {
       console.error('❌ ユーザーkodomi取得エラー:', err);

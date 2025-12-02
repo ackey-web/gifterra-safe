@@ -338,7 +338,6 @@ export async function backfillEvents(
   };
 
   for (const range of ranges) {
-    console.log(`📦 Backfilling blocks ${range.from} - ${range.to}...`);
 
     const events = await listener.fetchHistoricalEvents(range.from, range.to);
 

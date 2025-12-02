@@ -143,53 +143,37 @@ export function TenantProvider({ children }: { children: ReactNode }) {
   // Get address from Privy wallet
   useEffect(() => {
     async function getPrivyAddress() {
-      console.log('🔑 [getPrivyAddress] Starting...', {
-        privyAuthenticated,
-        walletsCount: wallets?.length || 0,
-        wallets: wallets?.map(w => ({
-          address: w.address,
-          walletClientType: w.walletClientType,
-          connectorType: w.connectorType,
-        })),
-      });
 
       if (!privyAuthenticated) {
-        console.log('❌ [getPrivyAddress] Not authenticated with Privy');
+
         setPrivyAddress('');
         return;
       }
 
       if (!wallets || wallets.length === 0) {
-        console.log('❌ [getPrivyAddress] No wallets found');
+
         setPrivyAddress('');
         return;
       }
 
       try {
         const wallet = wallets[0];
-        console.log('🔍 [getPrivyAddress] Using wallet:', {
-          address: wallet.address,
-          walletClientType: wallet.walletClientType,
-          connectorType: wallet.connectorType,
-        });
 
         // Try to get address directly from wallet object first
         if (wallet.address) {
-          console.log('✅ [getPrivyAddress] Got address directly from wallet:', wallet.address);
+
           setPrivyAddress(wallet.address);
           return;
         }
 
         // Fallback: try to get from provider
-        console.log('🔄 [getPrivyAddress] No direct address, trying provider...');
+
         const provider = await wallet.getEthereumProvider();
-        console.log('📡 [getPrivyAddress] Got provider:', typeof provider);
 
         const ethersProvider = new ethers.providers.Web3Provider(provider, 'any');
         const signer = ethersProvider.getSigner();
         const addr = await signer.getAddress();
 
-        console.log('✅ [getPrivyAddress] Got address from signer:', addr);
         setPrivyAddress(addr);
       } catch (error) {
         console.error('❌ [getPrivyAddress] Failed to get Privy address:', error);
@@ -234,7 +218,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
     // 承認済みテナントがある場合は常にそちらを優先
     if (isApprovedTenant && application) {
       // 承認済みテナント → 申請データからテナント作成
-      console.log('✅ Setting tenant from approved application:', application);
+
       setTenant({
         id: application.tenant_id || 'unknown',
         name: application.tenant_name,
@@ -249,11 +233,10 @@ export function TenantProvider({ children }: { children: ReactNode }) {
       });
     } else if (isMETATRONOwner) {
       // METATRON Owner かつ承認済みテナントなし → デフォルトテナント
-      console.log('✅ Setting DEFAULT_TENANT for METATRON Owner (no approved tenant)');
       setTenant(DEFAULT_TENANT);
     } else {
       // アクセス権なし → null
-      console.log('❌ No access - setting tenant to null');
+
       setTenant(null);
     }
   }, [isMETATRONOwner, isApprovedTenant, application, loadingApplication]);
@@ -291,20 +274,6 @@ export function TenantProvider({ children }: { children: ReactNode }) {
   // デバッグログ - アドレス変更を詳細に追跡
   useEffect(() => {
     const timestamp = new Date().toISOString();
-    console.log(`🔐 [${timestamp}] Admin Auth Debug:`, {
-      thirdwebAddress: address,
-      privyAddress,
-      finalAddress,
-      addressType: typeof finalAddress,
-      addressDefined: finalAddress !== undefined,
-      addressNull: finalAddress === null,
-      ADMIN_WHITELIST_ENABLED,
-      DEV_MODE,
-      isDevSuperAdmin,
-      isMETATRONOwner,
-      isApprovedTenant: application?.status === 'approved',
-      addressLower: finalAddress?.toLowerCase(),
-    });
 
     // アドレスがundefinedになった場合は警告
     if (finalAddress === undefined) {
@@ -333,7 +302,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
 
     // スーパーアドミンは全権限を持つ
     if (isDevSuperAdmin) {
-      console.log('✅ Super Admin detected - granting all permissions');
+
       setOwnerStatus({
         gifterra: true,
         rewardEngine: true,
@@ -351,7 +320,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
 
     // 承認済みテナントオーナーも全権限を持つ（ファクトリー経由で作成されたテナント）
     if (isApprovedTenant && application?.gifterra_address) {
-      console.log('✅ Approved Tenant Owner detected - granting all permissions for tenant:', application.tenant_id);
+
       setOwnerStatus({
         gifterra: true,
         rewardEngine: true,
@@ -363,8 +332,6 @@ export function TenantProvider({ children }: { children: ReactNode }) {
       setIsCheckingOwner(false);
       return;
     }
-
-    console.log('⚠️ Not a super admin or configured tenant admin - checking contract ownership...');
 
     const newOwnerStatus = {
       gifterra: false,
@@ -382,16 +349,12 @@ export function TenantProvider({ children }: { children: ReactNode }) {
           const owner = await gifterraContract.call("owner");
           const isOwner = owner.toLowerCase() === finalAddress.toLowerCase();
           newOwnerStatus.gifterra = isOwner;
-          console.log('🔍 Gifterra Owner Check:', {
-            contractOwner: owner,
-            currentAddress: finalAddress,
-            isOwner,
-          });
+
         } catch (error) {
           console.warn("Gifterra owner check failed:", error);
         }
       } else {
-        console.log('⚠️ Gifterra contract not loaded');
+
       }
 
       // RewardEngine のオーナー確認
@@ -464,12 +427,6 @@ export function TenantProvider({ children }: { children: ReactNode }) {
   // デバッグ: オーナー状態をログ出力（タイムスタンプ付き）
   useEffect(() => {
     const timestamp = new Date().toISOString();
-    console.log(`👤 [${timestamp}] Owner Status:`, {
-      isOwner,
-      isCheckingOwner,
-      isDevSuperAdmin,
-      ownerStatus,
-    });
 
     // isOwnerがfalseになった場合は警告
     if (!isOwner && !isCheckingOwner) {
@@ -556,24 +513,10 @@ export function RequireOwner({ children, contractType, fallback }: RequireOwnerP
   const { application, loading: loadingApplication } = useMyTenantApplication();
 
   // デバッグ：RequireOwnerの状態をログ出力
-  console.log('🔒 RequireOwner rendering:', {
-    thirdwebAddress: address,
-    privyAuthenticated,
-    finalAddress,
-    addressUndefined: finalAddress === undefined,
-    addressNull: finalAddress === null,
-    hasAccess,
-    isOwner,
-    isCheckingOwner,
-    isDevSuperAdmin,
-    applicationStatus: application?.status,
-    loadingApplication,
-    contractType,
-  });
 
   // ウォレット未接続の場合は、接続を促す専用画面を表示
   if (!finalAddress) {
-    console.log('🔌 RequireOwner: Wallet not connected - showing connection screen');
+
     return (
       <div style={{
         display: 'flex',
@@ -674,7 +617,7 @@ export function RequireOwner({ children, contractType, fallback }: RequireOwnerP
 
   // ローディング中（申請情報またはオーナー権限の確認中）
   if (isCheckingOwner || loadingApplication) {
-    console.log('⏳ RequireOwner: Showing checking owner screen');
+
     return (
       <div style={{
         display: 'flex',
@@ -712,7 +655,7 @@ export function RequireOwner({ children, contractType, fallback }: RequireOwnerP
   }
 
   if (ownerError) {
-    console.log('❌ RequireOwner: Showing error screen:', ownerError);
+
     return (
       <div style={{
         padding: 40,
@@ -752,27 +695,26 @@ export function RequireOwner({ children, contractType, fallback }: RequireOwnerP
 
   // ✅ アクセス権チェック（デフォルトテナントまたは承認済みテナント）
   if (!hasAccess) {
-    console.log('🚫 RequireOwner: No access - checking application status');
 
     // 申請状態に応じて画面を出し分け
     if (application?.status === 'pending') {
-      console.log('⏳ Application pending - showing pending screen');
+
       return <PendingApprovalScreen application={application} />;
     }
 
     if (application?.status === 'rejected') {
-      console.log('❌ Application rejected - showing rejection screen');
+
       return <RejectedApplicationScreen application={application} />;
     }
 
     // 未申請またはその他の状態
-    console.log('📝 No application - showing application prompt');
+
     return <ApplicationPromptScreen />;
   }
 
   // ✅ アクセス権はあるが、オーナー権限チェックで失敗した場合
   if (!isOwner) {
-    console.log('🚫 RequireOwner: Has access but not owner - showing permission error');
+
     return fallback || (
       <div style={{
         display: 'flex',
@@ -834,6 +776,5 @@ export function RequireOwner({ children, contractType, fallback }: RequireOwnerP
     );
   }
 
-  console.log('✅ RequireOwner: User is owner - rendering children');
   return <>{children}</>;
 }

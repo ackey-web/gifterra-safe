@@ -59,7 +59,7 @@ export const TRANSFER_WITH_AUTHORIZATION_TYPEHASH = {
  */
 export function generateNonce(): string {
   const nonce = ethers.utils.hexlify(ethers.utils.randomBytes(32));
-  console.log('🎲 Generated nonce:', nonce);
+
   return nonce;
 }
 
@@ -77,14 +77,6 @@ export async function signTransferAuthorization(
   signer: ethers.Signer,
   params: TransferWithAuthorizationParams
 ): Promise<AuthorizationSignature> {
-  console.log('📝 EIP-712署名生成開始:', {
-    from: params.from,
-    to: params.to,
-    value: params.value,
-    validAfter: params.validAfter,
-    validBefore: params.validBefore,
-    nonce: params.nonce.substring(0, 10) + '...',
-  });
 
   try {
     // EIP-712 Typed Data
@@ -102,7 +94,6 @@ export async function signTransferAuthorization(
       },
     };
 
-    console.log('📄 Typed Data:', JSON.stringify(typedData, null, 2));
 
     // 署名生成
     const signature = await signer._signTypedData(
@@ -113,12 +104,6 @@ export async function signTransferAuthorization(
 
     // v, r, s に分解
     const { v, r, s } = ethers.utils.splitSignature(signature);
-
-    console.log('✅ EIP-712署名生成完了:', {
-      v,
-      r: r.substring(0, 10) + '...',
-      s: s.substring(0, 10) + '...',
-    });
 
     return { v, r, s };
   } catch (error: any) {
@@ -166,9 +151,6 @@ export function recoverSigner(
     s: signature.s,
   });
 
-  console.log('🔍 Recovered signer:', recovered);
-  console.log('🔍 Expected signer:', params.from);
-  console.log('✅ Signature valid:', recovered.toLowerCase() === params.from.toLowerCase());
 
   return recovered;
 }

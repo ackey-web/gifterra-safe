@@ -146,7 +146,6 @@ export function ProfileTipUI({
         args: [profileOwnerAddress, amountWei, selectedTokenId],
       });
 
-      console.log('✅ Tip sent:', tx);
       alert(`✅ ${amount} ${selectedTokenConfig.symbol} のチップを送信しました！`);
       setAmount('');
     } catch (error) {

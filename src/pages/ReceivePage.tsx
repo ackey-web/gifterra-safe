@@ -39,11 +39,8 @@ export function ReceivePage() {
   useEffect(() => {
     const fetchProfile = async () => {
       if (!address) {
-        console.log('❌ ReceivePage: No address provided');
         return;
       }
-
-      console.log('🔍 ReceivePage: Fetching profile for address:', address);
 
       try {
         const { data, error } = await supabase
@@ -57,15 +54,9 @@ export function ReceivePage() {
           throw error;
         }
 
-        console.log('✅ ReceivePage: Profile data fetched:', data);
-
         if (data) {
           setDisplayName(data.display_name || '');
           setProfileImage(data.avatar_url || '');
-          console.log('✅ ReceivePage: Display name:', data.display_name);
-          console.log('✅ ReceivePage: Profile image:', data.avatar_url);
-        } else {
-          console.log('⚠️ ReceivePage: No profile data found for this address');
         }
       } catch (error) {
         console.error('❌ ReceivePage: Failed to fetch profile:', error);

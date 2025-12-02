@@ -55,7 +55,6 @@ export function useScanLink(): ScanLinkAdapter {
         });
 
         if (FEATURE_FLAGS.DEBUG_MODE) {
-          console.log('[ScanLink] QR generated for:', data.substring(0, 50) + '...');
         }
 
         return qrCode;
@@ -107,10 +106,7 @@ export function useScanLink(): ScanLinkAdapter {
         const qrCode = await QRCode.toDataURL(url, { width: 300 });
 
         if (FEATURE_FLAGS.DEBUG_MODE) {
-          console.log('[ScanLink] R2P link created:', {
-            id: data.id,
-            expiresAt: new Date(data.expiresAt * 1000).toISOString(),
-          });
+
         }
 
         return {
@@ -180,7 +176,7 @@ export function useScanLink(): ScanLinkAdapter {
         }
 
         if (FEATURE_FLAGS.DEBUG_MODE) {
-          console.log('[ScanLink] R2P link verified:', id);
+
         }
 
         return {

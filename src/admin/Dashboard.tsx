@@ -358,13 +358,7 @@ export default function AdminDashboard() {
 
   // デバッグ: ランクプラン情報をログ出力
   useEffect(() => {
-    console.log('🎯 [Dashboard] Tenant Rank Plan Debug:', {
-      tenantId: tenant?.id,
-      tenantName: tenant?.name,
-      planObject: tenantRankPlan,
-      rankPlan: tenantRankPlan?.rank_plan,
-      isActive: tenantRankPlan?.is_active,
-    });
+
   }, [tenant?.id, tenantRankPlan]);
 
   // マルチトークン対応：環境に応じたトークン設定
@@ -428,7 +422,6 @@ export default function AdminDashboard() {
   
 
   
-
 
   const [period, setPeriod] = useState<Period>("day");
   const [tokenFilter, setTokenFilter] = useState<TokenFilter>("all"); // トークンフィルタ
@@ -549,7 +542,6 @@ export default function AdminDashboard() {
     const interval = setInterval(async () => {
       if (!lastFetchedBlock) return; // 初回ロードが完了していない場合はスキップ
 
-      console.log("🔄 バックグラウンド更新: 差分データを取得中...");
       setIsRefreshing(true);
 
       try {
@@ -559,7 +551,6 @@ export default function AdminDashboard() {
         if (latest > lastFetchedBlock) {
           const fromBlockNum = Number(lastFetchedBlock) + 1;
 
-          console.log(`📊 差分取得: ブロック ${fromBlockNum} → ${latest} (${latest - fromBlockNum + 1}個)`);
 
           const logs: any[] = await getLogsInChunks(
             gifterraAddress,
@@ -588,14 +579,13 @@ export default function AdminDashboard() {
               return merged;
             });
 
-            console.log(`✅ 新しいTIPイベント ${newItems.length}件を追加`);
           } else {
-            console.log("✓ 新しいイベントなし");
+
           }
 
           setLastFetchedBlock(BigInt(latest));
         } else {
-          console.log("✓ 最新ブロックまで取得済み");
+
         }
       } catch (e: any) {
         console.error("❌ バックグラウンド更新失敗:", e);
@@ -653,9 +643,7 @@ export default function AdminDashboard() {
 
           if (isInitialLoad) {
             setIsInitialLoad(false);
-            console.log(`✅ 初回ロード完了: ${items.length}件取得 (最新ブロック: ${latestBlock})`);
           } else {
-            console.log(`✅ 期間変更完了: ${items.length}件取得 (最新ブロック: ${latestBlock})`);
           }
         }
       } catch (e: any) {
@@ -1414,7 +1402,6 @@ export default function AdminDashboard() {
 
       setAnalyzedUserCount(endIndex);
 
-      console.log(`✅ AI分析完了: ${startIndex + 1}-${endIndex}人目 / 全${userAmounts.length}人`);
     } catch (error) {
       console.error("AI analysis failed:", error);
       alert("AI分析に失敗しました。APIキーを確認してください。");
@@ -1451,8 +1438,6 @@ export default function AdminDashboard() {
   };
   const periodLabel =
     period === "day" ? "day" : period === "week" ? "week" : period === "month" ? "month" : "all";
-
-
 
   // 広告データをコンポーネント内で管理するために状態を昇格
   const [editingAds, setEditingAds] = useState<AdData[]>([]);
@@ -3772,7 +3757,6 @@ export default function AdminDashboard() {
             </table>
           </div>
 
-
         </div>
 
         {/* Recent */}
@@ -4459,7 +4443,6 @@ export default function AdminDashboard() {
           );
         })()}
       </section>
-
 
         </>
       )}

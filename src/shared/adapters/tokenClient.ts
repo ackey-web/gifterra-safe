@@ -46,7 +46,6 @@ export function useTokenClient(): TokenAdapter {
         const balance = await contract.balanceOf(userAddress);
 
         if (FEATURE_FLAGS.DEBUG_MODE) {
-          console.log('[TokenClient] Balance:', balance.toString());
         }
 
         return balance.toString();
@@ -74,7 +73,7 @@ export function useTokenClient(): TokenAdapter {
         });
 
         if (FEATURE_FLAGS.DEBUG_MODE) {
-          console.log('[TokenClient] Transfer TX:', tx);
+
         }
 
         return tx;
@@ -102,7 +101,7 @@ export function useTokenClient(): TokenAdapter {
         });
 
         if (FEATURE_FLAGS.DEBUG_MODE) {
-          console.log('[TokenClient] Approve TX:', tx);
+
         }
 
         return tx;

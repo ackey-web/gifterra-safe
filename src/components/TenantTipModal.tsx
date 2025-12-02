@@ -61,8 +61,6 @@ export function TenantTipModal({
         args: [recipientAddress, amountWei, selectedTokenId],
       });
 
-      console.log('✅ Tip sent with kodomi tracking:', tx);
-
       // Kodomi解析スコア計算（メッセージの質的評価）
       // Note: 実際のAI分析は非同期で行われるため、ここではダミー値を使用
       const mockSentimentScore = message ? 75 : 50; // メッセージありなら75、なしなら50

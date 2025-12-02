@@ -67,12 +67,6 @@ export async function sendTokenWithSmartWallet(
     );
   }
 
-  console.log("📤 Sending gasless transaction with Smart Wallet:", {
-    token: tokenAddress,
-    to: recipientAddress,
-    amount: amount,
-  });
-
   // ERC20 transfer のエンコード (viem)
   const data = encodeFunctionData({
     abi: parseAbi(["function transfer(address to, uint256 amount) returns (bool)"]),
@@ -89,11 +83,8 @@ export async function sendTokenWithSmartWallet(
       value: BigInt(0),
     });
 
-    console.log("✅ UserOp hash:", userOpHash);
-
     // トランザクション確認を待つ
     const receipt = await smartWallet.waitForUserOperationReceipt({ hash: userOpHash });
-    console.log("✅ Transaction receipt:", receipt);
 
     return receipt.receipt.transactionHash;
   } catch (error: any) {
@@ -122,8 +113,6 @@ export async function bulkSendTokenWithSmartWallet(
     );
   }
 
-  console.log(`📤 Sending ${recipients.length} gasless transactions in batch with Smart Wallet`);
-
   try {
     // バッチ送金: 各受取人に対して個別に送金（Gelato Smart Walletでバッチはサポートされていない可能性）
     const txHashes: string[] = [];
@@ -141,13 +130,10 @@ export async function bulkSendTokenWithSmartWallet(
         value: BigInt(0),
       });
 
-      console.log(`✅ UserOp hash for ${recipient.address}:`, userOpHash);
-
       const receipt = await smartWallet.waitForUserOperationReceipt({ hash: userOpHash });
       txHashes.push(receipt.receipt.transactionHash);
     }
 
-    console.log("✅ All batch transactions completed:", txHashes);
     return txHashes.join(','); // 複数のハッシュをカンマ区切りで返す
   } catch (error: any) {
     console.error("❌ Gelato Smart Wallet batch error:", error);

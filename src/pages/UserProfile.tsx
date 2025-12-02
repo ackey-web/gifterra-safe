@@ -51,11 +51,6 @@ export function UserProfilePage({ address: propsAddress, mockProfile, mockActivi
   // 対象ユーザーへの自分のkodomi値を取得
   const userKodomi = useUserKodomi(targetAddress);
 
-  console.log('🎯 UserProfile - myAddress:', myAddress);
-  console.log('🎯 UserProfile - targetAddress:', targetAddress);
-  console.log('🎯 UserProfile - isViewingOtherProfile:', isViewingOtherProfile);
-  console.log('🎯 UserProfile - userKodomi:', userKodomi);
-
   const profile = mockProfile || realProfile;
   const activities = mockActivities || realActivities || [];
 

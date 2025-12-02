@@ -198,8 +198,6 @@ export function ProfilePage() {
 
     setIsLoading(true);
     try {
-      console.log('📖 プロフィール読み込み開始:', walletAddress.toLowerCase());
-
       const { data, error } = await supabase
         .from('user_profiles')
         .select('*')
@@ -211,7 +209,6 @@ export function ProfilePage() {
         console.error('❌ プロフィール読み込みエラー:', error);
         setProfile(null);
       } else {
-        console.log('✅ プロフィール読み込み成功:', data);
         setProfile(data || null);
       }
     } catch (err) {

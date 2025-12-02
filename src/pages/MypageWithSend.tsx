@@ -120,18 +120,10 @@ export function MypageWithSend() {
         const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
         if (isMetaMask) {
-          console.log('🔍 [送金] MetaMask直接検出:', {
-            isMetaMask,
-            isMobile,
-            selectedAddress: window.ethereum.selectedAddress,
-          });
-
           try {
             // MetaMask 7.59.0対応: selectedAddressがnullの場合は明示的に接続をリクエスト
             if (!window.ethereum.selectedAddress) {
-              console.log('⚠️ [送金] selectedAddress is null - requesting accounts (MetaMask 7.59.0対応)');
               await window.ethereum.request({ method: 'eth_requestAccounts' });
-              console.log('✅ [送金] eth_requestAccounts成功:', window.ethereum.selectedAddress);
             }
 
             const directProvider = new ethers.providers.Web3Provider(window.ethereum as any, 'any');
@@ -140,7 +132,6 @@ export function MypageWithSend() {
 
             setSigner(directSigner);
             setAddress(addr);
-            console.log('✅ [送金] MetaMask直接接続成功 - Privyをバイパス:', addr);
             return;
           } catch (error: any) {
             console.warn('⚠️ [送金] MetaMask直接接続失敗:', error.message);
@@ -158,26 +149,19 @@ export function MypageWithSend() {
 
       try {
         const wallet = wallets[0];
-        console.log('🔍 [送金] Privyウォレット情報:', {
-          walletType: wallet.walletClientType,
-          connectorType: wallet.connectorType,
-        });
 
         // Privy経由のMetaMask検出（2次チェック）
         if (wallet.walletClientType === 'metamask' && typeof window !== 'undefined' && window.ethereum) {
-          console.log('✅ [送金] Privy経由でMetaMask検出 - 直接window.ethereumを使用');
           const directProvider = new ethers.providers.Web3Provider(window.ethereum as any, 'any');
           const directSigner = directProvider.getSigner();
           const addr = await directSigner.getAddress();
 
           setSigner(directSigner);
           setAddress(addr);
-          console.log('✅ [送金] MetaMask直接接続成功:', addr);
           return;
         }
 
         // Privyウォレットなど他のウォレットの場合は通常通り
-        console.log('✅ [送金] Privy経由でウォレット接続');
         const provider = await wallet.getEthereumProvider();
         const ethersProvider = new ethers.providers.Web3Provider(provider, 'any');
         const ethersSigner = ethersProvider.getSigner();
@@ -185,7 +169,6 @@ export function MypageWithSend() {
 
         setSigner(ethersSigner);
         setAddress(addr);
-        console.log('✅ [送金] Privy経由接続成功:', addr);
       } catch (error: any) {
         console.error('❌ [送金] Failed to setup signer:', error);
         setSigner(null);
@@ -277,13 +260,6 @@ export function MypageWithSend() {
       // 金額をWei単位に変換（18 decimals）
       const amountWei = ethers.utils.parseUnits(sendAmount, 18);
 
-      console.log('🚀 [送金セクション] contract.transfer()を呼び出します:', {
-        token: JPYC_TOKEN.ADDRESS,
-        to: sendTo,
-        amount: amountWei.toString(),
-        signerAddress: await signer.getAddress(),
-      });
-
       // 送金トランザクション
       const tx = await jpycContract.transfer(sendTo, amountWei);
 
@@ -339,8 +315,6 @@ export function MypageWithSend() {
 
   // QRスキャン結果を受け取る（請求書 & ウォレット両対応）
   const handleQRScan = (data: string, debugLogs?: string[]) => {
-    console.log('🔍 QRスキャン:', data);
-
     // デバッグログを保存
     if (debugLogs) {
       setQrDebugLogs(debugLogs);
@@ -349,7 +323,6 @@ export function MypageWithSend() {
     // 1. ethereum: URI形式のウォレットQRかチェック
     // 形式: ethereum:0xAddress@137 (金額なし = ウォレットQR)
     if (data.startsWith('ethereum:') && !data.includes('?')) {
-      console.log('💳 ethereum: URI形式のウォレットQR検出');
       // ethereum:0xAddress@137 から address を抽出
       const match = data.match(/^ethereum:([0-9a-fA-Fx]+)@(\d+)$/);
       if (match) {
@@ -361,7 +334,6 @@ export function MypageWithSend() {
             address,
             chainId: 137,
           };
-          console.log('✅ ウォレットQRパース成功:', walletData);
           setWalletQRData(walletData);
           // setShowQRScanner(false); は onClose() で処理されるため削除
           setShowWalletQRPayment(true);
@@ -374,7 +346,6 @@ export function MypageWithSend() {
     try {
       const walletResult = parseWalletQR(data);
       if (walletResult.success && walletResult.data) {
-        console.log('💳 JSON形式のウォレットQR検出:', walletResult.data);
         setWalletQRData(walletResult.data as WalletQRData);
         // setShowQRScanner(false); は onClose() で処理されるため削除
         setShowWalletQRPayment(true);
@@ -388,7 +359,6 @@ export function MypageWithSend() {
     try {
       const authResult = parseAuthorizationQR(data);
       if (authResult.success && authResult.data) {
-        console.log('⚡ ガスレス決済QR検出:', authResult.data);
         const authData = authResult.data as AuthorizationQRData;
 
         // 有効期限チェック
@@ -417,20 +387,17 @@ export function MypageWithSend() {
 
     // 3. 請求書QRコードかチェック（ethereum:...?amount=... or x402://）
     if (data.startsWith('ethereum:') && data.includes('?')) {
-      console.log('📄 請求書QR検出（ethereum: URI with params）:', data);
       setSendTo(data);
       // setShowQRScanner(false); は onClose() で処理されるため削除
       return;
     }
     if (data.startsWith('x402://')) {
-      console.log('📄 請求書QR検出（x402）:', data);
       setSendTo(data);
       // setShowQRScanner(false); は onClose() で処理されるため削除
       return;
     }
 
     // 4. 通常のアドレス
-    console.log('🔗 通常アドレス検出:', data);
     setSendTo(data);
     // setShowQRScanner(false); は onClose() で処理されるため削除
   };
@@ -508,8 +475,6 @@ export function MypageWithSend() {
       return;
     }
 
-    console.log('⚡ ガスレス決済: 署名生成開始', authorizationQRData);
-
     try {
       setSending(true);
       setSendError(null);
@@ -525,12 +490,6 @@ export function MypageWithSend() {
         validAfter: 0, // 即座に有効
         validBefore: authorizationQRData.validBefore,
         nonce: authorizationQRData.nonce,
-      });
-
-      console.log('✅ 署名生成完了:', {
-        v: signature.v,
-        r: signature.r.substring(0, 10) + '...',
-        s: signature.s.substring(0, 10) + '...',
       });
 
       // Supabaseに署名を保存（ストアがリアルタイム受信）
@@ -550,8 +509,6 @@ export function MypageWithSend() {
         console.error('❌ 署名の保存に失敗:', dbError);
         throw new Error('署名の送信に失敗しました');
       }
-
-      console.log('✅ 署名をストアへ送信完了');
 
       // 成功通知
       alert('✅ 署名を送信しました！店舗が決済を完了します。');

@@ -51,15 +51,13 @@ export function PaymentQRGenerator() {
     if (walletAddress) {
       const available = isGaslessPaymentEnabled(walletAddress);
       setIsGaslessAvailable(available);
-      console.log('⚡ Gasless payment available:', available);
+
     }
   }, [walletAddress]);
 
   // Supabase Realtime: 署名受信を監視してtransferWithAuthorizationを実行
   useEffect(() => {
     if (!currentRequestId || !walletAddress) return;
-
-    console.log('👂 Realtime subscription started for:', currentRequestId);
 
     const channel = supabase
       .channel(`payment_request:${currentRequestId}`)
@@ -72,24 +70,22 @@ export function PaymentQRGenerator() {
           filter: `request_id=eq.${currentRequestId}`,
         },
         async (payload) => {
-          console.log('📨 Realtime update received:', payload);
 
           const newRecord = payload.new as any;
 
           // 署名が受信されたらtransferWithAuthorizationを実行
           if (newRecord.status === 'signature_received' && !isExecutingGasless) {
-            console.log('✅ Signature received!');
 
             // バッチ処理モードの場合はキューに追加
             if (batchProcessingEnabled) {
-              console.log('📦 Adding to batch queue...');
+
               setPendingSignatures(prev => [...prev, newRecord]);
               alert(`📦 署名をキューに追加しました (${pendingSignatures.length + 1}件待機中)`);
               return;
             }
 
             // 即時実行モード
-            console.log('⚡ Executing immediately...');
+
             setIsExecutingGasless(true);
 
             try {
@@ -120,9 +116,7 @@ export function PaymentQRGenerator() {
                 newRecord.signature_s       // s
               );
 
-              console.log('⏳ Transaction sent:', tx.hash);
               const receipt = await tx.wait();
-              console.log('✅ Transaction confirmed:', receipt.transactionHash);
 
               // ステータスを完了に更新
               await supabase
@@ -158,7 +152,7 @@ export function PaymentQRGenerator() {
 
     // クリーンアップ
     return () => {
-      console.log('🔌 Realtime subscription closed');
+
       supabase.removeChannel(channel);
     };
   }, [currentRequestId, walletAddress, wallets, isExecutingGasless, batchProcessingEnabled, pendingSignatures]);
@@ -200,7 +194,6 @@ export function PaymentQRGenerator() {
       // 各署名を順次実行
       for (const record of pendingSignatures) {
         try {
-          console.log(`📤 Executing ${successCount + 1}/${batchSize}...`);
 
           const tx = await jpycContract.transferWithAuthorization(
             record.completed_by,
@@ -215,7 +208,6 @@ export function PaymentQRGenerator() {
           );
 
           await tx.wait();
-          console.log(`✅ Transaction confirmed: ${tx.hash}`);
 
           // ステータスを完了に更新
           await supabase
@@ -337,13 +329,6 @@ export function PaymentQRGenerator() {
       const validBefore = Math.floor(Date.now() / 1000) + (expiry * 60);
       const requestId = generateRequestId();
 
-      console.log('⚡ Generating gasless payment QR:', {
-        amount: amt,
-        nonce: nonce.substring(0, 10) + '...',
-        validBefore,
-        requestId,
-      });
-
       // AuthorizationQRData を生成
       const qrData: AuthorizationQRData = {
         type: 'authorization',
@@ -376,7 +361,7 @@ export function PaymentQRGenerator() {
         console.error('Failed to save gasless payment request:', dbError);
         // エラーでもQRは表示（記録は任意）
       } else {
-        console.log('✅ Gasless payment request saved:', requestId);
+
         // リクエストIDを保存してRealtime購読を開始
         setCurrentRequestId(requestId);
       }

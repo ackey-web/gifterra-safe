@@ -365,7 +365,6 @@ export function useDeployPaymentSplitter() {
     setIsDeploying(true);
 
     try {
-      console.log('🚀 Deploying PaymentSplitter...', { payees, shares });
 
       // GifterraPaySplitter のバイトコードとABI
       // 注: 実際のデプロイには compiled contract が必要
@@ -377,7 +376,6 @@ export function useDeployPaymentSplitter() {
         }
       );
 
-      console.log('✅ PaymentSplitter deployed:', contractAddress);
       return contractAddress;
     } catch (error) {
       console.error('❌ Failed to deploy PaymentSplitter:', error);

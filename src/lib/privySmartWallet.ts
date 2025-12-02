@@ -38,8 +38,6 @@ export async function createPrivySmartWallet(privyProvider: any) {
     );
   }
 
-  console.log('🔨 Creating Privy Smart Wallet with Pimlico...');
-
   // Public Client
   const publicClient = createPublicClient({
     chain: ACTIVE_CHAIN,
@@ -54,7 +52,6 @@ export async function createPrivySmartWallet(privyProvider: any) {
 
   // Owner (Privy Embedded Wallet)
   const [ownerAddress] = await privyProvider.request({ method: 'eth_requestAccounts' });
-  console.log('✅ Owner address:', ownerAddress);
 
   // Wallet Client with Account
   const walletClient = createWalletClient({
@@ -64,7 +61,6 @@ export async function createPrivySmartWallet(privyProvider: any) {
 
   // Get the account from wallet client
   const [account] = await walletClient.getAddresses();
-  console.log('✅ Account from wallet client:', account);
 
   // Create SmartAccountSigner
   const smartAccountSigner: SmartAccountSigner = {
@@ -94,16 +90,12 @@ export async function createPrivySmartWallet(privyProvider: any) {
     },
   };
 
-  console.log('✅ SmartAccountSigner created for:', account);
-
   // Simple Smart Account
   const simpleSmartAccount = await toSimpleSmartAccount({
     client: publicClient,
     owner: smartAccountSigner,
     entryPoint: ENTRYPOINT_ADDRESS_V06,
   });
-
-  console.log('✅ Smart Account created:', simpleSmartAccount.address);
 
   // Smart Account Client (with Paymaster)
   const smartAccountClient = createSmartAccountClient({
@@ -131,19 +123,12 @@ export async function sendTokenWithPrivySmartWallet(
   recipientAddress: string,
   amount: string
 ): Promise<string> {
-  console.log('📤 Sending gasless transaction with Privy Smart Wallet + Pimlico...');
 
   // ERC20 transfer のエンコード
   const data = encodeFunctionData({
     abi: parseAbi(["function transfer(address to, uint256 amount) returns (bool)"]),
     functionName: "transfer",
     args: [recipientAddress as Hex, BigInt(amount)],
-  });
-
-  console.log('📝 Transaction data:', {
-    to: tokenAddress,
-    data: data,
-    value: '0x0',
   });
 
   try {
@@ -155,11 +140,8 @@ export async function sendTokenWithPrivySmartWallet(
       value: BigInt(0),
     });
 
-    console.log('✅ UserOp hash:', userOpHash);
-
     // トランザクション確認を待つ
     const receipt = await smartWallet.waitForUserOperationReceipt({ hash: userOpHash });
-    console.log('✅ Transaction receipt:', receipt);
 
     return receipt.receipt.transactionHash;
   } catch (error: any) {

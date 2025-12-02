@@ -108,7 +108,6 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
   const privyEmbeddedWalletAddress = user?.wallet?.address || wallets?.[0]?.address;
   const walletAddress = privyEmbeddedWalletAddress || thirdwebAddress || '';
 
-
   // signerの取得
   // MetaMask接続時は直接window.ethereumを使用（Privyのリダイレクト回避）
   const [privySigner, setPrivySigner] = useState<ethers.Signer | null>(null);
@@ -131,7 +130,7 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
             const directProvider = new ethers.providers.Web3Provider(window.ethereum as any, 'any');
             const directSigner = directProvider.getSigner();
             if (isMounted) setPrivySigner(directSigner);
-            console.log('✅ [請求QR] MetaMaskからsigner作成成功');
+
             return;
           } catch (error: any) {
             console.warn('⚠️ [請求QR] MetaMask直接接続失敗:', error.message);
@@ -142,35 +141,31 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
 
       // Privyウォレット経由でのフォールバック
       if (!wallets || wallets.length === 0) {
-        console.log('[請求QR] Privyウォレット未検出');
+
         if (isMounted) setPrivySigner(null);
         return;
       }
 
       try {
         const wallet = wallets[0];
-        console.log('🔍 [請求QR] Privyウォレット情報:', {
-          walletType: wallet.walletClientType,
-          connectorType: wallet.connectorType,
-        });
 
         // Privy経由のMetaMask検出（2次チェック）
         if (wallet.walletClientType === 'metamask' && typeof window !== 'undefined' && window.ethereum) {
-          console.log('✅ [請求QR] Privy経由でMetaMask検出 - 直接window.ethereumを使用');
+
           const directProvider = new ethers.providers.Web3Provider(window.ethereum as any, 'any');
           const directSigner = directProvider.getSigner();
           if (isMounted) setPrivySigner(directSigner);
-          console.log('✅ [請求QR] MetaMask直接接続成功');
+
           return;
         }
 
         // Privyウォレットなど他のウォレットの場合は通常通り
-        console.log('✅ [請求QR] Privy経由でウォレット接続');
+
         const provider = await wallet.getEthereumProvider();
         const ethersProvider = new ethers.providers.Web3Provider(provider, 'any');
         const ethersSigner = ethersProvider.getSigner();
         if (isMounted) setPrivySigner(ethersSigner);
-        console.log('✅ [請求QR] Privy経由接続成功');
+
       } catch (error: any) {
         console.error('❌ [請求QR] Failed to setup signer:', error);
         if (isMounted) setPrivySigner(null);
@@ -207,18 +202,16 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
   const addDebugLog = (log: string) => {
     const timestamp = new Date().toLocaleTimeString();
     const logEntry = `[${timestamp}] ${log}`;
-    console.log(logEntry);
+
     setDebugLogs(prev => [...prev, logEntry].slice(-20)); // 最新20件のみ保持
   };
 
   const jpycConfig = getTokenConfig('JPYC');
   const PAYMENT_GATEWAY_ADDRESS = import.meta.env.VITE_PAYMENT_GATEWAY_ADDRESS || '';
 
-
   // QRコードスキャン処理
   const handleScan = async (data: string) => {
     // デバッグログを保存＋追加用の関数
-
 
     try {
 
@@ -235,7 +228,6 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
 
         // ガスレスQR形式の場合は専用処理
         if (parsed.type === 'gasless') {
-          console.log('✅ ガスレスQR形式を検知:', parsed);
 
           // ガスレスQRの必須フィールド検証
           if (!parsed.tenant || !parsed.token || !parsed.amount) {
@@ -267,7 +259,6 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
         decoded = decodeX402(data);
       }
 
-
       // EIP-55アドレス検証
       const recipientValidation = validateAddress(decoded.to);
       if (!recipientValidation.valid) {
@@ -290,7 +281,6 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
         console.error('🔴 ChainID検証失敗:', chainValidation.error);
         return;
       }
-
 
       // 有効期限チェック
       if (isPaymentExpired(decoded.expires)) {
@@ -511,7 +501,7 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
           throw permitError;
         }
       } else {
-        console.log('🔍 MetaMask等の外部ウォレット検出 - Signer版を使用');
+
         permitParams = await preparePermitPaymentParams(
           signer,
           PAYMENT_GATEWAY_ADDRESS,
@@ -523,25 +513,13 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
         );
       }
 
-      console.log('✅ Permit署名完了:', permitParams);
       addDebugLog('✅ Permit署名完了');
 
       // requestIdをbytes32形式に変換
       const requestIdBytes32 = ethers.utils.id(permitParams.requestId);
-      console.log('🔍 requestId変換:', {
-        original: permitParams.requestId,
-        bytes32: requestIdBytes32,
-      });
 
       // 🔍 コントラクト呼び出し前に全パラメータをログ出力
-      console.log('🔍 [コントラクト呼び出し] executePaymentWithPermit パラメータ:');
-      console.log('  requestId:', requestIdBytes32);
-      console.log('  merchant:', permitParams.merchant);
-      console.log('  amount:', permitParams.amount);
-      console.log('  deadline:', permitParams.deadline);
-      console.log('  v:', permitParams.v);
-      console.log('  r:', permitParams.r);
-      console.log('  s:', permitParams.s);
+
       addDebugLog(`🔍 requestId: ${requestIdBytes32}`);
       addDebugLog(`🔍 merchant: ${permitParams.merchant}`);
       addDebugLog(`🔍 amount: ${permitParams.amount}`);
@@ -581,7 +559,7 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
           }
         );
         addDebugLog(`✅ Transaction sent: ${tx.hash}`);
-        console.log('⏳ トランザクション送信完了:', tx.hash);
+
       } catch (txError: any) {
         addDebugLog(`❌ Transaction error: ${txError.message || 'Unknown error'}`);
         addDebugLog(`❌ Error code: ${txError.code || 'No code'}`);
@@ -595,7 +573,6 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
 
       // 3. トランザクション確認
       const receipt = await tx.wait();
-      console.log('✅ トランザクション確認完了:', receipt);
 
       // 4. Supabaseに記録
       if (paymentData.requestId) {
@@ -794,7 +771,6 @@ reason: ${error.reason || 'なし'}`;
         chainIdSource = 'signer.provider';
       }
 
-
       // ChainID検証を完全にスキップ
       // トランザクションパラメータで chainId: 0x89 を指定するため、
       // ここでの検証は不要。MetaMaskが間違ったネットワークなら自動的にエラーを出す
@@ -822,7 +798,6 @@ reason: ${error.reason || 'なし'}`;
 
               // 外部ウォレット（MetaMask）を優先的に検索
               const targetWallet = wallets.find((w: any) => w.walletClientType !== 'privy') || wallets[0];
-
 
               if (targetWallet && typeof targetWallet.switchChain === 'function') {
                 await targetWallet.switchChain(137);
@@ -913,7 +888,6 @@ reason: ${error.reason || 'なし'}`;
         throw new Error('ウォレットが接続されていません');
       }
 
-
       const tokenContractWithSigner = new ethers.Contract(paymentData.token, ERC20_ABI, signer);
 
       const signerAddress = await signer.getAddress();
@@ -943,7 +917,6 @@ reason: ${error.reason || 'なし'}`;
             value: '0x0',
           }],
         });
-
 
         // トランザクションレシートを待つ
         const directProvider = new ethers.providers.Web3Provider(window.ethereum as any, 'any');
@@ -1102,7 +1075,6 @@ reason: ${error.reason || 'なし'}`;
           </p>
         )}
       </div>
-
 
       {/* メッセージ表示 */}
       {message && (

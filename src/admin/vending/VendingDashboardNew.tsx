@@ -23,14 +23,7 @@ const VendingDashboardNew: React.FC = () => {
 
   // デバッグ: ランクプラン情報をログ出力
   useEffect(() => {
-    console.log('🎯 [VendingDashboard] Rank Plan Check:', {
-      tenantId: tenant?.id,
-      tenantName: tenant?.name,
-      plan: plan,
-      rankPlan: plan?.rank_plan,
-      isActive: plan?.is_active,
-      maxHubs: plan ? (plan.rank_plan === 'STUDIO' ? 1 : plan.rank_plan === 'STUDIO_PRO' ? 3 : 10) : 'unknown',
-    });
+
   }, [tenant?.id, plan]);
 
   // 表示モード切替

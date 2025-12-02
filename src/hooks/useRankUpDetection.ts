@@ -52,7 +52,6 @@ export function useRankUpDetection(
       });
       setShowAnimation(true);
 
-      console.log(`🎉 ランクアップ検知: Rank ${prevRankRef.current} → Rank ${currentRank}`);
     }
 
     // 現在のランクを記録

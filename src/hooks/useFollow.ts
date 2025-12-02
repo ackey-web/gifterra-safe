@@ -125,10 +125,6 @@ export function useFollow(
         setFollowerCount((prev) => Math.max(0, prev - 1));
       } else {
         // フォロー
-        console.log('👥 フォロー処理開始:', {
-          follower: currentUserAddress.toLowerCase(),
-          following: targetAddress.toLowerCase(),
-        });
 
         const { data: followData, error } = await supabase.from('user_follows').insert({
           tenant_id: 'default',
@@ -140,8 +136,6 @@ export function useFollow(
           console.error('❌ フォロー追加エラー:', error);
           throw error;
         }
-
-        console.log('✅ フォロー追加成功:', followData);
 
         // フォロワーのプロフィール情報を取得（通知メッセージ用）
         const { data: followerProfile, error: profileError } = await supabase
@@ -158,14 +152,7 @@ export function useFollow(
         const followerName = followerProfile?.display_name ||
           `${currentUserAddress.slice(0, 6)}...${currentUserAddress.slice(-4)}`;
 
-        console.log('📝 フォロワー名:', followerName);
-
         // フォロー通知を作成
-        console.log('🔔 フォロー通知を作成中:', {
-          user_address: targetAddress.toLowerCase(),
-          followerName,
-          from_address: currentUserAddress.toLowerCase(),
-        });
 
         const { data: notificationData, error: notificationError } = await supabase
           .from('notifications')
@@ -189,7 +176,7 @@ export function useFollow(
           });
           // 通知作成失敗してもフォローは成功として扱う
         } else {
-          console.log('✅ フォロー通知が作成されました:', notificationData);
+
         }
 
         setIsFollowing(true);

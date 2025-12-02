@@ -116,9 +116,7 @@ export function useWalletClient(): WalletAdapter {
 
   // デバッグログ
   if (FEATURE_FLAGS.DEBUG_MODE) {
-    console.log('[WalletClient] Using:', useLegacy ? 'ThirdWeb' : 'Privy');
-    console.log('[WalletClient] Address:', adapter.address);
-    console.log('[WalletClient] Connected:', adapter.isConnected);
+
   }
 
   return adapter;

@@ -30,14 +30,6 @@ export async function distributeRankRewards(params: {
 }> {
   const { userAddress, tenantAddress, newRank, kodomiValue, contract } = params;
 
-  console.log('🎁 [RankRewardDistribution] Starting distribution:', {
-    userAddress,
-    tenantAddress,
-    newRank,
-    totalKodomiValue: kodomiValue,
-  });
-  console.log('  📊 総合KODOMI値（JPYC + 応援熱量）:', kodomiValue, 'pt');
-
   try {
     // 1. テナントIDを取得（tenantAddressからtenantIdへの変換が必要な場合）
     const tenantId = tenantAddress; // 簡易実装：addressをそのままIDとして使用
@@ -65,7 +57,7 @@ export async function distributeRankRewards(params: {
         // Gifterraコントラクトのtip関数を呼び出すと、自動的にランクアップ処理が走る
         // ここでは手動でランクアップをトリガーすることも可能
         // （実際の実装では、TIP送信時に自動実行される）
-        console.log('✅ [RankRewardDistribution] SBT auto-mint triggered by contract');
+
         sbtMinted = true;
       } catch (error: any) {
         console.error('❌ [RankRewardDistribution] SBT mint error:', error);
@@ -80,7 +72,7 @@ export async function distributeRankRewards(params: {
       try {
         // TODO: FlagNFTコントラクトのmint関数を呼び出し
         // ここではSupabaseに配布記録のみ保存
-        console.log('🚩 [RankRewardDistribution] Flag NFT distribution:', flagNFTId);
+
         flagNFTDistributed = true;
         // flagNFTTokenId = await mintFlagNFT(userAddress, flagNFTId);
       } catch (error: any) {
@@ -113,7 +105,7 @@ export async function distributeRankRewards(params: {
       if (error) {
         console.error('❌ [RankRewardDistribution] Failed to record distribution:', error);
       } else {
-        console.log('✅ [RankRewardDistribution] Distribution recorded:', data?.id);
+
         return {
           success: true,
           sbtMinted,
@@ -175,7 +167,6 @@ export async function checkAndDistributeRankRewards(params: {
 
     // 前回は到達していなかったが、今回到達した場合
     if (previousKodomiValue < thresholdValue && kodomiValue >= thresholdValue) {
-      console.log(`🎉 [RankRewardDistribution] Rank ${rankLevel} achieved!`);
 
       // 自動配布を実行
       await distributeRankRewards({

@@ -1341,8 +1341,7 @@ function FlowModeContent({
       />
 
       {/* 3. 全体kodomiタンク */}
-      {console.log('🚨🚨🚨 [MYPAGE-DEBUG] OverallKodomiTankをレンダリングしようとしています')}
-      {console.log('🚨 [MYPAGE-DEBUG] connectedAddress:', connectedAddress)}
+
       <OverallKodomiTank isMobile={isMobile} walletAddress={connectedAddress} />
 
       {/* 4. ウォレット情報（残高とNFT） */}
@@ -1475,7 +1474,6 @@ function SendForm({ isMobile, bulkSendRecipients, setBulkSendRecipients, handleA
           const embeddedWallet = wallets.find(
             w => w.address.toLowerCase() === user.wallet.address.toLowerCase()
           );
-
 
           if (embeddedWallet) {
             const privySigner = await getPrivyEthersSigner(embeddedWallet);
@@ -1739,7 +1737,6 @@ function SendForm({ isMobile, bulkSendRecipients, setBulkSendRecipients, handleA
       return;
     }
 
-
     try {
       setIsSending(true);
 
@@ -1775,9 +1772,7 @@ function SendForm({ isMobile, bulkSendRecipients, setBulkSendRecipients, handleA
           gasLimit: 21000, // POL/MATIC送金の標準ガスリミット
         });
 
-
         const receipt = await tx.wait();
-
 
         // トランザクション成功後、Supabaseに送金メッセージを保存
         try {
@@ -1821,9 +1816,9 @@ function SendForm({ isMobile, bulkSendRecipients, setBulkSendRecipients, handleA
           if (kodomiResponse.ok) {
             const kodomiData = await kodomiResponse.json();
             if (kodomiData.success && !kodomiData.skipped) {
-              console.log('✅ KODOMI加算成功:', kodomiData.kodomi);
+
             } else if (kodomiData.skipped) {
-              console.log('⏭️ KODOMI加算スキップ:', kodomiData.reason);
+
             }
           } else {
             console.error('❌ KODOMI加算失敗:', await kodomiResponse.text());
@@ -1849,8 +1844,6 @@ function SendForm({ isMobile, bulkSendRecipients, setBulkSendRecipients, handleA
       if (recipientTenantInfo.isTenant &&
           recipientTenantInfo.autoDistributionEnabled &&
           recipientTenantInfo.gifterraAddress) {
-
-        console.log('🎁 自動配布モード: テナントオーナーへの送金を検知、Gifterraコントラクト経由で送金します');
 
         // 1. トークンコントラクトを準備
         const tokenContract = new ethers.Contract(
@@ -1954,9 +1947,9 @@ function SendForm({ isMobile, bulkSendRecipients, setBulkSendRecipients, handleA
           if (kodomiResponse.ok) {
             const kodomiData = await kodomiResponse.json();
             if (kodomiData.success && !kodomiData.skipped) {
-              console.log('✅ KODOMI加算成功:', kodomiData.kodomi);
+
             } else if (kodomiData.skipped) {
-              console.log('⏭️ KODOMI加算スキップ:', kodomiData.reason);
+
             }
           } else {
             console.error('❌ KODOMI加算失敗:', await kodomiResponse.text());
@@ -1983,19 +1976,16 @@ function SendForm({ isMobile, bulkSendRecipients, setBulkSendRecipients, handleA
       } // else (JPYC/NHT送信) の終了
 
       // Xシェアが有効な場合は自動的に投稿画面を開く
-      console.log('🔍 X Share Check:', { shareOnX, message: message?.substring(0, 20), address: address?.substring(0, 10) });
 
       if (shareOnX && message && message.trim()) {
         try {
-          console.log('✅ X Share条件を満たしました。プロフィールを取得中...');
+
           const { data: recipientProfile } = await supabase
             .from('user_profiles')
             .select('twitter_id, display_name')
             .eq('tenant_id', 'default')
             .eq('wallet_address', address.toLowerCase())
             .maybeSingle();
-
-          console.log('📝 受信者プロフィール:', recipientProfile);
 
           // X投稿テキストを生成
           let tweetText = '';
@@ -2009,17 +1999,15 @@ function SendForm({ isMobile, bulkSendRecipients, setBulkSendRecipients, handleA
           tweetText += `https://gifterra-safe.vercel.app/\n\n`;
           tweetText += `#GIFTERRA #投げ銭`;
 
-          console.log('📤 ツイートテキスト:', tweetText);
-
           // X投稿画面を開く
           const tweetUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}`;
-          console.log('🌐 Opening X with URL:', tweetUrl);
+
           window.open(tweetUrl, '_blank', 'noopener,noreferrer');
         } catch (err) {
           console.error('❌ Failed to open X share:', err);
         }
       } else {
-        console.log('❌ X Share条件を満たしていません');
+
       }
 
       // フォームをリセット
@@ -2309,7 +2297,6 @@ function SendForm({ isMobile, bulkSendRecipients, setBulkSendRecipients, handleA
         </div>
       )}
 
-
       {/* 匿名送金時の警告メッセージ */}
       {isAnonymous && (
         <div style={{
@@ -2528,7 +2515,6 @@ function SendForm({ isMobile, bulkSendRecipients, setBulkSendRecipients, handleA
         <label style={{ display: 'block', fontSize: isMobile ? 13 : 14, color: '#ffffff', fontWeight: 700, marginBottom: 8 }}>
           数量
         </label>
-
 
         <div style={{ position: 'relative' }}>
           <input
@@ -4441,7 +4427,6 @@ function ReceiveAddress({ isMobile }: { isMobile: boolean }) {
       // ReceivePageでアドレスのコピーとMetaMask起動が可能
       const qrContent = `${window.location.origin}/receive?address=${recipientAddress}`;
 
-
       const dataURL = await QRCode.toDataURL(qrContent, {
         width: 600,
         margin: 2,
@@ -5008,8 +4993,7 @@ function WalletInfo({ isMobile }: { isMobile: boolean }) {
 
 // 3. 全体kodomiタンク（法務対応版:JPYC/NHT分離表示）
 function OverallKodomiTank({ isMobile, walletAddress }: { isMobile: boolean; walletAddress?: string }) {
-  console.log('🎯🎯🎯 [TANK-DEBUG-v2] OverallKodomiTank - コンポーネントレンダリング');
-  console.log('🎯 [TANK-DEBUG-v2] 受け取ったwalletAddress:', walletAddress);
+
   const { jpyc, resonance, overall, loading, error } = useDualAxisKodomi(walletAddress);
   const [levelUpPopup, setLevelUpPopup] = useState<{
     axis: 'jpyc' | 'resonance' | 'overall';
@@ -5062,16 +5046,9 @@ function OverallKodomiTank({ isMobile, walletAddress }: { isMobile: boolean; wal
     }
   }, [jpyc.displayLevel, resonance.displayLevel, overall.displayLevel, loading]);
 
-  console.log('[TANK-DEBUG-v2] フック結果:');
-  console.log('  loading:', loading);
-  console.log('  error:', error);
-  console.log('  JPYC総額:', jpyc.totalAmount, 'JPYC');
-  console.log('  JPYCランク:', jpyc.rank, 'Lv.' + jpyc.displayLevel, `(${jpyc.level}%)`);
-  console.log('  Resonanceランク:', resonance.rank, 'Lv.' + resonance.displayLevel, `(${resonance.level}%)`);
-  console.log('  総合スコア:', overall.totalScore, '/', overall.rank, 'Lv.' + overall.displayLevel, `(${overall.level}%)`);
 
   if (loading) {
-    console.log('[TANK-DEBUG-v2] ⏳ 読み込み中表示...');
+
     return (
       <div style={{ display: 'flex', justifyContent: 'center', marginBottom: isMobile ? 40 : 60 }}>
         <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: 14 }}>読み込み中...</div>

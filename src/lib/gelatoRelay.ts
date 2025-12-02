@@ -65,14 +65,6 @@ export async function sendTokenGasless(
     isRelayContext: true,
   };
 
-  console.log("📤 Sending Relay Call transaction (fee deducted from token):", {
-    from: signerAddress,
-    to: recipientAddress,
-    token: tokenAddress,
-    amount: amount,
-    feeToken: tokenAddress,
-  });
-
   // Gelato Relayで送信（Relay Call - トークンから手数料を引く）
   try {
     if (!GELATO_API_KEY) {
@@ -92,8 +84,6 @@ export async function sendTokenGasless(
           GELATO_API_KEY
         );
 
-        console.log("✅ Relay Call transaction sent:", response.taskId);
-        console.log("💡 手数料は送金トークンから自動で引かれます");
         return response.taskId;
       } catch (error: any) {
         lastError = error;
@@ -101,7 +91,7 @@ export async function sendTokenGasless(
         // レート制限エラーの場合はリトライ
         if (error.message?.includes("Too many requests") && i < maxRetries - 1) {
           const waitTime = (i + 1) * 2000; // 2秒、4秒、6秒と増加
-          console.log(`⏳ レート制限に達しました。${waitTime/1000}秒待機してリトライします...`);
+
           await new Promise(resolve => setTimeout(resolve, waitTime));
           continue;
         }
@@ -184,10 +174,8 @@ export async function waitForTaskCompletion(
   while (Date.now() - startTime < maxWaitTime) {
     const status = await getTaskStatus(taskId);
 
-    console.log(`⏳ Task status: ${status?.taskState || 'Unknown'}`);
-
     if (status?.taskState === 'ExecSuccess' || status?.taskState === 'CheckSuccess') {
-      console.log('✅ Transaction confirmed:', status.transactionHash);
+
       return status.transactionHash;
     }
 

@@ -36,7 +36,7 @@ function getSupabaseClient(): SupabaseClient {
     supabaseClient = createClient(supabaseUrl, supabaseKey);
 
     if (FEATURE_FLAGS.DEBUG_MODE) {
-      console.log('[DBClient] Supabase client initialized');
+
     }
   }
 
@@ -78,7 +78,7 @@ export function useDBClient(): DBAdapter {
         if (error) throw error;
 
         if (FEATURE_FLAGS.DEBUG_MODE) {
-          console.log(`[DBClient] Query ${table}:`, data?.length || 0, 'rows');
+
         }
 
         return (data || []) as T[];
@@ -113,7 +113,7 @@ export function useDBClient(): DBAdapter {
         }
 
         if (FEATURE_FLAGS.DEBUG_MODE) {
-          console.log(`[DBClient] QueryOne ${table}:`, data ? 'found' : 'not found');
+
         }
 
         return data as T;
@@ -139,7 +139,7 @@ export function useDBClient(): DBAdapter {
         if (error) throw error;
 
         if (FEATURE_FLAGS.DEBUG_MODE) {
-          console.log(`[DBClient] Insert ${table}:`, source);
+
         }
       } catch (error) {
         console.error(`[DBClient] insert error (${table}):`, error);
@@ -166,7 +166,7 @@ export function useDBClient(): DBAdapter {
         if (error) throw error;
 
         if (FEATURE_FLAGS.DEBUG_MODE) {
-          console.log(`[DBClient] Update ${table}:`, id, source);
+
         }
       } catch (error) {
         console.error(`[DBClient] update error (${table}):`, error);
@@ -190,7 +190,7 @@ export function useDBClient(): DBAdapter {
         if (error) throw error;
 
         if (FEATURE_FLAGS.DEBUG_MODE) {
-          console.log(`[DBClient] Delete ${table}:`, id, source);
+
         }
       } catch (error) {
         console.error(`[DBClient] delete error (${table}):`, error);

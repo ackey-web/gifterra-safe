@@ -48,7 +48,6 @@ export function GaslessQRGeneratorTest() {
       const qrString = JSON.stringify(paymentData);
       setQrData(qrString);
 
-      console.log('✅ QRコード生成成功:', paymentData);
     } catch (error: any) {
       console.error('❌ QRコード生成エラー:', error);
       alert('QRコード生成に失敗しました: ' + error.message);

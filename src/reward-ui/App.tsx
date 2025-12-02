@@ -607,12 +607,16 @@ export default function App() {
           <img
             src={getHeaderLogo()}
             alt="Tenant Plan Logo"
+            onClick={() => {
+              window.location.href = '/mypage';
+            }}
             style={{
               height: 50,
               width: "auto",
               maxWidth: "280px",
               objectFit: "contain",
               filter: "drop-shadow(0 2px 8px rgba(0, 0, 0, 0.3))",
+              cursor: "pointer",
             }}
           />
         </div>

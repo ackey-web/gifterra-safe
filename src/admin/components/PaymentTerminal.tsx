@@ -198,8 +198,6 @@ export function PaymentTerminal() {
   useEffect(() => {
     if (!currentRequestId || !walletAddress || !isGaslessAvailable) return;
 
-    console.log('📡 Realtime subscription started for:', currentRequestId);
-
     const channel = supabase
       .channel(`gasless_payment:${currentRequestId}`)
       .on(
@@ -212,12 +210,11 @@ export function PaymentTerminal() {
         },
         async (payload) => {
           const newRecord = payload.new as any;
-          console.log('📬 Realtime UPDATE received:', newRecord);
 
           if (newRecord.status === 'signature_received' && !isExecutingGasless) {
             // バッチ処理モードの場合はキューに追加
             if (batchProcessingEnabled) {
-              console.log('📦 Adding to batch queue...');
+
               setPendingSignatures((prev) => [...prev, newRecord]);
               setMessage({
                 type: 'success',
@@ -238,21 +235,18 @@ export function PaymentTerminal() {
                 throw new Error('ウォレットが見つかりません');
               }
 
-              console.log('🔄 Switching to Polygon...');
               await wallet.switchChain(137);
 
               const ethereumProvider = await wallet.getEthereumProvider();
               const provider = new ethers.providers.Web3Provider(ethereumProvider);
               const signer = provider.getSigner();
 
-              console.log('📝 Creating contract instance...');
               const jpycContract = new ethers.Contract(
                 JPYC_TOKEN.ADDRESS,
                 ERC20_MIN_ABI,
                 signer
               );
 
-              console.log('⚡ Executing transferWithAuthorization...');
               const tx = await jpycContract.transferWithAuthorization(
                 newRecord.completed_by,
                 walletAddress,
@@ -265,9 +259,7 @@ export function PaymentTerminal() {
                 newRecord.signature_s
               );
 
-              console.log('⏳ Waiting for confirmation...');
               const receipt = await tx.wait();
-              console.log('✅ Transaction confirmed:', receipt.transactionHash);
 
               // Supabaseのステータスを更新
               await supabase
@@ -303,7 +295,7 @@ export function PaymentTerminal() {
       .subscribe();
 
     return () => {
-      console.log('📡 Realtime subscription cleanup');
+
       supabase.removeChannel(channel);
     };
   }, [
@@ -497,25 +489,17 @@ export function PaymentTerminal() {
         return;
       }
 
-      console.log('✅ EIP-55検証成功:', {
-        wallet: walletValidation.checksumAddress,
-        token: tokenValidation.checksumAddress,
-      });
-
       const amountWei = parsePaymentAmount(amountToGenerate, jpycConfig.decimals);
       const expires = Math.floor(Date.now() / 1000) + expiryMinutes * 60;
       const requestId = generateRequestId();
 
       // ⚡ ガスレス決済モード（Phase 5）
       if (useGasless && isGaslessAvailable) {
-        console.log('⚡ [Desktop] Generating gasless payment QR...');
 
         // EIP-3009用の32バイトnonce生成
         const nonce = '0x' + Array.from({ length: 64 }, () =>
           Math.floor(Math.random() * 16).toString(16)
         ).join('');
-
-        console.log('⚡ [Desktop] Generated nonce:', nonce);
 
         // ガスレス決済用QRデータ
         const gaslessQRData = JSON.stringify({
@@ -532,7 +516,6 @@ export function PaymentTerminal() {
           validBefore: expires,
         });
 
-        console.log('⚡ [Desktop] QR data prepared:', gaslessQRData.substring(0, 100) + '...');
 
         // Supabaseに保存（ガスレス用フィールド付き）
         const insertData = {
@@ -548,8 +531,6 @@ export function PaymentTerminal() {
           valid_before: expires,
         };
 
-        console.log('⚡ [Desktop] Inserting to Supabase:', insertData);
-
         const { error } = await supabase.from('payment_requests').insert(insertData);
 
         if (error) {
@@ -561,8 +542,6 @@ export function PaymentTerminal() {
           setMessage({ type: 'error', text: `生成失敗: ${error.message}` });
           throw error;
         }
-
-        console.log('✅ [Desktop] Gasless QR successfully saved to Supabase');
 
         setQrData(gaslessQRData);
         setAmount(amountToGenerate);
@@ -608,7 +587,6 @@ export function PaymentTerminal() {
       setMessage({ type: 'error', text: '生成に失敗しました' });
     }
   };
-
 
   // QRコードダウンロード
   const handleDownloadQR = () => {

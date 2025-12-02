@@ -243,14 +243,14 @@ export default function FlagNFTManagementPage() {
     try {
       // 古い画像があれば削除
       if (formData.image) {
-        console.log('🗑️ 古い画像を削除中:', formData.image);
+
         await deleteFileFromUrl(formData.image);
       }
 
       // 新しい画像をアップロード
       const imageUrl = await uploadImage(file, 'PUBLIC');
       if (imageUrl) {
-        console.log('✅ 新しい画像をアップロード:', imageUrl);
+
         setFormData((prev) => ({ ...prev, image: imageUrl }));
       } else {
         throw new Error('画像URLの取得に失敗しました');
@@ -326,14 +326,9 @@ export default function FlagNFTManagementPage() {
     setIsSaving(true);
 
     try {
-      console.log('💾 FlagNFT作成ワークフロー開始:', {
-        category: selectedCategory,
-        name: formData.name,
-      });
 
       // ガス代推定を表示
       const gasCost = estimateGasCost('configure');
-      console.log('⛽ 推定ガス代:', gasCost);
 
       // ワークフロー実行
       const result = await executeSaveFlagNFTWorkflow({
@@ -386,13 +381,8 @@ export default function FlagNFTManagementPage() {
     setIsMinting(true);
     try {
       // 1. コントラクトでNFTをミント
-      console.log('🎨 NFTミント開始:', {
-        category: selectedNFTForMint.category,
-        toAddress: mintToAddress,
-      });
 
       const tx = await mintNFT(mintToAddress, selectedNFTForMint.category);
-      console.log('✅ NFTミント成功:', tx);
 
       // 2. 配布履歴をSupabaseに保存
       if (adminSupabase) {
@@ -1291,7 +1281,6 @@ export default function FlagNFTManagementPage() {
           <h2 style={{ fontSize: 20, fontWeight: 700, color: '#fff', marginBottom: 24 }}>
             詳細設定 - {CATEGORY_OPTIONS.find(c => c.id === selectedCategory)?.label}
           </h2>
-
 
           {/* ガス代推定表示 */}
           <div style={{

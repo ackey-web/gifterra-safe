@@ -158,7 +158,6 @@ export function useMintProfileSBT() {
 
       if (insertError) throw insertError;
 
-      console.log(`✅ プロフィールSBT Rank ${rankLevel} をミントしました`);
       return true;
     } catch (err) {
       console.error('❌ SBTミントエラー:', err);

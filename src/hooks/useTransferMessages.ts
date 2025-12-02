@@ -87,7 +87,6 @@ async function fetchBlockchainReceivedTransactions(
       return [];
     }
 
-    console.log('🔗 Fetching blockchain transactions from Etherscan V2 API (Polygon)...');
 
     // 既読済みトランザクションのリストを取得
     const readTxs = getReadBlockchainTransactions(walletAddress);
@@ -111,7 +110,7 @@ async function fetchBlockchainReceivedTransactions(
         }
 
         if (!Array.isArray(data.result) || data.result.length === 0) {
-          console.log(`  - No ${token.SYMBOL} transactions found`);
+
           continue;
         }
 
@@ -119,8 +118,6 @@ async function fetchBlockchainReceivedTransactions(
         const receivedTxs = data.result.filter(
           (tx: any) => tx.to.toLowerCase() === walletAddress.toLowerCase()
         );
-
-        console.log(`  - Found ${receivedTxs.length} received ${token.SYMBOL} transactions`);
 
         // TransferMessage形式に変換
         for (const tx of receivedTxs) {
@@ -144,7 +141,6 @@ async function fetchBlockchainReceivedTransactions(
       }
     }
 
-    console.log(`✅ Total ${blockchainTxs.length} blockchain transactions fetched from Etherscan V2 API`);
     return blockchainTxs;
   } catch (error) {
     console.error('❌ Failed to fetch blockchain transactions:', error);
@@ -244,7 +240,6 @@ export async function saveTransferMessage(params: {
       }
 
       // 成功したらデータを返す
-      console.log(`✅ Transfer message saved successfully (attempt ${attempt}/${MAX_RETRIES})`);
       return data;
 
     } catch (error: any) {
@@ -254,7 +249,7 @@ export async function saveTransferMessage(params: {
       // 最後のリトライでない場合は、指数バックオフで待機
       if (attempt < MAX_RETRIES) {
         const waitTime = Math.pow(2, attempt - 1) * 1000; // 1秒, 2秒, 4秒
-        console.log(`⏳ Retrying in ${waitTime}ms...`);
+
         await new Promise(resolve => setTimeout(resolve, waitTime));
       }
     }
@@ -295,17 +290,12 @@ export function useReceivedTransferMessages(
       setError(null);
 
       try {
-        console.log('📨 Fetching received transfer messages...');
-        console.log('  - Wallet Address:', walletAddress);
-        console.log('  - Tenant ID:', effectiveTenantId);
 
         // テナントIDが'default'の場合は'default'のみ検索
         // テナントIDが指定されている場合は、そのIDと'default'の両方を検索
         const tenantIdsToSearch = effectiveTenantId === 'default'
           ? ['default']
           : [effectiveTenantId, 'default'];
-
-        console.log('  - Searching in tenants:', tenantIdsToSearch);
 
         const { data, error: fetchError } = await supabase
           .from('transfer_messages')
@@ -320,7 +310,6 @@ export function useReceivedTransferMessages(
           throw fetchError;
         }
 
-        console.log(`✅ Found ${(data || []).length} messages from Supabase`);
 
         // ブロックチェーンからの受信履歴も取得
         const blockchainTxs = await fetchBlockchainReceivedTransactions(walletAddress);
@@ -328,8 +317,6 @@ export function useReceivedTransferMessages(
         // N+1問題を解決: 全アドレスを一度に取得
         const allMessages = [...(data || []), ...blockchainTxs];
         const uniqueAddresses = [...new Set(allMessages.map(m => m.from_address.toLowerCase()))];
-
-        console.log(`🔄 Fetching profiles for ${uniqueAddresses.length} unique senders...`);
 
         // バッチでプロフィール情報を取得
         const profilesByAddress = new Map<string, any>();
@@ -405,7 +392,6 @@ export function useReceivedTransferMessages(
           return index === self.findIndex(m => m.tx_hash === message.tx_hash);
         });
 
-        console.log(`✅ Total ${uniqueMessages.length} messages (Gifterra: ${data?.length || 0}, Blockchain: ${blockchainTxs.length})`);
 
         setMessages(uniqueMessages);
         setUnreadCount(uniqueMessages.filter((m: TransferMessage) => !m.is_read).length);
@@ -432,12 +418,10 @@ export function useReceivedTransferMessages(
           filter: `to_address=eq.${walletAddress.toLowerCase()}`,
         },
         () => {
-          console.log('📨 Received transfer message update (real-time)');
           fetchMessages();
         }
       )
       .subscribe((status) => {
-        console.log('🔌 Realtime subscription status:', status);
 
         // 接続エラー時は再接続を試みる
         if (status === 'CHANNEL_ERROR' && retryCount < 3) {
@@ -592,12 +576,10 @@ export function useSentTransferMessages(
           filter: `from_address=eq.${walletAddress.toLowerCase()}`,
         },
         () => {
-          console.log('📤 Sent transfer message update (real-time)');
           fetchMessages();
         }
       )
       .subscribe((status) => {
-        console.log('🔌 Realtime subscription status:', status);
 
         // 接続エラー時は再接続を試みる
         if (status === 'CHANNEL_ERROR' && retryCount < 3) {

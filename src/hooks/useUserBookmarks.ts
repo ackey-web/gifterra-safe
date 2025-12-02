@@ -40,8 +40,6 @@ export function useUserBookmarks(userAddress: string | undefined) {
         setIsLoading(true);
         setError(null);
 
-        console.log('📚 ブックマーク取得開始:', userAddress);
-
         // まずブックマークデータを取得
         const { data: bookmarkData, error: fetchError } = await supabase
           .from('user_bookmarks')
@@ -53,8 +51,6 @@ export function useUserBookmarks(userAddress: string | undefined) {
           console.error('❌ ブックマーク取得エラー:', fetchError);
           throw fetchError;
         }
-
-        console.log('✅ ブックマーク取得成功:', bookmarkData?.length, '件');
 
         // ブックマークされたユーザーのプロフィールを個別に取得
         const bookmarksWithProfile = await Promise.all(
@@ -77,7 +73,6 @@ export function useUserBookmarks(userAddress: string | undefined) {
           })
         );
 
-        console.log('✅ プロフィール情報付きブックマーク:', bookmarksWithProfile.length, '件');
         setBookmarks(bookmarksWithProfile);
       } catch (err) {
         console.error('❌ ブックマーク取得エラー:', err);
@@ -128,15 +123,9 @@ export async function addBookmark(
     const normalizedUserAddress = userAddress.toLowerCase();
     const normalizedBookmarkedAddress = bookmarkedAddress.toLowerCase();
 
-    console.log('📚 ブックマーク追加開始:', {
-      user: normalizedUserAddress,
-      bookmarked: normalizedBookmarkedAddress,
-      nickname,
-    });
-
     // 自分自身をブックマークできないようにする
     if (normalizedUserAddress === normalizedBookmarkedAddress) {
-      console.log('❌ 自分自身をブックマークしようとしました');
+
       return {
         success: false,
         error: '自分自身をブックマークすることはできません',
@@ -162,7 +151,6 @@ export async function addBookmark(
       throw error;
     }
 
-    console.log('✅ ブックマーク追加成功:', data);
     return { success: true };
   } catch (err) {
     console.error('❌ ブックマーク追加エラー:', err);

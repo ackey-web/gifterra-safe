@@ -399,7 +399,6 @@ export function AdCarousel({
         </>
       )}
 
-
     </div>
   );
 }

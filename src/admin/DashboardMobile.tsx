@@ -26,8 +26,6 @@ const fmt18 = (v: bigint, tokenId: 'NHT' | 'JPYC' = 'NHT') => {
 
 const shortAddress = (addr: string) => `${addr.slice(0, 6)}...${addr.slice(-4)}`;
 
-
-
 // スマホ用Admin Dashboard
 export default function DashboardMobile() {
   const address = useAddress();
@@ -35,8 +33,6 @@ export default function DashboardMobile() {
   // マルチトークン対応：環境に応じたトークン設定
   const defaultToken = getDefaultToken();
   
-
-
 
   const [loading, setLoading] = useState(false);
   const [tips, setTips] = useState<TipItem[]>([]);

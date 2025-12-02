@@ -23,10 +23,9 @@ export async function signPermitWithPrivyProvider(
   nonce: number;
 }> {
   try {
-    console.log('🚀 signPermitWithPrivyProvider() 開始');
 
     // Read-only providerでnonceとnameを取得
-    console.log('📡 RPC接続開始: https://polygon-rpc.com');
+
     const readOnlyProvider = new ethers.providers.JsonRpcProvider('https://polygon-rpc.com');
     const tokenContract = new ethers.Contract(
       tokenAddress,
@@ -37,34 +36,10 @@ export async function signPermitWithPrivyProvider(
       readOnlyProvider
     );
 
-    console.log('📡 nonce取得開始...');
     const nonce = await tokenContract.nonces(ownerAddress);
-    console.log(`✅ nonce取得成功: ${nonce.toString()}`);
 
-    console.log('📡 tokenName取得開始...');
     const tokenName = await tokenContract.name();
-    console.log(`✅ tokenName取得成功: ${tokenName}`);
 
-    console.log('📝 Privy Permit署名準備:', {
-      owner: ownerAddress,
-      spender: spenderAddress,
-      value: amount,
-      nonce: nonce.toString(),
-      deadline,
-    });
-    console.log('📝 Domain:', JSON.stringify({
-      name: tokenName,
-      version: '1',
-      chainId: chainId,
-      verifyingContract: tokenAddress,
-    }, null, 2));
-    console.log('📝 Message Value:', JSON.stringify({
-      owner: ownerAddress,
-      spender: spenderAddress,
-      value: amount,
-      nonce: nonce.toNumber(),
-      deadline,
-    }, null, 2));
 
     // EIP-712 Domain
     const domain = {
@@ -105,40 +80,18 @@ export async function signPermitWithPrivyProvider(
       message: value,
     };
 
-    console.log('📋 Privy署名データ:', JSON.stringify(typedData, null, 2));
 
     // Privyプロバイダーで署名
-    console.log('✍️ Privy署名リクエスト送信中...');
+
     const signature = await privyProvider.request({
       method: 'eth_signTypedData_v4',
       params: [ownerAddress, JSON.stringify(typedData)],
     });
-    console.log('✅ 署名受信成功:', signature);
 
-    console.log('🔍 署名の分割処理中...');
     const sig = ethers.utils.splitSignature(signature);
 
-    console.log('✅ Privy Permit署名完了:', {
-      v: sig.v,
-      r: sig.r,
-      s: sig.s,
-      deadline,
-      nonce: nonce.toNumber(),
-    });
-
     // 🔍 検証用: 署名パラメータを全て出力
-    console.log('🔍 [検証用] 署名生成パラメータ完全版:');
-    console.log('  owner:', ownerAddress);
-    console.log('  spender:', spenderAddress);
-    console.log('  amount:', amount);
-    console.log('  deadline:', deadline);
-    console.log('  nonce:', nonce.toNumber());
-    console.log('  v:', sig.v);
-    console.log('  r:', sig.r);
-    console.log('  s:', sig.s);
-    console.log('  tokenAddress:', tokenAddress);
-    console.log('  tokenName:', tokenName);
-    console.log('  chainId:', chainId);
+
 
     return {
       v: sig.v,
@@ -200,14 +153,6 @@ export async function signPermit(
     const nonce = await tokenContract.nonces(owner);
     const tokenName = await tokenContract.name();
 
-    console.log('📝 Permit署名準備:', {
-      owner,
-      spender: spenderAddress,
-      value: amount,
-      nonce: nonce.toString(),
-      deadline,
-    });
-
     // EIP-712 Domain
     const domain = {
       name: tokenName,
@@ -236,8 +181,6 @@ export async function signPermit(
       deadline,
     };
 
-    console.log('🔐 EIP-712署名リクエスト準備完了');
-
     // EIP-712署名を取得
     let signature: string;
 
@@ -252,26 +195,25 @@ export async function signPermit(
       message: value,
     };
 
-    console.log('📋 署名データ:', JSON.stringify(typedData, null, 2));
 
     // ethers.jsの_signTypedDataを使用（最も信頼性が高い）
     try {
-      console.log('🔍 ethers.jsの_signTypedDataを使用');
+
       signature = await (signer as any)._signTypedData(domain, types, value);
-      console.log('✅ _signTypedDataで署名成功');
+
     } catch (ethersError: any) {
       console.warn('⚠️ _signTypedData失敗、他の方法を試行:', ethersError.message);
 
       // フォールバック1: window.ethereum (MetaMask)
       if (typeof window !== 'undefined' && (window as any).ethereum) {
         try {
-          console.log('🔍 window.ethereum.requestを試行');
+
           const ethereum = (window as any).ethereum;
           signature = await ethereum.request({
             method: 'eth_signTypedData_v4',
             params: [owner.toLowerCase(), JSON.stringify(typedData)],
           });
-          console.log('✅ window.ethereum.requestで署名成功');
+
         } catch (windowError: any) {
           console.error('❌ すべての署名方法が失敗');
           throw windowError;
@@ -282,12 +224,6 @@ export async function signPermit(
     }
 
     const sig = ethers.utils.splitSignature(signature);
-
-    console.log('✅ Permit署名完了:', {
-      v: sig.v,
-      r: sig.r,
-      s: sig.s,
-    });
 
     return {
       v: sig.v,
@@ -333,23 +269,11 @@ export async function preparePermitPaymentParamsWithPrivy(
   r: string;
   s: string;
 }> {
-  console.log('🚀 preparePermitPaymentParamsWithPrivy() 開始');
-  console.log('📝 パラメータ:', {
-    ownerAddress,
-    paymentGatewayAddress,
-    jpycAddress,
-    merchantAddress,
-    amount,
-    requestId,
-    expiryMinutes,
-  });
 
   // 有効期限を設定（現在時刻 + expiryMinutes）
   const deadline = Math.floor(Date.now() / 1000) + expiryMinutes * 60;
-  console.log('⏰ deadline:', deadline);
 
   // Permit署名を生成（Privy Provider版）
-  console.log('📝 signPermitWithPrivyProvider() を呼び出します');
   const permitSig = await signPermitWithPrivyProvider(
     privyProvider,
     ownerAddress,
@@ -359,7 +283,6 @@ export async function preparePermitPaymentParamsWithPrivy(
     deadline,
     137 // Polygon Mainnet
   );
-  console.log('✅ signPermitWithPrivyProvider() 完了');
 
   const result = {
     requestId: requestId,
@@ -370,7 +293,6 @@ export async function preparePermitPaymentParamsWithPrivy(
     r: permitSig.r,
     s: permitSig.s,
   };
-  console.log('✅ preparePermitPaymentParamsWithPrivy() 完了:', result);
 
   return result;
 }

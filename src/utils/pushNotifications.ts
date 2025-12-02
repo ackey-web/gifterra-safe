@@ -209,13 +209,13 @@ export async function setAppBadge(count: number): Promise<void> {
     if ('setAppBadge' in navigator) {
       if (count > 0) {
         await (navigator as any).setAppBadge(count);
-        console.log(`✅ App badge set to ${count}`);
+
       } else {
         await (navigator as any).clearAppBadge();
-        console.log('✅ App badge cleared');
+
       }
     } else {
-      console.log('⚠️ Badge API is not supported');
+
     }
   } catch (error) {
     console.error('Failed to set app badge:', error);
@@ -240,7 +240,7 @@ export async function sendJpycReceivedNotification(
   try {
     const permission = getNotificationPermission();
     if (permission !== 'granted') {
-      console.log('⚠️ Notification permission not granted');
+
       return;
     }
 
@@ -260,7 +260,6 @@ export async function sendJpycReceivedNotification(
       },
     } as any);
 
-    console.log(`✅ Sent JPYC received notification: ${amount} JPYC from ${displayName}`);
   } catch (error) {
     console.error('Failed to send JPYC received notification:', error);
   }

@@ -87,37 +87,35 @@ export class ScoreIndexer {
       return;
     }
 
-    console.log('🚀 Starting Score Indexer...');
-
     try {
       // 1. データベース初期化
-      console.log('📊 Initializing database...');
+
       await this.database.initialize();
 
       // 2. バックフィル（オプション）
       if (this.config.enableBackfill && this.config.startBlock !== undefined) {
-        console.log('🔄 Running backfill...');
+
         await this.runBackfill(this.config.startBlock);
       }
 
       // 3. イベントリスナー開始
-      console.log('👂 Starting event listener...');
+
       await this.listener.start();
 
       // 4. APIサーバー起動（オプション）
       if (this.config.apiPort) {
-        console.log(`🌐 Starting API server on port ${this.config.apiPort}...`);
+
         this.startApiServer();
       }
 
       // 5. デイリースナップショット（オプション）
       if (this.config.enableDailySnapshot) {
-        console.log('📸 Scheduling daily snapshots...');
+
         this.scheduleDailySnapshot();
       }
 
       this.isRunning = true;
-      console.log('✅ Score Indexer started successfully');
+
     } catch (error) {
       console.error('❌ Failed to start indexer:', error);
       throw error;
@@ -130,20 +128,18 @@ export class ScoreIndexer {
       return;
     }
 
-    console.log('🛑 Stopping Score Indexer...');
-
     try {
       // イベントリスナー停止
       await this.listener.stop();
 
       // APIサーバー停止（実装は簡略化）
       if (this.apiServer) {
-        console.log('🌐 Stopping API server...');
+
         // TODO: Graceful shutdown
       }
 
       this.isRunning = false;
-      console.log('✅ Score Indexer stopped successfully');
+
     } catch (error) {
       console.error('❌ Error stopping indexer:', error);
       throw error;
@@ -155,7 +151,6 @@ export class ScoreIndexer {
   // ========================================
 
   private async handleScoreIncremented(event: ScoreIncrementedEvent): Promise<void> {
-    console.log(`📈 Score incremented: ${event.user} | ${event.axis} | ${event.amountRaw}`);
 
     try {
       await this.database.recordScore(
@@ -167,7 +162,6 @@ export class ScoreIndexer {
         event.timestamp
       );
 
-      console.log(`✅ Score recorded for ${event.user}`);
     } catch (error) {
       console.error(`❌ Error recording score for ${event.user}:`, error);
       // TODO: エラーログをDBに保存してリトライ可能にする
@@ -175,7 +169,6 @@ export class ScoreIndexer {
   }
 
   private async handleScoreParamsUpdated(event: ScoreParamsUpdatedEvent): Promise<void> {
-    console.log(`⚙️ Score params updated: wE=${event.weightEconomic}, wR=${event.weightResonance}, curve=${event.curve}`);
 
     try {
       await this.database.updateParams({
@@ -185,19 +178,16 @@ export class ScoreIndexer {
         lastUpdated: event.timestamp,
       });
 
-      console.log('✅ Parameters updated and composite scores recalculated');
     } catch (error) {
       console.error('❌ Error updating params:', error);
     }
   }
 
   private async handleTokenAxisUpdated(event: TokenAxisUpdatedEvent): Promise<void> {
-    console.log(`🔧 Token axis updated: ${event.token} -> ${event.isEconomic ? 'Economic' : 'Resonance'}`);
 
     try {
       await this.database.updateTokenAxis(event.token, event.isEconomic);
 
-      console.log('✅ Token axis updated');
     } catch (error) {
       console.error('❌ Error updating token axis:', error);
     }
@@ -212,16 +202,12 @@ export class ScoreIndexer {
       const currentBlock = await this.provider.getBlockNumber();
       const chunkSize = this.config.backfillChunkSize || 10000;
 
-      console.log(`🔄 Backfilling from block ${startBlock} to ${currentBlock}...`);
-
       const events = await backfillEvents(
         this.listener,
         startBlock,
         currentBlock,
         chunkSize
       );
-
-      console.log(`✅ Backfill complete: ${events.scoreIncremented.length} score events processed`);
 
       // イベントを順次処理
       for (const event of events.scoreIncremented) {
@@ -236,7 +222,6 @@ export class ScoreIndexer {
         await this.handleTokenAxisUpdated(event);
       }
 
-      console.log('✅ All backfill events processed');
     } catch (error) {
       console.error('❌ Backfill error:', error);
       throw error;
@@ -254,16 +239,7 @@ export class ScoreIndexer {
     });
 
     this.apiServer.listen(this.config.apiPort, () => {
-      console.log(`✅ API server listening on http://localhost:${this.config.apiPort}`);
-      console.log(`📚 Available endpoints:`);
-      console.log(`   GET  /api/profile/:userId`);
-      console.log(`   GET  /api/profile/:userId/rank`);
-      console.log(`   GET  /api/rankings/:axis`);
-      console.log(`   GET  /api/rankings/all`);
-      console.log(`   GET  /api/snapshot/latest`);
-      console.log(`   GET  /api/health`);
-      console.log(`   POST /api/admin/params (requires API key)`);
-      console.log(`   POST /api/admin/token-axis (requires API key)`);
+
     });
   }
 
@@ -286,13 +262,12 @@ export class ScoreIndexer {
 
       const delay = next.getTime() - now.getTime();
 
-      console.log(`📸 Next snapshot scheduled at ${next.toISOString()}`);
 
       setTimeout(async () => {
         try {
-          console.log('📸 Generating daily snapshot...');
+
           const snapshot = await this.database.generateDailySnapshot();
-          console.log(`✅ Snapshot generated: ${snapshot.totalUsers} users, ${snapshot.totalTransactions} transactions`);
+
         } catch (error) {
           console.error('❌ Snapshot generation error:', error);
         }
@@ -363,7 +338,7 @@ export async function startIndexerFromEnv(): Promise<ScoreIndexer> {
 
   // Graceful shutdown
   const shutdown = async (signal: string) => {
-    console.log(`\n${signal} received. Shutting down gracefully...`);
+
     await indexer.stop();
     process.exit(0);
   };
@@ -443,37 +418,35 @@ export class GifterraIndexer {
       return;
     }
 
-    console.log('🚀 Starting Gifterra Indexer...');
-
     try {
       // 1. データベース初期化
-      console.log('📊 Initializing database...');
+
       await this.database.initialize();
 
       // 2. バックフィル（オプション）
       if (this.config.enableBackfill && this.config.startBlock !== undefined) {
-        console.log('🔄 Running backfill...');
+
         await this.runBackfill(this.config.startBlock);
       }
 
       // 3. イベントリスナー開始
-      console.log('👂 Starting Gifterra event listener...');
+
       await this.listener.start();
 
       // 4. APIサーバー起動（オプション）
       if (this.config.apiPort) {
-        console.log(`🌐 Starting API server on port ${this.config.apiPort}...`);
+
         this.startApiServer();
       }
 
       // 5. デイリースナップショット（オプション）
       if (this.config.enableDailySnapshot) {
-        console.log('📸 Scheduling daily snapshots...');
+
         this.scheduleDailySnapshot();
       }
 
       this.isRunning = true;
-      console.log('✅ Gifterra Indexer started successfully');
+
     } catch (error) {
       console.error('❌ Failed to start Gifterra indexer:', error);
       throw error;
@@ -489,18 +462,16 @@ export class GifterraIndexer {
       return;
     }
 
-    console.log('🛑 Stopping Gifterra Indexer...');
-
     try {
       await this.listener.stop();
 
       if (this.apiServer) {
-        console.log('🌐 Stopping API server...');
+
         // TODO: Graceful shutdown
       }
 
       this.isRunning = false;
-      console.log('✅ Gifterra Indexer stopped successfully');
+
     } catch (error) {
       console.error('❌ Error stopping Gifterra indexer:', error);
       throw error;
@@ -511,11 +482,10 @@ export class GifterraIndexer {
    * Tippedイベントハンドラ
    */
   private async handleTipped(event: TippedEvent): Promise<void> {
-    console.log(`💸 Tipped: ${event.from} | ${event.amount.toString()}`);
 
     try {
       await this.database.recordTip(event, this.config.tokenAddress);
-      console.log(`✅ TIP recorded for ${event.from}`);
+
     } catch (error) {
       console.error(`❌ Error recording TIP for ${event.from}:`, error);
       // TODO: エラーログをDBに保存してリトライ可能にする
@@ -530,8 +500,6 @@ export class GifterraIndexer {
       const currentBlock = await this.provider.getBlockNumber();
       const chunkSize = this.config.backfillChunkSize || 10000;
 
-      console.log(`🔄 Backfilling Tipped events from block ${startBlock} to ${currentBlock}...`);
-
       const events = await backfillGifterraEvents(
         this.listener,
         startBlock,
@@ -539,14 +507,11 @@ export class GifterraIndexer {
         chunkSize
       );
 
-      console.log(`✅ Backfill complete: ${events.length} Tipped events processed`);
-
       // イベントを順次処理
       for (const event of events) {
         await this.handleTipped(event);
       }
 
-      console.log('✅ All backfill events processed');
     } catch (error) {
       console.error('❌ Backfill error:', error);
       throw error;
@@ -563,7 +528,7 @@ export class GifterraIndexer {
     });
 
     this.apiServer.listen(this.config.apiPort, () => {
-      console.log(`✅ API server listening on http://localhost:${this.config.apiPort}`);
+
     });
   }
 
@@ -585,13 +550,12 @@ export class GifterraIndexer {
 
       const delay = next.getTime() - now.getTime();
 
-      console.log(`📸 Next snapshot scheduled at ${next.toISOString()}`);
 
       setTimeout(async () => {
         try {
-          console.log('📸 Generating daily snapshot...');
+
           const snapshot = await this.database.generateDailySnapshot();
-          console.log(`✅ Snapshot generated: ${snapshot.totalUsers} users`);
+
         } catch (error) {
           console.error('❌ Snapshot generation error:', error);
         }
@@ -658,7 +622,7 @@ export async function startGifterraIndexerFromEnv(): Promise<GifterraIndexer> {
 
   // Graceful shutdown
   const shutdown = async (signal: string) => {
-    console.log(`\n${signal} received. Shutting down gracefully...`);
+
     await indexer.stop();
     process.exit(0);
   };
@@ -677,7 +641,7 @@ if (require.main === module) {
   if (useGifterra) {
     startGifterraIndexerFromEnv()
       .then(() => {
-        console.log('🎉 Gifterra Indexer is now running');
+
       })
       .catch((error) => {
         console.error('❌ Fatal error:', error);
@@ -686,7 +650,7 @@ if (require.main === module) {
   } else {
     startIndexerFromEnv()
       .then(() => {
-        console.log('🎉 Score Indexer is now running');
+
       })
       .catch((error) => {
         console.error('❌ Fatal error:', error);

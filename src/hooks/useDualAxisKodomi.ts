@@ -210,19 +210,9 @@ function calculateOverallScore(
  * @param walletAddress - ウォレットアドレス（親コンポーネントから渡される）
  */
 export function useDualAxisKodomi(walletAddress?: string) {
-  console.log('🔥🔥🔥🔥🔥 [KODOMI-DEBUG-v2] ============================================');
-  console.log('🔥🔥🔥🔥🔥 [KODOMI-DEBUG-v2] useDualAxisKodomi フック実行開始!!!');
-  console.log('🔥🔥🔥🔥🔥 [KODOMI-DEBUG-v2] ============================================');
-  console.log('🔥 [KODOMI-DEBUG-v2] 渡されたwalletAddress:', walletAddress);
 
   // 引数で渡されたアドレスを使用
   const address = walletAddress;
-
-  console.log('🚀🚀🚀 [KODOMI-DEBUG-v2] useDualAxisKodomi - フック呼び出し');
-  console.log('  address:', address);
-  console.log('  address type:', typeof address);
-  console.log('  address is null?:', address === null);
-  console.log('  address is undefined?:', address === undefined);
 
   const [data, setData] = useState<DualAxisKodomiData>({
     jpyc: {
@@ -256,17 +246,14 @@ export function useDualAxisKodomi(walletAddress?: string) {
 
   // useCallbackでメモ化してクロージャ問題を解決
   const fetchDualAxisData = useCallback(async () => {
-    console.log('[KODOMI-DEBUG-v2] fetchDualAxisData呼び出し, address:', address);
 
     if (!address) {
-      console.log('[KODOMI-DEBUG-v2] addressがnullまたはundefinedのため早期リターン');
+
       return;
     }
 
     try {
-      console.log('🔍 [KODOMI-DEBUG-v2] fetchDualAxisData開始');
-      console.log('  対象アドレス:', address);
-      console.log('  小文字変換後:', address.toLowerCase());
+
 
       setData(prev => ({ ...prev, loading: true, error: null }));
 
@@ -284,30 +271,15 @@ export function useDualAxisKodomi(walletAddress?: string) {
       const aiQualityWeight = scoreParams?.ai_quality_weight ?? 1.0;
       const messageQualityWeight = scoreParams?.message_quality_weight ?? 1.0;
 
-      console.log('⚙️ [KODOMI-DEBUG-v2] 使用するスコアパラメーター:', {
-        nhtWeight,
-        streakWeight,
-        aiQualityWeight,
-        messageQualityWeight
-      });
-
       // Supabaseからトランザクション履歴を取得
-      console.log('[KODOMI-DEBUG-v2] Supabaseクエリ実行中...');
+
       const { data: transactions, error: txError } = await supabase
         .from('transfer_messages')
         .select('*')
         .eq('from_address', address.toLowerCase());
 
-      console.log('📊 [KODOMI-DEBUG-v2] Supabaseクエリ完了');
-      console.log('  エラー:', txError);
-      console.log('  取得したトランザクション数:', transactions?.length || 0);
-
       if (transactions && transactions.length > 0) {
-        console.log('  最新トランザクション:', {
-          token_symbol: transactions[0].token_symbol,
-          amount: transactions[0].amount,
-          created_at: transactions[0].created_at,
-        });
+
       }
 
       if (txError) throw txError;
@@ -394,20 +366,9 @@ export function useDualAxisKodomi(walletAddress?: string) {
         error: null,
       };
 
-      console.log('✅✅✅ [KODOMI-DEBUG-v2] データセット完了:');
-      console.log('  JPYC総額:', jpycTotal, 'JPYC');
-      console.log('  JPYCチップ回数:', jpycCount);
-      console.log('  NHTチップ回数:', nhtCount);
-      console.log('  ストリーク:', streakDays, '日');
-      console.log('  メッセージ品質:', messageQuality);
-      console.log('  エンゲージメント:', engagementScore);
-      console.log('  JPYCランク:', jpycRank.rank, 'Lv.' + jpycRank.displayLevel, `(${jpycRank.level.toFixed(2)}%)`);
-      console.log('  Resonanceランク:', resonanceRank.rank, 'Lv.' + resonanceRank.displayLevel, `(${resonanceRank.level.toFixed(2)}%)`);
-      console.log('  総合スコア:', overallScore.totalScore, '/', overallScore.rank, 'Lv.' + overallScore.displayLevel, `(${overallScore.level.toFixed(2)}%)`);
 
-      console.log('[KODOMI-DEBUG-v2] setData実行前のresult:', JSON.stringify(result, null, 2));
       setData(result);
-      console.log('[KODOMI-DEBUG-v2] setData実行完了');
+
     } catch (err) {
       console.error('❌ 2軸kodomi取得エラー:', err);
       setData(prev => ({
@@ -420,31 +381,24 @@ export function useDualAxisKodomi(walletAddress?: string) {
 
   // 初回データ取得（addressが変わったらロード）
   useEffect(() => {
-    console.log('🔄 [KODOMI-DEBUG-v2] useEffect (初回データ取得) 実行');
-    console.log('  address:', address);
-    console.log('  addressの型:', typeof address);
-    console.log('  walletAddress引数:', walletAddress);
 
     if (!address) {
-      console.log('⚠️ [KODOMI-DEBUG-v2] addressがnull/undefinedのため、loading=falseにして早期リターン');
+
       setData(prev => ({ ...prev, loading: false }));
       return;
     }
 
-    console.log('✅ [KODOMI-DEBUG-v2] addressあり、fetchDualAxisData呼び出し');
     fetchDualAxisData();
   }, [address, fetchDualAxisData, walletAddress]); // walletAddressを依存配列に追加
 
   // リアルタイム更新の購読
   useEffect(() => {
     if (!address) {
-      console.log('⚠️ [KODOMI-DEBUG-v2] リアルタイム購読: addressがnullのためスキップ');
+
       return;
     }
 
     const normalizedAddress = address.toLowerCase();
-    console.log('🔔 [KODOMI-DEBUG-v2] リアルタイム購読開始 for address:', normalizedAddress);
-    console.log('🔔 [KODOMI-DEBUG-v2] チャンネル名:', `kodomi-updates-${normalizedAddress}`);
 
     // Supabaseリアルタイムサブスクリプション設定
     const channel = supabase
@@ -458,24 +412,17 @@ export function useDualAxisKodomi(walletAddress?: string) {
           filter: `from_address=eq.${normalizedAddress}`,
         },
         (payload) => {
-          console.log('🔔🔔🔔 [KODOMI-DEBUG-v2] !!!! リアルタイム更新検知 (from_address) !!!!');
-          console.log('  イベント種類:', payload.eventType);
-          console.log('  対象アドレス:', normalizedAddress);
-          console.log('  新しいレコード:', payload.new);
-          console.log('  古いレコード:', payload.old);
-          console.log('🔄 [KODOMI-DEBUG-v2] fetchDualAxisDataを呼び出してデータ再取得します...');
+
           fetchDualAxisData(); // データ再取得
         }
       )
       .subscribe((status) => {
-        console.log('📡 [KODOMI-DEBUG-v2] 購読ステータス:', status);
-      });
 
-    console.log('✅ [KODOMI-DEBUG-v2] リアルタイム購読チャンネル作成完了');
+      });
 
     // クリーンアップ
     return () => {
-      console.log('🔕 [KODOMI-DEBUG-v2] リアルタイム購読解除 for address:', normalizedAddress);
+
       supabase.removeChannel(channel);
     };
   }, [address, fetchDualAxisData, walletAddress]); // walletAddressも依存配列に追加

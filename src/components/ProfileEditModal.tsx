@@ -235,16 +235,6 @@ export function ProfileEditModal({
       // Twitter IDから@を除去
       const cleanTwitterId = twitterId.trim().replace(/^@/, '');
 
-      console.log('💾 プロフィール保存開始:', {
-        wallet_address: walletAddress.toLowerCase(),
-        display_name: displayName.trim(),
-        twitter_id: cleanTwitterId || null,
-        location: location.trim() || null,
-        roles: roles,
-        show_wallet_address: showWalletAddress,
-        reject_anonymous_transfers: rejectAnonymousTransfers,
-      });
-
       // upsert: 存在すれば更新、存在しなければ作成
       // Supabaseの.upsert()を使用（onConflictでユニーク制約を指定）
       const profileData: any = {
@@ -277,11 +267,6 @@ export function ProfileEditModal({
       // テナント所有者の場合はユーザー設定を尊重、未所有者の場合は常にtrueとして保存
       profileData.show_reward_button = isTenantOwner ? showRewardButton : true;
 
-      console.log('📝 ProfileEditModal - Attempting upsert with data:', {
-        ...profileData,
-        wallet_address: profileData.wallet_address?.substring(0, 10) + '...',
-      });
-
       // 既存レコードを検索
       const { data: existing } = await supabase
         .from('user_profiles')
@@ -294,7 +279,6 @@ export function ProfileEditModal({
 
       if (existing) {
         // 既存レコードがあれば更新
-        console.log('📝 既存レコードを更新:', existing.id);
         const result = await supabase
           .from('user_profiles')
           .update(profileData)
@@ -304,7 +288,6 @@ export function ProfileEditModal({
         upsertError = result.error;
       } else {
         // 新規作成
-        console.log('📝 新規レコードを作成');
         const result = await supabase
           .from('user_profiles')
           .insert(profileData)
@@ -323,8 +306,6 @@ export function ProfileEditModal({
         });
         throw upsertError;
       }
-
-      console.log('✅ プロフィール保存成功:', data);
 
       onSave();
       onClose();

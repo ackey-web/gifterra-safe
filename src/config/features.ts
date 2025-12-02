@@ -26,11 +26,6 @@ export function getFeatureFlags(): FeatureFlags {
     .map(addr => addr.toLowerCase().trim())
     .filter(addr => addr.length > 0);
 
-  console.log('🎯 Feature Flags:', {
-    enableGaslessPayment: enableGasless,
-    allowlistCount: allowlist.length,
-  });
-
   return {
     enableGaslessPayment: enableGasless,
     gaslessPaymentAllowlist: allowlist,
@@ -54,19 +49,18 @@ export function isGaslessPaymentEnabled(userAddress?: string): boolean {
 
   // 機能が無効化されている場合
   if (!flags.enableGaslessPayment) {
-    console.log('⚠️ Gasless payment is disabled globally');
+
     return false;
   }
 
   // Allowlistが空の場合は全員有効
   if (flags.gaslessPaymentAllowlist.length === 0) {
-    console.log('✅ Gasless payment enabled for all users (no allowlist)');
     return true;
   }
 
   // ユーザーアドレスがない場合
   if (!userAddress) {
-    console.log('⚠️ No user address provided');
+
     return false;
   }
 
@@ -74,9 +68,9 @@ export function isGaslessPaymentEnabled(userAddress?: string): boolean {
   const isAllowed = flags.gaslessPaymentAllowlist.includes(userAddress.toLowerCase());
 
   if (isAllowed) {
-    console.log('✅ Gasless payment enabled for address:', userAddress);
+
   } else {
-    console.log('⚠️ Address not in allowlist:', userAddress);
+
   }
 
   return isAllowed;

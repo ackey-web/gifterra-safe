@@ -123,7 +123,7 @@ export function useNewUserNotifications({
 
             // レート制限チェック
             if (!canNotify()) {
-              console.log('[NewUserNotifications] Rate limit exceeded, skipping notification');
+
               return;
             }
 
@@ -148,7 +148,6 @@ export function useNewUserNotifications({
               onNewUser(notification);
             }
 
-            console.log('[NewUserNotifications] New user detected:', notification);
           } catch (error) {
             console.error('[NewUserNotifications] Error processing new user:', error);
           }
@@ -157,7 +156,7 @@ export function useNewUserNotifications({
       .subscribe((status) => {
         if (status === 'SUBSCRIBED') {
           setIsListening(true);
-          console.log('[NewUserNotifications] Listening for new users with roles:', myRoles);
+
         } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
           setIsListening(false);
           console.error('[NewUserNotifications] Channel error:', status);

@@ -85,12 +85,10 @@ export interface QRScanResult {
  */
 export function parseWalletQR(qrString: string): QRScanResult {
   try {
-    console.log('🔍 parseWalletQR 入力:', qrString.substring(0, 100));
     const parsed = JSON.parse(qrString);
-    console.log('📦 JSON parse成功:', parsed);
 
     if (parsed.type !== 'wallet') {
-      console.log('❌ typeがwalletではない:', parsed.type);
+
       return {
         success: false,
         error: 'ウォレットQRコードではありません',
@@ -98,7 +96,7 @@ export function parseWalletQR(qrString: string): QRScanResult {
     }
 
     if (!parsed.address || typeof parsed.address !== 'string') {
-      console.log('❌ addressが不正:', parsed.address);
+
       return {
         success: false,
         error: 'アドレスが含まれていません',
@@ -106,14 +104,13 @@ export function parseWalletQR(qrString: string): QRScanResult {
     }
 
     if (!parsed.chainId || parsed.chainId !== 137) {
-      console.log('❌ chainIdが不正:', parsed.chainId);
+
       return {
         success: false,
         error: 'サポートされていないチェーンです（Polygon Mainnetのみ対応）',
       };
     }
 
-    console.log('✅ ウォレットQR parse成功');
     return {
       success: true,
       type: 'wallet',
@@ -126,7 +123,7 @@ export function parseWalletQR(qrString: string): QRScanResult {
       },
     };
   } catch (error) {
-    console.log('❌ JSON parseエラー:', error);
+
     return {
       success: false,
       error: 'QRコードの解析に失敗しました',
@@ -146,12 +143,10 @@ export function isInvoiceQR(qrString: string): boolean {
  */
 export function parseAuthorizationQR(qrString: string): QRScanResult {
   try {
-    console.log('🔍 parseAuthorizationQR 入力:', qrString.substring(0, 100));
     const parsed = JSON.parse(qrString);
-    console.log('📦 JSON parse成功:', parsed);
 
     if (parsed.type !== 'authorization') {
-      console.log('❌ typeがauthorizationではない:', parsed.type);
+
       return {
         success: false,
         error: 'ガスレス決済QRコードではありません',
@@ -160,12 +155,7 @@ export function parseAuthorizationQR(qrString: string): QRScanResult {
 
     // 必須フィールドの検証
     if (!parsed.to || !parsed.value || !parsed.nonce || !parsed.requestId) {
-      console.log('❌ 必須フィールドが不足:', {
-        to: !!parsed.to,
-        value: !!parsed.value,
-        nonce: !!parsed.nonce,
-        requestId: !!parsed.requestId,
-      });
+
       return {
         success: false,
         error: 'QRコードの形式が不正です',
@@ -173,14 +163,13 @@ export function parseAuthorizationQR(qrString: string): QRScanResult {
     }
 
     if (!parsed.chainId || parsed.chainId !== 137) {
-      console.log('❌ chainIdが不正:', parsed.chainId);
+
       return {
         success: false,
         error: 'サポートされていないチェーンです（Polygon Mainnetのみ対応）',
       };
     }
 
-    console.log('✅ ガスレス決済QR parse成功');
     return {
       success: true,
       type: 'authorization',
@@ -196,7 +185,7 @@ export function parseAuthorizationQR(qrString: string): QRScanResult {
       },
     };
   } catch (error) {
-    console.log('❌ JSON parseエラー:', error);
+
     return {
       success: false,
       error: 'QRコードの解析に失敗しました',
