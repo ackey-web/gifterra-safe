@@ -1129,8 +1129,8 @@ export function ProfilePage() {
                     )}
                   </div>
 
-                  {/* Daily Reward ボタン（自分のプロフィールのみ・テナント所有者・STUDIOプラン以上のみ） */}
-                  {!isViewingOtherProfile && shouldShowTenantFeatures && profile?.show_reward_button !== false && (
+                  {/* Daily Reward ボタン（他人が見た時のみ、設定に従って表示） */}
+                  {shouldShowTenantFeatures && isViewingOtherProfile && profile?.show_reward_button !== false && (
                     <button
                       onClick={() => {
                         window.location.href = `/reward?tenant=${walletAddress}`;

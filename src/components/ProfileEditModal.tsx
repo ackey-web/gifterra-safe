@@ -274,7 +274,8 @@ export function ProfileEditModal({
       if (cleanTwitterId) {
         profileData.twitter_id = cleanTwitterId;
       }
-      profileData.show_reward_button = showRewardButton;
+      // テナント所有者の場合はユーザー設定を尊重、未所有者の場合は常にtrueとして保存
+      profileData.show_reward_button = isTenantOwner ? showRewardButton : true;
 
       console.log('📝 ProfileEditModal - Attempting upsert with data:', {
         ...profileData,
