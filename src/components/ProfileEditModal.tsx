@@ -27,6 +27,7 @@ interface ProfileEditModalProps {
     show_reward_button?: boolean;
   };
   walletAddress: string;
+  isTenantOwner?: boolean;
 }
 
 export function ProfileEditModal({
@@ -35,6 +36,7 @@ export function ProfileEditModal({
   isMobile,
   currentProfile,
   walletAddress,
+  isTenantOwner = false,
 }: ProfileEditModalProps) {
   const [displayName, setDisplayName] = useState(currentProfile.display_name || '');
   const [bio, setBio] = useState(currentProfile.bio || '');
@@ -1349,76 +1351,78 @@ export function ProfileEditModal({
               )}
             </div>
 
-            {/* Reward UIボタン表示設定 */}
-            <div
-              style={{
-                marginBottom: 16,
-                padding: isMobile ? '12px 14px' : '14px 16px',
-                background: 'rgba(255, 255, 255, 0.03)',
-                borderRadius: 12,
-                border: '1px solid rgba(255, 255, 255, 0.08)',
-              }}
-            >
-              <label
+            {/* Reward UIボタン表示設定（テナント所有者のみ） */}
+            {isTenantOwner && (
+              <div
                 style={{
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  gap: 12,
-                  cursor: 'pointer',
+                  marginBottom: 16,
+                  padding: isMobile ? '12px 14px' : '14px 16px',
+                  background: 'rgba(255, 255, 255, 0.03)',
+                  borderRadius: 12,
+                  border: '1px solid rgba(255, 255, 255, 0.08)',
                 }}
               >
-                <input
-                  type="checkbox"
-                  checked={showRewardButton}
-                  onChange={(e) => setShowRewardButton(e.target.checked)}
+                <label
                   style={{
-                    width: 20,
-                    height: 20,
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: 12,
                     cursor: 'pointer',
-                    accentColor: '#f59e0b',
-                  }}
-                />
-                <div style={{ flex: 1 }}>
-                  <div
-                    style={{
-                      fontSize: isMobile ? 13 : 14,
-                      fontWeight: 600,
-                      color: '#EAF2FF',
-                      marginBottom: 4,
-                    }}
-                  >
-                    💎 Reward UIボタンを表示
-                  </div>
-                  <div
-                    style={{
-                      fontSize: isMobile ? 11 : 12,
-                      color: 'rgba(255, 255, 255, 0.6)',
-                      lineHeight: 1.4,
-                    }}
-                  >
-                    {showRewardButton
-                      ? 'プロフィールにReward UIへのナビゲーションボタンが表示されます'
-                      : 'Reward UIボタンを非表示にしています'}
-                  </div>
-                </div>
-              </label>
-              {showRewardButton && (
-                <div
-                  style={{
-                    marginTop: 8,
-                    padding: isMobile ? '8px 10px' : '10px 12px',
-                    background: 'rgba(245, 158, 11, 0.1)',
-                    border: '1px solid rgba(245, 158, 11, 0.2)',
-                    borderRadius: 6,
-                    fontSize: isMobile ? 11 : 12,
-                    color: 'rgba(251, 191, 36, 0.9)',
-                    lineHeight: 1.5,
                   }}
                 >
-                  💡 訪問者はこのボタンから、あなたが設定したReward UIにアクセスできます
-                </div>
-              )}
-            </div>
+                  <input
+                    type="checkbox"
+                    checked={showRewardButton}
+                    onChange={(e) => setShowRewardButton(e.target.checked)}
+                    style={{
+                      width: 20,
+                      height: 20,
+                      cursor: 'pointer',
+                      accentColor: '#f59e0b',
+                    }}
+                  />
+                  <div style={{ flex: 1 }}>
+                    <div
+                      style={{
+                        fontSize: isMobile ? 13 : 14,
+                        fontWeight: 600,
+                        color: '#EAF2FF',
+                        marginBottom: 4,
+                      }}
+                    >
+                      💎 Reward UIボタンを表示
+                    </div>
+                    <div
+                      style={{
+                        fontSize: isMobile ? 11 : 12,
+                        color: 'rgba(255, 255, 255, 0.6)',
+                        lineHeight: 1.4,
+                      }}
+                    >
+                      {showRewardButton
+                        ? 'プロフィールにReward UIへのナビゲーションボタンが表示されます'
+                        : 'Reward UIボタンを非表示にしています'}
+                    </div>
+                  </div>
+                </label>
+                {showRewardButton && (
+                  <div
+                    style={{
+                      marginTop: 8,
+                      padding: isMobile ? '8px 10px' : '10px 12px',
+                      background: 'rgba(245, 158, 11, 0.1)',
+                      border: '1px solid rgba(245, 158, 11, 0.2)',
+                      borderRadius: 6,
+                      fontSize: isMobile ? 11 : 12,
+                      color: 'rgba(251, 191, 36, 0.9)',
+                      lineHeight: 1.5,
+                    }}
+                  >
+                    💡 訪問者はこのボタンから、あなたが設定したReward UIにアクセスできます
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* エラーメッセージ */}
             {error && (

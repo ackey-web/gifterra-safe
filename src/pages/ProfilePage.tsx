@@ -1542,6 +1542,7 @@ export function ProfilePage() {
             show_reward_button: profile?.show_reward_button,
           }}
           walletAddress={currentUserWalletAddress}
+          isTenantOwner={isProfileOwnerTenantApproved}
         />
       )}
 
