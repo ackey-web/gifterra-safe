@@ -1,7 +1,7 @@
 // src/admin/contexts/TenantContext.tsx
 // テナントオーナー認証とコントラクトアクセス管理
 
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import type { ReactNode } from 'react';
 import { useAddress, useContract, ConnectWallet } from '@thirdweb-dev/react';
 import { usePrivy, useWallets } from '@privy-io/react-auth';

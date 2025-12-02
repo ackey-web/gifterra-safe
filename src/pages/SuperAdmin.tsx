@@ -31,7 +31,7 @@ import CreateTenantForm from './CreateTenantForm';
 import { SecurityManagement } from '../admin/components/SecurityManagement';
 
 type TabType = 'dashboard' | 'user-preview' | 'users' | 'tenant-management' | 'revenue' | 'rank-plans' | 'score-parameters' | 'token-axis' | 'system-monitoring' | 'security' | 'announcements' | 'ads';
-type TenantSubTab = 'active' | 'applications' | 'create';
+type TenantSubTab = 'applications' | 'create';
 
 export function SuperAdminPage() {
   const connectedAddress = useAddress();
@@ -1681,7 +1681,7 @@ function UsersTab() {
  * テナント管理統合タブ (アクティブテナント + 申請管理 + 新規作成)
  */
 function TenantManagementTab() {
-  const [subTab, setSubTab] = useState<TenantSubTab>('active');
+  const [subTab, setSubTab] = useState<TenantSubTab>('applications');
   const { applications } = useTenantApplications('pending');
   const pendingCount = applications.filter(a => a.status === 'pending').length;
 
@@ -1695,12 +1695,6 @@ function TenantManagementTab() {
         borderBottom: '2px solid rgba(255,255,255,0.1)',
         paddingBottom: 12
       }}>
-        <SubTabButton
-          active={subTab === 'active'}
-          onClick={() => setSubTab('active')}
-          icon="📊"
-          label="アクティブテナント"
-        />
         <SubTabButton
           active={subTab === 'applications'}
           onClick={() => setSubTab('applications')}
@@ -1717,7 +1711,6 @@ function TenantManagementTab() {
       </div>
 
       {/* サブタブコンテンツ */}
-      {subTab === 'active' && <ActiveTenantsPanel />}
       {subTab === 'applications' && <ApplicationsPanel />}
       {subTab === 'create' && <CreateTenantPanel />}
     </div>
@@ -2326,6 +2319,7 @@ function ApplicationsPanel() {
   const [statusFilter, setStatusFilter] = useState<ApplicationStatus>('pending');
   const { applications, loading, error, refetch } = useTenantApplications(statusFilter);
   const { reject, rejecting } = useRejectTenantApplication();
+  const { deleteTenant, deleting } = useDeleteTenantApplication();
 
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectingApplication, setRejectingApplication] = useState<TenantApplication | null>(null);
@@ -2333,6 +2327,9 @@ function ApplicationsPanel() {
 
   const [showDeployModal, setShowDeployModal] = useState(false);
   const [deployingApplication, setDeployingApplication] = useState<TenantApplication | null>(null);
+
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deletingApplication, setDeletingApplication] = useState<TenantApplication | null>(null);
 
   // デプロイモーダルを開く
   const handleDeploy = (application: TenantApplication) => {
@@ -2361,6 +2358,27 @@ function ApplicationsPanel() {
     setShowRejectModal(false);
     setRejectingApplication(null);
     setRejectReason('');
+  };
+
+  // 削除処理
+  const handleDelete = (application: TenantApplication) => {
+    setDeletingApplication(application);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!deletingApplication) return;
+
+    const success = await deleteTenant(deletingApplication.id);
+
+    if (success) {
+      alert(`テナント「${deletingApplication.tenant_name}」を削除しました`);
+      setShowDeleteModal(false);
+      setDeletingApplication(null);
+      refetch();
+    } else {
+      alert('テナントの削除に失敗しました');
+    }
   };
 
   if (loading) {
@@ -2662,6 +2680,28 @@ function ApplicationsPanel() {
                       </button>
                     </div>
                   )}
+
+                  {statusFilter === 'approved' && application.status === 'approved' && (
+                    <button
+                      onClick={() => handleDelete(application)}
+                      disabled={deleting}
+                      style={{
+                        width: '100%',
+                        padding: '12px 24px',
+                        background: 'rgba(239, 68, 68, 0.1)',
+                        border: '1px solid rgba(239, 68, 68, 0.3)',
+                        borderRadius: 8,
+                        color: '#ef4444',
+                        fontSize: 14,
+                        fontWeight: 600,
+                        cursor: deleting ? 'not-allowed' : 'pointer',
+                        opacity: deleting ? 0.6 : 1,
+                        transition: 'all 0.2s',
+                      }}
+                    >
+                      🗑️ テナントを削除
+                    </button>
+                  )}
                 </div>
               );
             })}
@@ -2833,6 +2873,78 @@ function ApplicationsPanel() {
                 }}
               >
                 拒否する
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 削除確認モーダル */}
+      {showDeleteModal && deletingApplication && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.8)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 10000,
+        }}>
+          <div style={{
+            background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)',
+            borderRadius: 16,
+            padding: 32,
+            maxWidth: 480,
+            width: '90%',
+            border: '1px solid rgba(239, 68, 68, 0.3)',
+          }}>
+            <h3 style={{ margin: '0 0 16px 0', fontSize: 20, fontWeight: 700, color: '#ef4444' }}>
+              ⚠️ テナントを削除
+            </h3>
+            <p style={{ margin: '0 0 24px 0', fontSize: 15, color: 'rgba(255,255,255,0.8)', lineHeight: 1.6 }}>
+              テナント「<strong>{deletingApplication.tenant_name}</strong>」を削除しますか？
+              <br /><br />
+              ⚠️ この操作は取り消せません。
+            </p>
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => {
+                  setShowDeleteModal(false);
+                  setDeletingApplication(null);
+                }}
+                disabled={deleting}
+                style={{
+                  padding: '12px 24px',
+                  background: 'rgba(255,255,255,0.1)',
+                  border: '1px solid rgba(255,255,255,0.2)',
+                  borderRadius: 8,
+                  color: '#fff',
+                  fontSize: 14,
+                  fontWeight: 600,
+                  cursor: deleting ? 'not-allowed' : 'pointer',
+                  opacity: deleting ? 0.5 : 1,
+                }}
+              >
+                キャンセル
+              </button>
+              <button
+                onClick={confirmDelete}
+                disabled={deleting}
+                style={{
+                  padding: '12px 24px',
+                  background: deleting ? 'rgba(239, 68, 68, 0.5)' : '#ef4444',
+                  border: 'none',
+                  borderRadius: 8,
+                  color: '#fff',
+                  fontSize: 14,
+                  fontWeight: 600,
+                  cursor: deleting ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {deleting ? '削除中...' : '削除する'}
               </button>
             </div>
           </div>
