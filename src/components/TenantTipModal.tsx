@@ -4,10 +4,9 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useAddress, useContract, useContractWrite } from '@thirdweb-dev/react';
-import { usePrivy, useWallets } from '@privy-io/react-auth';
 import { ethers } from 'ethers';
 import { CONTRACT_ABI, getGifterraAddress } from '../contract';
-import { getActiveTokens, formatTokenShort, type TokenId } from '../config/tokenHelpers';
+import { type TokenId } from '../config/tokens';
 import { calculateKodomi } from '../lib/ai_analysis';
 
 interface TenantTipModalProps {
@@ -28,54 +27,18 @@ export function TenantTipModal({
   isMobile,
 }: TenantTipModalProps) {
   const address = useAddress();
-  const { user, authenticated: privyAuthenticated } = usePrivy();
-  const { wallets } = useWallets();
-  const [privyAddress, setPrivyAddress] = useState<string>('');
-
-  // Get Privy wallet address
-  useState(() => {
-    async function getPrivyAddress() {
-      if (!privyAuthenticated || !wallets || wallets.length === 0) {
-        setPrivyAddress('');
-        return;
-      }
-
-      try {
-        const wallet = wallets[0];
-        if (wallet.address) {
-          setPrivyAddress(wallet.address);
-          return;
-        }
-
-        const provider = await wallet.getEthereumProvider();
-        const ethersProvider = new ethers.providers.Web3Provider(provider, 'any');
-        const signer = ethersProvider.getSigner();
-        const addr = await signer.getAddress();
-        setPrivyAddress(addr);
-      } catch (error) {
-        console.error('❌ Failed to get Privy address:', error);
-        setPrivyAddress('');
-      }
-    }
-    getPrivyAddress();
-  });
-
-  // Combined address
-  const currentUserAddress = address || privyAddress;
 
   // Contract connection
   const gifterraAddress = getGifterraAddress();
   const { contract } = useContract(gifterraAddress, CONTRACT_ABI);
 
   // State
-  const [selectedTokenId, setSelectedTokenId] = useState<TokenId>('JPYC');
+  const selectedTokenId: TokenId = 'JPYC'; // JPYCのみに固定
   const [selectedAmount, setSelectedAmount] = useState<number | null>(null);
   const [customAmount, setCustomAmount] = useState<string>('');
   const [isCustomMode, setIsCustomMode] = useState(false);
   const [message, setMessage] = useState<string>('');
   const [isSending, setIsSending] = useState(false);
-
-  const selectedTokenConfig = getActiveTokens(false).find(t => t.id === selectedTokenId) || getActiveTokens(false)[0];
 
   const finalAmount = isCustomMode ? parseFloat(customAmount) || 0 : selectedAmount || 0;
 
@@ -84,7 +47,7 @@ export function TenantTipModal({
   if (!isOpen) return null;
 
   const handleSend = async () => {
-    if (!contract || !currentUserAddress || !finalAmount || finalAmount <= 0) {
+    if (!contract || !finalAmount || finalAmount <= 0) {
       alert('チップ金額を入力してください');
       return;
     }
@@ -106,7 +69,7 @@ export function TenantTipModal({
       const kodomiScore = calculateKodomi(1, mockSentimentScore, 0);
 
       alert(
-        `✅ ${finalAmount} ${selectedTokenConfig.symbol} のチップを送信しました！\n\n` +
+        `✅ ${finalAmount} JPYC のチップを送信しました！\n\n` +
         `📊 Kodomi解析:\n` +
         `- 回数スコア: 1回\n` +
         `- AI質的スコア: ${mockSentimentScore}/100\n` +
@@ -246,74 +209,6 @@ export function TenantTipModal({
             padding: isMobile ? '20px' : '24px',
           }}
         >
-          {/* トークン選択 */}
-          <label
-            style={{
-              display: 'block',
-              fontSize: isMobile ? '13px' : '14px',
-              fontWeight: 600,
-              color: '#EAF2FF',
-              marginBottom: '12px',
-            }}
-          >
-            トークンを選択
-          </label>
-          <div
-            style={{
-              display: 'flex',
-              gap: '8px',
-              marginBottom: '24px',
-            }}
-          >
-            {getActiveTokens(false).map((token) => (
-              <button
-                key={token.id}
-                onClick={() => setSelectedTokenId(token.id as TokenId)}
-                disabled={token.currentAddress === '0x0000000000000000000000000000000000000000'}
-                style={{
-                  flex: 1,
-                  padding: isMobile ? '10px' : '12px',
-                  background:
-                    selectedTokenId === token.id
-                      ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
-                      : 'rgba(255, 255, 255, 0.05)',
-                  border:
-                    selectedTokenId === token.id
-                      ? '2px solid rgba(102, 126, 234, 0.5)'
-                      : '1px solid rgba(255, 255, 255, 0.1)',
-                  borderRadius: '12px',
-                  color: '#EAF2FF',
-                  fontSize: isMobile ? '14px' : '15px',
-                  fontWeight: 600,
-                  cursor:
-                    token.currentAddress === '0x0000000000000000000000000000000000000000'
-                      ? 'not-allowed'
-                      : 'pointer',
-                  transition: 'all 0.2s',
-                  opacity:
-                    token.currentAddress === '0x0000000000000000000000000000000000000000'
-                      ? 0.5
-                      : 1,
-                }}
-                onMouseEnter={(e) => {
-                  if (
-                    selectedTokenId !== token.id &&
-                    token.currentAddress !== '0x0000000000000000000000000000000000000000'
-                  ) {
-                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (selectedTokenId !== token.id) {
-                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
-                  }
-                }}
-              >
-                {token.symbol}
-              </button>
-            ))}
-          </div>
-
           {/* 金額選択 */}
           <label
             style={{
@@ -324,7 +219,7 @@ export function TenantTipModal({
               marginBottom: '16px',
             }}
           >
-            金額を選択 ({selectedTokenConfig.symbol})
+            金額を選択 (JPYC)
           </label>
 
           <div
@@ -382,7 +277,7 @@ export function TenantTipModal({
                     opacity: 0.8,
                   }}
                 >
-                  {selectedTokenConfig.symbol}
+                  JPYC
                 </span>
               </button>
             ))}
@@ -450,7 +345,7 @@ export function TenantTipModal({
                   pointerEvents: 'none',
                 }}
               >
-                {selectedTokenConfig.symbol}
+                JPYC
               </span>
             </div>
           </div>
@@ -535,7 +430,7 @@ export function TenantTipModal({
                   marginBottom: '8px',
                 }}
               >
-                {finalAmount.toLocaleString()} {selectedTokenConfig.symbol}
+                {finalAmount.toLocaleString()} JPYC
               </div>
               <div
                 style={{
@@ -589,12 +484,12 @@ export function TenantTipModal({
           </button>
           <button
             onClick={handleSend}
-            disabled={finalAmount <= 0 || isSending || !currentUserAddress}
+            disabled={finalAmount <= 0 || isSending}
             style={{
               flex: 1,
               padding: isMobile ? '12px' : '14px',
               background:
-                finalAmount <= 0 || isSending || !currentUserAddress
+                finalAmount <= 0 || isSending
                   ? 'rgba(102, 126, 234, 0.3)'
                   : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
               border: 'none',
@@ -603,24 +498,24 @@ export function TenantTipModal({
               fontSize: isMobile ? '14px' : '15px',
               fontWeight: 600,
               cursor:
-                finalAmount <= 0 || isSending || !currentUserAddress
+                finalAmount <= 0 || isSending
                   ? 'not-allowed'
                   : 'pointer',
               transition: 'all 0.2s',
-              opacity: finalAmount <= 0 || isSending || !currentUserAddress ? 0.6 : 1,
+              opacity: finalAmount <= 0 || isSending ? 0.6 : 1,
             }}
             onMouseEnter={(e) => {
-              if (finalAmount > 0 && !isSending && currentUserAddress) {
+              if (finalAmount > 0 && !isSending) {
                 e.currentTarget.style.transform = 'scale(1.02)';
               }
             }}
             onMouseLeave={(e) => {
-              if (finalAmount > 0 && !isSending && currentUserAddress) {
+              if (finalAmount > 0 && !isSending) {
                 e.currentTarget.style.transform = 'scale(1)';
               }
             }}
           >
-            {isSending ? '送信中...' : !currentUserAddress ? 'ウォレット接続が必要です' : '💰 チップを贈る'}
+            {isSending ? '送信中...' : '💰 チップを贈る'}
           </button>
         </div>
       </div>
