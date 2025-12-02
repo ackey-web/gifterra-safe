@@ -365,10 +365,15 @@ export function useDeleteTenantApplication() {
       setError(null);
 
       // RLSポリシーの制限により物理削除ができないため、
-      // ステータスを'deleted'に変更して論理削除を実施
+      // ステータスを'rejected'に変更し、削除理由を記録して論理削除を実施
       const { error: deleteError } = await supabase
         .from('tenant_applications')
-        .update({ status: 'deleted' })
+        .update({
+          status: 'rejected',
+          rejection_reason: '管理者により削除されました',
+          approved_by: adminAddress.toLowerCase(),
+          approved_at: new Date().toISOString(),
+        })
         .eq('id', applicationId);
 
       if (deleteError) throw deleteError;
