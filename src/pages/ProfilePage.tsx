@@ -116,14 +116,6 @@ export function ProfilePage() {
   const tenantAddressForThresholds = (profileOwnerApplication && profileOwnerApplication.status === 'approved')
     ? profileOwnerApplication.wallet_address
     : undefined;
-
-  console.log('🔍 ProfilePage - KODOMI threshold logic:', {
-    walletAddress,
-    profileOwnerApplication,
-    isApproved: profileOwnerApplication?.status === 'approved',
-    tenantAddressForThresholds,
-  });
-
   const userKodomi = useUserKodomi(walletAddress, tenantAddressForThresholds);
   const [loadingProfileOwnerTenant, setLoadingProfileOwnerTenant] = useState(true);
 

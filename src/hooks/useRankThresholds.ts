@@ -17,7 +17,6 @@ export function useRankThresholds(tenantAddress: string | undefined) {
 
   useEffect(() => {
     if (!tenantAddress) {
-      console.log('🔍 useRankThresholds: tenantAddress is undefined, returning empty thresholds');
       setThresholds({});
       setLoading(false);
       return;
@@ -29,13 +28,6 @@ export function useRankThresholds(tenantAddress: string | undefined) {
       // localStorageキー: tip-rank-thresholds-{address}
       const storageKey = `tip-rank-thresholds-${tenantAddress.toLowerCase()}`;
       const stored = localStorage.getItem(storageKey);
-
-      console.log('🔍 useRankThresholds:', {
-        tenantAddress,
-        storageKey,
-        hasStoredValue: !!stored,
-        storedValue: stored ? JSON.parse(stored) : null,
-      });
 
       if (stored) {
         const parsed = JSON.parse(stored);
