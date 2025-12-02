@@ -112,7 +112,11 @@ export function ProfilePage() {
   const [profileOwnerApplication, setProfileOwnerApplication] = useState<any>(null);
 
   // 対象ユーザーへの自分のkodomi値を取得（テナントのカスタム閾値を使用）
-  const userKodomi = useUserKodomi(walletAddress, profileOwnerApplication?.wallet_address);
+  // ⚠️ テナント承認済みの場合のみカスタム閾値を使用、それ以外はundefinedでデフォルト閾値を使用
+  const tenantAddressForThresholds = (profileOwnerApplication && profileOwnerApplication.status === 'approved')
+    ? profileOwnerApplication.wallet_address
+    : undefined;
+  const userKodomi = useUserKodomi(walletAddress, tenantAddressForThresholds);
   const [loadingProfileOwnerTenant, setLoadingProfileOwnerTenant] = useState(true);
 
   useEffect(() => {
