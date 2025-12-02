@@ -820,7 +820,7 @@ function Header({ viewMode, setViewMode, isMobile, tenantRank, showSettingsModal
                 {application?.status === 'approved' && (
                   <button
                     onClick={() => {
-                      window.location.href = '/admin/tenant-profile';
+                      window.location.href = `/admin/${application.applicant_address}`;
                       setShowMobileMenu(false);
                     }}
                     style={{
