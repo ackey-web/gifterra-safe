@@ -272,8 +272,7 @@ export function ProfileEditModal({
       if (cleanTwitterId) {
         profileData.twitter_id = cleanTwitterId;
       }
-      // show_reward_buttonは一時的にコメントアウト（カラムが存在しない可能性）
-      // profileData.show_reward_button = showRewardButton;
+      profileData.show_reward_button = showRewardButton;
 
       console.log('📝 ProfileEditModal - Attempting upsert with data:', {
         ...profileData,
