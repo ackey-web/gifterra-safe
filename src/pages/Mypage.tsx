@@ -556,14 +556,13 @@ function Header({ viewMode, setViewMode, isMobile, tenantRank, showSettingsModal
 
   // プランに応じたロゴ画像を取得
   const getHeaderLogo = () => {
-    // 承認済みテナントでプランが有効な場合のみ
-    if (
-      application?.status === 'approved' &&
-      tenantId &&
-      tenantRankPlan &&
-      tenantRankPlan.is_active
-    ) {
-      const plan = tenantRankPlan.rank_plan;
+    // 承認済みテナントの場合
+    if (application?.status === 'approved' && tenantId) {
+      // tenant_rank_plansがあればそれを優先、なければapplicationのrank_planを使う
+      const plan = (tenantRankPlan && tenantRankPlan.is_active) 
+        ? tenantRankPlan.rank_plan 
+        : application.rank_plan;
+      
       switch (plan) {
         case 'STUDIO':
           return studioImage;
