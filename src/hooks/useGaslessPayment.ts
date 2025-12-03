@@ -71,7 +71,7 @@ export async function getGaslessPaymentRequestByPIN(
 
 // Update gasless payment request with signature
 export async function signGaslessPaymentRequest(
-  id: string,
+  pin: string,
   signatureData: SignGaslessPaymentRequest
 ): Promise<{ error: Error | null }> {
   try {
@@ -85,7 +85,7 @@ export async function signGaslessPaymentRequest(
         status: 'signed',
         signed_at: new Date().toISOString(),
       })
-      .eq('id', id);
+      .eq('pin', pin); // PINでフィルタリングに変更
 
     if (error) {
       console.error('Error signing gasless payment request:', error);
