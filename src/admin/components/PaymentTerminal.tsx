@@ -598,7 +598,7 @@ export function PaymentTerminal() {
         setGaslessPaymentRequest(gaslessRequest);
         setGaslessPIN(pin);
         setQrData(pinQRData);
-        setCurrentRequestId(gaslessRequest.id);
+        setCurrentRequestId(pin); // PINをセット（Realtime監視で使用）
         setAmount(amountToGenerate);
         setMessage({ type: 'success', text: '⚡ ガスレスQR生成完了（PIN: ' + pin + '）' });
 
