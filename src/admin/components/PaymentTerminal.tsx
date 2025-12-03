@@ -68,6 +68,9 @@ export function PaymentTerminal() {
   const [expiryMinutes, setExpiryMinutes] = useState(5);
   const qrRef = useRef<HTMLDivElement>(null);
 
+  // QRコード回転（お客様向け表示）
+  const [qrRotation, setQrRotation] = useState(0); // 0, 90, 180, 270度
+
   // WEB決済確認モーダル
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [pendingGenerateData, setPendingGenerateData] = useState<{
@@ -778,31 +781,6 @@ export function PaymentTerminal() {
     }
   };
 
-  // アドレス共有機能
-  const handleShareAddress = async () => {
-    if (!walletAddress) return;
-
-    try {
-      // Web Share API対応チェック
-      if (navigator.share) {
-        await navigator.share({
-          title: 'JPYC決済アドレス',
-          text: `支払先アドレス: ${walletAddress}`,
-        });
-      } else {
-        // フォールバック: クリップボードにコピー
-        await navigator.clipboard.writeText(walletAddress);
-        setMessage({ type: 'success', text: 'アドレスをコピーしました' });
-        setTimeout(() => setMessage(null), 2000);
-      }
-    } catch (error) {
-      // ユーザーがキャンセルした場合など
-      if (error instanceof Error && error.name !== 'AbortError') {
-        console.error('共有エラー:', error);
-      }
-    }
-  };
-
   // CSVエクスポート
   const handleExportCSV = () => {
     try {
@@ -1276,8 +1254,42 @@ export function PaymentTerminal() {
                 borderRadius: '12px',
                 padding: '24px',
                 textAlign: 'center',
+                position: 'relative',
               }}
             >
+              {/* ガスレス決済のステータスバッジ（右上） */}
+              {gaslessPIN && gaslessPaymentRequest && (
+                <div style={{
+                  position: 'absolute',
+                  top: '12px',
+                  right: '12px',
+                  fontSize: '11px',
+                  fontWeight: '600',
+                  color: gaslessPaymentRequest.status === 'pending' ? '#f59e0b' :
+                         gaslessPaymentRequest.status === 'signed' ? '#10b981' :
+                         gaslessPaymentRequest.status === 'completed' ? '#10b981' :
+                         gaslessPaymentRequest.status === 'failed' ? '#ef4444' : '#6b7280',
+                  padding: '4px 10px',
+                  background: gaslessPaymentRequest.status === 'pending' ? 'rgba(245, 158, 11, 0.15)' :
+                             gaslessPaymentRequest.status === 'signed' ? 'rgba(16, 185, 129, 0.15)' :
+                             gaslessPaymentRequest.status === 'completed' ? 'rgba(16, 185, 129, 0.15)' :
+                             gaslessPaymentRequest.status === 'failed' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(107, 114, 128, 0.15)',
+                  border: `1px solid ${
+                    gaslessPaymentRequest.status === 'pending' ? 'rgba(245, 158, 11, 0.3)' :
+                    gaslessPaymentRequest.status === 'signed' ? 'rgba(16, 185, 129, 0.3)' :
+                    gaslessPaymentRequest.status === 'completed' ? 'rgba(16, 185, 129, 0.3)' :
+                    gaslessPaymentRequest.status === 'failed' ? 'rgba(239, 68, 68, 0.3)' : 'rgba(107, 114, 128, 0.3)'
+                  }`,
+                  borderRadius: '6px',
+                }}>
+                  {gaslessPaymentRequest.status === 'pending' ? '⏳ 署名待ち' :
+                   gaslessPaymentRequest.status === 'signed' ? '✅ 実行中' :
+                   gaslessPaymentRequest.status === 'completed' ? '✅ 完了' :
+                   gaslessPaymentRequest.status === 'failed' ? '❌ 失敗' :
+                   gaslessPaymentRequest.status}
+                </div>
+              )}
+
               <div style={{ fontSize: '14px', opacity: 0.7, marginBottom: '8px' }}>お支払い金額</div>
               <div
                 style={{
@@ -1336,10 +1348,9 @@ export function PaymentTerminal() {
                   style={{
                     marginTop: '16px',
                     padding: '12px',
-                    background: 'rgba(156, 163, 175, 0.1)',
-                    border: '1px solid rgba(156, 163, 175, 0.3)',
+                    background: 'rgba(16, 185, 129, 0.1)',
+                    border: '1px solid rgba(16, 185, 129, 0.3)',
                     borderRadius: '10px',
-                    opacity: 0.6,
                   }}
                 >
                   <label
@@ -1347,10 +1358,10 @@ export function PaymentTerminal() {
                       display: 'flex',
                       alignItems: 'center',
                       gap: '8px',
-                      cursor: 'not-allowed',
+                      cursor: 'pointer',
                       fontSize: '15px',
                       fontWeight: '600',
-                      color: '#9CA3AF',
+                      color: '#10b981',
                     }}
                   >
                     <input
@@ -1362,39 +1373,15 @@ export function PaymentTerminal() {
                           setBatchProcessingEnabled(false);
                         }
                       }}
-                      disabled={true}
+                      disabled={!isGaslessAvailable}
                       style={{
                         width: '18px',
                         height: '18px',
-                        cursor: 'not-allowed',
+                        cursor: isGaslessAvailable ? 'pointer' : 'not-allowed',
                       }}
                     />
-                    ⚡ ガスレス決済（ガス代店舗負担）
-                    <span
-                      style={{
-                        marginLeft: '4px',
-                        padding: '2px 8px',
-                        background: '#9CA3AF',
-                        color: '#fff',
-                        fontSize: '10px',
-                        borderRadius: '4px',
-                        fontWeight: '600',
-                      }}
-                    >
-                      開発中
-                    </span>
+                    ⚡ ガスレス決済（PIN）
                   </label>
-                  <p
-                    style={{
-                      fontSize: '12px',
-                      color: '#9CA3AF',
-                      marginTop: '8px',
-                      marginLeft: '26px',
-                      lineHeight: '1.4',
-                    }}
-                  >
-                    ガスレス決済機能は現在開発中です。通常の決済をご利用ください。
-                  </p>
 
                   {/* バッチ処理モード */}
                   {useGasless && (
@@ -1553,127 +1540,107 @@ export function PaymentTerminal() {
             >
               {qrData ? (
                 <>
-                  <h3 style={{ margin: '0 0 20px 0', fontSize: '24px' }}>お客様にご提示ください</h3>
-
-                  {/* QRモード説明 */}
-                  <div
-                    style={{
-                      background: qrMode === 'wallet'
-                        ? 'rgba(59, 130, 246, 0.1)'
-                        : 'rgba(34, 197, 94, 0.1)',
-                      border: qrMode === 'wallet'
-                        ? '1px solid rgba(59, 130, 246, 0.2)'
-                        : '1px solid rgba(34, 197, 94, 0.2)',
-                      borderRadius: '8px',
-                      padding: '12px 16px',
-                      marginBottom: '16px',
-                      fontSize: '14px',
-                      lineHeight: '1.6',
-                      maxWidth: '400px',
-                    }}
-                  >
-                    📄 <strong>請求書QR</strong><br />
-                    このQRは、GIFTERRA Pay で読み取り・お支払いできます。<br />
-                    GIFTERRAマイページの「スキャンして支払う」からご利用ください。
-                  </div>
-
-                  <div
-                    ref={qrRef}
-                    style={{
-                      background: 'white',
-                      padding: '24px',
-                      borderRadius: '16px',
-                      boxShadow: '0 8px 30px rgba(0,0,0,0.3)',
-                    }}
-                  >
-                    <QRCodeSVG value={qrData} size={280} level="H" includeMargin={true} />
-                  </div>
-
-                  {/* ガスレスPIN表示 */}
-                  {gaslessPIN && gaslessPaymentRequest ? (
-                    <>
-                      <div style={{
-                        marginTop: '20px',
-                        fontSize: '16px',
-                        color: '#10b981',
-                        fontWeight: '700',
-                        padding: '12px 20px',
-                        background: 'rgba(16, 185, 129, 0.15)',
-                        borderRadius: '12px',
-                        border: '2px solid rgba(16, 185, 129, 0.3)',
-                      }}>
-                        ⚡ ガスレス決済PIN
-                      </div>
-                      <div style={{
-                        marginTop: '16px',
-                        fontSize: '56px',
-                        fontWeight: '900',
-                        color: '#10b981',
-                        letterSpacing: '12px',
-                        fontFamily: 'monospace',
-                        textShadow: '0 2px 8px rgba(16, 185, 129, 0.3)',
-                      }}>
-                        {gaslessPIN}
-                      </div>
-                      <div style={{
-                        marginTop: '12px',
-                        fontSize: '14px',
-                        color: 'rgba(255, 255, 255, 0.7)',
-                        lineHeight: '1.5',
-                      }}>
-                        このPINまたはQRコードをお客様に提示してください<br />
-                        お客様がGIFTERRAマイページから決済を実行します
-                      </div>
-                      <div style={{ marginTop: '16px', fontSize: '36px', fontWeight: 'bold', color: '#10b981' }}>
-                        {amount.replace(/\B(?=(\d{3})+(?!\d))/g, ',')} JPYC
-                      </div>
-                      <div style={{ marginTop: '8px', fontSize: '14px', opacity: 0.7 }}>
-                        有効期限: {
-                          expiryMinutes >= 1440
-                            ? `${Math.floor(expiryMinutes / 1440)}日`
-                            : expiryMinutes >= 60
-                              ? `${Math.floor(expiryMinutes / 60)}時間`
-                              : `${expiryMinutes}分`
-                        }
-                      </div>
-                      <div style={{
-                        marginTop: '16px',
-                        fontSize: '13px',
-                        color: 'rgba(255, 255, 255, 0.6)',
-                        padding: '10px 16px',
-                        background: 'rgba(16, 185, 129, 0.1)',
-                        borderRadius: '8px',
-                      }}>
-                        ステータス: {
-                          gaslessPaymentRequest.status === 'pending' ? '⏳ 署名待ち' :
-                          gaslessPaymentRequest.status === 'signed' ? '✅ 署名受信・実行中' :
-                          gaslessPaymentRequest.status === 'completed' ? '✅ 完了' :
-                          gaslessPaymentRequest.status === 'failed' ? '❌ 失敗' :
-                          gaslessPaymentRequest.status
-                        }
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      {/* 請求書モード: 金額と有効期限を表示（通常モード） */}
-                      {qrMode === 'invoice' && (
-                        <>
-                          <div style={{ marginTop: '20px', fontSize: '32px', fontWeight: 'bold', color: '#22c55e' }}>
-                            {amount.replace(/\B(?=(\d{3})+(?!\d))/g, ',')} JPYC
-                          </div>
-                          <div style={{ marginTop: '8px', fontSize: '14px', opacity: 0.7 }}>
-                            有効期限: {
-                              expiryMinutes >= 1440
-                                ? `${Math.floor(expiryMinutes / 1440)}日`
-                                : expiryMinutes >= 60
-                                  ? `${Math.floor(expiryMinutes / 60)}時間`
-                                  : `${expiryMinutes}分`
-                            }
-                          </div>
-                        </>
-                      )}
-                    </>
+                  {/* ヘッダー: 回転時は非表示 */}
+                  {qrRotation === 0 && (
+                    <div style={{ marginBottom: '20px' }}>
+                      <h3 style={{ margin: 0, fontSize: '24px' }}>お客様にご提示ください</h3>
+                    </div>
                   )}
+
+                  {/* 回転可能なQRコード表示エリア */}
+                  <div
+                    style={{
+                      transform: `rotate(${qrRotation}deg)`,
+                      transition: 'transform 0.5s ease',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                    }}
+                  >
+                    {/* QRモード説明 */}
+                    <div
+                      style={{
+                        background: qrMode === 'wallet'
+                          ? 'rgba(59, 130, 246, 0.1)'
+                          : 'rgba(34, 197, 94, 0.1)',
+                        border: qrMode === 'wallet'
+                          ? '1px solid rgba(59, 130, 246, 0.2)'
+                          : '1px solid rgba(34, 197, 94, 0.2)',
+                        borderRadius: '8px',
+                        padding: '12px 16px',
+                        marginBottom: '16px',
+                        fontSize: '13px',
+                        lineHeight: '1.6',
+                        maxWidth: '420px',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      📄 このQRはGIFTERRA Payで読み取り・お支払いできます
+                    </div>
+
+                    <div
+                      ref={qrRef}
+                      style={{
+                        background: 'white',
+                        padding: '24px',
+                        borderRadius: '16px',
+                        boxShadow: '0 8px 30px rgba(0,0,0,0.3)',
+                        display: 'flex',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                      }}
+                    >
+                      <QRCodeSVG value={qrData} size={280} level="H" includeMargin={true} />
+                    </div>
+
+                    {/* ガスレスPIN表示 */}
+                    {gaslessPIN && gaslessPaymentRequest ? (
+                      <>
+                        <div style={{
+                          marginTop: '20px',
+                          fontSize: '14px',
+                          color: '#10b981',
+                          fontWeight: '600',
+                          marginBottom: '12px',
+                        }}>
+                          ⚡ ガスレス決済PIN
+                        </div>
+                        <div style={{
+                          fontSize: '48px',
+                          fontWeight: '900',
+                          color: '#10b981',
+                          letterSpacing: '8px',
+                          fontFamily: 'monospace',
+                          marginBottom: '12px',
+                        }}>
+                          {gaslessPIN}
+                        </div>
+                        <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#10b981' }}>
+                          {amount.replace(/\B(?=(\d{3})+(?!\d))/g, ',')} JPYC
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        {/* 請求書モード: 金額と有効期限を表示（通常モード） */}
+                        {qrMode === 'invoice' && (
+                          <>
+                            <div style={{ marginTop: '20px', fontSize: '32px', fontWeight: 'bold', color: '#22c55e' }}>
+                              {amount.replace(/\B(?=(\d{3})+(?!\d))/g, ',')} JPYC
+                            </div>
+                            <div style={{ marginTop: '8px', fontSize: '14px', opacity: 0.7 }}>
+                              有効期限: {
+                                expiryMinutes >= 1440
+                                  ? `${Math.floor(expiryMinutes / 1440)}日`
+                                  : expiryMinutes >= 60
+                                    ? `${Math.floor(expiryMinutes / 60)}時間`
+                                    : `${expiryMinutes}分`
+                              }
+                            </div>
+                          </>
+                        )}
+                      </>
+                    )}
+                  </div>
 
                   {/* ウォレットモード: 店舗名を表示 */}
                   {qrMode === 'wallet' && (
@@ -1682,74 +1649,71 @@ export function PaymentTerminal() {
                     </div>
                   )}
 
-                  {/* QRコードダウンロードボタン */}
-                  <button
-                    onClick={handleDownloadQR}
-                    style={{
-                      marginTop: '16px',
-                      padding: '12px 24px',
-                      background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
-                      border: 'none',
-                      borderRadius: '8px',
-                      color: '#fff',
-                      fontSize: '14px',
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      transition: 'all 0.2s',
-                      boxShadow: '0 4px 12px rgba(34, 197, 94, 0.3)',
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.transform = 'translateY(-2px)';
-                      e.currentTarget.style.boxShadow = '0 6px 16px rgba(34, 197, 94, 0.4)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.transform = 'translateY(0)';
-                      e.currentTarget.style.boxShadow = '0 4px 12px rgba(34, 197, 94, 0.3)';
-                    }}
-                  >
-                    📥 QRコードをダウンロード
-                  </button>
+                  {/* 有効期限表示（請求書モードかつ通常決済） */}
+                  {qrMode === 'invoice' && !gaslessPIN && (
+                    <div style={{ marginTop: '12px', fontSize: '13px', opacity: 0.6 }}>
+                      有効期限: {
+                        expiryMinutes >= 1440
+                          ? `${Math.floor(expiryMinutes / 1440)}日`
+                          : expiryMinutes >= 60
+                            ? `${Math.floor(expiryMinutes / 60)}時間`
+                            : `${expiryMinutes}分`
+                      }
+                    </div>
+                  )}
 
-                  {/* 支払先アドレス表示（タップで共有） */}
-                  {walletAddress && (
+                  {/* 回転・ダウンロードボタン */}
+                  <div style={{ display: 'flex', gap: '12px', marginTop: '12px' }}>
+                    {/* 回転ボタン */}
                     <button
-                      onClick={handleShareAddress}
+                      onClick={() => setQrRotation((prev) => (prev + 180) % 360)}
                       style={{
-                        marginTop: '16px',
-                        padding: '12px 20px',
-                        background: 'rgba(59, 130, 246, 0.1)',
-                        border: '1px solid rgba(59, 130, 246, 0.3)',
-                        borderRadius: '8px',
+                        flex: 1,
+                        padding: '8px 16px',
+                        background: 'rgba(255, 255, 255, 0.1)',
+                        border: '1px solid rgba(255, 255, 255, 0.2)',
+                        borderRadius: '6px',
+                        color: '#fff',
+                        fontSize: '12px',
+                        fontWeight: 500,
                         cursor: 'pointer',
                         transition: 'all 0.2s',
-                        width: '100%',
-                        maxWidth: '350px',
                       }}
                       onMouseEnter={(e) => {
-                        e.currentTarget.style.background = 'rgba(59, 130, 246, 0.2)';
-                        e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.5)';
+                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)';
                       }}
                       onMouseLeave={(e) => {
-                        e.currentTarget.style.background = 'rgba(59, 130, 246, 0.1)';
-                        e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.3)';
+                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
                       }}
                     >
-                      <div style={{ fontSize: '11px', opacity: 0.7, marginBottom: '4px' }}>
-                        📤 タップして共有 (AirDrop/Nearby Share対応)
-                      </div>
-                      <div
-                        style={{
-                          fontSize: '13px',
-                          fontFamily: 'monospace',
-                          fontWeight: '600',
-                          color: '#3b82f6',
-                          wordBreak: 'break-all',
-                        }}
-                      >
-                        {walletAddress.slice(0, 10)}...{walletAddress.slice(-8)}
-                      </div>
+                      🔄 回転
                     </button>
-                  )}
+
+                    {/* ダウンロードボタン */}
+                    <button
+                      onClick={handleDownloadQR}
+                      style={{
+                        flex: 1,
+                        padding: '8px 16px',
+                        background: 'rgba(255, 255, 255, 0.1)',
+                        border: '1px solid rgba(255, 255, 255, 0.2)',
+                        borderRadius: '6px',
+                        color: '#fff',
+                        fontSize: '12px',
+                        fontWeight: 500,
+                        cursor: 'pointer',
+                        transition: 'all 0.2s',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+                      }}
+                    >
+                      📥 ダウンロード
+                    </button>
+                  </div>
                 </>
               ) : (
                 <div style={{ opacity: 0.5 }}>
