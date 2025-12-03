@@ -74,7 +74,7 @@ export function PaymentQRGenerator() {
           const newRecord = payload.new as any;
 
           // 署名が受信されたらtransferWithAuthorizationを実行
-          if (newRecord.status === 'signature_received' && !isExecutingGasless) {
+          if ((newRecord.status === 'signature_received' || newRecord.status === 'signed') && !isExecutingGasless) {
 
             // バッチ処理モードの場合はキューに追加
             if (batchProcessingEnabled) {

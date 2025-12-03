@@ -364,7 +364,7 @@ export function PaymentTerminal() {
         async (payload) => {
           const newRecord = payload.new as any;
 
-          if (newRecord.status === 'signature_received' && !isExecutingGasless) {
+          if ((newRecord.status === 'signature_received' || newRecord.status === 'signed') && !isExecutingGasless) {
             // バッチ処理モードの場合はキューに追加
             if (batchProcessingEnabled) {
 
