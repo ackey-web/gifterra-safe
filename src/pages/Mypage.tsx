@@ -6530,7 +6530,7 @@ function LockCard({ isMobile }: { isMobile: boolean }) {
             </div>
           </div>
           <button
-            onClick={() => setShowForm(true)}
+            onClick={() => window.location.href = '/tenant/introduction'}
             disabled={checkingApplication}
             style={{
               width: '100%',
@@ -6555,7 +6555,7 @@ function LockCard({ isMobile }: { isMobile: boolean }) {
               e.currentTarget.style.boxShadow = 'none';
             }}
           >
-            {checkingApplication ? '確認中...' : 'テナントを申請する（GIFTERRA STUDIO公開後に申請可能となります）'}
+            {checkingApplication ? '確認中...' : 'テナントを申請する'}
           </button>
         </>
       ) : (

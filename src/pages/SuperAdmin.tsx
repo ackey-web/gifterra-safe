@@ -30,7 +30,7 @@ import { ScoreParametersPage, TokenAxisPage, SystemMonitoringPage } from '../adm
 import CreateTenantForm from './CreateTenantForm';
 import { SecurityManagement } from '../admin/components/SecurityManagement';
 
-type TabType = 'dashboard' | 'user-preview' | 'users' | 'tenant-management' | 'revenue' | 'rank-plans' | 'score-parameters' | 'token-axis' | 'system-monitoring' | 'security' | 'announcements' | 'ads';
+type TabType = 'dashboard' | 'user-preview' | 'users' | 'tenant-management' | 'revenue' | 'rank-plans' | 'score-parameters' | 'token-axis' | 'system-monitoring' | 'security' | 'announcements' | 'ads' | 'plan-management';
 type TenantSubTab = 'applications' | 'create';
 
 export function SuperAdminPage() {
@@ -277,6 +277,12 @@ export function SuperAdminPage() {
             icon="📺"
             label="広告管理"
           />
+          <TabButton
+            active={activeTab === 'plan-management'}
+            onClick={() => setActiveTab('plan-management')}
+            icon="💎"
+            label="プラン管理"
+          />
         </div>
 
         {/* タブコンテンツ */}
@@ -293,6 +299,7 @@ export function SuperAdminPage() {
         {activeTab === 'security' && <SecurityManagement isMobile={false} />}
         {activeTab === 'announcements' && <AnnouncementsTab />}
         {activeTab === 'ads' && <AdsManagementTab />}
+        {activeTab === 'plan-management' && <PlanManagementTab />}
       </div>
     </div>
   );
@@ -6049,6 +6056,373 @@ function AdsManagementTab() {
             <li>リンクURLは広告クリック時の遷移先URLです</li>
             <li>広告の表示順序は⬆️⬇️ボタンで変更できます</li>
             <li>変更は即座にローカルストレージに保存されます</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * プラン管理タブ
+ * 各プラン(STUDIO, STUDIO_PRO, STUDIO_PRO_MAX)の価格と機能制限を管理
+ */
+function PlanManagementTab() {
+  const [planConfigs, setPlanConfigs] = useState([
+    {
+      plan: 'STUDIO' as const,
+      name: 'STUDIO',
+      monthlyFee: 1500,
+      maxHubs: 1,
+      sbtRanks: 3,
+      hasCustomToken: false,
+      hasAdvancedAnalytics: false,
+      hasApiIntegration: false,
+      hasPrioritySupport: false,
+    },
+    {
+      plan: 'STUDIO_PRO' as const,
+      name: 'STUDIO PRO',
+      monthlyFee: 3800,
+      maxHubs: 3,
+      sbtRanks: 5,
+      hasCustomToken: true,
+      hasAdvancedAnalytics: false,
+      hasApiIntegration: false,
+      hasPrioritySupport: false,
+    },
+    {
+      plan: 'STUDIO_PRO_MAX' as const,
+      name: 'STUDIO PRO MAX',
+      monthlyFee: 9800,
+      maxHubs: 10,
+      sbtRanks: 10,
+      hasCustomToken: true,
+      hasAdvancedAnalytics: true,
+      hasApiIntegration: true,
+      hasPrioritySupport: true,
+    },
+  ]);
+
+  const [editingPlan, setEditingPlan] = useState<string | null>(null);
+  const [tempConfig, setTempConfig] = useState<typeof planConfigs[0] | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  const handleEdit = (planKey: string) => {
+    const config = planConfigs.find(c => c.plan === planKey);
+    if (config) {
+      setEditingPlan(planKey);
+      setTempConfig({ ...config });
+    }
+  };
+
+  const handleCancel = () => {
+    setEditingPlan(null);
+    setTempConfig(null);
+  };
+
+  const handleSave = async () => {
+    if (!tempConfig) return;
+
+    setSaving(true);
+    setSaveMessage(null);
+
+    try {
+      // TODO: Supabaseに保存
+      // await supabase.from('plan_configurations').upsert({
+      //   plan: tempConfig.plan,
+      //   monthly_fee: tempConfig.monthlyFee,
+      //   max_hubs: tempConfig.maxHubs,
+      //   sbt_ranks: tempConfig.sbtRanks,
+      //   has_custom_token: tempConfig.hasCustomToken,
+      //   has_advanced_analytics: tempConfig.hasAdvancedAnalytics,
+      //   has_api_integration: tempConfig.hasApiIntegration,
+      //   has_priority_support: tempConfig.hasPrioritySupport,
+      // });
+
+      // 現時点ではローカルステートを更新
+      setPlanConfigs(prev =>
+        prev.map(c => (c.plan === tempConfig.plan ? tempConfig : c))
+      );
+
+      setSaveMessage({ type: 'success', text: '保存しました' });
+      setEditingPlan(null);
+      setTempConfig(null);
+
+      // 3秒後にメッセージを消す
+      setTimeout(() => setSaveMessage(null), 3000);
+    } catch (error) {
+      console.error('保存エラー:', error);
+      setSaveMessage({ type: 'error', text: '保存に失敗しました' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div style={{ padding: 24 }}>
+      <div style={{ marginBottom: 24 }}>
+        <h2 style={{ fontSize: 24, fontWeight: 700, color: '#f1f5f9', marginBottom: 8 }}>
+          💎 プラン管理
+        </h2>
+        <p style={{ fontSize: 14, color: '#94a3b8', marginBottom: 0 }}>
+          各プランの価格と機能制限を設定できます
+        </p>
+      </div>
+
+      {/* 保存メッセージ */}
+      {saveMessage && (
+        <div
+          style={{
+            marginBottom: 24,
+            padding: 16,
+            background: saveMessage.type === 'success' ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+            border: `1px solid ${saveMessage.type === 'success' ? 'rgba(34, 197, 94, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`,
+            borderRadius: 12,
+            color: saveMessage.type === 'success' ? '#86efac' : '#fca5a5',
+          }}
+        >
+          {saveMessage.type === 'success' ? '✅' : '❌'} {saveMessage.text}
+        </div>
+      )}
+
+      {/* プラン一覧 */}
+      <div style={{ display: 'grid', gap: 24 }}>
+        {planConfigs.map((config) => {
+          const isEditing = editingPlan === config.plan;
+          const displayConfig = isEditing && tempConfig ? tempConfig : config;
+
+          return (
+            <div
+              key={config.plan}
+              style={{
+                background: 'rgba(30, 41, 59, 0.5)',
+                border: '1px solid rgba(71, 85, 105, 0.4)',
+                borderRadius: 16,
+                padding: 24,
+              }}
+            >
+              {/* プラン名と編集ボタン */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                <div>
+                  <h3 style={{ fontSize: 20, fontWeight: 700, color: '#f1f5f9', marginBottom: 4 }}>
+                    {config.name}
+                  </h3>
+                  <div style={{ fontSize: 13, color: '#64748b' }}>
+                    プランキー: {config.plan}
+                  </div>
+                </div>
+                {!isEditing && (
+                  <button
+                    onClick={() => handleEdit(config.plan)}
+                    style={{
+                      padding: '10px 20px',
+                      background: 'rgba(59, 130, 246, 0.2)',
+                      border: '1px solid rgba(59, 130, 246, 0.4)',
+                      borderRadius: 8,
+                      color: '#93c5fd',
+                      fontSize: 14,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    ✏️ 編集
+                  </button>
+                )}
+              </div>
+
+              {/* プラン設定 */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
+                {/* 月額料金 */}
+                <div>
+                  <label style={{ display: 'block', fontSize: 13, color: '#94a3b8', marginBottom: 6 }}>
+                    月額料金 (円)
+                  </label>
+                  {isEditing ? (
+                    <input
+                      type="number"
+                      value={displayConfig.monthlyFee}
+                      onChange={(e) => setTempConfig({ ...displayConfig, monthlyFee: Number(e.target.value) })}
+                      style={{
+                        width: '100%',
+                        padding: '10px',
+                        background: 'rgba(15, 23, 42, 0.5)',
+                        border: '1px solid rgba(71, 85, 105, 0.4)',
+                        borderRadius: 6,
+                        color: '#f1f5f9',
+                        fontSize: 14,
+                      }}
+                    />
+                  ) : (
+                    <div style={{ fontSize: 18, fontWeight: 700, color: '#f1f5f9' }}>
+                      ¥{displayConfig.monthlyFee.toLocaleString()}
+                    </div>
+                  )}
+                </div>
+
+                {/* 最大HUB数 */}
+                <div>
+                  <label style={{ display: 'block', fontSize: 13, color: '#94a3b8', marginBottom: 6 }}>
+                    最大GIFT HUB数
+                  </label>
+                  {isEditing ? (
+                    <input
+                      type="number"
+                      min="1"
+                      max="100"
+                      value={displayConfig.maxHubs}
+                      onChange={(e) => setTempConfig({ ...displayConfig, maxHubs: Number(e.target.value) })}
+                      style={{
+                        width: '100%',
+                        padding: '10px',
+                        background: 'rgba(15, 23, 42, 0.5)',
+                        border: '1px solid rgba(71, 85, 105, 0.4)',
+                        borderRadius: 6,
+                        color: '#f1f5f9',
+                        fontSize: 14,
+                      }}
+                    />
+                  ) : (
+                    <div style={{ fontSize: 18, fontWeight: 700, color: '#f1f5f9' }}>
+                      {displayConfig.maxHubs}基
+                    </div>
+                  )}
+                </div>
+
+                {/* SBTランク段階数 */}
+                <div>
+                  <label style={{ display: 'block', fontSize: 13, color: '#94a3b8', marginBottom: 6 }}>
+                    SBTランク段階数
+                  </label>
+                  {isEditing ? (
+                    <input
+                      type="number"
+                      min="1"
+                      max="10"
+                      value={displayConfig.sbtRanks}
+                      onChange={(e) => setTempConfig({ ...displayConfig, sbtRanks: Number(e.target.value) })}
+                      style={{
+                        width: '100%',
+                        padding: '10px',
+                        background: 'rgba(15, 23, 42, 0.5)',
+                        border: '1px solid rgba(71, 85, 105, 0.4)',
+                        borderRadius: 6,
+                        color: '#f1f5f9',
+                        fontSize: 14,
+                      }}
+                    />
+                  ) : (
+                    <div style={{ fontSize: 18, fontWeight: 700, color: '#f1f5f9' }}>
+                      {displayConfig.sbtRanks}段階
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* 機能フラグ */}
+              <div style={{ marginBottom: 20 }}>
+                <label style={{ display: 'block', fontSize: 13, color: '#94a3b8', marginBottom: 12 }}>
+                  機能制限
+                </label>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  {[
+                    { key: 'hasCustomToken', label: 'カスタムトークン（拡張予定）' },
+                    { key: 'hasAdvancedAnalytics', label: '高度な分析機能' },
+                    { key: 'hasApiIntegration', label: 'API連携' },
+                    { key: 'hasPrioritySupport', label: '優先サポート' },
+                  ].map(({ key, label }) => (
+                    <label
+                      key={key}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                        cursor: isEditing ? 'pointer' : 'default',
+                        padding: 8,
+                        background: 'rgba(15, 23, 42, 0.3)',
+                        borderRadius: 6,
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={displayConfig[key as keyof typeof displayConfig] as boolean}
+                        onChange={(e) => {
+                          if (isEditing && tempConfig) {
+                            setTempConfig({ ...tempConfig, [key]: e.target.checked });
+                          }
+                        }}
+                        disabled={!isEditing}
+                        style={{ cursor: isEditing ? 'pointer' : 'not-allowed' }}
+                      />
+                      <span style={{ fontSize: 13, color: '#cbd5e1' }}>{label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {/* 編集時のボタン */}
+              {isEditing && (
+                <div style={{ display: 'flex', gap: 12 }}>
+                  <button
+                    onClick={handleSave}
+                    disabled={saving}
+                    style={{
+                      flex: 1,
+                      padding: '12px',
+                      background: saving ? 'rgba(34, 197, 94, 0.3)' : 'rgba(34, 197, 94, 0.2)',
+                      border: '1px solid rgba(34, 197, 94, 0.4)',
+                      borderRadius: 8,
+                      color: '#86efac',
+                      fontSize: 14,
+                      fontWeight: 600,
+                      cursor: saving ? 'not-allowed' : 'pointer',
+                    }}
+                  >
+                    {saving ? '保存中...' : '💾 保存'}
+                  </button>
+                  <button
+                    onClick={handleCancel}
+                    disabled={saving}
+                    style={{
+                      flex: 1,
+                      padding: '12px',
+                      background: 'rgba(71, 85, 105, 0.2)',
+                      border: '1px solid rgba(71, 85, 105, 0.4)',
+                      borderRadius: 8,
+                      color: '#94a3b8',
+                      fontSize: 14,
+                      fontWeight: 600,
+                      cursor: saving ? 'not-allowed' : 'pointer',
+                    }}
+                  >
+                    キャンセル
+                  </button>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* 注意事項 */}
+      <div
+        style={{
+          marginTop: 24,
+          background: 'rgba(59, 130, 246, 0.1)',
+          border: '1px solid rgba(59, 130, 246, 0.3)',
+          borderRadius: 12,
+          padding: 20,
+          color: '#93c5fd',
+        }}
+      >
+        <div style={{ fontSize: 14, lineHeight: 1.6 }}>
+          <div style={{ fontWeight: 600, marginBottom: 8 }}>💡 注意事項</div>
+          <ul style={{ margin: 0, paddingLeft: 20 }}>
+            <li>価格変更は新規申請から適用されます（既存テナントには影響しません）</li>
+            <li>機能制限の変更も新規申請のみに適用されます</li>
+            <li>既存テナントのプラン変更は「テナント管理」タブから個別に行えます</li>
+            <li>現在はローカルステートで管理しています（TODO: データベース連携）</li>
           </ul>
         </div>
       </div>

@@ -349,7 +349,16 @@ export function PaymentTerminal() {
 
   // ⚡ Supabase Realtime: ガスレス決済の署名受信監視（Phase 5）
   useEffect(() => {
-    if (!currentRequestId || !walletAddress || !isGaslessAvailable) return;
+    if (!currentRequestId || !walletAddress || !isGaslessAvailable) {
+      console.log('🔕 Realtime監視スキップ:', { currentRequestId, walletAddress, isGaslessAvailable });
+      return;
+    }
+
+    console.log('🔔 Realtime監視開始:', {
+      channel: `gasless_payment:${currentRequestId}`,
+      table: 'gasless_payment_requests',
+      filter: `pin=eq.${currentRequestId}`,
+    });
 
     const channel = supabase
       .channel(`gasless_payment:${currentRequestId}`)
@@ -362,9 +371,17 @@ export function PaymentTerminal() {
           filter: `pin=eq.${currentRequestId}`,
         },
         async (payload) => {
+          console.log('📨 Realtime UPDATE受信:', payload);
           const newRecord = payload.new as any;
+          console.log('📝 newRecord:', {
+            status: newRecord.status,
+            from_address: newRecord.from_address,
+            isExecutingGasless,
+            batchProcessingEnabled,
+          });
 
           if ((newRecord.status === 'signature_received' || newRecord.status === 'signed') && !isExecutingGasless) {
+            console.log('✅ 署名検知！実行開始');
             // バッチ処理モードの場合はキューに追加
             if (batchProcessingEnabled) {
 
@@ -450,7 +467,7 @@ export function PaymentTerminal() {
       .subscribe();
 
     return () => {
-
+      console.log('🔕 Realtime監視終了:', currentRequestId);
       supabase.removeChannel(channel);
     };
   }, [

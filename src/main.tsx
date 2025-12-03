@@ -31,6 +31,10 @@ const ProfilePage = lazy(() => import("./pages/ProfilePage").then(m => ({ defaul
 const NotificationsPage = lazy(() => import("./pages/NotificationsPage").then(m => ({ default: m.NotificationsPage })));
 const GaslessQRGeneratorTest = lazy(() => import("./pages/GaslessQRGeneratorTest").then(m => ({ default: m.GaslessQRGeneratorTest })));
 const GaslessScannerTest = lazy(() => import("./pages/GaslessScannerTest").then(m => ({ default: m.GaslessScannerTest })));
+const TenantIntroduction = lazy(() => import("./pages/TenantIntroduction").then(m => ({ default: m.TenantIntroduction })));
+const PlanSelection = lazy(() => import("./pages/PlanSelection").then(m => ({ default: m.PlanSelection })));
+const TenantPayment = lazy(() => import("./pages/TenantPayment").then(m => ({ default: m.TenantPayment })));
+const TenantApplication = lazy(() => import("./pages/TenantApplication").then(m => ({ default: m.TenantApplication })));
 
 // ローディングコンポーネント
 const LoadingFallback = () => (
@@ -176,6 +180,10 @@ const wantsProfile = path.includes("/profile") || uiParam === "profile";
 const wantsNotifications = path.includes("/notifications") || uiParam === "notifications";
 const wantsGaslessQRTest = path.includes("/gasless-qr-test") || uiParam === "gasless-qr-test";
 const wantsGaslessScannerTest = path.includes("/gasless-scanner-test") || uiParam === "gasless-scanner-test";
+const wantsTenantIntroduction = path.includes("/tenant/introduction") || uiParam === "tenant-introduction";
+const wantsPlanSelection = path.includes("/tenant/plan-selection") || uiParam === "plan-selection";
+const wantsTenantPayment = path.includes("/tenant/payment") || uiParam === "tenant-payment";
+const wantsTenantApplication = path.includes("/tenant/application") || uiParam === "tenant-application";
 
 // =============================
 // デバイス判別（モバイル vs タブレット/デスクトップ）
@@ -452,6 +460,14 @@ if (wantsTerms) {
                 <GaslessQRGeneratorTest />
               ) : wantsGaslessScannerTest ? (
                 <GaslessScannerTest />
+              ) : wantsTenantIntroduction ? (
+                <TenantIntroduction />
+              ) : wantsPlanSelection ? (
+                <PlanSelection />
+              ) : wantsTenantPayment ? (
+                <TenantPayment />
+              ) : wantsTenantApplication ? (
+                <TenantApplication />
               ) : wantsReward ? (
                 <RewardApp />
               ) : wantsTip ? (

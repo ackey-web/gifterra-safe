@@ -8,7 +8,10 @@ import { useTokenBalances } from '../hooks/useTokenBalances';
 import { useTransactionHistory } from '../hooks/useTransactionHistory';
 import { QRScannerCamera } from '../components/QRScannerCamera';
 import { WalletQRPaymentModal } from '../components/WalletQRPaymentModal';
+import { GaslessPaymentConfirmModal } from '../components/GaslessPaymentConfirmModal';
 import { JPYC_TOKEN, ERC20_MIN_ABI } from '../contract';
+import { useGaslessPayment } from '../hooks/useGaslessPayment';
+import type { GaslessPaymentRequest } from '../types/gaslessPayment';
 import { analyzeSentiment } from '../lib/ai_analysis';
 import { saveTipMessageToSupabase } from '../lib/saveTipMessage';
 import { parseWalletQR, parseAuthorizationQR, type WalletQRData, type AuthorizationQRData } from '../types/qrPayment';
@@ -108,6 +111,13 @@ export function MypageWithSend() {
   const [walletQRData, setWalletQRData] = useState<WalletQRData | null>(null);
   const [authorizationQRData, setAuthorizationQRData] = useState<AuthorizationQRData | null>(null);
   const [qrDebugLogs, setQrDebugLogs] = useState<string[]>([]);
+
+  // ガスレス決済確認モーダル用の状態
+  const [showGaslessConfirmModal, setShowGaslessConfirmModal] = useState(false);
+  const [gaslessPaymentRequest, setGaslessPaymentRequest] = useState<GaslessPaymentRequest | null>(null);
+
+  // ガスレス決済関連のhook
+  const { fetchGaslessPaymentRequestByPin, signGaslessPaymentRequest } = useGaslessPayment();
 
   // ウォレットからsignerを取得
   // MetaMask接続時は直接window.ethereumを使用（Privyのリダイレクト回避）
@@ -314,10 +324,34 @@ export function MypageWithSend() {
   };
 
   // QRスキャン結果を受け取る（請求書 & ウォレット両対応）
-  const handleQRScan = (data: string, debugLogs?: string[]) => {
+  const handleQRScan = async (data: string, debugLogs?: string[]) => {
     // デバッグログを保存
     if (debugLogs) {
       setQrDebugLogs(debugLogs);
+    }
+
+    // 0. PIN（6桁の数字）かチェック - ガスレス決済
+    if (/^\d{6}$/.test(data.trim())) {
+      console.log('🔢 PIN検出:', data);
+
+      try {
+        // PINからガスレス決済リクエストを取得
+        const paymentRequest = await fetchGaslessPaymentRequestByPin(data.trim());
+
+        if (!paymentRequest) {
+          alert('この決済リクエストは見つかりませんでした');
+          return;
+        }
+
+        // 決済リクエストを状態にセットして確認モーダルを表示
+        setGaslessPaymentRequest(paymentRequest);
+        setShowGaslessConfirmModal(true);
+        return;
+      } catch (error: any) {
+        console.error('❌ PIN決済リクエスト取得エラー:', error);
+        alert(`決済リクエストの取得に失敗しました: ${error.message}`);
+        return;
+      }
     }
 
     // 1. ethereum: URI形式のウォレットQRかチェック
@@ -521,6 +555,80 @@ export function MypageWithSend() {
 
     } catch (error: any) {
       console.error('❌ ガスレス決済エラー:', error);
+      setSendError(error.message || '署名の生成に失敗しました');
+      alert('❌ 署名の生成に失敗しました: ' + (error.message || '不明なエラー'));
+    } finally {
+      setSending(false);
+    }
+  };
+
+  // PIN-based ガスレス決済の確認と署名生成
+  const handlePinGaslessPaymentConfirm = async () => {
+    if (!gaslessPaymentRequest || !signer) {
+      alert('署名の準備ができていません');
+      return;
+    }
+
+    try {
+      setSending(true);
+      setSendError(null);
+
+      // ユーザーのアドレスを取得
+      const userAddress = await signer.getAddress();
+
+      console.log('📝 EIP-3009署名を生成中...', {
+        from: userAddress,
+        to: gaslessPaymentRequest.merchant_address,
+        amount: gaslessPaymentRequest.amount,
+        nonce: gaslessPaymentRequest.nonce,
+        validBefore: gaslessPaymentRequest.valid_before,
+      });
+
+      // EIP-3009 署名生成
+      const signature = await signTransferAuthorization(signer, {
+        from: userAddress,
+        to: gaslessPaymentRequest.merchant_address,
+        value: gaslessPaymentRequest.amount,
+        validAfter: gaslessPaymentRequest.valid_after,
+        validBefore: gaslessPaymentRequest.valid_before,
+        nonce: gaslessPaymentRequest.nonce,
+      });
+
+      console.log('✅ 署名生成完了:', {
+        v: signature.v,
+        r: signature.r.substring(0, 10) + '...',
+        s: signature.s.substring(0, 10) + '...',
+      });
+
+      // Supabaseに署名を保存（PIN-based gasless_payment_requests テーブル）
+      const success = await signGaslessPaymentRequest(gaslessPaymentRequest.pin, {
+        from_address: userAddress,
+        signature_v: signature.v,
+        signature_r: signature.r,
+        signature_s: signature.s,
+      });
+
+      if (!success) {
+        throw new Error('署名の送信に失敗しました');
+      }
+
+      console.log('✅ 署名をデータベースに保存しました');
+
+      // 成功通知
+      alert('✅ 署名を送信しました！店舗が決済を完了します。');
+
+      // モーダルを閉じてリセット
+      setShowGaslessConfirmModal(false);
+      setGaslessPaymentRequest(null);
+      setSendSuccess(true);
+
+      // 残高を更新
+      setTimeout(() => {
+        refetchBalances();
+      }, 2000);
+
+    } catch (error: any) {
+      console.error('❌ PIN-based ガスレス決済エラー:', error);
       setSendError(error.message || '署名の生成に失敗しました');
       alert('❌ 署名の生成に失敗しました: ' + (error.message || '不明なエラー'));
     } finally {
@@ -1600,6 +1708,18 @@ export function MypageWithSend() {
             setQrDebugLogs([]);
           }}
           debugLogs={qrDebugLogs}
+        />
+      )}
+
+      {/* PIN-based ガスレス決済確認モーダル */}
+      {showGaslessConfirmModal && gaslessPaymentRequest && (
+        <GaslessPaymentConfirmModal
+          paymentRequest={gaslessPaymentRequest}
+          onConfirm={handlePinGaslessPaymentConfirm}
+          onCancel={() => {
+            setShowGaslessConfirmModal(false);
+            setGaslessPaymentRequest(null);
+          }}
         />
       )}
 
