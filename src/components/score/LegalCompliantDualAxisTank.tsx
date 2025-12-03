@@ -5,8 +5,7 @@
  */
 
 import React, { useState } from 'react';
-import { useDeviceMotion, useDeviceMotionWeb } from '../../hooks/useDeviceMotion';
-import { Capacitor } from '@capacitor/core';
+import { useDeviceMotionWeb } from '../../hooks/useDeviceMotion';
 
 export interface LegalCompliantDualAxisTankProps {
   // 💸 JPYC軸（金銭的貢献）
@@ -89,11 +88,9 @@ export const LegalCompliantDualAxisTank: React.FC<LegalCompliantDualAxisTankProp
     }
   }, [size]);
 
-  // 加速度センサー連動（ネイティブ or Web）
-  const isNative = Capacitor.isNativePlatform();
-  const nativeMotion = useDeviceMotion(enableMotion && isNative);
-  const webMotion = useDeviceMotionWeb(enableMotion && !isNative);
-  const motion = isNative ? nativeMotion : webMotion;
+  // 加速度センサー連動（Web API使用）
+  // Note: PWA/ブラウザではWeb APIを使用
+  const motion = useDeviceMotionWeb(enableMotion);
 
   // 液体の揺れを計算
   const liquidSway = React.useMemo(() => {
