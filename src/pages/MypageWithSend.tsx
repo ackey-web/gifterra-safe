@@ -116,6 +116,10 @@ export function MypageWithSend() {
   const [showGaslessConfirmModal, setShowGaslessConfirmModal] = useState(false);
   const [gaslessPaymentRequest, setGaslessPaymentRequest] = useState<GaslessPaymentRequest | null>(null);
 
+  // PIN入力モーダル用の状態
+  const [showPinInputModal, setShowPinInputModal] = useState(false);
+  const [pinInput, setPinInput] = useState('');
+
   // ガスレス決済関連のhook
   const { fetchGaslessPaymentRequestByPin, signGaslessPaymentRequest } = useGaslessPayment();
 
@@ -557,6 +561,42 @@ export function MypageWithSend() {
       console.error('❌ ガスレス決済エラー:', error);
       setSendError(error.message || '署名の生成に失敗しました');
       alert('❌ 署名の生成に失敗しました: ' + (error.message || '不明なエラー'));
+    } finally {
+      setSending(false);
+    }
+  };
+
+  // PIN入力の送信
+  const handlePinSubmit = async () => {
+    const trimmedPin = pinInput.trim();
+
+    if (!trimmedPin) {
+      alert('PINを入力してください');
+      return;
+    }
+
+    if (!/^\d{6}$/.test(trimmedPin)) {
+      alert('PINは6桁の数字である必要があります');
+      return;
+    }
+
+    try {
+      setSending(true);
+      const paymentRequest = await fetchGaslessPaymentRequestByPin(trimmedPin);
+
+      if (!paymentRequest) {
+        alert('この決済リクエストは見つかりませんでした');
+        return;
+      }
+
+      // 確認モーダルを表示
+      setGaslessPaymentRequest(paymentRequest);
+      setShowPinInputModal(false);
+      setShowGaslessConfirmModal(true);
+      setPinInput(''); // 入力をクリア
+    } catch (error: any) {
+      console.error('❌ PIN決済リクエスト取得エラー:', error);
+      alert(`決済リクエストの取得に失敗しました: ${error.message}`);
     } finally {
       setSending(false);
     }
@@ -1174,6 +1214,37 @@ export function MypageWithSend() {
                   • メッセージ推奨
                 </div>
               </button>
+
+              {/* PIN決済 */}
+              <button
+                onClick={() => {
+                  setShowSendModeModal(false);
+                  setShowPinInputModal(true);
+                }}
+                style={{
+                  padding: '20px',
+                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  border: 'none',
+                  borderRadius: '12px',
+                  color: '#ffffff',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  boxShadow: '0 4px 12px rgba(102,126,234,0.3)',
+                }}
+              >
+                <div style={{ fontSize: 32, marginBottom: 8 }}>🔢</div>
+                <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 4 }}>
+                  PIN決済
+                </div>
+                <div style={{ fontSize: 14, opacity: 0.9, marginBottom: 8 }}>
+                  店舗のPINで支払う
+                </div>
+                <div style={{ fontSize: 12, opacity: 0.8 }}>
+                  • 6桁のPIN入力<br />
+                  • ガスレス決済<br />
+                  • 店舗が決済実行
+                </div>
+              </button>
             </div>
 
             <button
@@ -1721,6 +1792,124 @@ export function MypageWithSend() {
             setGaslessPaymentRequest(null);
           }}
         />
+      )}
+
+      {/* PIN入力モーダル */}
+      {showPinInputModal && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          zIndex: 10000,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: 'rgba(0,0,0,0.8)',
+          backdropFilter: 'blur(4px)',
+        }}>
+          <div style={{
+            background: '#ffffff',
+            borderRadius: '16px',
+            padding: '32px',
+            maxWidth: '400px',
+            width: '90%',
+            boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+          }}>
+            <h2 style={{
+              fontSize: 24,
+              fontWeight: 700,
+              color: '#1a1a1a',
+              marginBottom: '16px',
+              textAlign: 'center',
+            }}>
+              🔢 PIN入力
+            </h2>
+
+            <p style={{
+              fontSize: 14,
+              color: '#666',
+              marginBottom: '24px',
+              textAlign: 'center',
+            }}>
+              店舗から提示された6桁のPINを入力してください
+            </p>
+
+            <input
+              type="text"
+              value={pinInput}
+              onChange={(e) => {
+                const value = e.target.value.replace(/[^0-9]/g, '');
+                if (value.length <= 6) {
+                  setPinInput(value);
+                }
+              }}
+              placeholder="000000"
+              maxLength={6}
+              style={{
+                width: '100%',
+                padding: '16px',
+                fontSize: 32,
+                fontWeight: 700,
+                textAlign: 'center',
+                letterSpacing: '8px',
+                border: '2px solid #e5e7eb',
+                borderRadius: '12px',
+                marginBottom: '24px',
+                outline: 'none',
+              }}
+              onFocus={(e) => {
+                e.target.style.borderColor = '#667eea';
+              }}
+              onBlur={(e) => {
+                e.target.style.borderColor = '#e5e7eb';
+              }}
+            />
+
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button
+                onClick={() => {
+                  setShowPinInputModal(false);
+                  setPinInput('');
+                }}
+                style={{
+                  flex: 1,
+                  padding: '14px',
+                  background: '#f3f4f6',
+                  border: 'none',
+                  borderRadius: '8px',
+                  color: '#6b7280',
+                  fontSize: 16,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                キャンセル
+              </button>
+
+              <button
+                onClick={handlePinSubmit}
+                disabled={pinInput.length !== 6 || sending}
+                style={{
+                  flex: 1,
+                  padding: '14px',
+                  background: pinInput.length === 6 && !sending
+                    ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+                    : '#d1d5db',
+                  border: 'none',
+                  borderRadius: '8px',
+                  color: '#ffffff',
+                  fontSize: 16,
+                  fontWeight: 600,
+                  cursor: pinInput.length === 6 && !sending ? 'pointer' : 'not-allowed',
+                  boxShadow: pinInput.length === 6 && !sending
+                    ? '0 4px 12px rgba(102, 126, 234, 0.4)'
+                    : 'none',
+                }}
+              >
+                {sending ? '確認中...' : '確認'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* テナント選択モーダル */}
