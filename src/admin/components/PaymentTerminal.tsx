@@ -358,8 +358,8 @@ export function PaymentTerminal() {
         {
           event: 'UPDATE',
           schema: 'public',
-          table: 'payment_requests',
-          filter: `request_id=eq.${currentRequestId}`,
+          table: 'gasless_payment_requests',
+          filter: `pin=eq.${currentRequestId}`,
         },
         async (payload) => {
           const newRecord = payload.new as any;
@@ -401,11 +401,11 @@ export function PaymentTerminal() {
               );
 
               const tx = await jpycContract.transferWithAuthorization(
-                newRecord.completed_by,
+                newRecord.from_address,
                 walletAddress,
-                newRecord.value || ethers.utils.parseUnits(newRecord.amount, 18),
+                ethers.utils.parseUnits(newRecord.amount, 18),
                 0,
-                newRecord.valid_before || Math.floor(Date.now() / 1000) + 3600,
+                newRecord.valid_before,
                 newRecord.nonce,
                 newRecord.signature_v,
                 newRecord.signature_r,
@@ -416,13 +416,12 @@ export function PaymentTerminal() {
 
               // Supabaseのステータスを更新
               await supabase
-                .from('payment_requests')
+                .from('gasless_payment_requests')
                 .update({
                   status: 'completed',
                   completed_at: new Date().toISOString(),
-                  transaction_hash: receipt.transactionHash,
                 })
-                .eq('request_id', currentRequestId);
+                .eq('pin', currentRequestId);
 
               setMessage({ type: 'success', text: '✅ ガスレス決済完了！' });
               setTimeout(() => setMessage(null), 3000);
@@ -434,11 +433,14 @@ export function PaymentTerminal() {
               console.error('❌ Gasless execution error:', error);
               setMessage({ type: 'error', text: `❌ 実行失敗: ${error.message}` });
 
-              // エラー時はキャンセル扱い
+              // エラー時は失敗扱い
               await supabase
-                .from('payment_requests')
-                .update({ status: 'cancelled' })
-                .eq('request_id', currentRequestId);
+                .from('gasless_payment_requests')
+                .update({
+                  status: 'failed',
+                  error_message: error.message
+                })
+                .eq('pin', currentRequestId);
             } finally {
               setIsExecutingGasless(false);
             }
