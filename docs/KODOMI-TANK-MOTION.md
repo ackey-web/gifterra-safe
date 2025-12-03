@@ -90,14 +90,37 @@ const liquidSway = {
 
 ## ブラウザ互換性
 
-### ネイティブアプリ (Capacitor)
-- ✅ iOS 13+
-- ✅ Android 5.0+
+### ✅ ネイティブアプリ (Capacitor)
+- **iOS 13+**: Capacitor Motion API経由で完全サポート
+- **Android 5.0+**: Capacitor Motion API経由で完全サポート
+- 最高のパフォーマンスと精度
 
-### Webブラウザ
-- ✅ Safari (iOS 13+, 要許可)
-- ✅ Chrome (Android)
-- ⚠️ デスクトップブラウザ: サポートなし（エラーなし）
+### ✅ PWA (Progressive Web App)
+- **iOS Safari 13+**: DeviceOrientationEvent API使用（要ユーザー許可）
+- **Android Chrome**: DeviceOrientationEvent API使用（自動で有効）
+- **ホーム画面に追加後**: ネイティブアプリ同様に動作
+
+### ⚠️ 通常のWebブラウザ
+- **iOS Safari**: 初回アクセス時に許可ダイアログ表示
+- **Android Chrome**: 自動で有効（許可不要）
+- **デスクトップ**: サポートなし（エラーなし、静的表示）
+
+### PWAでの動作確認
+
+1. **スマートフォンでサイトにアクセス**
+2. **ホーム画面に追加**
+   - iOS: 共有ボタン → ホーム画面に追加
+   - Android: メニュー → ホーム画面に追加
+3. **追加したアイコンから起動**
+4. kodomi TANKページで`enableMotion={true}`が有効になっていれば動作
+
+### iOS Safari PWAでの注意点
+
+- **初回のみ許可が必要**: DeviceOrientationEventの使用許可
+- **許可ダイアログが出ない場合**:
+  1. Safari設定を開く
+  2. モーションとオリエンテーション → 許可
+  3. PWAを再起動
 
 ## セキュリティ・プライバシー
 

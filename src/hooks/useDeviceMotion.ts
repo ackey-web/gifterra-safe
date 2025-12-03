@@ -56,7 +56,7 @@ export function useDeviceMotion(enabled: boolean = true, interval: number = 100)
     const startMotionTracking = async () => {
       try {
         // 加速度センサーのリスナーを登録
-        listener = await Motion.addListener('accel', (event) => {
+        listener = await Motion.addListener('accel', (event: any) => {
           const { x, y, z } = event.acceleration;
 
           // 加速度から傾きを計算（簡易版）
@@ -108,7 +108,7 @@ export function useDeviceMotion(enabled: boolean = true, interval: number = 100)
 
 /**
  * Web APIのDeviceOrientationEventを使用するフォールバック版
- * （ブラウザでのテスト用）
+ * （PWA/ブラウザ用）
  */
 export function useDeviceMotionWeb(enabled: boolean = true) {
   const [motionData, setMotionData] = useState<DeviceMotionData>({
@@ -122,6 +122,7 @@ export function useDeviceMotionWeb(enabled: boolean = true) {
   });
 
   const [isSupported, setIsSupported] = useState(false);
+  const [permissionState, setPermissionState] = useState<'pending' | 'granted' | 'denied'>('pending');
 
   useEffect(() => {
     if (!enabled) {
@@ -130,6 +131,7 @@ export function useDeviceMotionWeb(enabled: boolean = true) {
 
     // Web APIのサポート確認
     if (typeof DeviceOrientationEvent === 'undefined') {
+      console.log('❌ [useDeviceMotionWeb] DeviceOrientationEvent not supported');
       setIsSupported(false);
       return;
     }
@@ -156,23 +158,45 @@ export function useDeviceMotionWeb(enabled: boolean = true) {
       }
     };
 
-    // iOS 13+では許可が必要
-    if (typeof (DeviceOrientationEvent as any).requestPermission === 'function') {
-      (DeviceOrientationEvent as any).requestPermission()
-        .then((response: string) => {
-          if (response === 'granted') {
-            window.addEventListener('deviceorientation', handleOrientation);
-            setIsSupported(true);
-          }
-        })
-        .catch(console.error);
-    } else {
+    const startListening = () => {
       window.addEventListener('deviceorientation', handleOrientation);
       setIsSupported(true);
+      setPermissionState('granted');
+      console.log('✅ [useDeviceMotionWeb] Motion tracking started (PWA/Web)');
+    };
+
+    // iOS 13+では許可が必要（ユーザージェスチャー内で呼び出す必要がある）
+    if (typeof (DeviceOrientationEvent as any).requestPermission === 'function') {
+      console.log('📱 [useDeviceMotionWeb] iOS detected - permission required');
+      // 既に許可されているか確認
+      // 注：初回は自動で許可リクエストせず、ユーザーアクションを待つ
+      // （ボタンクリックなど、後で実装）
+
+      // とりあえず試してみる（失敗する可能性あり）
+      (DeviceOrientationEvent as any).requestPermission()
+        .then((response: string) => {
+          console.log('📱 [useDeviceMotionWeb] Permission response:', response);
+          if (response === 'granted') {
+            startListening();
+          } else {
+            setPermissionState('denied');
+            console.log('⚠️ [useDeviceMotionWeb] Permission denied');
+          }
+        })
+        .catch((error: Error) => {
+          console.warn('⚠️ [useDeviceMotionWeb] Permission request failed:', error.message);
+          // 失敗した場合は、ユーザーアクションが必要
+          setPermissionState('pending');
+        });
+    } else {
+      // Android Chrome、デスクトップなど（許可不要）
+      console.log('🌐 [useDeviceMotionWeb] Non-iOS browser - starting directly');
+      startListening();
     }
 
     return () => {
       window.removeEventListener('deviceorientation', handleOrientation);
+      console.log('🔕 [useDeviceMotionWeb] Motion tracking stopped');
     };
   }, [enabled]);
 
@@ -180,5 +204,6 @@ export function useDeviceMotionWeb(enabled: boolean = true) {
     ...motionData,
     isSupported,
     error: null,
+    permissionState, // 追加：許可状態を返す
   };
 }

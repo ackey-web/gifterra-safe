@@ -31,10 +31,12 @@
     "@capacitor/haptics": "^7.0.2",
     "@capacitor/ios": "^7.4.4",
     "@capacitor/keyboard": "^7.0.3",
+    "@capacitor/motion": "^7.0.1",
     "@capacitor/status-bar": "^7.0.3",
     "@gelatonetwork/relay-sdk": "^5.6.0",
     "@gelatonetwork/smartwallet": "0.1.0-alpha.6",
     "@privy-io/react-auth": "^3.4.1",
+    "@stripe/stripe-js": "^8.5.3",
     "@supabase/supabase-js": "^2.86.0",
     "@thirdweb-dev/chains": "^0.1.120",
     "@thirdweb-dev/react": "^4.9.4",
@@ -55,6 +57,7 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "recharts": "^3.2.1",
+    "stripe": "^20.0.0",
     "web-push": "^3.6.7"
   },
   "devDependencies": {
