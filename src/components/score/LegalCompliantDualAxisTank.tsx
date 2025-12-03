@@ -4,7 +4,9 @@
  * @legal NHTは金銭的価値を持たないユーティリティトークンとして明確に分離表示
  */
 
-import React from 'react';
+import React, { useState } from 'react';
+import { useDeviceMotion, useDeviceMotionWeb } from '../../hooks/useDeviceMotion';
+import { Capacitor } from '@capacitor/core';
 
 export interface LegalCompliantDualAxisTankProps {
   // 💸 JPYC軸（金銭的貢献）
@@ -35,6 +37,7 @@ export interface LegalCompliantDualAxisTankProps {
   showDetails?: boolean;
   size?: 'small' | 'medium' | 'large';
   className?: string;
+  enableMotion?: boolean; // 加速度センサー連動を有効にするか
 }
 
 /**
@@ -72,6 +75,7 @@ export const LegalCompliantDualAxisTank: React.FC<LegalCompliantDualAxisTankProp
   showDetails = true,
   size = 'medium',
   className = '',
+  enableMotion = false,
 }) => {
   // サイズ設定
   const sizeConfig = React.useMemo(() => {
@@ -84,6 +88,26 @@ export const LegalCompliantDualAxisTank: React.FC<LegalCompliantDualAxisTankProp
         return { tankHeight: 300, tankWidth: 150, fontSize: 14, gap: 28 };
     }
   }, [size]);
+
+  // 加速度センサー連動（ネイティブ or Web）
+  const isNative = Capacitor.isNativePlatform();
+  const nativeMotion = useDeviceMotion(enableMotion && isNative);
+  const webMotion = useDeviceMotionWeb(enableMotion && !isNative);
+  const motion = isNative ? nativeMotion : webMotion;
+
+  // 液体の揺れを計算
+  const liquidSway = React.useMemo(() => {
+    if (!enableMotion || !motion.isSupported) {
+      return { x: 0, y: 0, rotation: 0 };
+    }
+
+    // デバイスの傾きに応じて液体を揺らす
+    const swayX = motion.normalizedTiltX * 15; // 最大±15px
+    const swayY = motion.normalizedTiltY * 8;  // 最大±8px
+    const rotation = motion.normalizedTiltX * 3; // 最大±3度
+
+    return { x: swayX, y: swayY, rotation };
+  }, [enableMotion, motion.normalizedTiltX, motion.normalizedTiltY, motion.isSupported]);
 
   return (
     <div
@@ -222,9 +246,13 @@ export const LegalCompliantDualAxisTank: React.FC<LegalCompliantDualAxisTankProp
               width: '100%',
               height: `${jpycLevel}%`,
               background: 'linear-gradient(180deg, #4a9eff 0%, #2d7dd2 50%, #1e5fa8 100%)',
-              transition: 'height 1.5s cubic-bezier(0.4, 0, 0.2, 1)',
+              transition: enableMotion ? 'height 1.5s cubic-bezier(0.4, 0, 0.2, 1)' : 'height 1.5s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s ease-out',
               borderRadius: '0 0 10px 10px',
               boxShadow: 'inset 0 -8px 24px rgba(255, 255, 255, 0.3), 0 -3px 15px rgba(45, 125, 210, 0.6)',
+              transform: enableMotion
+                ? `translateX(${liquidSway.x}px) translateY(${liquidSway.y}px) rotate(${liquidSway.rotation}deg)`
+                : 'none',
+              transformOrigin: 'bottom center',
             }}
           >
             {/* 波エフェクト（2層） */}
@@ -391,9 +419,13 @@ export const LegalCompliantDualAxisTank: React.FC<LegalCompliantDualAxisTankProp
               width: '100%',
               height: `${resonanceLevel}%`,
               background: 'linear-gradient(180deg, #ff9f55 0%, #ff7e33 50%, #ff5722 100%)',
-              transition: 'height 1.5s cubic-bezier(0.4, 0, 0.2, 1)',
+              transition: enableMotion ? 'height 1.5s cubic-bezier(0.4, 0, 0.2, 1)' : 'height 1.5s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s ease-out',
               borderRadius: '0 0 10px 10px',
               boxShadow: 'inset 0 -8px 24px rgba(255, 255, 255, 0.3), 0 -3px 15px rgba(255, 126, 51, 0.6)',
+              transform: enableMotion
+                ? `translateX(${liquidSway.x}px) translateY(${liquidSway.y}px) rotate(${liquidSway.rotation}deg)`
+                : 'none',
+              transformOrigin: 'bottom center',
             }}
           >
             {/* 波エフェクト（2層） */}
