@@ -700,10 +700,99 @@ reason: ${error.reason || 'なし'}`;
       // EIP-712署名生成
       setMessage({ type: 'info', text: '署名を生成中...' });
 
-      // TODO: ここでPrivyウォレットを使ってEIP-712署名を生成
-      // 次のタスクで実装します
-      setMessage({ type: 'info', text: '署名生成機能は次のステップで実装します' });
-      setIsProcessing(false);
+      // Privyウォレット取得
+      if (!wallets || wallets.length === 0) {
+        setMessage({ type: 'error', text: 'ウォレットが見つかりません' });
+        setIsProcessing(false);
+        return;
+      }
+
+      const wallet = wallets[0];
+      await wallet.switchChain(137); // Polygon Mainnet
+
+      // EIP-712 TransferWithAuthorization の Typed Data
+      const domain = {
+        name: 'JPY Coin',
+        version: '2',
+        chainId: 137,
+        verifyingContract: jpycConfig.currentAddress,
+      };
+
+      const types = {
+        TransferWithAuthorization: [
+          { name: 'from', type: 'address' },
+          { name: 'to', type: 'address' },
+          { name: 'value', type: 'uint256' },
+          { name: 'validAfter', type: 'uint256' },
+          { name: 'validBefore', type: 'uint256' },
+          { name: 'nonce', type: 'bytes32' },
+        ],
+      };
+
+      const message = {
+        from: walletAddress.toLowerCase(),
+        to: request.merchant_address.toLowerCase(),
+        value: request.amount,
+        validAfter: request.valid_after,
+        validBefore: request.valid_before,
+        nonce: request.nonce,
+      };
+
+      console.log('📝 EIP-712 署名データ:', { domain, types, message });
+
+      try {
+        // Privyウォレットで署名
+        const provider = await wallet.getEthereumProvider();
+        const ethersProvider = new ethers.providers.Web3Provider(provider);
+        const ethersSigner = ethersProvider.getSigner();
+
+        // EIP-712署名を生成
+        const signature = await ethersSigner._signTypedData(domain, types, message);
+
+        // 署名を分解 (v, r, s)
+        const sig = ethers.utils.splitSignature(signature);
+        console.log('✅ 署名生成完了:', { v: sig.v, r: sig.r, s: sig.s });
+
+        // Supabaseに署名を保存
+        setMessage({ type: 'info', text: '署名を保存中...' });
+
+        const { error: signError } = await signGaslessPaymentRequest(request.id, {
+          from_address: walletAddress.toLowerCase(),
+          signature_v: sig.v,
+          signature_r: sig.r,
+          signature_s: sig.s,
+        });
+
+        if (signError) {
+          setMessage({ type: 'error', text: `署名保存エラー: ${signError.message}` });
+          setIsProcessing(false);
+          return;
+        }
+
+        console.log('✅ 署名をSupabaseに保存完了');
+        setMessage({ type: 'success', text: '✅ 署名完了！店舗が決済を実行します...' });
+
+        // 成功後、モーダルを閉じる
+        setTimeout(() => {
+          setShowScanner(false);
+          setPinInput('');
+          setIsPinMode(false);
+          setGaslessPaymentRequest(null);
+          setIsProcessing(false);
+        }, 2000);
+
+      } catch (signErr: any) {
+        console.error('❌ 署名エラー:', signErr);
+
+        // ユーザーがキャンセルした場合
+        if (signErr.code === 4001 || signErr.code === 'ACTION_REJECTED') {
+          setMessage({ type: 'error', text: '署名がキャンセルされました' });
+        } else {
+          setMessage({ type: 'error', text: `署名エラー: ${signErr.message}` });
+        }
+
+        setIsProcessing(false);
+      }
 
     } catch (err: any) {
       console.error('❌ PIN送信エラー:', err);
