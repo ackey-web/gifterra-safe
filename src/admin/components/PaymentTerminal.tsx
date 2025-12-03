@@ -90,7 +90,7 @@ export function PaymentTerminal() {
   const [storeName, setStoreName] = useState<string | undefined>(undefined);
 
   // エラー・成功メッセージ
-  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [message, setMessage] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null);
 
   // 設定モーダル
   const [showSettingsModal, setShowSettingsModal] = useState(false);
@@ -382,6 +382,15 @@ export function PaymentTerminal() {
 
           if ((newRecord.status === 'signature_received' || newRecord.status === 'signed') && !isExecutingGasless) {
             console.log('✅ 署名検知！実行開始');
+            console.log('📝 署名データ:', {
+              from: newRecord.from_address,
+              amount: newRecord.amount,
+              nonce: newRecord.nonce,
+              v: newRecord.signature_v,
+              r: newRecord.signature_r?.substring(0, 10) + '...',
+              s: newRecord.signature_s?.substring(0, 10) + '...',
+            });
+
             // バッチ処理モードの場合はキューに追加
             if (batchProcessingEnabled) {
 
@@ -394,10 +403,15 @@ export function PaymentTerminal() {
               return;
             }
 
-            // 即時実行モード
+            // 即時実行モード: 署名検知の視覚的フィードバック
+            setMessage({
+              type: 'info',
+              text: '📝 署名を検知しました！決済を実行中...',
+            });
             setIsExecutingGasless(true);
 
             try {
+              console.log('🔄 ウォレット準備中...');
               const wallet = wallets.find(
                 (w) => w.address.toLowerCase() === walletAddress.toLowerCase()
               );
@@ -405,18 +419,26 @@ export function PaymentTerminal() {
                 throw new Error('ウォレットが見つかりません');
               }
 
+              console.log('🔗 チェーン切り替え中...');
               await wallet.switchChain(137);
 
+              console.log('⚙️ プロバイダー初期化中...');
               const ethereumProvider = await wallet.getEthereumProvider();
               const provider = new ethers.providers.Web3Provider(ethereumProvider);
               const signer = provider.getSigner();
 
+              console.log('📄 コントラクト準備中...');
               const jpycContract = new ethers.Contract(
                 JPYC_TOKEN.ADDRESS,
                 ERC20_MIN_ABI,
                 signer
               );
 
+              console.log('🚀 transferWithAuthorization実行中...', {
+                from: newRecord.from_address,
+                to: walletAddress,
+                amount: newRecord.amount,
+              });
               const tx = await jpycContract.transferWithAuthorization(
                 newRecord.from_address,
                 walletAddress,
@@ -429,9 +451,12 @@ export function PaymentTerminal() {
                 newRecord.signature_s
               );
 
+              console.log('⏳ トランザクション送信完了。マイニング待機中...', tx.hash);
               const receipt = await tx.wait();
+              console.log('✅ トランザクション確定！', receipt.transactionHash);
 
               // Supabaseのステータスを更新
+              console.log('💾 DB更新中: ステータスをcompletedに変更...');
               await supabase
                 .from('gasless_payment_requests')
                 .update({
@@ -440,14 +465,20 @@ export function PaymentTerminal() {
                 })
                 .eq('pin', currentRequestId);
 
+              console.log('🎉 ガスレス決済完了！');
               setMessage({ type: 'success', text: '✅ ガスレス決済完了！' });
-              setTimeout(() => setMessage(null), 3000);
+              setTimeout(() => setMessage(null), 5000);
 
               // QRをクリア
               setQrData(null);
               setCurrentRequestId(null);
             } catch (error: any) {
               console.error('❌ Gasless execution error:', error);
+              console.error('❌ エラー詳細:', {
+                message: error.message,
+                code: error.code,
+                data: error.data,
+              });
               setMessage({ type: 'error', text: `❌ 実行失敗: ${error.message}` });
 
               // エラー時は失敗扱い
@@ -1528,7 +1559,12 @@ export function PaymentTerminal() {
                   style={{
                     marginTop: '12px',
                     padding: '12px',
-                    background: message.type === 'success' ? 'rgba(34, 197, 94, 0.2)' : 'rgba(239, 68, 68, 0.2)',
+                    background:
+                      message.type === 'success'
+                        ? 'rgba(34, 197, 94, 0.2)'
+                        : message.type === 'info'
+                        ? 'rgba(59, 130, 246, 0.2)'
+                        : 'rgba(239, 68, 68, 0.2)',
                     borderRadius: '8px',
                     textAlign: 'center',
                     fontSize: '14px',

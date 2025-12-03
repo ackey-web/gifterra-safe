@@ -87,7 +87,7 @@ export function PaymentTerminalMobile() {
   const [storeName, setStoreName] = useState<string | undefined>(undefined);
 
   // メッセージ
-  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [message, setMessage] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null);
 
   // 設定モーダル
   const [showSettingsModal, setShowSettingsModal] = useState(false);
@@ -1703,7 +1703,12 @@ export function PaymentTerminalMobile() {
               style={{
                 marginTop: '16px',
                 padding: '12px',
-                background: message.type === 'success' ? 'rgba(34, 197, 94, 0.2)' : 'rgba(239, 68, 68, 0.2)',
+                background:
+                  message.type === 'success'
+                    ? 'rgba(34, 197, 94, 0.2)'
+                    : message.type === 'info'
+                    ? 'rgba(59, 130, 246, 0.2)'
+                    : 'rgba(239, 68, 68, 0.2)',
                 borderRadius: '8px',
                 textAlign: 'center',
                 fontSize: '14px',
