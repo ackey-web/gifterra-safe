@@ -27,6 +27,8 @@ import {
   generatePIN,
   createGaslessPaymentRequest,
   useGaslessPaymentRequestSubscription,
+  completeGaslessPaymentRequest,
+  failGaslessPaymentRequest,
 } from '../../hooks/useGaslessPayment';
 import type { GaslessPaymentRequest } from '../../types/gaslessPayment';
 
@@ -228,12 +230,109 @@ export function PaymentTerminal() {
             console.log('✅ 署名受信！ transferWithAuthorization実行準備');
             setGaslessPaymentRequest(updatedRequest);
 
-            // TODO: ここでtransferWithAuthorization()を実行
+            // transferWithAuthorization を実行
             setMessage({
-              type: 'success',
-              text: '✅ 署名受信！決済を実行します...',
+              type: 'info',
+              text: '⚡ ガスレス決済を実行中...',
             });
-            setTimeout(() => setMessage(null), 3000);
+
+            (async () => {
+              try {
+                // ウォレット取得
+                const wallet = wallets.find(
+                  (w) => w.address.toLowerCase() === walletAddress?.toLowerCase()
+                );
+
+                if (!wallet) {
+                  throw new Error('ウォレットが見つかりません');
+                }
+
+                await wallet.switchChain(137); // Polygon Mainnet
+
+                const ethereumProvider = await wallet.getEthereumProvider();
+                const provider = new ethers.providers.Web3Provider(ethereumProvider);
+                const signer = provider.getSigner();
+
+                // JPYCコントラクトのインスタンス作成
+                const jpycContract = new ethers.Contract(
+                  jpycConfig.currentAddress,
+                  [
+                    'function transferWithAuthorization(address from, address to, uint256 value, uint256 validAfter, uint256 validBefore, bytes32 nonce, uint8 v, bytes32 r, bytes32 s) external',
+                  ],
+                  signer
+                );
+
+                console.log('📝 transferWithAuthorization パラメータ:', {
+                  from: updatedRequest.from_address,
+                  to: updatedRequest.merchant_address,
+                  value: updatedRequest.amount,
+                  validAfter: updatedRequest.valid_after,
+                  validBefore: updatedRequest.valid_before,
+                  nonce: updatedRequest.nonce,
+                  v: updatedRequest.signature_v,
+                  r: updatedRequest.signature_r,
+                  s: updatedRequest.signature_s,
+                });
+
+                // トランザクション実行
+                const tx = await jpycContract.transferWithAuthorization(
+                  updatedRequest.from_address,
+                  updatedRequest.merchant_address,
+                  updatedRequest.amount,
+                  updatedRequest.valid_after,
+                  updatedRequest.valid_before,
+                  updatedRequest.nonce,
+                  updatedRequest.signature_v,
+                  updatedRequest.signature_r,
+                  updatedRequest.signature_s,
+                  {
+                    gasLimit: 300000, // 安全なガスリミット
+                  }
+                );
+
+                console.log('⏳ トランザクション送信:', tx.hash);
+                setMessage({
+                  type: 'info',
+                  text: '⏳ トランザクション確認中...',
+                });
+
+                // トランザクション完了待ち
+                const receipt = await tx.wait();
+
+                console.log('✅ トランザクション完了:', receipt.transactionHash);
+
+                // Supabaseのステータスを更新
+                await completeGaslessPaymentRequest(updatedRequest.id, receipt.transactionHash);
+
+                setMessage({
+                  type: 'success',
+                  text: `✅ ガスレス決済完了！`,
+                });
+
+                // QRをクリア
+                setQrData(null);
+                setGaslessPaymentRequest(null);
+                setGaslessPIN(null);
+
+                setTimeout(() => setMessage(null), 5000);
+
+              } catch (error: any) {
+                console.error('❌ transferWithAuthorization エラー:', error);
+
+                // Supabaseにエラーを記録
+                await failGaslessPaymentRequest(
+                  updatedRequest.id,
+                  error.message || '不明なエラー'
+                );
+
+                setMessage({
+                  type: 'error',
+                  text: `❌ 決済失敗: ${error.message || '不明なエラー'}`,
+                });
+
+                setTimeout(() => setMessage(null), 5000);
+              }
+            })();
           }
         }
       )
