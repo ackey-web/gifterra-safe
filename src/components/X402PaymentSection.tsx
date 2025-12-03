@@ -24,6 +24,8 @@ import {
   PAYMENT_GATEWAY_ABI
 } from '../utils/permitSignature';
 import { isGaslessPaymentEnabled } from '../config/featureFlags';
+import { getGaslessPaymentRequestByPIN, signGaslessPaymentRequest } from '../hooks/useGaslessPayment';
+import type { GaslessPaymentRequest } from '../types/gaslessPayment';
 
 // window.ethereum型定義
 declare global {
@@ -194,6 +196,11 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
   const [consentAccepted, setConsentAccepted] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
 
+  // ⚡ ガスレス決済PIN入力
+  const [pinInput, setPinInput] = useState('');
+  const [isPinMode, setIsPinMode] = useState(false);
+  const [gaslessPaymentRequest, setGaslessPaymentRequest] = useState<GaslessPaymentRequest | null>(null);
+
   // 🚨 デバッグパネル用
   const [debugLogs, setDebugLogs] = useState<string[]>([]);
   const [showDebugPanel, setShowDebugPanel] = useState(false); // デフォルトで非表示
@@ -214,6 +221,15 @@ export function X402PaymentSection({ isMobile = false }: X402PaymentSectionProps
     // デバッグログを保存＋追加用の関数
 
     try {
+      // ⚡ PIN検出（6桁の数字のみ）
+      if (/^\d{6}$/.test(data.trim())) {
+        console.log('🔑 PIN QRコード検出:', data);
+        setPinInput(data.trim());
+        setIsPinMode(true);
+        // PINを自動的に処理
+        await handlePinSubmit(data.trim());
+        return;
+      }
 
       // ウォレットQR・ガスレスQRかどうかを判定
       let decoded: any;
@@ -636,6 +652,63 @@ reason: ${error.reason || 'なし'}`;
       setIsProcessing(false);
       // 確認モーダルを閉じて、再度QRスキャンから始められるようにする
       setShowConfirmation(false);
+    }
+  };
+
+  // ⚡ PIN送信処理（EIP-3009署名生成）
+  const handlePinSubmit = async (pin: string = pinInput) => {
+    try {
+      if (!pin || pin.length !== 6) {
+        setMessage({ type: 'error', text: 'PINは6桁の数字を入力してください' });
+        return;
+      }
+
+      if (!walletAddress) {
+        setMessage({ type: 'error', text: 'ウォレット接続が必要です' });
+        return;
+      }
+
+      setIsProcessing(true);
+      setMessage({ type: 'info', text: 'PIN確認中...' });
+
+      // Supabaseからガスレス決済リクエストを取得
+      const { data: request, error } = await getGaslessPaymentRequestByPIN(pin);
+
+      if (error || !request) {
+        setMessage({ type: 'error', text: `PINが見つかりません: ${error?.message || '不明なエラー'}` });
+        setIsProcessing(false);
+        return;
+      }
+
+      if (request.status !== 'pending') {
+        setMessage({ type: 'error', text: 'この決済リクエストは既に処理されています' });
+        setIsProcessing(false);
+        return;
+      }
+
+      // 有効期限チェック
+      const now = Math.floor(Date.now() / 1000);
+      if (request.valid_before < now) {
+        setMessage({ type: 'error', text: 'この決済リクエストは有効期限切れです' });
+        setIsProcessing(false);
+        return;
+      }
+
+      console.log('✅ ガスレス決済リクエスト取得:', request);
+      setGaslessPaymentRequest(request);
+
+      // EIP-712署名生成
+      setMessage({ type: 'info', text: '署名を生成中...' });
+
+      // TODO: ここでPrivyウォレットを使ってEIP-712署名を生成
+      // 次のタスクで実装します
+      setMessage({ type: 'info', text: '署名生成機能は次のステップで実装します' });
+      setIsProcessing(false);
+
+    } catch (err: any) {
+      console.error('❌ PIN送信エラー:', err);
+      setMessage({ type: 'error', text: `エラー: ${err.message}` });
+      setIsProcessing(false);
     }
   };
 
@@ -1108,11 +1181,139 @@ reason: ${error.reason || 'なし'}`;
 
       {/* QRスキャナー */}
       {showScanner && (
-        <QRScannerCamera
-          onScan={handleScan}
-          onClose={() => setShowScanner(false)}
-          placeholder="X402決済QRコードをスキャン"
-        />
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.95)',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 10000,
+            padding: isMobile ? '16px' : '20px',
+          }}
+        >
+          {/* カメラスキャナー */}
+          {!isPinMode && (
+            <QRScannerCamera
+              onScan={handleScan}
+              onClose={() => {
+                setShowScanner(false);
+                setPinInput('');
+                setIsPinMode(false);
+              }}
+              placeholder="X402決済QRコードをスキャン"
+            />
+          )}
+
+          {/* PIN入力UI */}
+          <div
+            style={{
+              position: 'absolute',
+              bottom: isPinMode ? '50%' : isMobile ? '80px' : '100px',
+              left: '50%',
+              transform: isPinMode ? 'translate(-50%, 50%)' : 'translateX(-50%)',
+              width: '90%',
+              maxWidth: '400px',
+              background: 'rgba(0, 0, 0, 0.85)',
+              borderRadius: '16px',
+              padding: isMobile ? '16px' : '20px',
+              border: '2px solid rgba(16, 185, 129, 0.5)',
+              transition: 'all 0.3s ease',
+            }}
+          >
+            <div style={{
+              fontSize: isMobile ? '14px' : '16px',
+              color: '#10b981',
+              fontWeight: '700',
+              marginBottom: '12px',
+              textAlign: 'center',
+            }}>
+              {isPinMode ? '⚡ ガスレス決済PIN' : 'またはPINを入力'}
+            </div>
+
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+              <input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={6}
+                value={pinInput}
+                onChange={(e) => {
+                  const value = e.target.value.replace(/[^0-9]/g, '');
+                  setPinInput(value);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && pinInput.length === 6) {
+                    handlePinSubmit();
+                  }
+                }}
+                placeholder="6桁のPIN"
+                disabled={isProcessing}
+                style={{
+                  flex: 1,
+                  padding: isMobile ? '12px' : '14px',
+                  fontSize: isMobile ? '18px' : '20px',
+                  fontWeight: '700',
+                  textAlign: 'center',
+                  letterSpacing: '4px',
+                  border: '2px solid rgba(16, 185, 129, 0.5)',
+                  borderRadius: '8px',
+                  background: 'rgba(255, 255, 255, 0.1)',
+                  color: '#fff',
+                  outline: 'none',
+                }}
+              />
+              <button
+                onClick={() => handlePinSubmit()}
+                disabled={pinInput.length !== 6 || isProcessing}
+                style={{
+                  padding: isMobile ? '12px 20px' : '14px 24px',
+                  fontSize: isMobile ? '14px' : '16px',
+                  fontWeight: '700',
+                  background: pinInput.length === 6 && !isProcessing
+                    ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
+                    : 'rgba(107, 114, 128, 0.5)',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: pinInput.length === 6 && !isProcessing ? 'pointer' : 'not-allowed',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {isProcessing ? '...' : '送信'}
+              </button>
+            </div>
+
+            {isPinMode && (
+              <button
+                onClick={() => {
+                  setIsPinMode(false);
+                  setPinInput('');
+                  setGaslessPaymentRequest(null);
+                }}
+                disabled={isProcessing}
+                style={{
+                  width: '100%',
+                  padding: '10px',
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  background: 'rgba(255, 255, 255, 0.1)',
+                  color: 'rgba(255, 255, 255, 0.7)',
+                  border: '1px solid rgba(255, 255, 255, 0.2)',
+                  borderRadius: '6px',
+                  cursor: isProcessing ? 'not-allowed' : 'pointer',
+                }}
+              >
+                ← QRスキャンに戻る
+              </button>
+            )}
+          </div>
+        </div>
       )}
 
       {/* デバッグ表示 */}

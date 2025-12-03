@@ -25,6 +25,10 @@ export function QRScannerCamera({ onScan, onClose, placeholder = 'QRコードを
 
   // X402形式、ウォレットQR、または通常のアドレスかを判定してバリデーション
   const validateAndProcessScan = (data: string): { isValid: boolean; error?: string } => {
+    // ⚡ PIN検出（6桁の数字のみ）
+    if (/^\d{6}$/.test(data.trim())) {
+      return { isValid: true };
+    }
 
     // まずJSON形式かどうかを確認
     try {
