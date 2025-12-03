@@ -110,7 +110,12 @@ export function PaymentTerminal() {
 
   // ⚡ ガスレス決済（Phase 5）
   const [useGasless, setUseGasless] = useState(false); // ガスレス決済を使用するか
-  const [isGaslessAvailable] = useState(isGaslessPaymentEnabled()); // 機能フラグ
+  const [isGaslessAvailable] = useState(() => {
+    const enabled = isGaslessPaymentEnabled();
+    console.log('🔧 ガスレス決済機能フラグ:', enabled);
+    console.log('🔧 環境変数 VITE_ENABLE_GASLESS_PAYMENT:', import.meta.env.VITE_ENABLE_GASLESS_PAYMENT);
+    return enabled;
+  }); // 機能フラグ
   const [isExecutingGasless, setIsExecutingGasless] = useState(false);
   const [pendingSignatures, setPendingSignatures] = useState<any[]>([]); // 署名待ちキュー
   const [batchProcessingEnabled, setBatchProcessingEnabled] = useState(false); // バッチ処理モード
