@@ -23,6 +23,12 @@ import {
   calculateSummary,
 } from '../../utils/paymentExport';
 import { isGaslessPaymentEnabled } from '../../config/featureFlags';
+import {
+  generatePIN,
+  createGaslessPaymentRequest,
+  useGaslessPaymentRequestSubscription,
+} from '../../hooks/useGaslessPayment';
+import type { GaslessPaymentRequest } from '../../types/gaslessPayment';
 
 interface PaymentHistory {
   id: string;
@@ -103,6 +109,10 @@ export function PaymentTerminal() {
   const [isExecutingGasless, setIsExecutingGasless] = useState(false);
   const [pendingSignatures, setPendingSignatures] = useState<any[]>([]); // 署名待ちキュー
   const [batchProcessingEnabled, setBatchProcessingEnabled] = useState(false); // バッチ処理モード
+
+  // ⚡ EIP-3009 ガスレス決済（PIN方式）
+  const [gaslessPaymentRequest, setGaslessPaymentRequest] = useState<GaslessPaymentRequest | null>(null);
+  const [gaslessPIN, setGaslessPIN] = useState<string | null>(null);
 
   // 店舗プロフィールの取得
   useEffect(() => {
@@ -193,6 +203,47 @@ export function PaymentTerminal() {
       console.error('設定の読み込みエラー:', error);
     }
   }, []);
+
+  // ⚡ EIP-3009 ガスレス決済のRealtime監視（PIN方式）
+  useEffect(() => {
+    if (!gaslessPaymentRequest || !walletAddress) return;
+
+    console.log('🔔 Realtime監視開始:', gaslessPaymentRequest.id);
+
+    const channel = supabase
+      .channel(`gasless_eip3009:${gaslessPaymentRequest.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'gasless_payment_requests',
+          filter: `id=eq.${gaslessPaymentRequest.id}`,
+        },
+        async (payload) => {
+          const updatedRequest = payload.new as GaslessPaymentRequest;
+          console.log('📨 ガスレス決済更新:', updatedRequest);
+
+          if (updatedRequest.status === 'signed' && updatedRequest.from_address) {
+            console.log('✅ 署名受信！ transferWithAuthorization実行準備');
+            setGaslessPaymentRequest(updatedRequest);
+
+            // TODO: ここでtransferWithAuthorization()を実行
+            setMessage({
+              type: 'success',
+              text: '✅ 署名受信！決済を実行します...',
+            });
+            setTimeout(() => setMessage(null), 3000);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      console.log('🔕 Realtime監視終了:', gaslessPaymentRequest.id);
+      supabase.removeChannel(channel);
+    };
+  }, [gaslessPaymentRequest?.id, walletAddress]);
 
   // ⚡ Supabase Realtime: ガスレス決済の署名受信監視（Phase 5）
   useEffect(() => {
@@ -430,6 +481,8 @@ export function PaymentTerminal() {
     setAmount('');
     setQrData(null);
     setMessage(null);
+    setGaslessPaymentRequest(null);
+    setGaslessPIN(null);
   };
 
   // プリセット金額
@@ -493,62 +546,50 @@ export function PaymentTerminal() {
       const expires = Math.floor(Date.now() / 1000) + expiryMinutes * 60;
       const requestId = generateRequestId();
 
-      // ⚡ ガスレス決済モード（Phase 5）
+      // ⚡ ガスレス決済モード（EIP-3009 + PIN方式）
       if (useGasless && isGaslessAvailable) {
+        // PIN生成（6桁）
+        const pin = generatePIN();
 
-        // EIP-3009用の32バイトnonce生成
-        const nonce = '0x' + Array.from({ length: 64 }, () =>
-          Math.floor(Math.random() * 16).toString(16)
-        ).join('');
+        // Nonce生成（32 bytes random hex）
+        const nonce = '0x' + Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join('');
 
-        // ガスレス決済用QRデータ
-        const gaslessQRData = JSON.stringify({
-          type: 'gasless',
-          tenant: walletValidation.checksumAddress,
-          token: tokenValidation.checksumAddress,
-          amount: amountWei,
-          chainId: 137,
-          message: `${amountToGenerate}円のお支払い（ガスレス）`,
-          expires,
-          requestId,
+        // Supabaseにガスレス決済リクエストを保存
+        const { data: gaslessRequest, error } = await createGaslessPaymentRequest({
+          pin,
           nonce,
-          validAfter: 0,
-          validBefore: expires,
+          merchant_address: walletAddress.toLowerCase(),
+          amount: amountWei,
+          valid_before: expires,
+          valid_after: 0,
         });
 
-
-        // Supabaseに保存（ガスレス用フィールド付き）
-        const insertData = {
-          request_id: requestId,
-          tenant_address: walletAddress.toLowerCase(),
-          amount: amountToGenerate,
-          message: `${amountToGenerate}円のお支払い（ガスレス）`,
-          expires_at: new Date(expires * 1000).toISOString(),
-          status: 'awaiting_signature',
-          payment_type: 'authorization',
-          nonce,
-          valid_after: 0,
-          valid_before: expires,
-        };
-
-        const { error } = await supabase.from('payment_requests').insert(insertData);
-
-        if (error) {
-          console.error('❌ [Desktop] Supabase insert error:', error);
-          console.error('❌ [Desktop] Error code:', error.code);
-          console.error('❌ [Desktop] Error message:', error.message);
-          console.error('❌ [Desktop] Error details:', error.details);
-          console.error('❌ [Desktop] Error hint:', error.hint);
-          setMessage({ type: 'error', text: `生成失敗: ${error.message}` });
-          throw error;
+        if (error || !gaslessRequest) {
+          console.error('❌ ガスレス決済リクエスト作成エラー:', error);
+          setMessage({ type: 'error', text: `生成失敗: ${error?.message || '不明なエラー'}` });
+          return;
         }
 
-        setQrData(gaslessQRData);
-        setAmount(amountToGenerate);
-        setCurrentRequestId(requestId);
-        setMessage({ type: 'success', text: '⚡ ガスレスQR生成完了（署名待ち）' });
+        // PIN QRコードデータ生成（PINのみ）
+        const pinQRData = pin;
 
-        setTimeout(() => setMessage(null), 3000);
+        // 状態更新
+        setGaslessPaymentRequest(gaslessRequest);
+        setGaslessPIN(pin);
+        setQrData(pinQRData);
+        setCurrentRequestId(gaslessRequest.id);
+        setAmount(amountToGenerate);
+        setMessage({ type: 'success', text: '⚡ ガスレスQR生成完了（PIN: ' + pin + '）' });
+
+        console.log('✅ ガスレス決済リクエスト作成:', {
+          id: gaslessRequest.id,
+          pin,
+          merchant: walletAddress,
+          amount: amountToGenerate,
+          expires: new Date(expires * 1000).toISOString(),
+        });
+
+        setTimeout(() => setMessage(null), 5000);
         return;
       }
 
@@ -1449,10 +1490,42 @@ export function PaymentTerminal() {
                     <QRCodeSVG value={qrData} size={280} level="H" includeMargin={true} />
                   </div>
 
-                  {/* 請求書モード: 金額と有効期限を表示 */}
-                  {qrMode === 'invoice' && (
+                  {/* ガスレスPIN表示 */}
+                  {gaslessPIN && gaslessPaymentRequest ? (
                     <>
-                      <div style={{ marginTop: '20px', fontSize: '32px', fontWeight: 'bold', color: '#22c55e' }}>
+                      <div style={{
+                        marginTop: '20px',
+                        fontSize: '16px',
+                        color: '#10b981',
+                        fontWeight: '700',
+                        padding: '12px 20px',
+                        background: 'rgba(16, 185, 129, 0.15)',
+                        borderRadius: '12px',
+                        border: '2px solid rgba(16, 185, 129, 0.3)',
+                      }}>
+                        ⚡ ガスレス決済PIN
+                      </div>
+                      <div style={{
+                        marginTop: '16px',
+                        fontSize: '56px',
+                        fontWeight: '900',
+                        color: '#10b981',
+                        letterSpacing: '12px',
+                        fontFamily: 'monospace',
+                        textShadow: '0 2px 8px rgba(16, 185, 129, 0.3)',
+                      }}>
+                        {gaslessPIN}
+                      </div>
+                      <div style={{
+                        marginTop: '12px',
+                        fontSize: '14px',
+                        color: 'rgba(255, 255, 255, 0.7)',
+                        lineHeight: '1.5',
+                      }}>
+                        このPINまたはQRコードをお客様に提示してください<br />
+                        お客様がGIFTERRAマイページから決済を実行します
+                      </div>
+                      <div style={{ marginTop: '16px', fontSize: '36px', fontWeight: 'bold', color: '#10b981' }}>
                         {amount.replace(/\B(?=(\d{3})+(?!\d))/g, ',')} JPYC
                       </div>
                       <div style={{ marginTop: '8px', fontSize: '14px', opacity: 0.7 }}>
@@ -1464,6 +1537,42 @@ export function PaymentTerminal() {
                               : `${expiryMinutes}分`
                         }
                       </div>
+                      <div style={{
+                        marginTop: '16px',
+                        fontSize: '13px',
+                        color: 'rgba(255, 255, 255, 0.6)',
+                        padding: '10px 16px',
+                        background: 'rgba(16, 185, 129, 0.1)',
+                        borderRadius: '8px',
+                      }}>
+                        ステータス: {
+                          gaslessPaymentRequest.status === 'pending' ? '⏳ 署名待ち' :
+                          gaslessPaymentRequest.status === 'signed' ? '✅ 署名受信・実行中' :
+                          gaslessPaymentRequest.status === 'completed' ? '✅ 完了' :
+                          gaslessPaymentRequest.status === 'failed' ? '❌ 失敗' :
+                          gaslessPaymentRequest.status
+                        }
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      {/* 請求書モード: 金額と有効期限を表示（通常モード） */}
+                      {qrMode === 'invoice' && (
+                        <>
+                          <div style={{ marginTop: '20px', fontSize: '32px', fontWeight: 'bold', color: '#22c55e' }}>
+                            {amount.replace(/\B(?=(\d{3})+(?!\d))/g, ',')} JPYC
+                          </div>
+                          <div style={{ marginTop: '8px', fontSize: '14px', opacity: 0.7 }}>
+                            有効期限: {
+                              expiryMinutes >= 1440
+                                ? `${Math.floor(expiryMinutes / 1440)}日`
+                                : expiryMinutes >= 60
+                                  ? `${Math.floor(expiryMinutes / 60)}時間`
+                                  : `${expiryMinutes}分`
+                            }
+                          </div>
+                        </>
+                      )}
                     </>
                   )}
 

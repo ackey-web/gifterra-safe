@@ -23,6 +23,12 @@ import {
   calculateSummary,
 } from '../../utils/paymentExport';
 import { isGaslessPaymentEnabled } from '../../config/featureFlags';
+import {
+  generatePIN,
+  createGaslessPaymentRequest,
+  useGaslessPaymentRequestSubscription,
+} from '../../hooks/useGaslessPayment';
+import type { GaslessPaymentRequest } from '../../types/gaslessPayment';
 
 interface PaymentHistory {
   id: string;
@@ -106,6 +112,10 @@ export function PaymentTerminalMobile() {
   const [isExecutingGasless, setIsExecutingGasless] = useState(false);
   const [pendingSignatures, setPendingSignatures] = useState<any[]>([]); // 署名待ちキュー
   const [batchProcessingEnabled, setBatchProcessingEnabled] = useState(false); // バッチ処理モード
+
+  // ⚡ EIP-3009 ガスレス決済（PIN方式）
+  const [gaslessPaymentRequest, setGaslessPaymentRequest] = useState<GaslessPaymentRequest | null>(null);
+  const [gaslessPIN, setGaslessPIN] = useState<string | null>(null);
 
   // テンキー入力
   const handleNumberClick = (num: string) => {
@@ -236,6 +246,47 @@ export function PaymentTerminalMobile() {
       console.error('設定の読み込みエラー:', error);
     }
   }, []);
+
+  // ⚡ EIP-3009 ガスレス決済のRealtime監視（PIN方式）
+  useEffect(() => {
+    if (!gaslessPaymentRequest || !walletAddress) return;
+
+    console.log('🔔 Realtime監視開始:', gaslessPaymentRequest.id);
+
+    const channel = supabase
+      .channel(`gasless_eip3009:${gaslessPaymentRequest.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'gasless_payment_requests',
+          filter: `id=eq.${gaslessPaymentRequest.id}`,
+        },
+        async (payload) => {
+          const updatedRequest = payload.new as GaslessPaymentRequest;
+          console.log('📨 ガスレス決済更新:', updatedRequest);
+
+          if (updatedRequest.status === 'signed' && updatedRequest.from_address) {
+            console.log('✅ 署名受信！ transferWithAuthorization実行準備');
+            setGaslessPaymentRequest(updatedRequest);
+
+            // TODO: ここでtransferWithAuthorization()を実行
+            setMessage({
+              type: 'success',
+              text: '✅ 署名受信！決済を実行します...',
+            });
+            setTimeout(() => setMessage(null), 3000);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      console.log('🔕 Realtime監視終了:', gaslessPaymentRequest.id);
+      supabase.removeChannel(channel);
+    };
+  }, [gaslessPaymentRequest?.id, walletAddress]);
 
   // ⚡ Supabase Realtime: ガスレス決済の署名受信監視（Phase 5）
   useEffect(() => {
@@ -517,61 +568,51 @@ export function PaymentTerminalMobile() {
       const expires = Math.floor(Date.now() / 1000) + expiryMinutes * 60;
       const requestId = generateRequestId();
 
-      // ⚡ ガスレス決済モード（Phase 5）
+      // ⚡ ガスレス決済モード（EIP-3009 + PIN方式）
       if (useGasless && isGaslessAvailable) {
+        // PIN生成（6桁）
+        const pin = generatePIN();
 
-        // ガスレスQR用のnonce生成（32 bytes random hex）
+        // Nonce生成（32 bytes random hex）
         const nonce = '0x' + Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join('');
 
-        // ガスレス決済用QRデータ生成
-        const gaslessQRData = JSON.stringify({
-          type: 'gasless',
-          tenant: walletValidation.checksumAddress,
-          token: tokenValidation.checksumAddress,
-          amount: amountWei,
-          chainId: 137,
-          message: `${amountToGenerate}円のお支払い（ガスレス）`,
-          expires,
-          requestId,
+        // Supabaseにガスレス決済リクエストを保存
+        const { data: gaslessRequest, error } = await createGaslessPaymentRequest({
+          pin,
           nonce,
-          validAfter: 0,
-          validBefore: expires,
+          merchant_address: walletAddress.toLowerCase(),
+          amount: amountWei,
+          valid_before: expires,
+          valid_after: 0,
         });
 
-
-        // Supabaseに保存（ガスレスモード）
-        const insertData = {
-          request_id: requestId,
-          tenant_address: walletAddress.toLowerCase(),
-          amount: amountToGenerate,
-          message: `${amountToGenerate}円のお支払い（ガスレス）`,
-          expires_at: new Date(expires * 1000).toISOString(),
-          status: 'awaiting_signature', // ガスレスは署名待ち
-          payment_type: 'authorization',
-          nonce,
-          valid_after: 0,
-          valid_before: expires,
-        };
-
-        const { error } = await supabase.from('payment_requests').insert(insertData);
-
-        if (error) {
-          console.error('❌ [Mobile] Supabase insert error:', error);
-          console.error('❌ [Mobile] Error code:', error.code);
-          console.error('❌ [Mobile] Error message:', error.message);
-          console.error('❌ [Mobile] Error details:', error.details);
-          console.error('❌ [Mobile] Error hint:', error.hint);
-          setMessage({ type: 'error', text: `生成失敗: ${error.message}` });
-          throw error;
+        if (error || !gaslessRequest) {
+          console.error('❌ ガスレス決済リクエスト作成エラー:', error);
+          setMessage({ type: 'error', text: `生成失敗: ${error?.message || '不明なエラー'}` });
+          return;
         }
 
-        setQrData(gaslessQRData);
-        setCurrentRequestId(requestId);
-        setQrMode('invoice'); // UIは請求書モードとして表示
-        setAmount(amountToGenerate);
-        setMessage({ type: 'success', text: '⚡ ガスレスQR生成完了' });
+        // PIN QRコードデータ生成（PINのみ）
+        const pinQRData = pin;
 
-        setTimeout(() => setMessage(null), 3000);
+        // 状態更新
+        setGaslessPaymentRequest(gaslessRequest);
+        setGaslessPIN(pin);
+        setQrData(pinQRData);
+        setCurrentRequestId(gaslessRequest.id);
+        setQrMode('invoice');
+        setAmount(amountToGenerate);
+        setMessage({ type: 'success', text: '⚡ ガスレスQR生成完了（PIN: ' + pin + '）' });
+
+        console.log('✅ ガスレス決済リクエスト作成:', {
+          id: gaslessRequest.id,
+          pin,
+          merchant: walletAddress,
+          amount: amountToGenerate,
+          expires: new Date(expires * 1000).toISOString(),
+        });
+
+        setTimeout(() => setMessage(null), 5000);
         return;
       }
 
@@ -1407,29 +1448,44 @@ export function PaymentTerminalMobile() {
                 <QRCodeSVG value={qrData} size={240} level="H" includeMargin={true} />
               </div>
 
-              {/* QRコード説明テキスト */}
-              <div style={{
-                fontSize: '12px',
-                color: 'rgba(255, 255, 255, 0.8)',
-                marginBottom: '16px',
-                lineHeight: '1.5',
-                padding: '8px 16px',
-                background: 'rgba(34, 197, 94, 0.1)',
-                borderRadius: '8px',
-                border: '1px solid rgba(34, 197, 94, 0.2)',
-              }}>
-                📄 <strong>請求書QR</strong><br />
-                このQRは、GIFTERRA Pay で読み取り・お支払いできます。<br />
-                GIFTERRAマイページの「スキャンして支払う」からご利用ください。
-              </div>
-
-              {/* 請求書モードの場合のみ金額と有効期限を表示 */}
-              {qrMode === 'invoice' && (
+              {/* ガスレスPIN表示 */}
+              {gaslessPIN && gaslessPaymentRequest ? (
                 <>
-                  <div style={{ fontSize: '36px', fontWeight: 'bold', color: '#22c55e', marginBottom: '8px' }}>
+                  <div style={{
+                    fontSize: '14px',
+                    color: '#10b981',
+                    fontWeight: '700',
+                    marginBottom: '16px',
+                    padding: '12px 20px',
+                    background: 'rgba(16, 185, 129, 0.15)',
+                    borderRadius: '12px',
+                    border: '2px solid rgba(16, 185, 129, 0.3)',
+                  }}>
+                    ⚡ ガスレス決済PIN
+                  </div>
+                  <div style={{
+                    fontSize: '48px',
+                    fontWeight: '900',
+                    color: '#10b981',
+                    letterSpacing: '8px',
+                    marginBottom: '12px',
+                    fontFamily: 'monospace',
+                    textShadow: '0 2px 8px rgba(16, 185, 129, 0.3)',
+                  }}>
+                    {gaslessPIN}
+                  </div>
+                  <div style={{
+                    fontSize: '12px',
+                    color: 'rgba(255, 255, 255, 0.7)',
+                    marginBottom: '16px',
+                    lineHeight: '1.5',
+                  }}>
+                    このPINまたはQRコードをお客様に提示してください<br />
+                    お客様がGIFTERRAマイページから決済を実行します
+                  </div>
+                  <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#10b981', marginBottom: '8px' }}>
                     {amount.replace(/\B(?=(\d{3})+(?!\d))/g, ',')} JPYC
                   </div>
-
                   <div style={{ fontSize: '13px', opacity: 0.7, marginBottom: '16px' }}>
                     有効期限: {
                       expiryMinutes >= 1440
@@ -1439,6 +1495,59 @@ export function PaymentTerminalMobile() {
                           : `${expiryMinutes}分`
                     }
                   </div>
+                  <div style={{
+                    fontSize: '11px',
+                    color: 'rgba(255, 255, 255, 0.6)',
+                    padding: '8px 12px',
+                    background: 'rgba(16, 185, 129, 0.1)',
+                    borderRadius: '8px',
+                    marginBottom: '16px',
+                  }}>
+                    ステータス: {
+                      gaslessPaymentRequest.status === 'pending' ? '⏳ 署名待ち' :
+                      gaslessPaymentRequest.status === 'signed' ? '✅ 署名受信・実行中' :
+                      gaslessPaymentRequest.status === 'completed' ? '✅ 完了' :
+                      gaslessPaymentRequest.status === 'failed' ? '❌ 失敗' :
+                      gaslessPaymentRequest.status
+                    }
+                  </div>
+                </>
+              ) : (
+                <>
+                  {/* QRコード説明テキスト（通常モード） */}
+                  <div style={{
+                    fontSize: '12px',
+                    color: 'rgba(255, 255, 255, 0.8)',
+                    marginBottom: '16px',
+                    lineHeight: '1.5',
+                    padding: '8px 16px',
+                    background: 'rgba(34, 197, 94, 0.1)',
+                    borderRadius: '8px',
+                    border: '1px solid rgba(34, 197, 94, 0.2)',
+                  }}>
+                    📄 <strong>請求書QR</strong><br />
+                    このQRは、GIFTERRA Pay で読み取り・お支払いできます。<br />
+                    GIFTERRAマイページの「スキャンして支払う」からご利用ください。
+                  </div>
+
+                  {/* 請求書モードの場合のみ金額と有効期限を表示 */}
+                  {qrMode === 'invoice' && (
+                    <>
+                      <div style={{ fontSize: '36px', fontWeight: 'bold', color: '#22c55e', marginBottom: '8px' }}>
+                        {amount.replace(/\B(?=(\d{3})+(?!\d))/g, ',')} JPYC
+                      </div>
+
+                      <div style={{ fontSize: '13px', opacity: 0.7, marginBottom: '16px' }}>
+                        有効期限: {
+                          expiryMinutes >= 1440
+                            ? `${Math.floor(expiryMinutes / 1440)}日`
+                            : expiryMinutes >= 60
+                              ? `${Math.floor(expiryMinutes / 60)}時間`
+                              : `${expiryMinutes}分`
+                        }
+                      </div>
+                    </>
+                  )}
                 </>
               )}
 
@@ -1467,6 +1576,8 @@ export function PaymentTerminalMobile() {
                 onClick={() => {
                   setQrData(null);
                   setDisplayAmount('0');
+                  setGaslessPaymentRequest(null);
+                  setGaslessPIN(null);
                 }}
                 style={{
                   width: '100%',
