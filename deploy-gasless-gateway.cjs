@@ -56,7 +56,7 @@ async function deployGaslessGateway() {
   console.log('✅ コンパイル完了');
 
   // 5. デプロイ
-  const jpycAddress = '0xE7C3D8C9a439feDe00D2600032D5dB0Be71C3c29'; // Polygon JPYC
+  const jpycAddress = '0x6AE7Dfc73E0dDE2aa99ac063DcF7e8A63265108c'; // Polygon JPYC v2 (EIP-3009)
   const platformFeeRecipient = wallet.address; // デプロイヤーを手数料受取人に設定
 
   console.log('\n🚀 デプロイ開始...');
