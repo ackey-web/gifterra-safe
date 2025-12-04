@@ -1479,6 +1479,8 @@ export function PaymentTerminal() {
                     textAlign: 'center',
                     fontSize: '14px',
                     fontWeight: '600',
+                    wordBreak: 'break-word',
+                    overflowWrap: 'break-word',
                   }}
                 >
                   {message.text}
