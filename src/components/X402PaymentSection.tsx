@@ -756,7 +756,7 @@ reason: ${error.reason || 'なし'}`;
         // Supabaseに署名を保存
         setMessage({ type: 'info', text: '署名を保存中...' });
 
-        const { error: signError } = await signGaslessPaymentRequest(request.id, {
+        const { error: signError } = await signGaslessPaymentRequest(request.pin, {
           from_address: walletAddress.toLowerCase(),
           signature_v: sig.v,
           signature_r: sig.r,
@@ -764,12 +764,13 @@ reason: ${error.reason || 'なし'}`;
         });
 
         if (signError) {
+          console.error('❌ 署名保存エラー:', signError.message);
           setMessage({ type: 'error', text: `署名保存エラー: ${signError.message}` });
           setIsProcessing(false);
           return;
         }
 
-        console.log('✅ 署名をSupabaseに保存完了');
+        console.warn('✅ 署名をSupabaseに保存完了 - PIN:', request.pin, 'Status: signed');
         setMessage({ type: 'success', text: '✅ 署名完了！店舗が決済を実行します...' });
 
         // 成功後、モーダルを閉じる

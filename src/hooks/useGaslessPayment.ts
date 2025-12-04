@@ -75,7 +75,9 @@ export async function signGaslessPaymentRequest(
   signatureData: SignGaslessPaymentRequest
 ): Promise<{ error: Error | null }> {
   try {
-    const { error } = await supabase
+    console.warn('🔐 [SIGN] Supabaseに署名を保存開始 - PIN:', pin);
+
+    const { data, error } = await supabase
       .from('gasless_payment_requests')
       .update({
         from_address: signatureData.from_address,
@@ -85,16 +87,25 @@ export async function signGaslessPaymentRequest(
         status: 'signed',
         signed_at: new Date().toISOString(),
       })
-      .eq('pin', pin); // PINでフィルタリングに変更
+      .eq('pin', pin) // PINでフィルタリングに変更
+      .select();
 
     if (error) {
-      console.error('Error signing gasless payment request:', error);
+      console.error('❌ [SIGN] Supabaseエラー:', error);
       return { error: new Error(error.message) };
     }
 
+    // 0件更新の場合はエラーを返す（サイレント失敗を防ぐ）
+    if (!data || data.length === 0) {
+      const errorMsg = `PIN "${pin}" が見つかりません。リクエストが期限切れまたは無効です。`;
+      console.error('❌ [SIGN] 更新件数0件 - PIN not found:', pin);
+      return { error: new Error(errorMsg) };
+    }
+
+    console.warn('✅ [SIGN] 署名保存成功 - 更新件数:', data.length, 'Status: signed');
     return { error: null };
   } catch (err) {
-    console.error('Error signing gasless payment request:', err);
+    console.error('❌ [SIGN] 予期しないエラー:', err);
     return { error: err as Error };
   }
 }
