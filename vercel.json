@@ -17,6 +17,10 @@
       "destination": "/api/:path*"
     },
     {
+      "source": "/receive/:address",
+      "destination": "/api/ogp/profile?address=:address"
+    },
+    {
       "source": "/((?!api).*)",
       "destination": "/index.html"
     }

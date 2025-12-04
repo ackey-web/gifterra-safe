@@ -3,8 +3,6 @@
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
-import * as fs from 'fs';
-import * as path from 'path';
 
 const supabaseUrl = process.env.SUPABASE_URL!;
 const supabaseServiceRole = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -21,7 +19,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Supabaseからユーザープロフィールを取得
     const { data: profiles, error } = await supabase
       .from('user_profiles')
-      .select('*')
+      .select('display_name, avatar_url, bio')
       .eq('wallet_address', address.toLowerCase())
       .limit(1);
 
@@ -37,14 +35,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const defaultImage = 'https://gifterra-safe.vercel.app/gifterra-ogp.png';
 
     // プロフィール情報から動的に生成
-    const username = profile?.username || `${address.slice(0, 6)}...${address.slice(-4)}`;
+    const displayName = profile?.display_name || `${address.slice(0, 6)}...${address.slice(-4)}`;
     const title = profile
-      ? `${username} (@${address.slice(0, 6)}...${address.slice(-4)}) - GIFTERRA`
+      ? `${displayName} - GIFTERRA`
       : defaultTitle;
-    const description = profile
-      ? `${username}のGIFTERRAプロフィール - ランク: ${profile.rank || 'Bronze'}, コドミポイント: ${profile.kodomi_points?.toLocaleString() || 0}`
-      : defaultDescription;
-    const imageUrl = profile?.thumbnail || defaultImage;
+    const description = profile?.bio || defaultDescription;
+    const imageUrl = profile?.avatar_url || defaultImage;
     const profileUrl = `https://gifterra-safe.vercel.app/receive/${address}`;
 
     // HTMLテンプレート
