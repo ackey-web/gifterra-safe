@@ -1666,10 +1666,17 @@ export function PaymentTerminal() {
                                   signer
                                 );
 
-                                console.log('🚀 transferWithAuthorization実行中...', {
+                                console.log('🚀 transferWithAuthorization実行中...');
+                                console.log('📋 [DEBUG] 全パラメータ:', {
                                   from: gaslessPaymentRequest.from_address,
                                   to: walletAddress,
-                                  amount: gaslessPaymentRequest.amount,
+                                  value: ethers.utils.parseUnits(gaslessPaymentRequest.amount, 18).toString(),
+                                  validAfter: 0,
+                                  validBefore: gaslessPaymentRequest.valid_before,
+                                  nonce: gaslessPaymentRequest.nonce,
+                                  v: gaslessPaymentRequest.signature_v,
+                                  r: gaslessPaymentRequest.signature_r,
+                                  s: gaslessPaymentRequest.signature_s,
                                 });
                                 const tx = await jpycContract.transferWithAuthorization(
                                   gaslessPaymentRequest.from_address,
