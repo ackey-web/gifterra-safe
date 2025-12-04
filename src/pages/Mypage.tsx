@@ -2861,7 +2861,7 @@ function SendForm({ isMobile, bulkSendRecipients, setBulkSendRecipients, handleA
       {/* ブックマークユーザー選択モーダル */}
       {showBookmarkSelectModal && (
         <BookmarkUserModal
-          userAddress={actualAddress}
+          userAddress={connectedAddress}
           isMobile={isMobile}
           mode="select"
           onClose={() => {
