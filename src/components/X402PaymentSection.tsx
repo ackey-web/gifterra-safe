@@ -737,20 +737,20 @@ reason: ${error.reason || 'なし'}`;
         ],
       };
 
-      // アドレスをchecksum formatに統一（EIP-712署名検証のため）
-      const fromAddressChecksum = ethers.utils.getAddress(walletAddress);
-      const toAddressChecksum = ethers.utils.getAddress(request.merchant_address);
+      // アドレスを小文字に統一（Solidityのabi.encodeが小文字化するため）
+      const fromAddressLower = walletAddress.toLowerCase();
+      const toAddressLower = request.merchant_address.toLowerCase();
 
-      console.warn('🔧 CHECKSUM変換:', {
+      console.warn('🔧 アドレス小文字化:', {
         '元のfrom': walletAddress,
-        '変換後from': fromAddressChecksum,
+        '変換後from': fromAddressLower,
         '元のto': request.merchant_address,
-        '変換後to': toAddressChecksum
+        '変換後to': toAddressLower
       });
 
       const message = {
-        from: fromAddressChecksum,
-        to: toAddressChecksum,
+        from: fromAddressLower,
+        to: toAddressLower,
         value: request.amount,
         validAfter: request.valid_after,
         validBefore: request.valid_before,
@@ -776,7 +776,7 @@ reason: ${error.reason || 'なし'}`;
         setMessage({ type: 'info', text: '署名を保存中...' });
 
         const { error: signError } = await signGaslessPaymentRequest(request.pin, {
-          from_address: fromAddressChecksum,  // checksum形式で保存
+          from_address: fromAddressLower,  // 小文字形式で保存
           signature_v: sig.v,
           signature_r: sig.r,
           signature_s: sig.s,

@@ -344,22 +344,22 @@ export function PaymentTerminal() {
               const signer = provider.getSigner();
 
               console.log('📄 手動ABIエンコード準備中...');
-              // アドレスをchecksum formatに変換（EIP-712署名検証のため）
-              const fromAddressChecksum = ethers.utils.getAddress(newRecord.from_address);
-              const toAddressChecksum = ethers.utils.getAddress(walletAddress);
+              // アドレスを小文字に統一（Solidityのabi.encodeが小文字化するため）
+              const fromAddressLower = newRecord.from_address.toLowerCase();
+              const toAddressLower = walletAddress.toLowerCase();
 
               console.log('🚀 transferWithAuthorization実行中...', {
-                from: fromAddressChecksum,
-                to: toAddressChecksum,
+                from: fromAddressLower,
+                to: toAddressLower,
                 amount: newRecord.amount,
               });
 
-              // 完全に手動でABIエンコード（アドレスのチェックサムを保持）
+              // 完全に手動でABIエンコード（アドレスを小文字で統一）
               const functionSelector = '0xe3ee160e'; // transferWithAuthorization
 
-              // アドレスからプレフィックス削除して左ゼロパディング（チェックサムを保持）
-              const fromParam = fromAddressChecksum.substring(2).padStart(64, '0');
-              const toParam = toAddressChecksum.substring(2).padStart(64, '0');
+              // アドレスからプレフィックス削除して左ゼロパディング（小文字で統一）
+              const fromParam = fromAddressLower.substring(2).padStart(64, '0');
+              const toParam = toAddressLower.substring(2).padStart(64, '0');
 
               // 金額を256bit整数に変換
               const valueParam = ethers.utils.parseUnits(newRecord.amount, 18).toHexString().substring(2).padStart(64, '0');
@@ -661,12 +661,12 @@ export function PaymentTerminal() {
         const nonce = '0x' + Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join('');
 
         // Supabaseにガスレス決済リクエストを保存
-        // walletAddressをchecksum formatに変換（Privyは小文字で返す場合がある）
-        const checksumAddress = ethers.utils.getAddress(walletAddress);
+        // アドレスを小文字に統一（Solidityのabi.encodeが小文字化するため）
+        const lowerAddress = walletAddress.toLowerCase();
         const { data: gaslessRequest, error } = await createGaslessPaymentRequest({
           pin,
           nonce,
-          merchant_address: checksumAddress,
+          merchant_address: lowerAddress,
           amount: amountWei,
           valid_before: expires,
           valid_after: 0,
