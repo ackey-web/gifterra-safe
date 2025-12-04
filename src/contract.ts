@@ -7,9 +7,9 @@ import { polygon } from "viem/chains";
    📝 Mainnet token addresses
 ========================================= */
 
-// JPYC Token (Polygon Mainnet)
+// JPYC Token (Polygon Mainnet - v2 with EIP-3009 support)
 export const JPYC_TOKEN = {
-  ADDRESS: getAddress("0xE7C3D8C9a439feDe00D2600032D5dB0Be71C3c29"),
+  ADDRESS: getAddress("0x6AE7Dfc73E0dDE2aa99ac063DcF7e8A63265108c"),
   SYMBOL: "JPYC",
   DECIMALS: 18,
   NAME: "JPY Coin",
