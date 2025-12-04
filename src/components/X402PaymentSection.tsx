@@ -712,10 +712,10 @@ reason: ${error.reason || 'なし'}`;
 
       // EIP-712 TransferWithAuthorization の Typed Data
       console.warn('🔍 [DEBUG] JPYC Address:', jpycConfig.currentAddress);
-      console.warn('🔍 [DEBUG] Expected:', '0x6AE7Dfc73E0dDE2aa99ac063DcF7e8A63265108c');
+      console.warn('🔍 [DEBUG] Expected:', '0xE7C3D8C9a439feDe00D2600032D5dB0Be71C3c29');
 
       // デバッグ用アラート（スマホで確認するため）
-      alert(`署名に使用するJPYCアドレス:\n${jpycConfig.currentAddress}\n\n正しいアドレス:\n0x6AE7Dfc73E0dDE2aa99ac063DcF7e8A63265108c\n\n一致していますか？`);
+      alert(`署名に使用するJPYCアドレス:\n${jpycConfig.currentAddress}\n\n正しいアドレス:\n0xE7C3D8C9a439feDe00D2600032D5dB0Be71C3c29\n\n一致していますか？`);
 
       const domain = {
         name: 'JPY Coin',
@@ -738,8 +738,8 @@ reason: ${error.reason || 'なし'}`;
       };
 
       const message = {
-        from: walletAddress.toLowerCase(),
-        to: request.merchant_address.toLowerCase(),
+        from: walletAddress,
+        to: request.merchant_address,
         value: request.amount,
         validAfter: request.valid_after,
         validBefore: request.valid_before,
@@ -765,7 +765,7 @@ reason: ${error.reason || 'なし'}`;
         setMessage({ type: 'info', text: '署名を保存中...' });
 
         const { error: signError } = await signGaslessPaymentRequest(request.pin, {
-          from_address: walletAddress.toLowerCase(),
+          from_address: walletAddress,
           signature_v: sig.v,
           signature_r: sig.r,
           signature_s: sig.s,

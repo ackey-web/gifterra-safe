@@ -1340,7 +1340,7 @@ export function PaymentTerminal() {
                         cursor: isGaslessAvailable ? 'pointer' : 'not-allowed',
                       }}
                     />
-                    ⚡ ガスレス決済（PIN）
+                    ⚡ ガスレス決済（PIN）（開発中）
                   </label>
 
                   {/* バッチ処理モード */}
