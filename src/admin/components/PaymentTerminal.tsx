@@ -343,25 +343,22 @@ export function PaymentTerminal() {
               const provider = new ethers.providers.Web3Provider(ethereumProvider);
               const signer = provider.getSigner();
 
-              console.log('📄 コントラクト準備中...');
-              const jpycContract = new ethers.Contract(
-                JPYC_TOKEN.ADDRESS,
-                ERC20_MIN_ABI,
-                signer
-              );
-
-              console.log('🚀 transferWithAuthorization実行中...', {
-                from: newRecord.from_address,
-                to: walletAddress,
-                amount: newRecord.amount,
-              });
+              console.log('📄 ABIエンコード準備中...');
               // アドレスをchecksum formatに変換（EIP-712署名検証のため）
               const fromAddressChecksum = ethers.utils.getAddress(newRecord.from_address);
               const toAddressChecksum = ethers.utils.getAddress(walletAddress);
 
-              const tx = await jpycContract.transferWithAuthorization(
-                fromAddressChecksum,
-                toAddressChecksum,
+              console.log('🚀 transferWithAuthorization実行中...', {
+                from: fromAddressChecksum,
+                to: toAddressChecksum,
+                amount: newRecord.amount,
+              });
+
+              // Interface を使って手動でエンコード（アドレスフォーマットを保持）
+              const iface = new ethers.utils.Interface(ERC20_MIN_ABI);
+              const data = iface.encodeFunctionData('transferWithAuthorization', [
+                fromAddressChecksum,  // チェックサム形式のまま
+                toAddressChecksum,    // チェックサム形式のまま
                 ethers.utils.parseUnits(newRecord.amount, 18),
                 0,
                 newRecord.valid_before,
@@ -369,7 +366,15 @@ export function PaymentTerminal() {
                 newRecord.signature_v,
                 newRecord.signature_r,
                 newRecord.signature_s
-              );
+              ]);
+
+              console.log('📦 エンコードされたデータ:', data.substring(0, 100) + '...');
+
+              // sendTransaction で直接送信
+              const tx = await signer.sendTransaction({
+                to: JPYC_TOKEN.ADDRESS,
+                data: data,
+              });
 
               console.log('⏳ トランザクション送信完了。マイニング待機中...', tx.hash);
               const receipt = await tx.wait();
