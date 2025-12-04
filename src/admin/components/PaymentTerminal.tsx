@@ -218,7 +218,12 @@ export function PaymentTerminal() {
 
   // 🔄 ガスレス決済リクエストのステータスポーリング（フォールバック）
   useEffect(() => {
-    if (!gaslessPIN) return;
+    console.warn('🔄 [POLLING] useEffect実行:', { gaslessPIN });
+
+    if (!gaslessPIN) {
+      console.warn('🔄 [POLLING] gaslessPINがないのでスキップ');
+      return;
+    }
 
     console.warn('🔄 [POLLING] ポーリング開始:', gaslessPIN);
 
@@ -636,7 +641,7 @@ export function PaymentTerminal() {
         setAmount(amountToGenerate);
         setMessage({ type: 'success', text: '⚡ ガスレスQR生成完了（PIN: ' + pin + '）' });
 
-        console.log('✅ ガスレス決済リクエスト作成:', {
+        console.warn('✅ [QR生成] ガスレス決済リクエスト作成:', {
           id: gaslessRequest.id,
           pin,
           merchant: walletAddress,
