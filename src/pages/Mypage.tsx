@@ -2975,14 +2975,12 @@ function SendForm({ isMobile, bulkSendRecipients, setBulkSendRecipients, handleA
                 background: 'linear-gradient(145deg, #6366f1 0%, #8b5cf6 100%)',
             border: '1px solid rgba(99, 102, 241, 0.4)',
             boxShadow: '0 4px 16px rgba(99, 102, 241, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)',
-                border: 'none',
                 borderRadius: 12,
                 color: '#fff',
                 fontSize: isMobile ? 15 : 16,
                 fontWeight: 700,
                 cursor: 'pointer',
                 transition: 'all 0.2s',
-                boxShadow: '0 4px 12px rgba(102, 126, 234, 0.4)',
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.transform = 'scale(1.02)';
@@ -5578,7 +5576,6 @@ function TenantDetailModal({ isMobile, tenant, onClose }: {
           border: '1px solid rgba(255, 255, 255, 0.15)',
           boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
             borderRadius: 12,
-            border: '2px solid rgba(255,255,255,0.2)',
           }}>
             {tenant.icon}
           </div>
@@ -5618,7 +5615,6 @@ function TenantDetailModal({ isMobile, tenant, onClose }: {
           border: '1px solid rgba(255, 255, 255, 0.15)',
           boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
             borderRadius: 12,
-            border: '1px solid rgba(255,255,255,0.1)',
           }}>
             <div style={{
               fontSize: isMobile ? 13 : 14,
@@ -5766,7 +5762,6 @@ function TenantDetailModal({ isMobile, tenant, onClose }: {
           border: '1px solid rgba(255, 255, 255, 0.15)',
           boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
           borderRadius: 12,
-          border: '1px solid rgba(255,255,255,0.1)',
         }}>
           <div style={{
             fontSize: isMobile ? 13 : 14,
