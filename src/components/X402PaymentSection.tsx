@@ -741,6 +741,13 @@ reason: ${error.reason || 'なし'}`;
       const fromAddressChecksum = ethers.utils.getAddress(walletAddress);
       const toAddressChecksum = ethers.utils.getAddress(request.merchant_address);
 
+      console.warn('🔧 CHECKSUM変換:', {
+        '元のfrom': walletAddress,
+        '変換後from': fromAddressChecksum,
+        '元のto': request.merchant_address,
+        '変換後to': toAddressChecksum
+      });
+
       const message = {
         from: fromAddressChecksum,
         to: toAddressChecksum,
