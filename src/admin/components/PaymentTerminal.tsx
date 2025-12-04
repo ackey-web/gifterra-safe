@@ -220,7 +220,7 @@ export function PaymentTerminal() {
   useEffect(() => {
     if (!gaslessPIN) return;
 
-    console.log('🔄 ポーリング開始:', gaslessPIN);
+    console.warn('🔄 [POLLING] ポーリング開始:', gaslessPIN);
 
     const pollStatus = async () => {
       try {
@@ -231,7 +231,7 @@ export function PaymentTerminal() {
           .single();
 
         if (data) {
-          console.log('🔄 ポーリング更新:', {
+          console.warn('🔄 [POLLING] ステータス:', {
             oldStatus: gaslessPaymentRequest?.status,
             newStatus: data.status,
             hasSignature: !!data.signature_v,
