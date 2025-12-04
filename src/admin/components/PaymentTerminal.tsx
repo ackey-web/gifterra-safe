@@ -343,7 +343,7 @@ export function PaymentTerminal() {
               const provider = new ethers.providers.Web3Provider(ethereumProvider);
               const signer = provider.getSigner();
 
-              console.log('📄 ABIエンコード準備中...');
+              console.log('📄 手動ABIエンコード準備中...');
               // アドレスをchecksum formatに変換（EIP-712署名検証のため）
               const fromAddressChecksum = ethers.utils.getAddress(newRecord.from_address);
               const toAddressChecksum = ethers.utils.getAddress(walletAddress);
@@ -354,21 +354,50 @@ export function PaymentTerminal() {
                 amount: newRecord.amount,
               });
 
-              // Interface を使って手動でエンコード（アドレスフォーマットを保持）
-              const iface = new ethers.utils.Interface(ERC20_MIN_ABI);
-              const data = iface.encodeFunctionData('transferWithAuthorization', [
-                fromAddressChecksum,  // チェックサム形式のまま
-                toAddressChecksum,    // チェックサム形式のまま
-                ethers.utils.parseUnits(newRecord.amount, 18),
-                0,
-                newRecord.valid_before,
-                newRecord.nonce,
-                newRecord.signature_v,
-                newRecord.signature_r,
-                newRecord.signature_s
-              ]);
+              // 完全に手動でABIエンコード（アドレスのチェックサムを保持）
+              const functionSelector = '0xe3ee160e'; // transferWithAuthorization
 
-              console.log('📦 エンコードされたデータ:', data.substring(0, 100) + '...');
+              // アドレスからプレフィックス削除して左ゼロパディング（チェックサムを保持）
+              const fromParam = fromAddressChecksum.substring(2).padStart(64, '0');
+              const toParam = toAddressChecksum.substring(2).padStart(64, '0');
+
+              // 金額を256bit整数に変換
+              const valueParam = ethers.utils.parseUnits(newRecord.amount, 18).toHexString().substring(2).padStart(64, '0');
+
+              // validAfter (0)
+              const validAfterParam = '0'.padStart(64, '0');
+
+              // validBefore
+              const validBeforeParam = newRecord.valid_before.toString(16).padStart(64, '0');
+
+              // nonce (32 bytes hex)
+              const nonceParam = newRecord.nonce.substring(2).padStart(64, '0');
+
+              // v (uint8)
+              const vParam = newRecord.signature_v.toString(16).padStart(64, '0');
+
+              // r, s (bytes32)
+              const rParam = newRecord.signature_r.substring(2).padStart(64, '0');
+              const sParam = newRecord.signature_s.substring(2).padStart(64, '0');
+
+              // 全パラメータを結合
+              const data = functionSelector +
+                fromParam +
+                toParam +
+                valueParam +
+                validAfterParam +
+                validBeforeParam +
+                nonceParam +
+                vParam +
+                rParam +
+                sParam;
+
+              console.log('📦 手動エンコードされたデータ:', {
+                selector: functionSelector,
+                from: fromParam,
+                to: toParam,
+                fullData: data.substring(0, 100) + '...'
+              });
 
               // sendTransaction で直接送信
               const tx = await signer.sendTransaction({
