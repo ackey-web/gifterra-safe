@@ -711,12 +711,17 @@ reason: ${error.reason || 'なし'}`;
       await wallet.switchChain(137); // Polygon Mainnet
 
       // EIP-712 TransferWithAuthorization の Typed Data
+      console.warn('🔍 [DEBUG] JPYC Address:', jpycConfig.currentAddress);
+      console.warn('🔍 [DEBUG] Expected:', '0x6AE7Dfc73E0dDE2aa99ac063DcF7e8A63265108c');
+
       const domain = {
         name: 'JPY Coin',
         version: '2',
         chainId: 137,
         verifyingContract: jpycConfig.currentAddress,
       };
+
+      console.warn('🔍 [DEBUG] EIP-712 Domain:', domain);
 
       const types = {
         TransferWithAuthorization: [
