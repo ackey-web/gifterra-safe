@@ -6,6 +6,7 @@ import { usePrivy } from '@privy-io/react-auth';
 import { useAddress } from '@thirdweb-dev/react';
 import { useUserProfile } from '../hooks/useUserProfile';
 import { useUserKodomi } from '../hooks/useUserKodomi';
+import { useMetaTags } from '../hooks/useMetaTags';
 import { getRankColor, getRankBadge, shortenAddress, formatRelativeTime, generateTwitterShareText } from '../utils/userProfile';
 import type { UserProfile } from '../types/user';
 import { ContributionGauge } from '../components/ContributionGauge';
@@ -53,6 +54,19 @@ export function UserProfilePage({ address: propsAddress, mockProfile, mockActivi
 
   const profile = mockProfile || realProfile;
   const activities = mockActivities || realActivities || [];
+
+  // プロフィールページのOGP設定
+  useMetaTags({
+    title: profile?.username
+      ? `${profile.username} (@${shortenAddress(targetAddress)}) - GIFTERRA`
+      : `${shortenAddress(targetAddress)} - GIFTERRA Profile`,
+    description: profile?.username
+      ? `${profile.username}のGIFTERRAプロフィール - ランク: ${profile.rank}, コドミポイント: ${profile.kodomiPoints?.toLocaleString() || 0}`
+      : `GIFTERRAユーザープロフィール`,
+    imageUrl: profile?.thumbnail || 'https://gifterra-safe.vercel.app/gifterra-ogp.png',
+    url: `https://gifterra-safe.vercel.app/receive/${targetAddress}`,
+    type: 'profile',
+  });
 
   if (!mockProfile && isLoading) {
     return (

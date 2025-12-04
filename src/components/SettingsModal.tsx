@@ -737,6 +737,7 @@ export function SettingsModal({ onClose, isMobile, onLogout }: SettingsModalProp
           isMobile={isMobile}
         />
       )}
+
     </>
   );
 }

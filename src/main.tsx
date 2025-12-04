@@ -273,7 +273,9 @@ if (wantsTerms) {
                 embeddedWallets: {
                   createOnLogin: 'all-users',
                   noPromptOnSignature: false,
+                  requireUserOwnedRecoveryOnCreate: true,
                 },
+                mfaMethods: ['sms', 'totp'],
                 defaultChain: {
                   id: 137,
                   name: "Polygon Mainnet",
@@ -340,7 +342,9 @@ if (wantsTerms) {
                 embeddedWallets: {
                   createOnLogin: 'all-users',
                   noPromptOnSignature: false,
+                  requireUserOwnedRecoveryOnCreate: true,
                 },
+                mfaMethods: ['sms', 'totp'],
                 defaultChain: {
                   id: 137,
                   name: "Polygon Mainnet",
@@ -409,7 +413,9 @@ if (wantsTerms) {
                 embeddedWallets: {
                   createOnLogin: 'all-users',
                   noPromptOnSignature: false,
+                  requireUserOwnedRecoveryOnCreate: true,
                 },
+                mfaMethods: ['sms', 'totp'],
                 defaultChain: {
                   id: 137,
                   name: "Polygon Mainnet",
