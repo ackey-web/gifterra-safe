@@ -31,7 +31,7 @@ export interface AuthorizationSignature {
  */
 export const JPYC_EIP712_DOMAIN = {
   name: 'JPY Coin',
-  version: '2',
+  version: '1',  // ← CRITICAL: Must be '1', not '2'!
   chainId: 137, // Polygon Mainnet
   verifyingContract: '0xE7C3D8C9a439feDe00D2600032D5dB0Be71C3c29', // JPYC (EIP-3009)
 };
