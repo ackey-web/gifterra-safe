@@ -355,9 +355,13 @@ export function PaymentTerminal() {
                 to: walletAddress,
                 amount: newRecord.amount,
               });
+              // アドレスをchecksum formatに変換（EIP-712署名検証のため）
+              const fromAddressChecksum = ethers.utils.getAddress(newRecord.from_address);
+              const toAddressChecksum = ethers.utils.getAddress(walletAddress);
+
               const tx = await jpycContract.transferWithAuthorization(
-                newRecord.from_address,
-                walletAddress,
+                fromAddressChecksum,
+                toAddressChecksum,
                 ethers.utils.parseUnits(newRecord.amount, 18),
                 0,
                 newRecord.valid_before,
@@ -623,10 +627,12 @@ export function PaymentTerminal() {
         const nonce = '0x' + Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join('');
 
         // Supabaseにガスレス決済リクエストを保存
+        // walletAddressをchecksum formatに変換（Privyは小文字で返す場合がある）
+        const checksumAddress = ethers.utils.getAddress(walletAddress);
         const { data: gaslessRequest, error } = await createGaslessPaymentRequest({
           pin,
           nonce,
-          merchant_address: walletAddress,
+          merchant_address: checksumAddress,
           amount: amountWei,
           valid_before: expires,
           valid_after: 0,

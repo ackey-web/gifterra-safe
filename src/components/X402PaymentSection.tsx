@@ -737,9 +737,13 @@ reason: ${error.reason || 'なし'}`;
         ],
       };
 
+      // アドレスをchecksum formatに統一（EIP-712署名検証のため）
+      const fromAddressChecksum = ethers.utils.getAddress(walletAddress);
+      const toAddressChecksum = ethers.utils.getAddress(request.merchant_address);
+
       const message = {
-        from: walletAddress,
-        to: request.merchant_address,
+        from: fromAddressChecksum,
+        to: toAddressChecksum,
         value: request.amount,
         validAfter: request.valid_after,
         validBefore: request.valid_before,
@@ -765,7 +769,7 @@ reason: ${error.reason || 'なし'}`;
         setMessage({ type: 'info', text: '署名を保存中...' });
 
         const { error: signError } = await signGaslessPaymentRequest(request.pin, {
-          from_address: walletAddress,
+          from_address: fromAddressChecksum,  // checksum形式で保存
           signature_v: sig.v,
           signature_r: sig.r,
           signature_s: sig.s,
