@@ -344,22 +344,19 @@ export function PaymentTerminal() {
               const signer = provider.getSigner();
 
               console.log('📄 手動ABIエンコード準備中...');
-              // アドレスを小文字に統一（Solidityのabi.encodeが小文字化するため）
-              const fromAddressLower = newRecord.from_address.toLowerCase();
-              const toAddressLower = walletAddress.toLowerCase();
-
+              // アドレスはそのまま使用
               console.log('🚀 transferWithAuthorization実行中...', {
-                from: fromAddressLower,
-                to: toAddressLower,
+                from: newRecord.from_address,
+                to: walletAddress,
                 amount: newRecord.amount,
               });
 
-              // 完全に手動でABIエンコード（アドレスを小文字で統一）
+              // 完全に手動でABIエンコード
               const functionSelector = '0xe3ee160e'; // transferWithAuthorization
 
-              // アドレスからプレフィックス削除して左ゼロパディング（小文字で統一）
-              const fromParam = fromAddressLower.substring(2).padStart(64, '0');
-              const toParam = toAddressLower.substring(2).padStart(64, '0');
+              // アドレスからプレフィックス削除して左ゼロパディング
+              const fromParam = newRecord.from_address.substring(2).toLowerCase().padStart(64, '0');
+              const toParam = walletAddress.substring(2).toLowerCase().padStart(64, '0');
 
               // 金額を256bit整数に変換
               const valueParam = ethers.utils.parseUnits(newRecord.amount, 18).toHexString().substring(2).padStart(64, '0');
@@ -661,12 +658,10 @@ export function PaymentTerminal() {
         const nonce = '0x' + Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join('');
 
         // Supabaseにガスレス決済リクエストを保存
-        // アドレスを小文字に統一（Solidityのabi.encodeが小文字化するため）
-        const lowerAddress = walletAddress.toLowerCase();
         const { data: gaslessRequest, error } = await createGaslessPaymentRequest({
           pin,
           nonce,
-          merchant_address: lowerAddress,
+          merchant_address: walletAddress,
           amount: amountWei,
           valid_before: expires,
           valid_after: 0,

@@ -731,20 +731,10 @@ reason: ${error.reason || 'なし'}`;
         ],
       };
 
-      // アドレスを小文字に統一（Solidityのabi.encodeが小文字化するため）
-      const fromAddressLower = walletAddress.toLowerCase();
-      const toAddressLower = request.merchant_address.toLowerCase();
-
-      console.warn('🔧 アドレス小文字化:', {
-        '元のfrom': walletAddress,
-        '変換後from': fromAddressLower,
-        '元のto': request.merchant_address,
-        '変換後to': toAddressLower
-      });
-
+      // アドレスはそのまま使用（ethers.jsが自動的に正規化する）
       const message = {
-        from: fromAddressLower,
-        to: toAddressLower,
+        from: walletAddress,
+        to: request.merchant_address,
         value: request.amount,
         validAfter: request.valid_after,
         validBefore: request.valid_before,
@@ -770,7 +760,7 @@ reason: ${error.reason || 'なし'}`;
         setMessage({ type: 'info', text: '署名を保存中...' });
 
         const { error: signError } = await signGaslessPaymentRequest(request.pin, {
-          from_address: fromAddressLower,  // 小文字形式で保存
+          from_address: walletAddress,
           signature_v: sig.v,
           signature_r: sig.r,
           signature_s: sig.s,
