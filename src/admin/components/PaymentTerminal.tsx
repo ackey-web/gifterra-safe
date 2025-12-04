@@ -626,7 +626,7 @@ export function PaymentTerminal() {
         const { data: gaslessRequest, error } = await createGaslessPaymentRequest({
           pin,
           nonce,
-          merchant_address: walletAddress.toLowerCase(),
+          merchant_address: walletAddress,
           amount: amountWei,
           valid_before: expires,
           valid_after: 0,
