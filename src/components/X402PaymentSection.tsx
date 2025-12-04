@@ -714,6 +714,9 @@ reason: ${error.reason || 'なし'}`;
       console.warn('🔍 [DEBUG] JPYC Address:', jpycConfig.currentAddress);
       console.warn('🔍 [DEBUG] Expected:', '0x6AE7Dfc73E0dDE2aa99ac063DcF7e8A63265108c');
 
+      // デバッグ用アラート（スマホで確認するため）
+      alert(`署名に使用するJPYCアドレス:\n${jpycConfig.currentAddress}\n\n正しいアドレス:\n0x6AE7Dfc73E0dDE2aa99ac063DcF7e8A63265108c\n\n一致していますか？`);
+
       const domain = {
         name: 'JPY Coin',
         version: '2',
