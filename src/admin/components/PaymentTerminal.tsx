@@ -319,19 +319,27 @@ export function PaymentTerminal() {
             setIsExecutingGasless(true);
 
             try {
-              console.log('🔄 ウォレット準備中...');
-              const wallet = wallets.find(
+              console.log('🔄 店舗ウォレット準備中...');
+              console.log('📋 [DEBUG] 店舗アドレス(walletAddress):', walletAddress);
+              console.log('📋 [DEBUG] お客さんアドレス(from):', newRecord.from_address);
+              console.log('📋 [DEBUG] 接続中のウォレット:', wallets.map(w => ({ address: w.address, walletClientType: w.walletClientType })));
+
+              // 店舗のウォレットを取得（決済実行用）
+              const merchantWallet = wallets.find(
                 (w) => w.address.toLowerCase() === walletAddress.toLowerCase()
               );
-              if (!wallet) {
-                throw new Error('ウォレットが見つかりません');
+              if (!merchantWallet) {
+                console.error('❌ 店舗ウォレットが見つかりませんでした');
+                console.error('接続中のウォレット:', wallets.map(w => w.address));
+                console.error('店舗アドレス:', walletAddress);
+                throw new Error('店舗ウォレットが見つかりません。Terminal UIでウォレットを接続してください。');
               }
 
               console.log('🔗 チェーン切り替え中...');
-              await wallet.switchChain(137);
+              await merchantWallet.switchChain(137);
 
               console.log('⚙️ プロバイダー初期化中...');
-              const ethereumProvider = await wallet.getEthereumProvider();
+              const ethereumProvider = await merchantWallet.getEthereumProvider();
               const provider = new ethers.providers.Web3Provider(ethereumProvider);
               const signer = provider.getSigner();
 
