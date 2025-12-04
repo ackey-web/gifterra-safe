@@ -62,8 +62,16 @@ export const LoginPage: React.FC = () => {
         userId: user.id,
       }));
 
-      // マイページにリダイレクト
-      window.location.href = "/mypage";
+      // URLからrecipientパラメータを取得
+      const urlParams = new URLSearchParams(window.location.search);
+      const recipient = urlParams.get('recipient');
+
+      // マイページにリダイレクト（recipientがあれば渡す）
+      if (recipient) {
+        window.location.href = `/mypage?recipient=${recipient}`;
+      } else {
+        window.location.href = "/mypage";
+      }
     }
   }, [authenticated, user]);
 
@@ -77,8 +85,16 @@ export const LoginPage: React.FC = () => {
         walletType: wallet?.walletId || "unknown",
       }));
 
-      // マイページにリダイレクト
-      window.location.href = "/mypage";
+      // URLからrecipientパラメータを取得
+      const urlParams = new URLSearchParams(window.location.search);
+      const recipient = urlParams.get('recipient');
+
+      // マイページにリダイレクト（recipientがあれば渡す）
+      if (recipient) {
+        window.location.href = `/mypage?recipient=${recipient}`;
+      } else {
+        window.location.href = "/mypage";
+      }
     }
   }, [address, connectionStatus, wallet]);
 
