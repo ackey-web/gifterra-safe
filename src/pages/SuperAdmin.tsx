@@ -22,7 +22,7 @@ import { useRankPlanPricing, useUpdateRankPlanPrice, getPlanPrice, type RankPlan
 import { supabase } from '../lib/supabase';
 
 // ユーザープロフィールプレビュー用のインポート
-import { UserProfilePage } from './UserProfile';
+import { UserProfile } from './UserProfile';
 import { generateMockUserProfile } from '../utils/mockUserProfile';
 
 // スコア管理ページのインポート
@@ -758,7 +758,7 @@ function UserPreviewTabSimple() {
         border: '1px solid rgba(255,255,255,0.1)',
       }}>
         {previewAddress ? (
-          <UserProfilePage
+          <UserProfile
             address={previewAddress}
             mockProfile={mockProfile}
             mockActivities={mockActivities}
