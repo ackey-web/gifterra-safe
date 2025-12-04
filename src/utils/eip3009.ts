@@ -33,7 +33,7 @@ export const JPYC_EIP712_DOMAIN = {
   name: 'JPY Coin',
   version: '2',
   chainId: 137, // Polygon Mainnet
-  verifyingContract: '0x6AE7Dfc73E0dDE2aa99ac063DcF7e8A63265108c', // JPYC v2
+  verifyingContract: '0xE7C3D8C9a439feDe00D2600032D5dB0Be71C3c29', // JPYC (EIP-3009)
 };
 
 /**
