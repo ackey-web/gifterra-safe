@@ -711,12 +711,6 @@ reason: ${error.reason || 'なし'}`;
       await wallet.switchChain(137); // Polygon Mainnet
 
       // EIP-712 TransferWithAuthorization の Typed Data
-      console.warn('🔍 [DEBUG] JPYC Address:', jpycConfig.currentAddress);
-      console.warn('🔍 [DEBUG] Expected:', '0xE7C3D8C9a439feDe00D2600032D5dB0Be71C3c29');
-
-      // デバッグ用アラート（スマホで確認するため）
-      alert(`署名に使用するJPYCアドレス:\n${jpycConfig.currentAddress}\n\n正しいアドレス:\n0xE7C3D8C9a439feDe00D2600032D5dB0Be71C3c29\n\n一致していますか？`);
-
       const domain = {
         name: 'JPY Coin',
         version: '2',
