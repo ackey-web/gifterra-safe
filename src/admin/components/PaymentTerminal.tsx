@@ -1520,45 +1520,45 @@ export function PaymentTerminal() {
                       alignItems: 'center',
                     }}
                   >
-                    {/* QRモード説明 */}
-                    <div
-                      style={{
-                        background: qrMode === 'wallet'
-                          ? 'rgba(59, 130, 246, 0.1)'
-                          : 'rgba(34, 197, 94, 0.1)',
-                        border: qrMode === 'wallet'
-                          ? '1px solid rgba(59, 130, 246, 0.2)'
-                          : '1px solid rgba(34, 197, 94, 0.2)',
-                        borderRadius: '8px',
-                        padding: '12px 16px',
-                        marginBottom: '16px',
-                        fontSize: '13px',
-                        lineHeight: '1.6',
-                        maxWidth: '420px',
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      📄 このQRはGIFTERRA Payで読み取り・お支払いできます
-                    </div>
-
-                    <div
-                      ref={qrRef}
-                      style={{
-                        background: 'white',
-                        padding: '24px',
-                        borderRadius: '16px',
-                        boxShadow: '0 8px 30px rgba(0,0,0,0.3)',
-                        display: 'flex',
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                      }}
-                    >
-                      <QRCodeSVG value={qrData} size={280} level="H" includeMargin={true} />
-                    </div>
-
-                    {/* ガスレスPIN表示 */}
-                    {gaslessPIN && gaslessPaymentRequest ? (
+                    {/* ガスレスPIN表示：署名待ちの場合のみ表示 */}
+                    {gaslessPIN && gaslessPaymentRequest && gaslessPaymentRequest.status === 'pending' ? (
                       <>
+                        {/* QRモード説明 */}
+                        <div
+                          style={{
+                            background: qrMode === 'wallet'
+                              ? 'rgba(59, 130, 246, 0.1)'
+                              : 'rgba(34, 197, 94, 0.1)',
+                            border: qrMode === 'wallet'
+                              ? '1px solid rgba(59, 130, 246, 0.2)'
+                              : '1px solid rgba(34, 197, 94, 0.2)',
+                            borderRadius: '8px',
+                            padding: '12px 16px',
+                            marginBottom: '16px',
+                            fontSize: '13px',
+                            lineHeight: '1.6',
+                            maxWidth: '420px',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          📄 このQRはGIFTERRA Payで読み取り・お支払いできます
+                        </div>
+
+                        <div
+                          ref={qrRef}
+                          style={{
+                            background: 'white',
+                            padding: '24px',
+                            borderRadius: '16px',
+                            boxShadow: '0 8px 30px rgba(0,0,0,0.3)',
+                            display: 'flex',
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                          }}
+                        >
+                          <QRCodeSVG value={qrData} size={280} level="H" includeMargin={true} />
+                        </div>
+
                         <div style={{
                           marginTop: '20px',
                           fontSize: '14px',
@@ -1578,11 +1578,56 @@ export function PaymentTerminal() {
                         }}>
                           {gaslessPIN}
                         </div>
-                        <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#10b981' }}>
+                        <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#10b981', marginBottom: '8px' }}>
                           {amount.replace(/\B(?=(\d{3})+(?!\d))/g, ',')} JPYC
                         </div>
+                        <div style={{ fontSize: '14px', color: '#10b981', opacity: 0.8 }}>
+                          有効期限: {(() => {
+                            const validBefore = new Date(gaslessPaymentRequest.valid_before * 1000);
+                            const now = new Date();
+                            const diffMinutes = Math.floor((validBefore.getTime() - now.getTime()) / (1000 * 60));
+                            return diffMinutes >= 1440
+                              ? `${Math.floor(diffMinutes / 1440)}日`
+                              : diffMinutes >= 60
+                                ? `${Math.floor(diffMinutes / 60)}時間`
+                                : `${diffMinutes}分`;
+                          })()}
+                        </div>
+                      </>
+                    ) : gaslessPIN && gaslessPaymentRequest && gaslessPaymentRequest.status === 'signed' ? (
+                      <>
+                        {/* 署名完了時：コンパクト表示 */}
+                        <div style={{
+                          background: 'rgba(16, 185, 129, 0.15)',
+                          border: '1px solid rgba(16, 185, 129, 0.3)',
+                          borderRadius: '12px',
+                          padding: '24px',
+                          textAlign: 'center',
+                        }}>
+                          <div style={{
+                            fontSize: '48px',
+                            marginBottom: '16px',
+                          }}>
+                            ✅
+                          </div>
+                          <div style={{
+                            fontSize: '18px',
+                            fontWeight: 'bold',
+                            color: '#10b981',
+                            marginBottom: '12px',
+                          }}>
+                            署名完了しました
+                          </div>
+                          <div style={{
+                            fontSize: '28px',
+                            fontWeight: 'bold',
+                            color: '#10b981',
+                            marginBottom: '20px',
+                          }}>
+                            {amount.replace(/\B(?=(\d{3})+(?!\d))/g, ',')} JPYC
+                          </div>
 
-                        {/* 手動実行ボタン（署名済みの場合のみ表示） */}
+                        {/* 手動実行ボタン */}
                         {gaslessPaymentRequest.status === 'signed' && (
                           <button
                             onClick={async () => {
@@ -1700,9 +1745,47 @@ export function PaymentTerminal() {
                             {isExecutingGasless ? '実行中...' : '🚀 手動で決済を実行'}
                           </button>
                         )}
+                        </div>
                       </>
                     ) : (
                       <>
+                        {/* 通常モード: QRコードと金額を表示 */}
+                        {/* QRモード説明 */}
+                        <div
+                          style={{
+                            background: qrMode === 'wallet'
+                              ? 'rgba(59, 130, 246, 0.1)'
+                              : 'rgba(34, 197, 94, 0.1)',
+                            border: qrMode === 'wallet'
+                              ? '1px solid rgba(59, 130, 246, 0.2)'
+                              : '1px solid rgba(34, 197, 94, 0.2)',
+                            borderRadius: '8px',
+                            padding: '12px 16px',
+                            marginBottom: '16px',
+                            fontSize: '13px',
+                            lineHeight: '1.6',
+                            maxWidth: '420px',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          📄 このQRはGIFTERRA Payで読み取り・お支払いできます
+                        </div>
+
+                        <div
+                          ref={qrRef}
+                          style={{
+                            background: 'white',
+                            padding: '24px',
+                            borderRadius: '16px',
+                            boxShadow: '0 8px 30px rgba(0,0,0,0.3)',
+                            display: 'flex',
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                          }}
+                        >
+                          <QRCodeSVG value={qrData} size={280} level="H" includeMargin={true} />
+                        </div>
+
                         {/* 請求書モード: 金額と有効期限を表示（通常モード） */}
                         {qrMode === 'invoice' && (
                           <>
