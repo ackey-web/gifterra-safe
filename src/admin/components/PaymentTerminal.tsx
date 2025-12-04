@@ -218,7 +218,9 @@ export function PaymentTerminal() {
 
   // 🔄 ガスレス決済リクエストのステータスポーリング（フォールバック）
   useEffect(() => {
-    if (!gaslessPIN || !gaslessPaymentRequest) return;
+    if (!gaslessPIN) return;
+
+    console.log('🔄 ポーリング開始:', gaslessPIN);
 
     const pollStatus = async () => {
       try {
@@ -230,15 +232,13 @@ export function PaymentTerminal() {
 
         if (data) {
           console.log('🔄 ポーリング更新:', {
-            oldStatus: gaslessPaymentRequest.status,
+            oldStatus: gaslessPaymentRequest?.status,
             newStatus: data.status,
             hasSignature: !!data.signature_v,
           });
 
-          // 状態が変わっていたら更新
-          if (data.status !== gaslessPaymentRequest.status) {
-            setGaslessPaymentRequest(data as any);
-          }
+          // 状態を更新（常に最新の状態を反映）
+          setGaslessPaymentRequest(data as any);
         }
       } catch (error) {
         console.error('❌ ポーリングエラー:', error);
@@ -248,7 +248,7 @@ export function PaymentTerminal() {
     // 2秒ごとにポーリング
     const interval = setInterval(pollStatus, 2000);
     return () => clearInterval(interval);
-  }, [gaslessPIN, gaslessPaymentRequest?.status]);
+  }, [gaslessPIN]); // gaslessPaymentRequestを依存から除外
 
   // ⚡ Supabase Realtime: ガスレス決済の署名受信監視（Phase 5）
   useEffect(() => {
