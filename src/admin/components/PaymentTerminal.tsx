@@ -1256,6 +1256,8 @@ export function PaymentTerminal() {
                   fontFamily: 'monospace',
                   color: '#22c55e',
                   textShadow: '0 2px 10px rgba(34, 197, 94, 0.3)',
+                  wordBreak: 'break-all',
+                  overflowWrap: 'break-word',
                 }}
               >
                 {displayAmount.replace(/\B(?=(\d{3})+(?!\d))/g, ',')} JPYC
