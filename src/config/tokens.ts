@@ -102,7 +102,7 @@ export const TOKEN_MASTER_DATA: Record<TokenId, TokenConfig> = {
     category: 'payment', // 決済トークン：資産価値あり、TIP/購入のみ
     addresses: {
       testnet: import.meta.env.VITE_JPYC_TESTNET_ADDRESS || '0xE7C3D8C9a439feDe00D2600032D5dB0Be71C3c29', // Polygon Amoy JPYC
-      mainnet: import.meta.env.VITE_JPYC_MAINNET_ADDRESS || '0xE7C3D8C9a439feDe00D2600032D5dB0Be71C3c29', // Polygon Mainnet JPYC（電子決済手段）
+      mainnet: import.meta.env.VITE_JPYC_MAINNET_ADDRESS || '0x6AE7Dfc73E0dDE2aa99ac063DcF7e8A63265108c', // Polygon Mainnet JPYC v2（電子決済手段・EIP-3009対応）
     },
     icon: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAzMiAzMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMTYiIGN5PSIxNiIgcj0iMTYiIGZpbGw9IiMwMDg4Y2MiLz4KPHRleHQgeD0iNTAlIiB5PSI1MCUiIGRvbWluYW50LWJhc2VsaW5lPSJtaWRkbGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZpbGw9IndoaXRlIiBmb250LXNpemU9IjE4IiBmb250LXdlaWdodD0iYm9sZCI+wqU8L3RleHQ+Cjwvc3ZnPg==',
     description: '日本円ステーブルコイン（1 JPYC = 1 JPY）',
