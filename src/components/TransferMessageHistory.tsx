@@ -715,7 +715,10 @@ export function TransferMessageHistory({
                       flexShrink: 0,
                     }}
                   >
-                    {message.amount} {message.token_symbol}
+                    {parseFloat(message.amount).toLocaleString('ja-JP', {
+                      minimumFractionDigits: 0,
+                      maximumFractionDigits: 2
+                    })} {message.token_symbol}
                   </div>
 
                   {/* アクションボタン */}

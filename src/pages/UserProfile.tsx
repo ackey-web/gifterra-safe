@@ -11,7 +11,7 @@ import { getRankColor, getRankBadge, shortenAddress, formatRelativeTime, generat
 import type { UserProfile } from '../types/user';
 import { ContributionGauge } from '../components/ContributionGauge';
 
-export function UserProfilePage({ address: propsAddress, mockProfile, mockActivities }: {
+export function UserProfile({ address: propsAddress, mockProfile, mockActivities }: {
   address?: string;
   mockProfile?: UserProfile | null;
   mockActivities?: any[];

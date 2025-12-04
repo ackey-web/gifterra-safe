@@ -391,7 +391,7 @@ export function ReceivePage() {
 
         {/* GIFTERRAを使って贈るボタン */}
         <a
-          href="/login"
+          href={`/login?recipient=${address}`}
           style={{
             display: 'flex',
             alignItems: 'center',

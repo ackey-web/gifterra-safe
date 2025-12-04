@@ -28,6 +28,7 @@ const AppWrapper = lazy(() => import("./components/AppWrapper").then(m => ({ def
 const TermsOfServicePage = lazy(() => import("./pages/TermsOfService").then(m => ({ default: m.TermsOfServicePage })));
 const PrivacyPolicyPage = lazy(() => import("./pages/PrivacyPolicy").then(m => ({ default: m.PrivacyPolicyPage })));
 const ProfilePage = lazy(() => import("./pages/ProfilePage").then(m => ({ default: m.ProfilePage })));
+const UserProfile = lazy(() => import("./pages/UserProfile").then(m => ({ default: m.UserProfile })));
 const NotificationsPage = lazy(() => import("./pages/NotificationsPage").then(m => ({ default: m.NotificationsPage })));
 const GaslessQRGeneratorTest = lazy(() => import("./pages/GaslessQRGeneratorTest").then(m => ({ default: m.GaslessQRGeneratorTest })));
 const GaslessScannerTest = lazy(() => import("./pages/GaslessScannerTest").then(m => ({ default: m.GaslessScannerTest })));
@@ -177,6 +178,7 @@ const wantsMypage = path.includes("/mypage") || uiParam === "mypage";
 const wantsTerms = path.includes("/terms");
 const wantsPrivacy = path.includes("/privacy");
 const wantsProfile = path.includes("/profile") || uiParam === "profile";
+const wantsUserProfile = path.includes("/user/") || uiParam === "user";
 const wantsNotifications = path.includes("/notifications") || uiParam === "notifications";
 const wantsGaslessQRTest = path.includes("/gasless-qr-test") || uiParam === "gasless-qr-test";
 const wantsGaslessScannerTest = path.includes("/gasless-scanner-test") || uiParam === "gasless-scanner-test";
@@ -460,6 +462,8 @@ if (wantsTerms) {
                 <MypagePage />
               ) : wantsProfile ? (
                 <ProfilePage />
+              ) : wantsUserProfile ? (
+                <UserProfile />
               ) : wantsNotifications ? (
                 <NotificationsPage />
               ) : wantsGaslessQRTest ? (

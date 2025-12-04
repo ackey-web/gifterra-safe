@@ -1415,6 +1415,20 @@ function SendForm({ isMobile, bulkSendRecipients, setBulkSendRecipients, handleA
   const [recipientReceiveMessage, setRecipientReceiveMessage] = useState<string>('');
   const [showFirstSendGuide, setShowFirstSendGuide] = useState(false);
 
+  // URLからrecipientパラメータを取得して自動入力
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const recipientParam = urlParams.get('recipient');
+
+    if (recipientParam) {
+      setAddress(recipientParam);
+      console.log('✅ Recipient auto-filled from URL:', recipientParam);
+
+      // URLパラメータをクリア（履歴に残さない）
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []);
+
   // 受取人プロフィールを取得（デバウンス500ms）
   // sendMode に関わらず常にアドレスが入力されたらプロフィールを取得
   const { profile: recipientProfile, isLoading: isLoadingProfile } = useRecipientProfile(
