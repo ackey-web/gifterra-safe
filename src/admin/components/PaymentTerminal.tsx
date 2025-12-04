@@ -216,6 +216,40 @@ export function PaymentTerminal() {
 
   // ⚡ EIP-3009 ガスレス決済のRealtime監視は下記のuseEffect（PIN方式）に統合されました
 
+  // 🔄 ガスレス決済リクエストのステータスポーリング（フォールバック）
+  useEffect(() => {
+    if (!gaslessPIN || !gaslessPaymentRequest) return;
+
+    const pollStatus = async () => {
+      try {
+        const { data } = await supabase
+          .from('gasless_payment_requests')
+          .select('*')
+          .eq('pin', gaslessPIN)
+          .single();
+
+        if (data) {
+          console.log('🔄 ポーリング更新:', {
+            oldStatus: gaslessPaymentRequest.status,
+            newStatus: data.status,
+            hasSignature: !!data.signature_v,
+          });
+
+          // 状態が変わっていたら更新
+          if (data.status !== gaslessPaymentRequest.status) {
+            setGaslessPaymentRequest(data as any);
+          }
+        }
+      } catch (error) {
+        console.error('❌ ポーリングエラー:', error);
+      }
+    };
+
+    // 2秒ごとにポーリング
+    const interval = setInterval(pollStatus, 2000);
+    return () => clearInterval(interval);
+  }, [gaslessPIN, gaslessPaymentRequest?.status]);
+
   // ⚡ Supabase Realtime: ガスレス決済の署名受信監視（Phase 5）
   useEffect(() => {
     if (!currentRequestId || !walletAddress || !isGaslessAvailable) {
@@ -1542,6 +1576,125 @@ export function PaymentTerminal() {
                         <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#10b981' }}>
                           {amount.replace(/\B(?=(\d{3})+(?!\d))/g, ',')} JPYC
                         </div>
+
+                        {/* 手動実行ボタン（署名済みの場合のみ表示） */}
+                        {gaslessPaymentRequest.status === 'signed' && (
+                          <button
+                            onClick={async () => {
+                              console.log('🔧 手動実行開始:', gaslessPaymentRequest);
+                              setMessage({
+                                type: 'info',
+                                text: '🔄 決済を手動実行中...',
+                              });
+                              setIsExecutingGasless(true);
+
+                              try {
+                                console.log('🔄 ウォレット準備中...');
+                                const wallet = wallets.find(
+                                  (w) => w.address.toLowerCase() === walletAddress.toLowerCase()
+                                );
+                                if (!wallet) {
+                                  throw new Error('ウォレットが見つかりません');
+                                }
+
+                                console.log('🔗 チェーン切り替え中...');
+                                await wallet.switchChain(137);
+
+                                console.log('⚙️ プロバイダー初期化中...');
+                                const ethereumProvider = await wallet.getEthereumProvider();
+                                const provider = new ethers.providers.Web3Provider(ethereumProvider);
+                                const signer = provider.getSigner();
+
+                                console.log('📄 コントラクト準備中...');
+                                const jpycContract = new ethers.Contract(
+                                  JPYC_TOKEN.ADDRESS,
+                                  ERC20_MIN_ABI,
+                                  signer
+                                );
+
+                                console.log('🚀 transferWithAuthorization実行中...', {
+                                  from: gaslessPaymentRequest.from_address,
+                                  to: walletAddress,
+                                  amount: gaslessPaymentRequest.amount,
+                                });
+                                const tx = await jpycContract.transferWithAuthorization(
+                                  gaslessPaymentRequest.from_address,
+                                  walletAddress,
+                                  ethers.utils.parseUnits(gaslessPaymentRequest.amount, 18),
+                                  0,
+                                  gaslessPaymentRequest.valid_before,
+                                  gaslessPaymentRequest.nonce,
+                                  gaslessPaymentRequest.signature_v,
+                                  gaslessPaymentRequest.signature_r,
+                                  gaslessPaymentRequest.signature_s
+                                );
+
+                                console.log('⏳ トランザクション送信完了。マイニング待機中...', tx.hash);
+                                const receipt = await tx.wait();
+                                console.log('✅ トランザクション確定！', receipt.transactionHash);
+
+                                // Supabaseのステータスを更新
+                                console.log('💾 DB更新中: ステータスをcompletedに変更...');
+                                await supabase
+                                  .from('gasless_payment_requests')
+                                  .update({
+                                    status: 'completed',
+                                    completed_at: new Date().toISOString(),
+                                  })
+                                  .eq('pin', gaslessPIN);
+
+                                console.log('🎉 ガスレス決済完了！');
+                                setMessage({ type: 'success', text: '✅ ガスレス決済完了！' });
+                                setTimeout(() => setMessage(null), 5000);
+
+                                // QRをクリア
+                                setQrData(null);
+                                setCurrentRequestId(null);
+                                setGaslessPIN(null);
+                                setGaslessPaymentRequest(null);
+                              } catch (error: any) {
+                                console.error('❌ Gasless execution error:', error);
+                                console.error('❌ エラー詳細:', {
+                                  message: error.message,
+                                  code: error.code,
+                                  data: error.data,
+                                });
+                                setMessage({ type: 'error', text: `❌ 実行失敗: ${error.message}` });
+
+                                // エラー時は失敗扱い
+                                await supabase
+                                  .from('gasless_payment_requests')
+                                  .update({
+                                    status: 'failed',
+                                    error_message: error.message
+                                  })
+                                  .eq('pin', gaslessPIN);
+                              } finally {
+                                setIsExecutingGasless(false);
+                              }
+                            }}
+                            disabled={isExecutingGasless}
+                            style={{
+                              marginTop: '16px',
+                              padding: '12px 24px',
+                              fontSize: '16px',
+                              fontWeight: 'bold',
+                              background: isExecutingGasless
+                                ? 'rgba(107, 114, 128, 0.5)'
+                                : 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                              color: '#fff',
+                              border: 'none',
+                              borderRadius: '8px',
+                              cursor: isExecutingGasless ? 'not-allowed' : 'pointer',
+                              boxShadow: isExecutingGasless
+                                ? 'none'
+                                : '0 4px 15px rgba(245, 158, 11, 0.3)',
+                              transition: 'all 0.2s',
+                            }}
+                          >
+                            {isExecutingGasless ? '実行中...' : '🚀 手動で決済を実行'}
+                          </button>
+                        )}
                       </>
                     ) : (
                       <>
