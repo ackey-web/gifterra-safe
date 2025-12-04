@@ -2833,6 +2833,8 @@ function SendForm({ isMobile, bulkSendRecipients, setBulkSendRecipients, handleA
           isMobile={isMobile}
           onClose={() => setShowModeModal(false)}
           onSelectMode={(mode) => {
+            console.log('🔍 [DEBUG] Selected send mode:', mode);
+            console.log('🔍 [DEBUG] actualAddress at time of selection:', actualAddress);
             setSendMode(mode);
             setShowModeModal(false);
             if (mode === 'bookmark') {

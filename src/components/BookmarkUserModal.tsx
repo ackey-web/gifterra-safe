@@ -27,7 +27,13 @@ export function BookmarkUserModal({
   onAddToBulkSend,
   mode = 'view',
 }: BookmarkUserModalProps) {
+  console.log('🔍 [DEBUG BookmarkUserModal] Received userAddress:', userAddress);
+  console.log('🔍 [DEBUG BookmarkUserModal] Mode:', mode);
+
   const { bookmarks, isLoading } = useUserBookmarks(userAddress);
+
+  console.log('🔍 [DEBUG BookmarkUserModal] Bookmarks:', bookmarks);
+  console.log('🔍 [DEBUG BookmarkUserModal] isLoading:', isLoading);
   const [editingNickname, setEditingNickname] = useState<string | null>(null);
   const [nicknameInput, setNicknameInput] = useState('');
   const [selectedUserForAction, setSelectedUserForAction] = useState<UserBookmark | null>(null);

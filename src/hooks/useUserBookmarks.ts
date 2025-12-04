@@ -29,7 +29,10 @@ export function useUserBookmarks(userAddress: string | undefined) {
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
+    console.log('🔍 [DEBUG useUserBookmarks] Hook called with userAddress:', userAddress);
+
     if (!userAddress) {
+      console.log('⚠️ [DEBUG useUserBookmarks] No userAddress provided, returning empty');
       setBookmarks([]);
       setIsLoading(false);
       return;
@@ -37,6 +40,7 @@ export function useUserBookmarks(userAddress: string | undefined) {
 
     const fetchBookmarks = async () => {
       try {
+        console.log('🔍 [DEBUG useUserBookmarks] Starting fetch for:', userAddress);
         setIsLoading(true);
         setError(null);
 
@@ -46,6 +50,8 @@ export function useUserBookmarks(userAddress: string | undefined) {
           .select('*')
           .eq('user_address', userAddress.toLowerCase())
           .order('created_at', { ascending: false });
+
+        console.log('🔍 [DEBUG useUserBookmarks] Query result:', { bookmarkData, fetchError });
 
         if (fetchError) {
           console.error('❌ ブックマーク取得エラー:', fetchError);
@@ -72,6 +78,9 @@ export function useUserBookmarks(userAddress: string | undefined) {
             };
           })
         );
+
+        console.log('🔍 [DEBUG useUserBookmarks] Final bookmarks with profile:', bookmarksWithProfile);
+        console.log('🔍 [DEBUG useUserBookmarks] Total bookmarks found:', bookmarksWithProfile.length);
 
         setBookmarks(bookmarksWithProfile);
       } catch (err) {
