@@ -79,8 +79,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     <meta http-equiv="Expires" content="0" />
     <title>${title}</title>
 
-    <!-- Redirect to React app -->
-    <meta http-equiv="refresh" content="0; url=/receive/${address}" />
     <script>
       window.process = window.process || {
         env: {},
@@ -88,10 +86,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         versions: {},
         browser: true
       };
-      // Immediate redirect for non-crawlers
-      if (!navigator.userAgent.match(/bot|crawler|spider|crawling/i)) {
-        window.location.href = '/receive/${address}';
-      }
     </script>
   </head>
   <body>
