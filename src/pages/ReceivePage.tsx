@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { ConnectWallet } from '@thirdweb-dev/react';
 import { JPYC_TOKEN } from '../contract';
+import { useMetaTags } from '../hooks/useMetaTags';
 
 export function ReceivePage() {
   const [address, setAddress] = useState<string>('');
@@ -67,6 +68,15 @@ export function ReceivePage() {
 
     fetchProfile();
   }, [address]);
+
+  // OGPメタタグを動的に設定
+  useMetaTags({
+    title: displayName ? `${displayName} - GIFTERRA` : 'GIFTERRA - Web3ギフトカードプラットフォーム',
+    description: bio || 'ブロックチェーン技術を活用した次世代ギフトカードプラットフォーム',
+    image: profileImage || 'https://gifterra-safe.vercel.app/gifterra-ogp.png',
+    url: address ? `https://gifterra-safe.vercel.app/receive/${address}` : 'https://gifterra-safe.vercel.app',
+    type: 'profile',
+  });
 
   const handleCopy = async () => {
     if (!address) return;
