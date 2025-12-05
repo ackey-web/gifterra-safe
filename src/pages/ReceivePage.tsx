@@ -73,7 +73,7 @@ export function ReceivePage() {
   useMetaTags({
     title: displayName ? `${displayName} - GIFTERRA` : 'GIFTERRA - Web3ギフトカードプラットフォーム',
     description: bio || 'ブロックチェーン技術を活用した次世代ギフトカードプラットフォーム',
-    imageUrl: 'https://gifterra-safe.vercel.app/someGIFTERRA.png', // 常にデフォルト画像を使用
+    imageUrl: 'https://gifterra-safe.vercel.app/someneGIFTERRA.png', // 常にデフォルト画像を使用
     url: address ? `https://gifterra-safe.vercel.app/receive/${address}` : 'https://gifterra-safe.vercel.app',
     type: 'profile',
   });

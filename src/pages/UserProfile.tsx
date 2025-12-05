@@ -63,7 +63,7 @@ export function UserProfile({ address: propsAddress, mockProfile, mockActivities
     description: profile?.username
       ? `${profile.username}のGIFTERRAプロフィール - ランク: ${profile.rank}, コドミポイント: ${profile.kodomiPoints?.toLocaleString() || 0}`
       : `GIFTERRAユーザープロフィール`,
-    imageUrl: 'https://gifterra-safe.vercel.app/someGIFTERRA.png', // 常にデフォルト画像を使用
+    imageUrl: 'https://gifterra-safe.vercel.app/someneGIFTERRA.png', // 常にデフォルト画像を使用
     url: `https://gifterra-safe.vercel.app/receive/${targetAddress}`,
     type: 'profile',
   });
