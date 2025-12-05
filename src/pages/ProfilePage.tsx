@@ -1728,7 +1728,7 @@ export function ProfilePage() {
                 onClick={() => {
                   const displayName = profile?.display_name || 'ギフテラユーザー';
                   const twitterId = profile?.twitter_id;
-                  const mentionText = twitterId ? `${displayName} @${twitterId} さんへ投げ銭` : `${displayName} さんへ投げ銭`;
+                  const mentionText = twitterId ? `${displayName} @${twitterId} さんへTIPする` : `${displayName} さんへTIPする`;
                   const tipLink = `https://gifterra-safe.vercel.app/receive/${walletAddress}`;
                   const text = `${mentionText}\n${tipLink}\n\n#GIFTERRA #投げ銭 #JPYC`;
                   const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
