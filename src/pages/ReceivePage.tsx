@@ -71,8 +71,8 @@ export function ReceivePage() {
 
   // OGPメタタグを動的に設定
   useMetaTags({
-    title: displayName ? `${displayName} - GIFTERRA` : 'GIFTERRA - Web3ギフトカードプラットフォーム',
-    description: bio || 'ブロックチェーン技術を活用した次世代ギフトカードプラットフォーム',
+    title: displayName ? `${displayName} - GIFTERRA` : 'GIFTERRA - WEB3.0 ギフティングプラットフォーム',
+    description: bio || 'ブロックチェーン技術を活用したWEB3.0 ギフティングプラットフォーム',
     imageUrl: profileImage || 'https://gifterra-safe.vercel.app/someneGIFTERRA.png', // プロフィール画像を優先
     url: address ? `https://gifterra-safe.vercel.app/receive/${address}` : 'https://gifterra-safe.vercel.app',
     type: 'profile',

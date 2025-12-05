@@ -30,8 +30,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const profile = profiles?.[0];
 
     // デフォルト値
-    const defaultTitle = 'GIFTERRA - Web3ギフトカードプラットフォーム';
-    const defaultDescription = 'ブロックチェーン技術を活用した次世代ギフトカードプラットフォーム';
+    const defaultTitle = 'GIFTERRA - WEB3.0 ギフティングプラットフォーム';
+    const defaultDescription = 'ブロックチェーン技術を活用したWEB3.0 ギフティングプラットフォーム';
     const defaultImage = 'https://gifterra-safe.vercel.app/someneGIFTERRA.png';
 
     // プロフィール情報から動的に生成
