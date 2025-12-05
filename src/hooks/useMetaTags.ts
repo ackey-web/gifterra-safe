@@ -22,7 +22,7 @@ export function useMetaTags({
     // デフォルト値
     const defaultTitle = 'GIFTERRA - Web3ギフトカードプラットフォーム';
     const defaultDescription = 'ブロックチェーン技術を活用した次世代ギフトカードプラットフォーム';
-    const defaultImage = 'https://gifterra-safe.vercel.app/gifterra-ogp.png';
+    const defaultImage = 'https://gifterra-safe.vercel.app/someGIFTERRA.png';
     const defaultUrl = 'https://gifterra-safe.vercel.app/';
 
     const finalTitle = title || defaultTitle;
