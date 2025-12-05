@@ -29,6 +29,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const profile = profiles?.[0];
 
+    // デバッグログ: プロフィールデータを確認
+    console.log('[OGP Debug] Address:', address);
+    console.log('[OGP Debug] Profile found:', !!profile);
+    console.log('[OGP Debug] Avatar URL:', profile?.avatar_url);
+
     // デフォルト値
     const defaultTitle = 'GIFTERRA - WEB3.0 ギフティングプラットフォーム';
     const defaultDescription = 'ブロックチェーン技術を活用したWEB3.0 ギフティングプラットフォーム';
@@ -42,6 +47,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const description = profile?.bio || defaultDescription;
     const imageUrl = profile?.avatar_url || defaultImage; // プロフィール画像を優先、なければデフォルト
     const profileUrl = `https://gifterra-safe.vercel.app/receive/${address}`;
+
+    // デバッグログ: 最終的なOGP値を確認
+    console.log('[OGP Debug] Final image URL:', imageUrl);
 
     // HTMLテンプレート
     const html = `<!doctype html>
