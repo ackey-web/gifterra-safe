@@ -57,13 +57,13 @@ export function UserProfile({ address: propsAddress, mockProfile, mockActivities
 
   // プロフィールページのOGP設定
   useMetaTags({
-    title: profile?.username
-      ? `${profile.username} (@${shortenAddress(targetAddress)}) - GIFTERRA`
+    title: profile?.ensName
+      ? `${profile.ensName} (@${shortenAddress(targetAddress)}) - GIFTERRA`
       : `${shortenAddress(targetAddress)} - GIFTERRA Profile`,
-    description: profile?.username
-      ? `${profile.username}のGIFTERRAプロフィール - ランク: ${profile.rank}, コドミポイント: ${profile.kodomiPoints?.toLocaleString() || 0}`
+    description: profile
+      ? `GIFTERRAプロフィール - ランク: ${profile.rank.name}`
       : `GIFTERRAユーザープロフィール`,
-    imageUrl: 'https://gifterra-safe.vercel.app/someneGIFTERRA.png', // 常にデフォルト画像を使用
+    imageUrl: 'https://gifterra-safe.vercel.app/someneGIFTERRA.png', // デフォルト画像を使用
     url: `https://gifterra-safe.vercel.app/receive/${targetAddress}`,
     type: 'profile',
   });

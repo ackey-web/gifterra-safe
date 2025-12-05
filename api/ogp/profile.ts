@@ -40,7 +40,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       ? `${displayName} - GIFTERRA`
       : defaultTitle;
     const description = profile?.bio || defaultDescription;
-    const imageUrl = defaultImage; // 常にデフォルト画像を使用
+    const imageUrl = profile?.avatar_url || defaultImage; // プロフィール画像を優先、なければデフォルト
     const profileUrl = `https://gifterra-safe.vercel.app/receive/${address}`;
 
     // HTMLテンプレート
