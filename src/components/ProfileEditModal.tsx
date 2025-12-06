@@ -251,19 +251,11 @@ export function ProfileEditModal({
         updated_at: new Date().toISOString(),
       };
 
-      // オプションカラム（テーブルに存在する場合のみ追加）
-      if (coverImageUrl) {
-        profileData.cover_image_url = coverImageUrl;
-      }
-      if (validCustomLinks.length > 0) {
-        profileData.custom_links = validCustomLinks;
-      }
-      if (roles.length > 0) {
-        profileData.roles = roles;
-      }
-      if (cleanTwitterId) {
-        profileData.twitter_id = cleanTwitterId;
-      }
+      // オプションカラム（空の場合はnullを明示的に設定）
+      profileData.cover_image_url = coverImageUrl || null;
+      profileData.custom_links = validCustomLinks.length > 0 ? validCustomLinks : null;
+      profileData.roles = roles.length > 0 ? roles : null;
+      profileData.twitter_id = cleanTwitterId || null;
       // テナント所有者の場合はユーザー設定を尊重、未所有者の場合は常にtrueとして保存
       profileData.show_reward_button = isTenantOwner ? showRewardButton : true;
 
@@ -335,7 +327,12 @@ export function ProfileEditModal({
       onClose();
     } catch (err: any) {
       console.error('❌ プロフィール保存エラー:', err);
-      setError('保存に失敗しました。もう一度お試しください。');
+      // エラーメッセージを具体的に表示
+      if (err.message) {
+        setError(err.message);
+      } else {
+        setError('保存に失敗しました。もう一度お試しください。');
+      }
     } finally {
       setIsSubmitting(false);
     }

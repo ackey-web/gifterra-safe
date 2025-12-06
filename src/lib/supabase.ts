@@ -493,17 +493,24 @@ export async function uploadCoverImage(file: File, walletAddress: string): Promi
       body: formData,
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('❌ カバー画像アップロードエラー:', {
-        status: response.status,
-        statusText: response.statusText,
-        body: errorText,
-      });
-      throw new Error(`アップロードに失敗しました: ${response.statusText}`);
-    }
-
+    // レスポンスを一度だけテキストとして読み取る
     const responseText = await response.text();
+
+    if (!response.ok) {
+      let errorData;
+      try {
+        errorData = JSON.parse(responseText);
+      } catch (e) {
+        console.error('❌ カバー画像アップロードエラー (non-JSON):', {
+          status: response.status,
+          statusText: response.statusText,
+          body: responseText
+        });
+        throw new Error(`アップロードに失敗しました (Status: ${response.status}): ${responseText}`);
+      }
+      console.error('❌ カバー画像アップロードエラー:', errorData);
+      throw new Error(errorData.error || 'カバー画像のアップロードに失敗しました');
+    }
 
     let data;
     try {
