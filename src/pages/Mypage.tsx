@@ -1102,9 +1102,6 @@ function WalletConnectionInfo({ isMobile, onChainIdChange }: { isMobile: boolean
   // ウォレットタイプを判定
   const walletType = privyWalletAddress ? 'Privy Wallet' : address ? 'External Wallet' : null;
 
-  // Capacitorアプリかどうかを検出
-  const isCapacitorApp = typeof (window as any).Capacitor !== 'undefined';
-
   // チェーン名を取得
   const getChainName = (chainId: number | undefined) => {
     // Capacitorアプリの場合は固定でPolygon Mainnet
