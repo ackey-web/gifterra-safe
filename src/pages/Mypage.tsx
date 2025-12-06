@@ -18,6 +18,7 @@ import { useTenantRankPlan } from '../hooks/useTenantRankPlan';
 import { saveTransferMessage, useReceivedTransferMessages } from '../hooks/useTransferMessages';
 import { useRecipientProfile, type RecipientProfile } from '../hooks/useRecipientProfile';
 import { useRecipientTenantInfo } from '../hooks/useRecipientTenantInfo';
+import { useEnsurePolygonNetwork } from '../hooks/useEnsurePolygonNetwork';
 import { TenantPlanCard } from '../components/TenantPlanCard';
 import { supabase } from '../lib/supabase';
 import { isSuperAdminWithDebug } from '../config/superAdmin';
@@ -963,6 +964,14 @@ function WalletConnectionInfo({ isMobile, onChainIdChange }: { isMobile: boolean
   const { user, authenticated, ready } = usePrivy(); // Privyユーザー情報
   const [actualChainId, setActualChainId] = useState<number | undefined>(undefined);
   const [isLoadingWallet, setIsLoadingWallet] = useState(true);
+
+  // Capacitorアプリかどうかを検出
+  const isCapacitorApp = typeof (window as any).Capacitor !== 'undefined';
+
+  // 外部ウォレット（MetaMaskなど）のみ自動ネットワーク切り替えを有効化
+  // Privyウォレット、CapacitorアプリはPolygonに固定されているので不要
+  const shouldEnforcePolygon = !isCapacitorApp && !user?.wallet?.address && !!address;
+  const { isSwitching } = useEnsurePolygonNetwork(shouldEnforcePolygon, actualChainId);
 
   // 実際のチェーンIDを取得（MetaMaskなど外部ウォレット対応）
   useEffect(() => {
