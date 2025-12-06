@@ -1,11 +1,13 @@
 // src/pages/ReceivePage.tsx
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { ConnectWallet } from '@thirdweb-dev/react';
 import { JPYC_TOKEN } from '../contract';
 import { useMetaTags } from '../hooks/useMetaTags';
 
 export function ReceivePage() {
+  const navigate = useNavigate();
   const [address, setAddress] = useState<string>('');
   const [copySuccess, setCopySuccess] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -264,7 +266,7 @@ export function ReceivePage() {
         }}>
           <div
             onClick={() => {
-              window.location.href = `/user/${address}`;
+              navigate(`/user/${address}`);
             }}
             style={{
               width: isMobile ? 110 : 150,
