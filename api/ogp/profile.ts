@@ -73,7 +73,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     <meta property="og:image:height" content="630" />
 
     <!-- Twitter Card -->
-    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:url" content="${profileUrl}" />
     <meta name="twitter:title" content="${title}" />
     <meta name="twitter:description" content="${description}" />
