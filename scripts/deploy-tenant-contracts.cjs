@@ -32,7 +32,7 @@ async function main() {
 
   // 残高確認
   const balance = await hre.ethers.provider.getBalance(deployer.address);
-  console.log(`💰 残高: ${hre.ethers.formatEther(balance)} ${network.includes('polygon') ? 'MATIC' : 'ETH'}\n`);
+  console.log(`💰 残高: ${hre.ethers.utils.formatEther(balance)} ${network.includes('polygon') ? 'MATIC' : 'ETH'}\n`);
 
   // 必須パラメータの確認
   const gifterraAddress = process.env.GIFTERRA_ADDRESS;
@@ -75,20 +75,20 @@ async function main() {
     'REWARD',
     'https://api.gifterra.com/metadata/',
     adminAddress,
-    hre.ethers.ZeroAddress,  // distributor は後で設定
+    hre.ethers.constants.AddressZero,  // distributor は後で設定
     0,                        // maxSupply無制限
     0                         // mintPrice無料
   );
-  await rewardNFT.waitForDeployment();
-  deployedContracts.rewardNFT = await rewardNFT.getAddress();
+  await rewardNFT.deployed();
+  deployedContracts.rewardNFT = rewardNFT.address;
   console.log(`✅ RewardNFT_v2: ${deployedContracts.rewardNFT}\n`);
 
   // 2. GifterraPaySplitter デプロイ
   console.log('📦 GifterraPaySplitter をデプロイ中...');
   const GifterraPaySplitter = await hre.ethers.getContractFactory('GifterraPaySplitter');
   const paySplitter = await GifterraPaySplitter.deploy(payees, shares);
-  await paySplitter.waitForDeployment();
-  const paySplitterAddress = await paySplitter.getAddress();
+  await paySplitter.deployed();
+  const paySplitterAddress = paySplitter.address;
 
   // 所有権を管理者に移譲
   if (adminAddress !== deployer.address) {
@@ -109,8 +109,8 @@ async function main() {
     adminAddress,
     0  // mintPrice無料
   );
-  await flagNFT.waitForDeployment();
-  deployedContracts.flagNFT = await flagNFT.getAddress();
+  await flagNFT.deployed();
+  deployedContracts.flagNFT = flagNFT.address;
   console.log(`✅ FlagNFT: ${deployedContracts.flagNFT}\n`);
 
   // 4. RandomRewardEngine デプロイ
@@ -122,8 +122,8 @@ async function main() {
     rewardTokenAddress,
     adminAddress
   );
-  await rewardEngine.waitForDeployment();
-  deployedContracts.randomRewardEngine = await rewardEngine.getAddress();
+  await rewardEngine.deployed();
+  deployedContracts.randomRewardEngine = rewardEngine.address;
   console.log(`✅ RandomRewardEngine: ${deployedContracts.randomRewardEngine}\n`);
 
   // デプロイサマリー

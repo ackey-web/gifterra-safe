@@ -1,0 +1,9 @@
+{
+  "network": "polygon",
+  "chainId": "137",
+  "deployer": "0x66F1274aD5d042b7571C2EfA943370dbcd3459aB",
+  "timestamp": "2025-12-06T16:35:27.231Z",
+  "contracts": {
+    "RankPlanRegistry": "0x0174477A1FCEb9dE25289Cd1CA48b6998C9cD7FC"
+  }
+}

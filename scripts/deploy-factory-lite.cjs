@@ -23,7 +23,7 @@ async function main() {
 
   // 残高確認
   const balance = await hre.ethers.provider.getBalance(deployer.address);
-  console.log(`💰 残高: ${hre.ethers.formatEther(balance)} ${network.includes('polygon') ? 'MATIC' : 'ETH'}\n`);
+  console.log(`💰 残高: ${hre.ethers.utils.formatEther(balance)} ${network.includes('polygon') ? 'MATIC' : 'ETH'}\n`);
 
   if (balance === 0n) {
     throw new Error('❌ デプロイヤーの残高が不足しています');
@@ -39,9 +39,9 @@ async function main() {
 
   // デプロイメント設定
   const feeRecipient = deployer.address;  // 手数料受取先（後で変更可能）
-  const deploymentFee = hre.ethers.parseEther("1");  // 1 MATIC（最小構成のため低コスト）
+  const deploymentFee = hre.ethers.utils.parseEther("1");  // 1 MATIC（最小構成のため低コスト）
 
-  console.log(`💵 テナント作成手数料: ${hre.ethers.formatEther(deploymentFee)} MATIC`);
+  console.log(`💵 テナント作成手数料: ${hre.ethers.utils.formatEther(deploymentFee)} MATIC`);
   console.log(`👤 手数料受取先: ${feeRecipient}\n`);
 
   // GifterraFactoryLite のデプロイ
@@ -52,9 +52,9 @@ async function main() {
     deploymentFee,
     rankPlanRegistryAddress
   );
-  await factory.waitForDeployment();
+  await factory.deployed();
 
-  const factoryAddress = await factory.getAddress();
+  const factoryAddress = factory.address;
   console.log(`✅ GifterraFactoryLite デプロイ完了: ${factoryAddress}\n`);
 
   // デプロイされたコントラクトの情報を表示
@@ -64,7 +64,7 @@ async function main() {
   const currentRecipient = await factory.feeRecipient();
 
   console.log(`   - 総テナント数: ${totalTenants}`);
-  console.log(`   - デプロイ手数料: ${hre.ethers.formatEther(currentFee)} MATIC`);
+  console.log(`   - デプロイ手数料: ${hre.ethers.utils.formatEther(currentFee)} MATIC`);
   console.log(`   - 手数料受取先: ${currentRecipient}`);
   console.log(`   - RankPlanRegistry: ${await factory.rankPlanRegistry()}\n`);
 
@@ -79,7 +79,7 @@ async function main() {
       RankPlanRegistry: rankPlanRegistryAddress,
     },
     config: {
-      deploymentFee: hre.ethers.formatEther(deploymentFee),
+      deploymentFee: hre.ethers.utils.formatEther(deploymentFee),
       feeRecipient: feeRecipient,
     },
   };

@@ -23,7 +23,7 @@ async function main() {
 
   // 残高確認
   const balance = await hre.ethers.provider.getBalance(deployer.address);
-  console.log(`💰 残高: ${hre.ethers.formatEther(balance)} ${network.includes('polygon') ? 'MATIC' : 'ETH'}\n`);
+  console.log(`💰 残高: ${hre.ethers.utils.formatEther(balance)} ${network.includes('polygon') ? 'MATIC' : 'ETH'}\n`);
 
   if (balance === 0n) {
     throw new Error('❌ デプロイヤーの残高が不足しています');
@@ -33,9 +33,9 @@ async function main() {
   console.log('📦 RankPlanRegistry をデプロイ中...');
   const RankPlanRegistry = await hre.ethers.getContractFactory('RankPlanRegistry');
   const registry = await RankPlanRegistry.deploy();
-  await registry.waitForDeployment();
+  await registry.deployed();
 
-  const registryAddress = await registry.getAddress();
+  const registryAddress = registry.address;
   console.log(`✅ RankPlanRegistry デプロイ完了: ${registryAddress}\n`);
 
   // デフォルトプランの確認

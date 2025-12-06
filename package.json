@@ -43,6 +43,7 @@
     "@thirdweb-dev/sdk": "^4.0.99",
     "@thirdweb-dev/wallets": "^2.5.39",
     "@types/qrcode": "^1.5.6",
+    "@vercel/og": "^0.8.5",
     "@web3modal/wagmi": "^5.1.11",
     "@zxing/browser": "^0.1.5",
     "@zxing/library": "^0.21.3",
