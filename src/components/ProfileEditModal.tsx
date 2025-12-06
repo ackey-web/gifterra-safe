@@ -267,18 +267,33 @@ export function ProfileEditModal({
       // テナント所有者の場合はユーザー設定を尊重、未所有者の場合は常にtrueとして保存
       profileData.show_reward_button = isTenantOwner ? showRewardButton : true;
 
-      // 既存レコードを検索
-      const { data: existing } = await supabase
+      // 既存レコードを検索（エラーハンドリング強化）
+      console.log('🔍 Searching for existing profile:', {
+        wallet_address: profileData.wallet_address,
+        tenant_id: profileData.tenant_id,
+      });
+
+      const { data: existing, error: searchError } = await supabase
         .from('user_profiles')
         .select('id')
         .eq('wallet_address', profileData.wallet_address)
         .eq('tenant_id', profileData.tenant_id)
+        .limit(1)
         .maybeSingle();
+
+      if (searchError && searchError.code !== 'PGRST116') {
+        // PGRST116 = 複数行エラー、それ以外のエラーは致命的
+        console.error('❌ Profile search error:', searchError);
+        throw new Error(`プロフィール検索エラー: ${searchError.message}`);
+      }
+
+      console.log('📊 Search result:', { existing, searchError });
 
       let data, upsertError;
 
       if (existing) {
         // 既存レコードがあれば更新
+        console.log('✏️ Updating existing profile:', existing.id);
         const result = await supabase
           .from('user_profiles')
           .update(profileData)
@@ -288,6 +303,7 @@ export function ProfileEditModal({
         upsertError = result.error;
       } else {
         // 新規作成
+        console.log('➕ Creating new profile');
         const result = await supabase
           .from('user_profiles')
           .insert(profileData)
@@ -304,7 +320,15 @@ export function ProfileEditModal({
           details: upsertError.details,
           hint: upsertError.hint,
         });
-        throw upsertError;
+
+        // より詳細なエラーメッセージをユーザーに表示
+        if (upsertError.code === '23505') {
+          throw new Error('このウォレットアドレスは既に登録されています');
+        } else if (upsertError.code === '42501') {
+          throw new Error('プロフィールを保存する権限がありません。再度ログインしてください。');
+        } else {
+          throw new Error(`保存エラー: ${upsertError.message}`);
+        }
       }
 
       onSave();
